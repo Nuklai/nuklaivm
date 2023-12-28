@@ -71,11 +71,11 @@ If `nuklai-cli` is able to connect to ANR, it will emit the following logs:
 
 ```
 database: .nuklai-cli
-stored chainID: Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb uri: http://127.0.0.1:33055/ext/bc/Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb
-stored chainID: Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb uri: http://127.0.0.1:41851/ext/bc/Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb
-stored chainID: Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb uri: http://127.0.0.1:40039/ext/bc/Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb
-stored chainID: Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb uri: http://127.0.0.1:45089/ext/bc/Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb
-stored chainID: Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb uri: http://127.0.0.1:39381/ext/bc/Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb
+stored chainID: 29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqDPQPgh uri: http://127.0.0.1:38583/ext/bc/29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqDPQPgh
+stored chainID: 29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqDPQPgh uri: http://127.0.0.1:45605/ext/bc/29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqDPQPgh
+stored chainID: 29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqDPQPgh uri: http://127.0.0.1:38453/ext/bc/29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqDPQPgh
+stored chainID: 29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqDPQPgh uri: http://127.0.0.1:46509/ext/bc/29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqDPQPgh
+stored chainID: 29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqDPQPgh uri: http://127.0.0.1:35183/ext/bc/29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqDPQPgh
 ```
 
 _`./build/nuklai-cli chain import-anr` connects to the Avalanche Network Runner server running in
@@ -96,9 +96,9 @@ If successful, the balance response should look like this:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb
-uri: http://127.0.0.1:45089/ext/bc/Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb
-balance: 10000000000.000000000 NAI
+chainID: 29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqDPQPgh
+uri: http://127.0.0.1:45605/ext/bc/29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqDPQPgh
+balance: 853000000.000000000 NAI
 ```
 
 ### Generate Another Address
@@ -117,7 +117,7 @@ If successful, the `nuklai-cli` will emit the new address:
 
 ```
 database: .nuklai-cli
-created address: nuklai1qye25xec8r7xcz0d83rt00s64lqdzzl9p89g49f25ctcxqfj7kmhgsg0w4r
+created address: nuklai1qyf889stx7rjrgh8tsa4acv4we94kf4w652gwq462tm4vau9ee20gq6k5l2
 ```
 
 By default, the `nuklai-cli` sets newly generated addresses to be the default. We run
@@ -133,8 +133,8 @@ You should see something like this:
 database: .nuklai-cli
 chainID: Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb
 stored keys: 2
-0) address (ed25519): nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx balance: 10000000000.000000000 NAI
-1) address (secp256r1): nuklai1qye25xec8r7xcz0d83rt00s64lqdzzl9p89g49f25ctcxqfj7kmhgsg0w4r balance: 0.000000000 NAI
+0) address (ed25519): nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx balance: 853000000.000000000 NAI
+1) address (secp256r1): nuklai1qyf889stx7rjrgh8tsa4acv4we94kf4w652gwq462tm4vau9ee20gq6k5l2 balance: 0.000000000 NAI
 ✔ set default key: 0█
 ```
 
@@ -151,12 +151,12 @@ The `nuklai-cli` will emit the following logs when the transfer is successful:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb
-balance: 10000000000.000000000 NAI
-recipient: nuklai1qye25xec8r7xcz0d83rt00s64lqdzzl9p89g49f25ctcxqfj7kmhgsg0w4r
+chainID: 29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqDPQPgh
+balance: 853000000.000000000 NAI
+recipient: nuklai1qyf889stx7rjrgh8tsa4acv4we94kf4w652gwq462tm4vau9ee20gq6k5l2
 amount: 100
 continue (y/n): y
-✅ txID: 2FJ1Y7o3W5t5rniJ4p5urP9NrZ6zBVgasTmKS1HU3MJU9SkdyV
+✅ txID: sqLP8ZJk1BFLXAexkAx4fAmEbg4gvxJYseT99UW1fHsFvm4QL
 ```
 
 ### Bonus: Watch Activity in Real-Time
@@ -174,13 +174,9 @@ If you run it correctly, you'll see the following input (will run until the
 network shuts down or you exit):
 
 ```
-database: .nuklai-cli
-available chains: 1 excluded: []
-0) chainID: Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb
 select chainID: 0 [auto-selected]
-uri: http://127.0.0.1:45089/ext/bc/Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb
-watching for new blocks on Abcauv672Yv5xju7B4iuTsg9yMGVsTqxQYBYemDv8JLeHMWrb 👀
-height:34 txs:0 root:MXXCqjBrYWcpXD273HWe2zTrWgyhZ2W67nFVzwXtrkSPXWzjM size:0.09KB units consumed: [bandwidth=0 compute=0 storage(read)=0 storage(allocate)=0 storage(write)=0] unit prices: [bandwidth=100 compute=100 storage(read)=100 storage(allocate)=100 storage(write)=100] 👀
-height:59 txs:1 root:2GRQyZ6aQ81LchDiz5ZKJxCSsUFNdtsgfqeBXgKpWRv7Fgmj5X size:0.28KB units consumed: [bandwidth=191 compute=7 storage(read)=14 storage(allocate)=0 storage(write)=26] unit prices: [bandwidth=100 compute=100 storage(read)=100 storage(allocate)=100 storage(write)=100] [TPS:0.10 latency:71ms gap:98ms]
-✅ pLk5bHx2rJUX7mRpzejbrEfL2nXp6a1vDTzZgYjRfEGviMScg actor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx summary (*actions.Transfer): [100.000000000 NAI -> nuklai1qye25xec8r7xcz0d83rt00s64lqdzzl9p89g49f25ctcxqfj7kmhgsg0w4r] fee (max 72.34%): 0.000023800 NAI consumed: [bandwidth=191 compute=7 storage(read)=14 storage(allocate)=0 storage(write)=26]
+uri: http://127.0.0.1:45605/ext/bc/29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqDPQPgh
+watching for new blocks on 29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqDPQPgh 👀
+height:53 txs:0 root:2TRxW2hWUP2DTKgGTPkJLTzzzkCxDESqjriHhdYU7PqTPWEaR5 size:0.09KB units consumed: [bandwidth=0 compute=0 storage(read)=0 storage(allocate)=0 storage(write)=0] unit prices: [bandwidth=100 compute=100 storage(read)=100 storage(allocate)=100 storage(write)=100]
+✅ sqLP8ZJk1BFLXAexkAx4fAmEbg4gvxJYseT99UW1fHsFvm4QL actor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx summary (*actions.Transfer): [100.000000000 NAI -> nuklai1qyf889stx7rjrgh8tsa4acv4we94kf4w652gwq462tm4vau9ee20gq6k5l2] fee (max 72.34%): 0.000023800 NAI consumed: [bandwidth=191 compute=7 storage(read)=14 storage(allocate)=0 storage(write)=26]
 ```

@@ -120,7 +120,7 @@ find ${TMPDIR}/avalanchego-${VERSION}
 echo "creating allocations file"
 cat <<EOF > ${TMPDIR}/allocations.json
 [
-  {"address":"${ADDRESS}", "balance":10000000000000000000}
+  {"address":"${ADDRESS}", "balance":853000000000000000}
 ]
 EOF
 
