@@ -20,11 +20,6 @@ import (
 
 var _ chain.Auth = (*ED25519)(nil)
 
-const (
-	ED25519ComputeUnits = 5
-	ED25519Size         = ed25519.PublicKeyLen + ed25519.SignatureLen
-)
-
 type ED25519 struct {
 	Signer    ed25519.PublicKey `json:"signer"`
 	Signature ed25519.Signature `json:"signature"`
@@ -48,6 +43,7 @@ func (*ED25519) MaxComputeUnits(chain.Rules) uint64 {
 }
 
 func (*ED25519) ValidRange(chain.Rules) (int64, int64) {
+	// Returning -1, -1 means that the action is always valid.
 	return -1, -1
 }
 

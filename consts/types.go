@@ -3,6 +3,7 @@
 
 package consts
 
+// Note: Registry will error during initialization if a duplicate ID is assigned. We explicitly assign IDs to avoid accidental remapping.
 const (
 	// Action TypeIDs
 	TransferID uint8 = 0

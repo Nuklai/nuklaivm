@@ -19,11 +19,6 @@ import (
 
 var _ chain.Auth = (*SECP256R1)(nil)
 
-const (
-	SECP256R1ComputeUnits = 10 // can't be batched like ed25519
-	SECP256R1Size         = secp256r1.PublicKeyLen + secp256r1.SignatureLen
-)
-
 type SECP256R1 struct {
 	Signer    secp256r1.PublicKey `json:"signer"`
 	Signature secp256r1.Signature `json:"signature"`

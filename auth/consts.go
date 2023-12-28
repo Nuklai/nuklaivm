@@ -4,18 +4,23 @@
 package auth
 
 import (
+	"github.com/ava-labs/hypersdk/crypto/ed25519"
+	"github.com/ava-labs/hypersdk/crypto/secp256r1"
 	"github.com/ava-labs/hypersdk/vm"
 	"github.com/nuklai/nuklaivm/consts"
 )
 
-// Note: Registry will error during initialization if a duplicate ID is assigned. We explicitly assign IDs to avoid accidental remapping.
 const (
-	ed25519ID uint8 = 0
+	ED25519ComputeUnits   = 5
+	ED25519Size           = ed25519.PublicKeyLen + ed25519.SignatureLen
+	SECP256R1ComputeUnits = 10
+	SECP256R1Size         = secp256r1.PublicKeyLen + secp256r1.SignatureLen
 )
 
 func Engines() map[uint8]vm.AuthEngine {
 	return map[uint8]vm.AuthEngine{
 		// Only ed25519 batch verification is supported
+		// We are not adding secp256r1 because it cannot be batched
 		consts.ED25519ID: &ED25519AuthEngine{},
 	}
 }
