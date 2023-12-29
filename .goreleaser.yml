@@ -71,5 +71,5 @@ release:
   make_latest: false # Should be done manually
   mode: 'keep-existing' # Should not override releases
   github:
-    owner: ava-labs
-    name: hypersdk
+    owner: Nuklai
+    name: nuklaivm
