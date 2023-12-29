@@ -6,7 +6,6 @@ package actions
 import (
 	"context"
 
-	"github.com/nuklai/nuklaivm/storage"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/hypersdk/chain"
@@ -15,6 +14,7 @@ import (
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/ava-labs/hypersdk/utils"
 	mconsts "github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/storage"
 )
 
 var _ chain.Action = (*Transfer)(nil)
