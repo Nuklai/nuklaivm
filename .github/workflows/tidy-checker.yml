@@ -20,9 +20,6 @@ jobs:
       - shell: bash
         run: go mod tidy
       - shell: bash
-        working-directory: ./
-        run: go mod tidy
-      - shell: bash
         run: scripts/tests.clean.sh
 
 concurrency:

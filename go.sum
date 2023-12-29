@@ -67,7 +67,6 @@ github.com/ava-labs/avalanchego v1.10.15 h1:GQ1bkwgKnv5D/yUwXUjWPFqx1cWrf35WOaHS
 github.com/ava-labs/avalanchego v1.10.15/go.mod h1:fHTzxKZOMdM0n4EEXDDR0V3Ieb/Jnz7PM8zAsJRsh2U=
 github.com/ava-labs/coreth v0.12.8-rc.1 h1:tvJcxQTQzxIQqx8TnrxdyMhZYbdsMaiy6AEiOyjvaa4=
 github.com/ava-labs/coreth v0.12.8-rc.1/go.mod h1:GBH5SxHZdScSp95IijDs9+Gxw/QDIWvfoLKiJMNYLsE=
-github.com/ava-labs/hypersdk v0.0.1/go.mod h1:RofBf7rbnRV6phWDHaLpwNabvGq31h79R0BTfpIv2xk=
 github.com/ava-labs/hypersdk v0.0.16-0.20231212190557-ad3ac9427c17 h1:yhSWljrmII/VoYJXuY1lSj/7FPmrSxuGYieQ1OODWs8=
 github.com/ava-labs/hypersdk v0.0.16-0.20231212190557-ad3ac9427c17/go.mod h1:S1aXsLyV6re59yKkpUnZ5dsTKTF2DvFf48O93ubXX00=
 github.com/aymerick/raymond v2.0.3-0.20180322193309-b565731e1464+incompatible/go.mod h1:osfaiScAUVup+UC9Nfq76eWqDhXlp+4UYaA8uhTBO6g=
