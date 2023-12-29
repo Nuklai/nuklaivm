@@ -16,8 +16,7 @@ jobs:
     strategy:
       matrix:
         level: [v1, v2, v3] # v4 is not supported
-    runs-on:
-      labels: ubuntu-20.04-32
+    runs-on: self-hosted
     timeout-minutes: 10
     steps:
       - name: Checkout

@@ -13,8 +13,7 @@ on:
 jobs:
   nuklaivm-sync-tests:
     if: ${{ github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'run sync') }}
-    runs-on:
-      labels: ubuntu-20.04-32
+    runs-on: self-hosted
     timeout-minutes: 25
     steps:
       - name: Checkout
