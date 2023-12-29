@@ -11,7 +11,7 @@ on:
 
 jobs:
   nuklaivm-lint:
-    runs-on: self-hosted
+    runs-on: dev
     timeout-minutes: 10
     steps:
       - name: Checkout

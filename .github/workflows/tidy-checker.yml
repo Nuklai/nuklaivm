@@ -8,7 +8,7 @@ on:
 jobs:
   go_mod_tidy:
     name: Tidy
-    runs-on: self-hosted
+    runs-on: dev
     steps:
       - uses: actions/checkout@v3
       - name: Set up Go
