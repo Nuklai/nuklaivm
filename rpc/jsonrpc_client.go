@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/hypersdk/rpc"
 	"github.com/ava-labs/hypersdk/utils"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/emissionbalancer"
 	"github.com/nuklai/nuklaivm/genesis"
 	_ "github.com/nuklai/nuklaivm/registry" // ensure registry populated
 	"github.com/nuklai/nuklaivm/storage"
@@ -84,6 +85,20 @@ func (cli *JSONRPCClient) Balance(ctx context.Context, addr string) (uint64, err
 		resp,
 	)
 	return resp.Amount, err
+}
+
+func (cli *JSONRPCClient) EmissionBalancerInfo(ctx context.Context) (uint64, uint64, uint64, map[string]*emissionbalancer.Validator, error) {
+	resp := new(EmissionBalancerReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"emissionBalancerInfo",
+		nil,
+		resp,
+	)
+	if err != nil {
+		return 0, 0, 0, nil, err
+	}
+	return resp.TotalSupply, resp.MaxSupply, resp.RewardsPerBlock, resp.Validators, err
 }
 
 func (cli *JSONRPCClient) WaitForBalance(

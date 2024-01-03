@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 
 	"github.com/ava-labs/avalanchego/trace"
 	smath "github.com/ava-labs/avalanchego/utils/math"
@@ -18,6 +19,7 @@ import (
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/ava-labs/hypersdk/vm"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/emissionbalancer"
 	"github.com/nuklai/nuklaivm/storage"
 )
 
@@ -59,6 +61,15 @@ type Genesis struct {
 
 	// Allocates
 	CustomAllocation []*CustomAllocation `json:"customAllocation"`
+
+	// Total supply of NAI
+	TotalSupply uint64 `json:"totalSupply"`
+
+	// Max supply of NAI
+	MaxSupply uint64 `json:"maxSupply"`
+
+	// Minting rate of NAI
+	RewardsPerBlock uint64 `json:"rewardsPerBlock"`
 }
 
 func Default() *Genesis {
@@ -94,6 +105,11 @@ func Default() *Genesis {
 		StorageValueAllocateUnits: 5,
 		StorageKeyWriteUnits:      10,
 		StorageValueWriteUnits:    3,
+
+		// Set a default max supply
+		MaxSupply: 10_000_000_000 * uint64(math.Pow10(consts.Decimals)), // 10 billion NAI
+		// Set a default minting rate for NAI
+		RewardsPerBlock: 2 * uint64(math.Pow10(consts.Decimals)), // 2 NAI per block
 	}
 }
 
@@ -129,6 +145,9 @@ func (g *Genesis) Load(ctx context.Context, tracer trace.Tracer, mu state.Mutabl
 			return fmt.Errorf("%w: addr=%s, bal=%d", err, alloc.Address, alloc.Balance)
 		}
 	}
+	e := emissionbalancer.GetEmissionBalancer()
+	e.AddToTotalSupply(supply)
+
 	return nil
 }
 

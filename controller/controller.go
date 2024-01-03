@@ -23,6 +23,7 @@ import (
 	"github.com/nuklai/nuklaivm/auth"
 	"github.com/nuklai/nuklaivm/config"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/emissionbalancer"
 	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/rpc"
 	"github.com/nuklai/nuklaivm/storage"
@@ -42,6 +43,8 @@ type Controller struct {
 	metrics *metrics
 
 	metaDB database.Database
+
+	emissionBalancer *emissionbalancer.EmissionBalancer
 }
 
 func New() *vm.VM {
@@ -134,6 +137,9 @@ func (c *Controller) Initialize(
 			return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 		}
 	}
+
+	// Initialize emissionbalancer
+	c.emissionBalancer = emissionbalancer.New(c, c.genesis.MaxSupply, c.genesis.RewardsPerBlock)
 	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, consts.ActionRegistry, consts.AuthRegistry, auth.Engines(), nil
 }
 

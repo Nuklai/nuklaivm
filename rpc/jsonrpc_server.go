@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/emissionbalancer"
 	"github.com/nuklai/nuklaivm/genesis"
 )
 
@@ -83,3 +84,43 @@ func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *Bal
 	reply.Amount = balance
 	return err
 }
+
+type EmissionBalancerReply struct {
+	TotalSupply     uint64 `json:"totalSupply"`
+	MaxSupply       uint64 `json:"maxSupply"`
+	RewardsPerBlock uint64 `json:"rewardsPerBlock"`
+	Validators      map[string]*emissionbalancer.Validator
+}
+
+func (j *JSONRPCServer) EmissionBalancerInfo(req *http.Request, _ *struct{}, reply *EmissionBalancerReply) (err error) {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.EmissionBalancerInfo")
+	defer span.End()
+
+	totalSupply, maxSupply, rewardsPerBlock, validators, err := j.c.GetEmissionBalancerInfo(ctx)
+	if err != nil {
+		return err
+	}
+	reply.TotalSupply = totalSupply
+	reply.MaxSupply = maxSupply
+	reply.RewardsPerBlock = rewardsPerBlock
+	reply.Validators = validators
+	return nil
+}
+
+/* type ValidatorReply struct {
+	validators map[ids.NodeID]*validators.GetValidatorOutput
+} */
+
+/* func (j *JSONRPCServer) Validators(req *http.Request, reply *ValidatorReply) error {
+	utils.Outf("HERE on jsonrpc_server.go Validators\n")
+
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Validators")
+	defer span.End()
+
+	validators, err := j.c.Validators(ctx)
+	if err != nil {
+		return err
+	}
+	reply.validators = validators
+	return err
+} */

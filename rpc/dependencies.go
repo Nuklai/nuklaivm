@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanchego/trace"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
+	"github.com/nuklai/nuklaivm/emissionbalancer"
 	"github.com/nuklai/nuklaivm/genesis"
 )
 
@@ -18,4 +19,5 @@ type Controller interface {
 	Tracer() trace.Tracer
 	GetTransaction(context.Context, ids.ID) (bool, int64, bool, chain.Dimensions, uint64, error)
 	GetBalanceFromState(context.Context, codec.Address) (uint64, error)
+	GetEmissionBalancerInfo(context.Context) (uint64, uint64, uint64, map[string]*emissionbalancer.Validator, error)
 }

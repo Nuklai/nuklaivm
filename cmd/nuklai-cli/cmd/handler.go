@@ -17,10 +17,9 @@ import (
 	"github.com/ava-labs/hypersdk/utils"
 	"github.com/nuklai/nuklaivm/auth"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/emissionbalancer"
 	brpc "github.com/nuklai/nuklaivm/rpc"
 )
-
-var _ cli.Controller = (*Controller)(nil)
 
 type Handler struct {
 	h *cli.Handler
@@ -103,9 +102,45 @@ func (*Handler) GetBalance(
 	return balance, nil
 }
 
+func (*Handler) GetEmissionBalancerInfo(
+	ctx context.Context,
+	cli *brpc.JSONRPCClient,
+) (uint64, uint64, uint64, map[string]*emissionbalancer.Validator, error) {
+
+	totalSupply, maxSupply, rewardsPerBlock, validators, err := cli.EmissionBalancerInfo(ctx)
+	if err != nil {
+		return 0, 0, 0, nil, err
+	}
+
+	utils.Outf(
+		"{{yellow}}emission balancer info: {{/}}\nTotalSupply=%d MaxSupply=%d RewardsPerBlock=%d\n",
+		totalSupply,
+		maxSupply,
+		rewardsPerBlock,
+	)
+
+	index := 1
+	for nodeID, validator := range validators {
+		utils.Outf(
+			"{{yellow}}validator %d:{{/}} NodeID=%s NodePublicKey=%s NodeWeight=%d WalletAddress=%s StakedAmount=%d StakedReward=%d\n",
+			index,
+			nodeID,
+			validator.NodePublicKey,
+			validator.NodeWeight,
+			validator.WalletAddress,
+			validator.StakedAmount,
+			validator.StakedReward,
+		)
+		index++
+	}
+	return totalSupply, maxSupply, rewardsPerBlock, validators, nil
+}
+
 type Controller struct {
 	databasePath string
 }
+
+var _ cli.Controller = (*Controller)(nil)
 
 func NewController(databasePath string) *Controller {
 	return &Controller{databasePath}

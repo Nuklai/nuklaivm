@@ -5,12 +5,14 @@ package controller
 
 import (
 	"context"
+	"encoding/base64"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/trace"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
+	"github.com/nuklai/nuklaivm/emissionbalancer"
 	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/storage"
 )
@@ -39,4 +41,27 @@ func (c *Controller) GetBalanceFromState(
 	acct codec.Address,
 ) (uint64, error) {
 	return storage.GetBalanceFromState(ctx, c.inner.ReadState, acct)
+}
+
+func (c *Controller) GetEmissionBalancerInfo(ctx context.Context) (uint64, uint64, uint64, map[string]*emissionbalancer.Validator, error) {
+	totalSupply := c.emissionBalancer.TotalSupply
+	maxSupply := c.emissionBalancer.MaxSupply
+	rewardsPerBlock := c.emissionBalancer.RewardsPerBlock
+
+	validators := make(map[string]*emissionbalancer.Validator)
+	currentValidators, _ := c.inner.CurrentValidators(ctx)
+	for nodeId, validator := range currentValidators {
+		nodeIdString := nodeId.String()
+		newValidator := &emissionbalancer.Validator{
+			NodeID:        nodeIdString,
+			NodePublicKey: base64.StdEncoding.EncodeToString(validator.PublicKey.Compress()),
+			NodeWeight:    validator.Weight,
+			WalletAddress: "",
+			StakedAmount:  0,
+			StakedReward:  0,
+		}
+		validators[nodeIdString] = newValidator
+	}
+
+	return totalSupply, maxSupply, rewardsPerBlock, validators, nil
 }
