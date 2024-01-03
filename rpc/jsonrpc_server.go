@@ -106,21 +106,3 @@ func (j *JSONRPCServer) EmissionBalancerInfo(req *http.Request, _ *struct{}, rep
 	reply.Validators = validators
 	return nil
 }
-
-/* type ValidatorReply struct {
-	validators map[ids.NodeID]*validators.GetValidatorOutput
-} */
-
-/* func (j *JSONRPCServer) Validators(req *http.Request, reply *ValidatorReply) error {
-	utils.Outf("HERE on jsonrpc_server.go Validators\n")
-
-	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Validators")
-	defer span.End()
-
-	validators, err := j.c.Validators(ctx)
-	if err != nil {
-		return err
-	}
-	reply.validators = validators
-	return err
-} */

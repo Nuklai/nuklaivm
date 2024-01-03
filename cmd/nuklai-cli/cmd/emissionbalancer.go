@@ -36,21 +36,3 @@ var emissionbalancerInfoCmd = &cobra.Command{
 		return nil
 	},
 }
-
-/* var validatorsCmd = &cobra.Command{
-	Use: "validators",
-	RunE: func(*cobra.Command, []string) error {
-		ctx := context.Background()
-		_, _, _, _, bcli, _, err := handler.DefaultActor()
-		if err != nil {
-			return err
-		}
-
-		// Get validator info
-		_, err = handler.GetValidators(ctx, bcli)
-		if err != nil {
-			return err
-		}
-		return err
-	},
-} */
