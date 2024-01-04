@@ -187,13 +187,12 @@ height:53 txs:0 root:2TRxW2hWUP2DTKgGTPkJLTzzzkCxDESqjriHhdYU7PqTPWEaR5 size:0.0
 ✅ sqLP8ZJk1BFLXAexkAx4fAmEbg4gvxJYseT99UW1fHsFvm4QL actor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx summary (*actions.Transfer): [100.000000000 NAI -> nuklai1qyf889stx7rjrgh8tsa4acv4we94kf4w652gwq462tm4vau9ee20gq6k5l2] fee (max 72.34%): 0.000023800 NAI consumed: [bandwidth=191 compute=7 storage(read)=14 storage(allocate)=0 storage(write)=26]
 ```
 
-### Get Emission Balancer Info
+### Get Emission Info
 
-We can check info that emission balancer is in charge of such as total supply, max supply, rewards per block and the validators' stake
+We can check info that emission is in charge of such as total supply, max supply, rewards per block and the validators' stake
 
 ```bash
-./build/nuklai-cli chain import-anr
-./build/nuklai-cli emissionbalancer info
+./build/nuklai-cli emission info
 ```
 
 If successful, the output should be something like:
@@ -201,12 +200,28 @@ If successful, the output should be something like:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 2n4VnqACr6KSFteqbHh3QFpAANjatqKkxPhk8zzb4wYTDxF2z3
-emission balancer info:
+chainID: DGXvJxdkNS2XAYpw27qSrrqujkdtsGZ9qVBE7NAXWn3hTiK5t
+emission info:
 TotalSupply=853000000000000000 MaxSupply=10000000000000000000 RewardsPerBlock=2000000000
-validator 1: NodeID=NodeID-7RDnkrSCN2bTosU3ntMoRAMRZgaxy1B9a NodePublicKey=s79q8wuHbyZqEADaEL1SL0fwgmNstz/VxaGc1v8TTPZGDYQ2rfSxP6LpB8UDgs8N NodeWeight=1000 WalletAddress= StakedAmount=0 StakedReward=0
-validator 2: NodeID=NodeID-DAVh2iWG1YPREqk9jwVFA6xcKAzdnM3jN NodePublicKey=tVuG3m4I11rPK1ZdLzLhCwaTEOO2PPt4aJvONlIipLdtcPwOeI572jqA/09hBtT5 NodeWeight=1000 WalletAddress= StakedAmount=0 StakedReward=0
-validator 3: NodeID=NodeID-DLqBPXAuU3uSgASjyA7r7MVP5z75WkcjK NodePublicKey=jGDvotuDBt0+Yhv8L/9GnLvhk/5pa6LOnJhR8uSr4PKE3AIjyy+0MIUVxl2M8621 NodeWeight=1000 WalletAddress= StakedAmount=0 StakedReward=0
-validator 4: NodeID=NodeID-GnyPDPJQgVgbLicErpXVrdyRzFZnCUmCq NodePublicKey=td+CCvlOMVaJ/7kiTEsoPqCmMjB8SBo37UOtnyF51Yrhn/7bAvarrr/r7DWJ14Xl NodeWeight=1000 WalletAddress= StakedAmount=0 StakedReward=0
-validator 5: NodeID=NodeID-PDL98rYXyJ2KGy6G4h3tpzx76DUWrea9P NodePublicKey=psBsTd+3Iq/0g2SVd9f/zK8cakrorf7Vm8GmQE9H3yztdDJNO725/meKAy+bQIiE NodeWeight=1000 WalletAddress= StakedAmount=0 StakedReward=0
+```
+
+### Get Validators
+
+We can check the validators that have been staked
+
+```bash
+./build/nuklai-cli emission validators
+```
+
+If successful, the output should be something like:
+
+```
+database: .nuklai-cli
+address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+chainID: DGXvJxdkNS2XAYpw27qSrrqujkdtsGZ9qVBE7NAXWn3hTiK5t
+validator 0: NodeID=NodeID-PjcwhFkf8Vpzgz1yueW59z5YooAUaCd7L NodePublicKey=iJKzy28z84vZ5QfC9wj6ghVTCNR5lOWcEflh5YKxD74b2OyYziOJtbjm4pckxChR UserStake=map[] StakedAmount=0 StakedReward=0
+validator 1: NodeID=NodeID-9H2n6dfch4K41TAhszPsBf4uewhF3Gc6x NodePublicKey=oSh4VK9O3dlm56UPC89NJtciblS5zK6jkXcsRhM1HNiMvVgrkrtvS0WIm/Ruznla UserStake=map[] StakedAmount=0 StakedReward=0
+validator 2: NodeID=NodeID-LR6ACegK8JMW4rRyNKUxrh7rknn2GL4U NodePublicKey=l5lSOpD5bQwzrUYuG3HfTIJ5p0f7d3B4YhJLQr5AB3qV076z5Jw6rXcXkyGah/9W UserStake=map[] StakedAmount=0 StakedReward=0
+validator 3: NodeID=NodeID-Es7Ho8RMgJK4XZmjL9RjRZ2aSBRDTzhiK NodePublicKey=oX40iNZ6taZrMQ4nV7bappkwgXTuXk8CaL4N8AvjpzwUcneTZikJ8BS3zVl/geij UserStake=map[] StakedAmount=0 StakedReward=0
+validator 4: NodeID=NodeID-BPMBorjwuWAvo5pQYhTyhQp5PdnJYRsPS NodePublicKey=lj+31HOheO5iay5+YeeudoIbTNX21WMWvRewk+6Nv0vol61RLuGrrODnVSHPFgBm UserStake=map[] StakedAmount=0 StakedReward=0
 ```

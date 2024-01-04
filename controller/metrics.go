@@ -12,6 +12,8 @@ import (
 
 type metrics struct {
 	transfer prometheus.Counter
+
+	stake prometheus.Counter
 }
 
 func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
@@ -21,11 +23,19 @@ func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 			Name:      "transfer",
 			Help:      "number of transfer actions",
 		}),
+
+		stake: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "actions",
+			Name:      "stake",
+			Help:      "number of stake actions",
+		}),
 	}
 	r := prometheus.NewRegistry()
 	errs := wrappers.Errs{}
 	errs.Add(
 		r.Register(m.transfer),
+
+		r.Register(m.stake),
 
 		gatherer.Register(consts.Name, r),
 	)

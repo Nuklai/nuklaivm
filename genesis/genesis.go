@@ -19,7 +19,7 @@ import (
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/ava-labs/hypersdk/vm"
 	"github.com/nuklai/nuklaivm/consts"
-	"github.com/nuklai/nuklaivm/emissionbalancer"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/storage"
 )
 
@@ -145,8 +145,8 @@ func (g *Genesis) Load(ctx context.Context, tracer trace.Tracer, mu state.Mutabl
 			return fmt.Errorf("%w: addr=%s, bal=%d", err, alloc.Address, alloc.Balance)
 		}
 	}
-	e := emissionbalancer.GetEmissionBalancer()
-	e.AddToTotalSupply(supply)
+	emission := emission.GetEmission()
+	emission.AddToTotalSupply(supply)
 
 	return nil
 }

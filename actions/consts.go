@@ -3,4 +3,8 @@
 
 package actions
 
-const TransferComputeUnits = 1
+const (
+	TransferComputeUnits = 1
+
+	StakeValidatorComputeUnits = 2
+)

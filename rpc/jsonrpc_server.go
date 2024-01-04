@@ -11,7 +11,7 @@ import (
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/nuklai/nuklaivm/consts"
-	"github.com/nuklai/nuklaivm/emissionbalancer"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 )
 
@@ -85,24 +85,38 @@ func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *Bal
 	return err
 }
 
-type EmissionBalancerReply struct {
+type EmissionReply struct {
 	TotalSupply     uint64 `json:"totalSupply"`
 	MaxSupply       uint64 `json:"maxSupply"`
 	RewardsPerBlock uint64 `json:"rewardsPerBlock"`
-	Validators      map[string]*emissionbalancer.Validator
 }
 
-func (j *JSONRPCServer) EmissionBalancerInfo(req *http.Request, _ *struct{}, reply *EmissionBalancerReply) (err error) {
-	ctx, span := j.c.Tracer().Start(req.Context(), "Server.EmissionBalancerInfo")
+func (j *JSONRPCServer) EmissionInfo(req *http.Request, _ *struct{}, reply *EmissionReply) (err error) {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.EmissionInfo")
 	defer span.End()
 
-	totalSupply, maxSupply, rewardsPerBlock, validators, err := j.c.GetEmissionBalancerInfo(ctx)
+	totalSupply, maxSupply, rewardsPerBlock, err := j.c.GetEmissionInfo(ctx)
 	if err != nil {
 		return err
 	}
 	reply.TotalSupply = totalSupply
 	reply.MaxSupply = maxSupply
 	reply.RewardsPerBlock = rewardsPerBlock
+	return nil
+}
+
+type ValidatorsReply struct {
+	Validators []*emission.Validator `json:"validators"`
+}
+
+func (j *JSONRPCServer) Validators(req *http.Request, _ *struct{}, reply *ValidatorsReply) (err error) {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Validators")
+	defer span.End()
+
+	validators, err := j.c.GetAllValidators(ctx)
+	if err != nil {
+		return err
+	}
 	reply.Validators = validators
 	return nil
 }

@@ -14,7 +14,7 @@ import (
 	"github.com/ava-labs/hypersdk/rpc"
 	"github.com/ava-labs/hypersdk/utils"
 	"github.com/nuklai/nuklaivm/consts"
-	"github.com/nuklai/nuklaivm/emissionbalancer"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 	_ "github.com/nuklai/nuklaivm/registry" // ensure registry populated
 	"github.com/nuklai/nuklaivm/storage"
@@ -87,18 +87,32 @@ func (cli *JSONRPCClient) Balance(ctx context.Context, addr string) (uint64, err
 	return resp.Amount, err
 }
 
-func (cli *JSONRPCClient) EmissionBalancerInfo(ctx context.Context) (uint64, uint64, uint64, map[string]*emissionbalancer.Validator, error) {
-	resp := new(EmissionBalancerReply)
+func (cli *JSONRPCClient) EmissionInfo(ctx context.Context) (uint64, uint64, uint64, error) {
+	resp := new(EmissionReply)
 	err := cli.requester.SendRequest(
 		ctx,
-		"emissionBalancerInfo",
+		"emissionInfo",
 		nil,
 		resp,
 	)
 	if err != nil {
-		return 0, 0, 0, nil, err
+		return 0, 0, 0, err
 	}
-	return resp.TotalSupply, resp.MaxSupply, resp.RewardsPerBlock, resp.Validators, err
+	return resp.TotalSupply, resp.MaxSupply, resp.RewardsPerBlock, err
+}
+
+func (cli *JSONRPCClient) Validators(ctx context.Context) ([]*emission.Validator, error) {
+	resp := new(ValidatorsReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"validators",
+		nil,
+		resp,
+	)
+	if err != nil {
+		return []*emission.Validator{}, err
+	}
+	return resp.Validators, err
 }
 
 func (cli *JSONRPCClient) WaitForBalance(

@@ -52,7 +52,7 @@ func init() {
 		keyCmd,
 		chainCmd,
 		actionCmd,
-		emissionbalancerCmd,
+		emissionCmd,
 		spamCmd,
 		prometheusCmd,
 	)
@@ -145,11 +145,13 @@ func init() {
 	// actions
 	actionCmd.AddCommand(
 		transferCmd,
+		stakeValidatorCmd,
 	)
 
-	// emission balancer
-	emissionbalancerCmd.AddCommand(
-		emissionbalancerInfoCmd,
+	// emission
+	emissionCmd.AddCommand(
+		emissionInfoCmd,
+		emissionValidatorsCmd,
 	)
 
 	// spam

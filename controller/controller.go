@@ -23,7 +23,7 @@ import (
 	"github.com/nuklai/nuklaivm/auth"
 	"github.com/nuklai/nuklaivm/config"
 	"github.com/nuklai/nuklaivm/consts"
-	"github.com/nuklai/nuklaivm/emissionbalancer"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/rpc"
 	"github.com/nuklai/nuklaivm/storage"
@@ -44,7 +44,7 @@ type Controller struct {
 
 	metaDB database.Database
 
-	emissionBalancer *emissionbalancer.EmissionBalancer
+	emission *emission.Emission
 }
 
 func New() *vm.VM {
@@ -138,8 +138,9 @@ func (c *Controller) Initialize(
 		}
 	}
 
-	// Initialize emissionbalancer
-	c.emissionBalancer = emissionbalancer.New(c, c.genesis.MaxSupply, c.genesis.RewardsPerBlock)
+	// Initialize emission
+	currentValidators, _ := inner.CurrentValidators(context.TODO())
+	c.emission = emission.New(c, c.genesis.MaxSupply, c.genesis.RewardsPerBlock, currentValidators)
 	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, consts.ActionRegistry, consts.AuthRegistry, auth.Engines(), nil
 }
 
@@ -174,9 +175,20 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 			}
 		}
 		if result.Success {
-			switch tx.Action.(type) { //nolint:gocritic
+			switch action := tx.Action.(type) {
 			case *actions.Transfer:
 				c.metrics.transfer.Inc()
+			case *actions.StakeValidator:
+				c.metrics.stake.Inc()
+				currentValidators, _ := c.inner.CurrentValidators(ctx)
+				startLockUp := c.inner.LastAcceptedBlock().Height()
+				if startLockUp >= action.EndLockUp {
+					return fmt.Errorf("start lockup %d is greater than end lockup %d", startLockUp, action.EndLockUp)
+				}
+				err := c.emission.StakeToValidator(tx.ID(), tx.Auth.Actor(), currentValidators, startLockUp, action)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

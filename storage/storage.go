@@ -42,15 +42,19 @@ const (
 	txPrefix = 0x0
 
 	// stateDB
-	balancePrefix      = 0x0
-	heightPrefix       = 0x1
-	timestampPrefix    = 0x2
-	feePrefix          = 0x3
-	incomingWarpPrefix = 0x4
-	outgoingWarpPrefix = 0x5
+	incomingWarpPrefix = 0x0
+	outgoingWarpPrefix = 0x1
+	balancePrefix      = 0x2
+	heightPrefix       = 0x3
+	timestampPrefix    = 0x4
+	feePrefix          = 0x5
+	stakePrefix        = 0x6
 )
 
-const BalanceChunks uint16 = 1
+const (
+	BalanceChunks uint16 = 1
+	StakeChunks   uint16 = 2
+)
 
 var (
 	failureByte  = byte(0x0)
@@ -244,6 +248,117 @@ func SubBalance(
 		return mu.Remove(ctx, key)
 	}
 	return setBalance(ctx, mu, key, nbal)
+}
+
+// [stakePrefix] + [txID]
+func StakeKey(txID ids.ID) (k []byte) {
+	k = make([]byte, 1+consts.IDLen+consts.Uint16Len) // Length of prefix + txID + stakeChunks
+	k[0] = stakePrefix                                // stakePrefix is a constant representing the staking category
+	copy(k[1:], txID[:])
+	binary.BigEndian.PutUint16(k[1+consts.IDLen:], StakeChunks) // Adding StakeChunks
+	return
+}
+
+func SetStake(
+	ctx context.Context,
+	mu state.Mutable,
+	stake ids.ID,
+	nodeID []byte,
+	stakedAmount uint64,
+	endLockUp uint64,
+	owner codec.Address,
+) error {
+	key := StakeKey(stake)
+	v := make([]byte, consts.NodeIDLen+(2*consts.Uint64Len)+codec.AddressLen) // Calculate the length of the encoded data
+
+	id, err := ids.ToNodeID(nodeID)
+	if err != nil {
+		return err
+	}
+
+	offset := 0
+	copy(v[offset:], id[:])
+	offset += consts.NodeIDLen
+
+	binary.BigEndian.PutUint64(v[offset:], stakedAmount)
+	offset += consts.Uint64Len
+
+	binary.BigEndian.PutUint64(v[offset:], endLockUp)
+	offset += consts.Uint64Len
+
+	copy(v[offset:], owner[:])
+
+	return mu.Insert(ctx, key, v)
+}
+
+func GetStake(
+	ctx context.Context,
+	im state.Immutable,
+	stake ids.ID,
+) (bool, // exists
+	ids.NodeID, // NodeID
+	uint64, // StakedAmount
+	uint64, // EndLockUp
+	codec.Address, // Owner
+	error) {
+	key := StakeKey(stake)
+	v, err := im.GetValue(ctx, key)
+	return innerGetStake(v, err)
+}
+
+// Used to serve RPC queries
+func GetStakeFromState(
+	ctx context.Context,
+	f ReadState,
+	stake ids.ID,
+) (bool, // exists
+	ids.NodeID, // NodeID
+	uint64, // StakedAmount
+	uint64, // EndLockUp
+	codec.Address, // Owner
+	error) {
+	values, errs := f(ctx, [][]byte{StakeKey(stake)})
+	return innerGetStake(values[0], errs[0])
+}
+
+func innerGetStake(v []byte, err error) (
+	bool, // exists
+	ids.NodeID, // NodeID
+	uint64, // StakedAmount
+	uint64, // EndLockUp
+	codec.Address, // Owner
+	error,
+) {
+	if errors.Is(err, database.ErrNotFound) {
+		return false, ids.EmptyNodeID, 0, 0, codec.Address{}, nil
+	}
+	if err != nil {
+		return false, ids.EmptyNodeID, 0, 0, codec.Address{}, err
+	}
+
+	offset := 0
+	var nodeID ids.NodeID
+	copy(nodeID[:], v[offset:offset+consts.NodeIDLen])
+	offset += consts.NodeIDLen
+
+	stakedAmount := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
+	offset += consts.Uint64Len
+
+	endLockUp := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
+	offset += consts.Uint64Len
+
+	var walletAddress codec.Address
+	copy(walletAddress[:], v[offset:offset+codec.AddressLen])
+
+	return true, nodeID, stakedAmount, endLockUp, walletAddress, nil
+}
+
+func DeleteStake(
+	ctx context.Context,
+	mu state.Mutable,
+	stake ids.ID,
+) error {
+	return mu.Remove(ctx, StakeKey(stake))
 }
 
 func HeightKey() (k []byte) {

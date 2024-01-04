@@ -5,14 +5,13 @@ package controller
 
 import (
 	"context"
-	"encoding/base64"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/trace"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/nuklai/nuklaivm/emissionbalancer"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/storage"
 )
@@ -43,25 +42,30 @@ func (c *Controller) GetBalanceFromState(
 	return storage.GetBalanceFromState(ctx, c.inner.ReadState, acct)
 }
 
-func (c *Controller) GetEmissionBalancerInfo(ctx context.Context) (uint64, uint64, uint64, map[string]*emissionbalancer.Validator, error) {
-	totalSupply := c.emissionBalancer.TotalSupply
-	maxSupply := c.emissionBalancer.MaxSupply
-	rewardsPerBlock := c.emissionBalancer.RewardsPerBlock
+func (c *Controller) GetEmissionInfo(ctx context.Context) (uint64, uint64, uint64, error) {
+	return c.emission.GetTotalSupply(), c.emission.GetMaxSupply(), c.emission.GetRewardsPerBlock(), nil
+}
 
-	validators := make(map[string]*emissionbalancer.Validator)
-	currentValidators, _ := c.inner.CurrentValidators(ctx)
-	for nodeId, validator := range currentValidators {
-		nodeIdString := nodeId.String()
-		newValidator := &emissionbalancer.Validator{
-			NodeID:        nodeIdString,
-			NodePublicKey: base64.StdEncoding.EncodeToString(validator.PublicKey.Compress()),
-			NodeWeight:    validator.Weight,
-			WalletAddress: "",
-			StakedAmount:  0,
-			StakedReward:  0,
-		}
-		validators[nodeIdString] = newValidator
-	}
+func (c *Controller) GetAllValidators(ctx context.Context) ([]*emission.Validator, error) {
+	return c.emission.GetValidator(""), nil
+}
 
-	return totalSupply, maxSupply, rewardsPerBlock, validators, nil
+func (c *Controller) GetValidator(ctx context.Context, nodeID string) (*emission.Validator, error) {
+	validators := c.emission.GetValidator(nodeID)
+	return validators[0], nil
+}
+
+func (c *Controller) GetUserStake(ctx context.Context, nodeID string, owner string) (*emission.UserStake, error) {
+	return c.emission.GetUserStake(nodeID, owner), nil
+}
+
+func (c *Controller) GetValidatorFromState(ctx context.Context, stakeID ids.ID) (
+	bool, // exists
+	ids.NodeID, // NodeID
+	uint64, // StakedAmount
+	uint64, // EndLockUp
+	codec.Address, // Owner
+	error,
+) {
+	return storage.GetStakeFromState(ctx, c.inner.ReadState, stakeID)
 }

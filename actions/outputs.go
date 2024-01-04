@@ -3,4 +3,9 @@
 
 package actions
 
-var OutputValueZero = []byte("value is zero")
+var (
+	OutputValueZero = []byte("value is zero")
+
+	OutputStakedAmountZero    = []byte("staked amount is zero")
+	OutputLockupPeriodInvalid = []byte("lockup period is invalid")
+)

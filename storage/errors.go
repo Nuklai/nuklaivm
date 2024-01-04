@@ -5,4 +5,8 @@ package storage
 
 import "errors"
 
-var ErrInvalidBalance = errors.New("invalid balance")
+var (
+	ErrInvalidBalance = errors.New("invalid balance")
+	ErrInvalidStake   = errors.New("invalid stake")
+	ErrStakeNotFound  = errors.New("stake not found")
+)
