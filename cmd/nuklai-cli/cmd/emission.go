@@ -6,6 +6,7 @@ package cmd
 import (
 	"context"
 
+	"github.com/ava-labs/hypersdk/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -48,8 +49,61 @@ var emissionValidatorsCmd = &cobra.Command{
 			return err
 		}
 
-		// Get emission info
+		// Get validators info
 		_, err = handler.GetAllValidators(ctx, bcli)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
+var emissionStakeCmd = &cobra.Command{
+	Use: "user-stake-info",
+	RunE: func(_ *cobra.Command, args []string) error {
+		ctx := context.Background()
+
+		// Get clients
+		_, _, _, _, bcli, _, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+
+		// Get current list of validators
+		validators, err := bcli.Validators(ctx)
+		if err != nil {
+			return err
+		}
+		if len(validators) == 0 {
+			utils.Outf("{{red}}no validators{{/}}\n")
+			return nil
+		}
+
+		utils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
+		for i := 0; i < len(validators); i++ {
+			utils.Outf(
+				"{{yellow}}%d:{{/}} NodeID=%s NodePublicKey=%s\n",
+				i,
+				validators[i].NodeID,
+				validators[i].NodePublicKey,
+			)
+		}
+		// Select validator
+		keyIndex, err := handler.Root().PromptChoice("choose validator whom you have staked to", len(validators))
+		if err != nil {
+			return err
+		}
+		validatorChosen := validators[keyIndex]
+
+		// Get the address to look up
+		stakeOwner, err := handler.Root().PromptAddress("address to get staking info for")
+		if err != nil {
+			return err
+		}
+
+		// Get user stake info
+		_, err = handler.GetUserStake(ctx, bcli, validatorChosen.NodeID, stakeOwner)
 		if err != nil {
 			return err
 		}

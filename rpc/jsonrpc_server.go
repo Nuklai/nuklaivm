@@ -120,3 +120,24 @@ func (j *JSONRPCServer) Validators(req *http.Request, _ *struct{}, reply *Valida
 	reply.Validators = validators
 	return nil
 }
+
+type StakeArgs struct {
+	NodeID string `json:"nodeID"`
+	Owner  string `json:"owner"`
+}
+
+type StakeReply struct {
+	UserStake *emission.UserStake `json:"userStake"`
+}
+
+func (j *JSONRPCServer) UserStakeInfo(req *http.Request, args *StakeArgs, reply *StakeReply) (err error) {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.UserStakeInfo")
+	defer span.End()
+
+	userStake, err := j.c.GetUserStake(ctx, args.NodeID, args.Owner)
+	if err != nil {
+		return err
+	}
+	reply.UserStake = userStake
+	return nil
+}

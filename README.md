@@ -218,10 +218,64 @@ If successful, the output should be something like:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: DGXvJxdkNS2XAYpw27qSrrqujkdtsGZ9qVBE7NAXWn3hTiK5t
-validator 0: NodeID=NodeID-PjcwhFkf8Vpzgz1yueW59z5YooAUaCd7L NodePublicKey=iJKzy28z84vZ5QfC9wj6ghVTCNR5lOWcEflh5YKxD74b2OyYziOJtbjm4pckxChR UserStake=map[] StakedAmount=0 StakedReward=0
-validator 1: NodeID=NodeID-9H2n6dfch4K41TAhszPsBf4uewhF3Gc6x NodePublicKey=oSh4VK9O3dlm56UPC89NJtciblS5zK6jkXcsRhM1HNiMvVgrkrtvS0WIm/Ruznla UserStake=map[] StakedAmount=0 StakedReward=0
-validator 2: NodeID=NodeID-LR6ACegK8JMW4rRyNKUxrh7rknn2GL4U NodePublicKey=l5lSOpD5bQwzrUYuG3HfTIJ5p0f7d3B4YhJLQr5AB3qV076z5Jw6rXcXkyGah/9W UserStake=map[] StakedAmount=0 StakedReward=0
-validator 3: NodeID=NodeID-Es7Ho8RMgJK4XZmjL9RjRZ2aSBRDTzhiK NodePublicKey=oX40iNZ6taZrMQ4nV7bappkwgXTuXk8CaL4N8AvjpzwUcneTZikJ8BS3zVl/geij UserStake=map[] StakedAmount=0 StakedReward=0
-validator 4: NodeID=NodeID-BPMBorjwuWAvo5pQYhTyhQp5PdnJYRsPS NodePublicKey=lj+31HOheO5iay5+YeeudoIbTNX21WMWvRewk+6Nv0vol61RLuGrrODnVSHPFgBm UserStake=map[] StakedAmount=0 StakedReward=0
+chainID: 2rQM1CBDWGtBcdgx8XnAvoDvQkfvSW7Q7XaD58aosAKS4wHMup
+validator 0: NodeID=NodeID-6Eey6vF4nhR6w9PVLtjekPtuF2ayWE5zJ NodePublicKey=tBr6uQRcQkBnVaIxqrac22vIJPhlaUQ7teHbF8xSk8KbGZW5s1LYH82Y/L43ejG3 UserStake=map[] StakedAmount=0 StakedReward=0
+validator 1: NodeID=NodeID-DgK4r1LPjqSouCzzUixyKB5714jiZRF1k NodePublicKey=iPcS9KgoLzMrXi1emUfCwsEIWbACYZ1Hx3/A/+4SzRrzTSwdbM7KA2x80RqFcV3/ UserStake=map[] StakedAmount=0 StakedReward=0
+validator 2: NodeID=NodeID-Fw4yPxf5WCPrVt4QH1pNfHy92uqWF8UC2 NodePublicKey=qiAeDWL37pJfDBuERd7tX52PjCs+kRwMKuULKKafjYaPRw1VKCo5ZoRu7sRVNAsa UserStake=map[] StakedAmount=0 StakedReward=0
+validator 3: NodeID=NodeID-6sPngJ34vevxBRd4Nj9jCCGPPWYA5Boni NodePublicKey=tBNgtWRhWGcMXP7WycOT2M7hsqyRa7uXG2FtF8UMgaHPG9UCKVKO+uaftiHXf7ki UserStake=map[] StakedAmount=0 StakedReward=0
+validator 4: NodeID=NodeID-9GDrz1zozSus8oSmQfYBzcSkL95tCAQcd NodePublicKey=qZV7xwq5zCG/J8hSf1rK/M2YKvVYaLp/acJGl2D6VxXMm+l+lpGPWgpN8X2yD7Q0 UserStake=map[] StakedAmount=0 StakedReward=0
+```
+
+### Stake to a validator
+
+We can stake to a validator of our choice
+
+```bash
+./build/nuklai-cli action stake-validator
+```
+
+If successful, the output should be:
+
+```
+database: .nuklai-cli
+address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+chainID: wVVys47BgGXPUAsab6Rbio12DXUBVrmdwgwa5WSsxAwF7KH3P
+validators: 5
+0: NodeID=NodeID-6Eey6vF4nhR6w9PVLtjekPtuF2ayWE5zJ NodePublicKey=tBr6uQRcQkBnVaIxqrac22vIJPhlaUQ7teHbF8xSk8KbGZW5s1LYH82Y/L43ejG3
+1: NodeID=NodeID-DgK4r1LPjqSouCzzUixyKB5714jiZRF1k NodePublicKey=iPcS9KgoLzMrXi1emUfCwsEIWbACYZ1Hx3/A/+4SzRrzTSwdbM7KA2x80RqFcV3/
+2: NodeID=NodeID-Fw4yPxf5WCPrVt4QH1pNfHy92uqWF8UC2 NodePublicKey=qiAeDWL37pJfDBuERd7tX52PjCs+kRwMKuULKKafjYaPRw1VKCo5ZoRu7sRVNAsa
+3: NodeID=NodeID-6sPngJ34vevxBRd4Nj9jCCGPPWYA5Boni NodePublicKey=tBNgtWRhWGcMXP7WycOT2M7hsqyRa7uXG2FtF8UMgaHPG9UCKVKO+uaftiHXf7ki
+4: NodeID=NodeID-9GDrz1zozSus8oSmQfYBzcSkL95tCAQcd NodePublicKey=qZV7xwq5zCG/J8hSf1rK/M2YKvVYaLp/acJGl2D6VxXMm+l+lpGPWgpN8X2yD7Q0
+validator to stake to: 0
+balance: 853000000.000000000 NAI
+✔ Staked amount: 100█
+End LockUp Height: 100
+✔ continue (y/n): y█
+✅ txID: 2E7n8WB9tCc65rguoySjaRMzbCTNgkm9kMnfRD3fKYeQ8SF56T
+```
+
+### Get user staking info
+
+We can retrieve our staking info by passing in which validator we have staked to and the address to look up staking for
+
+```bash
+./build/nuklai-cli emission user-stake-info
+```
+
+If successful, the output should be:
+
+```
+database: .nuklai-cli
+address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+chainID: 2rQM1CBDWGtBcdgx8XnAvoDvQkfvSW7Q7XaD58aosAKS4wHMup
+validators: 5
+0: NodeID=NodeID-6sPngJ34vevxBRd4Nj9jCCGPPWYA5Boni NodePublicKey=tBNgtWRhWGcMXP7WycOT2M7hsqyRa7uXG2FtF8UMgaHPG9UCKVKO+uaftiHXf7ki
+1: NodeID=NodeID-9GDrz1zozSus8oSmQfYBzcSkL95tCAQcd NodePublicKey=qZV7xwq5zCG/J8hSf1rK/M2YKvVYaLp/acJGl2D6VxXMm+l+lpGPWgpN8X2yD7Q0
+2: NodeID=NodeID-6Eey6vF4nhR6w9PVLtjekPtuF2ayWE5zJ NodePublicKey=tBr6uQRcQkBnVaIxqrac22vIJPhlaUQ7teHbF8xSk8KbGZW5s1LYH82Y/L43ejG3
+3: NodeID=NodeID-DgK4r1LPjqSouCzzUixyKB5714jiZRF1k NodePublicKey=iPcS9KgoLzMrXi1emUfCwsEIWbACYZ1Hx3/A/+4SzRrzTSwdbM7KA2x80RqFcV3/
+4: NodeID=NodeID-Fw4yPxf5WCPrVt4QH1pNfHy92uqWF8UC2 NodePublicKey=qiAeDWL37pJfDBuERd7tX52PjCs+kRwMKuULKKafjYaPRw1VKCo5ZoRu7sRVNAsa
+✔ choose validator whom you have staked to: 0█
+✔ address to get staking info for: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx█
+user stake:  Owner=nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx StakedAmount=100000000000 StakedReward=0
+stake #1: TxID=2E7n8WB9tCc65rguoySjaRMzbCTNgkm9kMnfRD3fKYeQ8SF56T Amount=100000000000 StartLockUp=17 EndLockUp=100 Reward=0
 ```

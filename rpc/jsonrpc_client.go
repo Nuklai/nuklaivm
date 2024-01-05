@@ -115,6 +115,23 @@ func (cli *JSONRPCClient) Validators(ctx context.Context) ([]*emission.Validator
 	return resp.Validators, err
 }
 
+func (cli *JSONRPCClient) UserStakeInfo(ctx context.Context, nodeID, owner string) (*emission.UserStake, error) {
+	resp := new(StakeReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"userStakeInfo",
+		&StakeArgs{
+			NodeID: nodeID,
+			Owner:  owner,
+		},
+		resp,
+	)
+	if err != nil {
+		return &emission.UserStake{}, err
+	}
+	return resp.UserStake, err
+}
+
 func (cli *JSONRPCClient) WaitForBalance(
 	ctx context.Context,
 	addr string,

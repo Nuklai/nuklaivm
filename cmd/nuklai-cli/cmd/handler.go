@@ -125,8 +125,10 @@ func (*Handler) GetAllValidators(
 	ctx context.Context,
 	cli *brpc.JSONRPCClient,
 ) ([]*emission.Validator, error) {
-
-	validators, _ := cli.Validators(ctx)
+	validators, err := cli.Validators(ctx)
+	if err != nil {
+		return nil, err
+	}
 	for index, validator := range validators {
 		utils.Outf(
 			"{{yellow}}validator %d:{{/}} NodeID=%s NodePublicKey=%s UserStake=%v StakedAmount=%d StakedReward=%d\n",
@@ -139,6 +141,45 @@ func (*Handler) GetAllValidators(
 		)
 	}
 	return validators, nil
+}
+
+func (*Handler) GetUserStake(ctx context.Context,
+	cli *brpc.JSONRPCClient, nodeID string, owner codec.Address) (*emission.UserStake, error) {
+	saddr, err := codec.AddressBech32(consts.HRP, owner)
+	if err != nil {
+		return nil, err
+	}
+	userStake, err := cli.UserStakeInfo(ctx, nodeID, saddr)
+	if err != nil {
+		return nil, err
+	}
+
+	if userStake.Owner == "" {
+		utils.Outf("{{yellow}}user stake: {{/}} Not staked yet\n")
+	} else {
+		utils.Outf(
+			"{{yellow}}user stake: {{/}} Owner=%s StakedAmount=%d StakedReward=%d\n",
+			userStake.Owner,
+			userStake.StakedAmount,
+			userStake.StakedReward,
+		)
+	}
+
+	index := 1
+	for txID, stakeInfo := range userStake.StakeInfo {
+		utils.Outf(
+			"{{yellow}}stake #%d:{{/}} TxID=%s Amount=%d StartLockUp=%d EndLockUp=%d Reward=%d\n",
+			index,
+			txID,
+			stakeInfo.Amount,
+			stakeInfo.StartLockUp,
+			stakeInfo.EndLockUp,
+			stakeInfo.Reward,
+		)
+		index++
+	}
+	return userStake, err
+
 }
 
 type Controller struct {

@@ -152,6 +152,7 @@ func init() {
 	emissionCmd.AddCommand(
 		emissionInfoCmd,
 		emissionValidatorsCmd,
+		emissionStakeCmd,
 	)
 
 	// spam

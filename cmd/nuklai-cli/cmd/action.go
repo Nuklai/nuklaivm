@@ -84,7 +84,7 @@ var stakeValidatorCmd = &cobra.Command{
 		utils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
 		for i := 0; i < len(validators); i++ {
 			utils.Outf(
-				"{{yellow}}validator %d:{{/}} NodeID=%s NodePublicKey=%s\n",
+				"{{yellow}}%d:{{/}} NodeID=%s NodePublicKey=%s\n",
 				i,
 				validators[i].NodeID,
 				validators[i].NodePublicKey,
