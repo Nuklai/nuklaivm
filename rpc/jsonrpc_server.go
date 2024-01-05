@@ -92,10 +92,10 @@ type EmissionReply struct {
 }
 
 func (j *JSONRPCServer) EmissionInfo(req *http.Request, _ *struct{}, reply *EmissionReply) (err error) {
-	ctx, span := j.c.Tracer().Start(req.Context(), "Server.EmissionInfo")
+	_, span := j.c.Tracer().Start(req.Context(), "Server.EmissionInfo")
 	defer span.End()
 
-	totalSupply, maxSupply, rewardsPerBlock, err := j.c.GetEmissionInfo(ctx)
+	totalSupply, maxSupply, rewardsPerBlock, err := j.c.GetEmissionInfo()
 	if err != nil {
 		return err
 	}
@@ -110,10 +110,10 @@ type ValidatorsReply struct {
 }
 
 func (j *JSONRPCServer) Validators(req *http.Request, _ *struct{}, reply *ValidatorsReply) (err error) {
-	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Validators")
+	_, span := j.c.Tracer().Start(req.Context(), "Server.Validators")
 	defer span.End()
 
-	validators, err := j.c.GetAllValidators(ctx)
+	validators, err := j.c.GetAllValidators()
 	if err != nil {
 		return err
 	}
@@ -131,10 +131,10 @@ type StakeReply struct {
 }
 
 func (j *JSONRPCServer) UserStakeInfo(req *http.Request, args *StakeArgs, reply *StakeReply) (err error) {
-	ctx, span := j.c.Tracer().Start(req.Context(), "Server.UserStakeInfo")
+	_, span := j.c.Tracer().Start(req.Context(), "Server.UserStakeInfo")
 	defer span.End()
 
-	userStake, err := j.c.GetUserStake(ctx, args.NodeID, args.Owner)
+	userStake, err := j.c.GetUserStake(args.NodeID, args.Owner)
 	if err != nil {
 		return err
 	}

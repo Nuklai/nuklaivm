@@ -42,20 +42,20 @@ func (c *Controller) GetBalanceFromState(
 	return storage.GetBalanceFromState(ctx, c.inner.ReadState, acct)
 }
 
-func (c *Controller) GetEmissionInfo(ctx context.Context) (uint64, uint64, uint64, error) {
+func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, error) {
 	return c.emission.GetTotalSupply(), c.emission.GetMaxSupply(), c.emission.GetRewardsPerBlock(), nil
 }
 
-func (c *Controller) GetAllValidators(ctx context.Context) ([]*emission.Validator, error) {
+func (c *Controller) GetAllValidators() ([]*emission.Validator, error) {
 	return c.emission.GetValidator(""), nil
 }
 
-func (c *Controller) GetValidator(ctx context.Context, nodeID string) (*emission.Validator, error) {
+func (c *Controller) GetValidator(nodeID string) (*emission.Validator, error) {
 	validators := c.emission.GetValidator(nodeID)
 	return validators[0], nil
 }
 
-func (c *Controller) GetUserStake(ctx context.Context, nodeID string, owner string) (*emission.UserStake, error) {
+func (c *Controller) GetUserStake(nodeID string, owner string) (*emission.UserStake, error) {
 	return c.emission.GetUserStake(nodeID, owner), nil
 }
 

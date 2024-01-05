@@ -1,4 +1,7 @@
-name: go.mod Checker
+# Copyright (C) 2023, AllianceBlock. All rights reserved.
+# See the file LICENSE for licensing terms.
+
+name: NuklaiVM Tidy Checker
 on:
   push:
     branches:

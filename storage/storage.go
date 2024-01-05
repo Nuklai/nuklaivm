@@ -300,7 +300,8 @@ func GetStake(
 	uint64, // StakedAmount
 	uint64, // EndLockUp
 	codec.Address, // Owner
-	error) {
+	error,
+) {
 	key := StakeKey(stake)
 	v, err := im.GetValue(ctx, key)
 	return innerGetStake(v, err)
@@ -316,7 +317,8 @@ func GetStakeFromState(
 	uint64, // StakedAmount
 	uint64, // EndLockUp
 	codec.Address, // Owner
-	error) {
+	error,
+) {
 	values, errs := f(ctx, [][]byte{StakeKey(stake)})
 	return innerGetStake(values[0], errs[0])
 }

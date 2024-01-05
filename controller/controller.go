@@ -10,7 +10,9 @@ import (
 
 	ametrics "github.com/ava-labs/avalanchego/api/metrics"
 	"github.com/ava-labs/avalanchego/database"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow"
+	"github.com/ava-labs/avalanchego/snow/validators"
 	"github.com/ava-labs/hypersdk/builder"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/gossiper"
@@ -138,9 +140,14 @@ func (c *Controller) Initialize(
 		}
 	}
 
+	currentValidators := make(map[ids.NodeID]*validators.GetValidatorOutput)
+	if !c.config.TestMode {
+		// We only get the validators in non-test mode
+		currentValidators, _ = inner.CurrentValidators(context.TODO())
+	}
 	// Initialize emission
-	currentValidators, _ := inner.CurrentValidators(context.TODO())
 	c.emission = emission.New(c, c.genesis.MaxSupply, c.genesis.RewardsPerBlock, currentValidators)
+
 	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, consts.ActionRegistry, consts.AuthRegistry, auth.Engines(), nil
 }
 

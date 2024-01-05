@@ -106,7 +106,6 @@ func (*Handler) GetEmissionInfo(
 	ctx context.Context,
 	cli *brpc.JSONRPCClient,
 ) (uint64, uint64, uint64, error) {
-
 	totalSupply, maxSupply, rewardsPerBlock, err := cli.EmissionInfo(ctx)
 	if err != nil {
 		return 0, 0, 0, err
@@ -144,7 +143,8 @@ func (*Handler) GetAllValidators(
 }
 
 func (*Handler) GetUserStake(ctx context.Context,
-	cli *brpc.JSONRPCClient, nodeID string, owner codec.Address) (*emission.UserStake, error) {
+	cli *brpc.JSONRPCClient, nodeID string, owner codec.Address,
+) (*emission.UserStake, error) {
 	saddr, err := codec.AddressBech32(consts.HRP, owner)
 	if err != nil {
 		return nil, err
@@ -179,7 +179,6 @@ func (*Handler) GetUserStake(ctx context.Context,
 		index++
 	}
 	return userStake, err
-
 }
 
 type Controller struct {

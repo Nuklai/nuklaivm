@@ -1,3 +1,6 @@
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 // Copyright (C) 2023, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
@@ -30,7 +33,7 @@ func (*StakeValidator) GetTypeID() uint8 {
 	return mconsts.StakeValidatorID
 }
 
-func (s *StakeValidator) StateKeys(auth chain.Auth, txID ids.ID) []string {
+func (*StakeValidator) StateKeys(auth chain.Auth, txID ids.ID) []string {
 	return []string{
 		string(storage.BalanceKey(auth.Actor())),
 		string(storage.StakeKey(txID)),

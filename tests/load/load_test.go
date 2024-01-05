@@ -1,3 +1,6 @@
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 // Copyright (C) 2023, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 package load_test
@@ -48,7 +51,7 @@ import (
 	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/controller"
 	"github.com/nuklai/nuklaivm/genesis"
-	trpc "github.com/nuklai/nuklaivm/rpc"
+	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
 
 const genesisBalance uint64 = hconsts.MaxUint64
@@ -70,18 +73,18 @@ func init() {
 }
 
 type instance struct {
-	chainID            ids.ID
-	nodeID             ids.NodeID
-	vm                 *vm.VM
-	toEngine           chan common.Message
-	JSONRPCServer      *httptest.Server
-	TokenJSONRPCServer *httptest.Server
-	cli                *rpc.JSONRPCClient // clients for embedded VMs
-	tcli               *trpc.JSONRPCClient
-	dbDir              string
-	parse              []float64
-	verify             []float64
-	accept             []float64
+	chainID             ids.ID
+	nodeID              ids.NodeID
+	vm                  *vm.VM
+	toEngine            chan common.Message
+	JSONRPCServer       *httptest.Server
+	NuklaiJSONRPCServer *httptest.Server
+	cli                 *rpc.JSONRPCClient // clients for embedded VMs
+	ncli                *nrpc.JSONRPCClient
+	dbDir               string
+	parse               []float64
+	verify              []float64
+	accept              []float64
 }
 
 type account struct {
@@ -173,7 +176,7 @@ func init() {
 
 func TestLoad(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "indexvm load test suites")
+	ginkgo.RunSpecs(t, "nuklaivm load test suites")
 }
 
 var _ = ginkgo.BeforeSuite(func() {
@@ -284,17 +287,17 @@ var _ = ginkgo.BeforeSuite(func() {
 		hd, err = c.CreateHandlers(context.TODO())
 		gomega.Ω(err).Should(gomega.BeNil())
 		jsonRPCServer := httptest.NewServer(hd[rpc.JSONRPCEndpoint])
-		tjsonRPCServer := httptest.NewServer(hd[trpc.JSONRPCEndpoint])
+		njsonRPCServer := httptest.NewServer(hd[nrpc.JSONRPCEndpoint])
 		instances[i] = &instance{
-			chainID:            snowCtx.ChainID,
-			nodeID:             snowCtx.NodeID,
-			vm:                 c,
-			toEngine:           toEngine,
-			JSONRPCServer:      jsonRPCServer,
-			TokenJSONRPCServer: tjsonRPCServer,
-			cli:                rpc.NewJSONRPCClient(jsonRPCServer.URL),
-			tcli:               trpc.NewJSONRPCClient(tjsonRPCServer.URL, snowCtx.NetworkID, snowCtx.ChainID),
-			dbDir:              dname,
+			chainID:             snowCtx.ChainID,
+			nodeID:              snowCtx.NodeID,
+			vm:                  c,
+			toEngine:            toEngine,
+			JSONRPCServer:       jsonRPCServer,
+			NuklaiJSONRPCServer: njsonRPCServer,
+			cli:                 rpc.NewJSONRPCClient(jsonRPCServer.URL),
+			ncli:                nrpc.NewJSONRPCClient(njsonRPCServer.URL, snowCtx.NetworkID, snowCtx.ChainID),
+			dbDir:               dname,
 		}
 
 		// Force sync ready (to mimic bootstrapping from genesis)
@@ -304,7 +307,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	// Verify genesis allocates loaded correctly (do here otherwise test may
 	// check during and it will be inaccurate)
 	for _, inst := range instances {
-		cli := inst.tcli
+		cli := inst.ncli
 		g, err := cli.Genesis(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
 
@@ -322,7 +325,7 @@ var _ = ginkgo.BeforeSuite(func() {
 var _ = ginkgo.AfterSuite(func() {
 	for _, instance := range instances {
 		instance.JSONRPCServer.Close()
-		instance.TokenJSONRPCServer.Close()
+		instance.NuklaiJSONRPCServer.Close()
 		err := instance.vm.Shutdown(context.TODO())
 		gomega.Ω(err).Should(gomega.BeNil())
 	}

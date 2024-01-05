@@ -19,10 +19,10 @@ type Controller interface {
 	Tracer() trace.Tracer
 	GetTransaction(context.Context, ids.ID) (bool, int64, bool, chain.Dimensions, uint64, error)
 	GetBalanceFromState(context.Context, codec.Address) (uint64, error)
-	GetEmissionInfo(context.Context) (uint64, uint64, uint64, error)
-	GetAllValidators(ctx context.Context) ([]*emission.Validator, error)
-	GetValidator(ctx context.Context, nodeID string) (*emission.Validator, error)
-	GetUserStake(ctx context.Context, nodeID string, owner string) (*emission.UserStake, error)
+	GetEmissionInfo() (uint64, uint64, uint64, error)
+	GetAllValidators() ([]*emission.Validator, error)
+	GetValidator(nodeID string) (*emission.Validator, error)
+	GetUserStake(nodeID string, owner string) (*emission.UserStake, error)
 	GetValidatorFromState(ctx context.Context, stakeID ids.ID) (
 		bool, // exists
 		ids.NodeID, // NodeID

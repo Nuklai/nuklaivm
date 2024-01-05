@@ -1,3 +1,6 @@
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 package emission
 
 import (
@@ -61,16 +64,16 @@ func New(c Controller, maxSupply, rewardsPerBlock uint64, currentValidators map[
 		c.Logger().Info("setting maxSupply and rewardsPerBlock for emission")
 
 		validators := make(map[string]*Validator)
-		for nodeId, validator := range currentValidators {
-			nodeIdString := nodeId.String()
+		for nodeID, validator := range currentValidators {
+			nodeIDString := nodeID.String()
 			newValidator := &Validator{
-				NodeID:        nodeIdString,
+				NodeID:        nodeIDString,
 				NodePublicKey: base64.StdEncoding.EncodeToString(validator.PublicKey.Compress()),
 				UserStake:     make(map[string]*UserStake),
 				StakedAmount:  0,
 				StakedReward:  0,
 			}
-			validators[nodeIdString] = newValidator
+			validators[nodeIDString] = newValidator
 		}
 
 		emission = &Emission{
@@ -119,6 +122,8 @@ func (e *Emission) GetRewardsPerBlock() uint64 {
 }
 
 // StakeValidator stakes the validator
+//
+//nolint:interfacer
 func (e *Emission) StakeToValidator(txID ids.ID, actor codec.Address, currentValidators map[ids.NodeID]*validators.GetValidatorOutput, startLockUp uint64, action *actions.StakeValidator) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
@@ -210,7 +215,7 @@ func (e *Emission) getAllValidators() []*Validator {
 	e.lock.RLock()
 	defer e.lock.RUnlock()
 
-	var validators []*Validator
+	validators := make([]*Validator, 0, len(e.validators))
 	for _, value := range e.validators {
 		validators = append(validators, value)
 	}
