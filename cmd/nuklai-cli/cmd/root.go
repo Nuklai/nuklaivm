@@ -124,6 +124,7 @@ func init() {
 		importKeyCmd,
 		setKeyCmd,
 		balanceKeyCmd,
+		vanityAddressCmd,
 	)
 
 	// chain

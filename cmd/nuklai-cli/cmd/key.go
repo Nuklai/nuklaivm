@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -13,6 +14,7 @@ import (
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
 	"github.com/ava-labs/hypersdk/crypto/secp256r1"
 	"github.com/ava-labs/hypersdk/utils"
+	"github.com/btcsuite/btcd/btcutil/bech32"
 	"github.com/nuklai/nuklaivm/auth"
 	"github.com/nuklai/nuklaivm/consts"
 	brpc "github.com/nuklai/nuklaivm/rpc"
@@ -194,8 +196,63 @@ func lookupKeyBalance(addr codec.Address, uri string, networkID uint32, chainID 
 }
 
 var balanceKeyCmd = &cobra.Command{
-	Use: "balance",
-	RunE: func(*cobra.Command, []string) error {
-		return handler.Root().Balance(checkAllChains, false, lookupKeyBalance)
+	Use: "balance [address]",
+	RunE: func(_ *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return handler.Root().Balance(checkAllChains, false, lookupKeyBalance)
+		}
+		addr, err := codec.ParseAddressBech32(consts.HRP, args[0])
+		if err != nil {
+			return err
+		}
+		utils.Outf("{{yellow}}address:{{/}} %s\n", args[0])
+		clients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
+		if err != nil {
+			return err
+		}
+		for _, cli := range clients {
+			if _, err := handler.GetBalance(context.TODO(), cli, addr); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+}
+
+func generateRandomData(n int) ([]byte, error) {
+	data := make([]byte, n)
+	_, err := rand.Read(data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+var vanityAddressCmd = &cobra.Command{
+	Use: "generate-vanity-address",
+	RunE: func(_ *cobra.Command, args []string) error {
+		randomData, err := generateRandomData(19) // Generate 19 random bytes
+		if err != nil {
+			return err
+		}
+
+		// Define a clear special pattern for the data part
+		dataPart := append([]byte("nuklaivmvanity"), randomData...)
+
+		// Convert data to 5-bit words as required by Bech32
+		data5Bit, err := bech32.ConvertBits([]byte(dataPart), 8, 5, true)
+		if err != nil {
+			return err
+		}
+
+		// Encode to Bech32
+		bech32Addr, err := bech32.Encode(consts.HRP, data5Bit)
+		if err != nil {
+			return err
+		}
+
+		utils.Outf("{{yellow}}Address: %s{{/}}\n", bech32Addr)
+
+		return nil
 	},
 }

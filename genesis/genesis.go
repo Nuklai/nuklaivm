@@ -70,6 +70,9 @@ type Genesis struct {
 
 	// Minting rate of NAI
 	RewardsPerBlock uint64 `json:"rewardsPerBlock"`
+
+	// Emission address
+	EmissionAddress string `json:"emissionAddress"`
 }
 
 func Default() *Genesis {
@@ -110,6 +113,8 @@ func Default() *Genesis {
 		MaxSupply: 10_000_000_000 * uint64(math.Pow10(consts.Decimals)), // 10 billion NAI
 		// Set a default minting rate for NAI
 		RewardsPerBlock: 2 * uint64(math.Pow10(consts.Decimals)), // 2 NAI per block
+
+		EmissionAddress: "nuklai1de6kkmrpd9mx6anpde5hg7f6t7dvn7u3dxfgfsz8yh3fggguqqf3wdd7xfy",
 	}
 }
 

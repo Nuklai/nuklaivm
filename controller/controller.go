@@ -15,8 +15,10 @@ import (
 	"github.com/ava-labs/avalanchego/snow/validators"
 	"github.com/ava-labs/hypersdk/builder"
 	"github.com/ava-labs/hypersdk/chain"
+	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/gossiper"
 	hrpc "github.com/ava-labs/hypersdk/rpc"
+	"github.com/ava-labs/hypersdk/state"
 	hstorage "github.com/ava-labs/hypersdk/storage"
 	"github.com/ava-labs/hypersdk/vm"
 	"go.uber.org/zap"
@@ -199,6 +201,43 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 			}
 		}
 	}
+
+	// Retrieve the vm state
+	stateDB, err := c.inner.State()
+	if err != nil {
+		return err
+	}
+	// Retrieve the state.Mutable to write to
+	mu := state.NewSimpleMutable(stateDB)
+
+	// Calculate and distribute fees
+	feeManager := blk.FeeManager()
+	unitsConsumed := feeManager.UnitsConsumed()
+	unitPrices := feeManager.UnitPrices()
+	totalFee := uint64(0)
+	for i := 0; i < len(unitsConsumed); i++ {
+		totalFee += unitsConsumed[i] * unitPrices[i]
+	}
+	emissionAddr, err := codec.ParseAddressBech32(consts.HRP, c.genesis.EmissionAddress)
+	if err != nil {
+		return err
+	}
+	if err := c.emission.DistributeFees(ctx, mu, totalFee, emissionAddr); err != nil {
+		return err
+	}
+	c.inner.Logger().Info("distributed fees to Emission and Validators", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("total fee", totalFee), zap.Uint64("total supply", c.emission.GetTotalSupply()), zap.Uint64("max supply", c.emission.GetMaxSupply()))
+
+	// Mint new NAI if needed
+	mintNewNAI, err := c.emission.MintNewNAI(ctx, mu, emissionAddr)
+	if err != nil {
+		return err
+	}
+	if mintNewNAI > 0 {
+		c.emission.AddToTotalSupply(mintNewNAI)
+		c.inner.Logger().Info("minted new NAI", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("newly minted NAI", mintNewNAI), zap.Uint64("total supply", c.emission.GetTotalSupply()), zap.Uint64("max supply", c.emission.GetMaxSupply()))
+		c.metrics.mintNAI.Add(float64(mintNewNAI))
+	}
+
 	return batch.Write()
 }
 

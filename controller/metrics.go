@@ -14,6 +14,8 @@ type metrics struct {
 	transfer prometheus.Counter
 
 	stake prometheus.Counter
+
+	mintNAI prometheus.Counter
 }
 
 func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
@@ -29,6 +31,12 @@ func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 			Name:      "stake",
 			Help:      "number of stake actions",
 		}),
+
+		mintNAI: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "actions",
+			Name:      "mintNAI",
+			Help:      "number of NAI tokens minted",
+		}),
 	}
 	r := prometheus.NewRegistry()
 	errs := wrappers.Errs{}
@@ -36,6 +44,8 @@ func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 		r.Register(m.transfer),
 
 		r.Register(m.stake),
+
+		r.Register(m.mintNAI),
 
 		gatherer.Register(consts.Name, r),
 	)

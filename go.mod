@@ -6,6 +6,7 @@ require (
 	github.com/ava-labs/avalanche-network-runner v1.7.3-0.20231026155506-24d0d6a39855
 	github.com/ava-labs/avalanchego v1.10.15
 	github.com/ava-labs/hypersdk v0.0.16-0.20231212190557-ad3ac9427c17
+	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/fatih/color v1.13.0
 	github.com/onsi/ginkgo/v2 v2.8.1
 	github.com/onsi/gomega v1.26.0
@@ -23,7 +24,6 @@ require (
 	github.com/ava-labs/coreth v0.12.8-rc.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
-	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect

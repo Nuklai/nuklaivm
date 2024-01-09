@@ -75,6 +75,27 @@ func (h *Handler) DefaultActor() (
 		), ws, nil
 }
 
+func (h *Handler) DefaultNuklaiVMJSONRPCClient(checkAllChains bool) ([]*brpc.JSONRPCClient, error) {
+	clients := make([]*brpc.JSONRPCClient, 0)
+	chainID, uris, err := h.h.GetDefaultChain(true)
+	if err != nil {
+		return nil, err
+	}
+	max := len(uris)
+	if !checkAllChains {
+		max = 1
+	}
+	for _, uri := range uris[:max] {
+		rcli := rpc.NewJSONRPCClient(uris[0])
+		networkID, _, _, err := rcli.Network(context.TODO())
+		if err != nil {
+			return nil, err
+		}
+		clients = append(clients, brpc.NewJSONRPCClient(uri, networkID, chainID))
+	}
+	return clients, nil
+}
+
 func (*Handler) GetBalance(
 	ctx context.Context,
 	cli *brpc.JSONRPCClient,
@@ -158,23 +179,21 @@ func (*Handler) GetUserStake(ctx context.Context,
 		utils.Outf("{{yellow}}user stake: {{/}} Not staked yet\n")
 	} else {
 		utils.Outf(
-			"{{yellow}}user stake: {{/}} Owner=%s StakedAmount=%d StakedReward=%d\n",
+			"{{yellow}}user stake: {{/}} Owner=%s StakedAmount=%d\n",
 			userStake.Owner,
 			userStake.StakedAmount,
-			userStake.StakedReward,
 		)
 	}
 
 	index := 1
 	for txID, stakeInfo := range userStake.StakeInfo {
 		utils.Outf(
-			"{{yellow}}stake #%d:{{/}} TxID=%s Amount=%d StartLockUp=%d EndLockUp=%d Reward=%d\n",
+			"{{yellow}}stake #%d:{{/}} TxID=%s Amount=%d StartLockUp=%d EndLockUp=%d\n",
 			index,
 			txID,
 			stakeInfo.Amount,
 			stakeInfo.StartLockUp,
 			stakeInfo.EndLockUp,
-			stakeInfo.Reward,
 		)
 		index++
 	}

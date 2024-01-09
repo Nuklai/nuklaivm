@@ -4,14 +4,19 @@
 package emission
 
 import (
+	"context"
 	"encoding/base64"
+	"fmt"
 	"sync"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow/validators"
+	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/hypersdk/codec"
+	"github.com/ava-labs/hypersdk/state"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/storage"
 )
 
 var (
@@ -24,14 +29,12 @@ type StakeInfo struct {
 	Amount      uint64 `json:"amount"`
 	StartLockUp uint64 `json:"startLockUp"`
 	EndLockUp   uint64 `json:"endLockUp"`
-	Reward      uint64 `json:"reward"`
 }
 
 type UserStake struct {
 	Owner        string                `json:"owner"`     // we always send address over RPC
 	StakeInfo    map[string]*StakeInfo `json:"stakeInfo"` // the key is txID
 	StakedAmount uint64                `json:"amount"`
-	StakedReward uint64                `json:"reward"`
 
 	owner codec.Address
 }
@@ -78,7 +81,6 @@ func New(c Controller, maxSupply, rewardsPerBlock uint64, currentValidators map[
 
 		emission = &Emission{
 			c:               c,
-			totalSupply:     0,
 			maxSupply:       maxSupply,
 			rewardsPerBlock: rewardsPerBlock,
 			validators:      validators,
@@ -157,7 +159,6 @@ func (e *Emission) StakeToValidator(txID ids.ID, actor codec.Address, currentVal
 			Owner:        stakeOwner,
 			StakeInfo:    map[string]*StakeInfo{},
 			StakedAmount: action.StakedAmount,
-			StakedReward: 0,
 			owner:        actor,
 		}
 	}
@@ -168,7 +169,6 @@ func (e *Emission) StakeToValidator(txID ids.ID, actor codec.Address, currentVal
 			Amount:      action.StakedAmount,
 			StartLockUp: startLockUp,
 			EndLockUp:   action.EndLockUp,
-			Reward:      0,
 		}
 	}
 	userStake.StakeInfo[txID.String()] = stakeInfo
@@ -222,53 +222,120 @@ func (e *Emission) getAllValidators() []*Validator {
 	return validators
 }
 
-/* // MintAndDistribute mints new tokens and distributes them to validators
-// TODO: Make it so that we check whether the validator is part of the current validator set
-func (s *Stake) MintAndDistribute() {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+// MintNewNAI mints new tokens and distributes them to validators
+func (e *Emission) MintNewNAI(ctx context.Context, mu *state.SimpleMutable, emissionAddr codec.Address) (uint64, error) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
 
-	if s.TotalSupply >= s.MaxSupply {
-		return // Cap reached, no more minting
+	mintNewNAI := e.rewardsPerBlock
+	if e.totalSupply+mintNewNAI > e.maxSupply {
+		mintNewNAI = e.maxSupply - e.totalSupply // Adjust to not exceed max supply
+	}
+	if mintNewNAI == 0 {
+		return 0, nil // Nothing to mint
 	}
 
-	totalStaked := s.totalStaked()
+	totalStaked := e.totalStaked()
+	// No validators to distribute rewards to if totalStaked is 0
 	if totalStaked == 0 {
-		return // No validators to distribute rewards to
+		if err := storage.AddBalance(ctx, mu, emissionAddr, mintNewNAI, true); err != nil {
+			return 0, err
+		}
+		if err := mu.Commit(ctx); err != nil {
+			return 0, err
+		}
+		return mintNewNAI, nil
 	}
-
-	mintAmount := s.RewardsPerBlock
-	if s.TotalSupply+mintAmount > s.MaxSupply {
-		mintAmount = s.MaxSupply - s.TotalSupply // Adjust to not exceed max supply
-	}
-	s.TotalSupply += mintAmount
 
 	// Distribute rewards based on stake proportion
-	for _, v := range s.Validators {
-		v.StakedReward += mintAmount * v.StakedAmount / totalStaked
+	for _, v := range e.validators {
+		if v.StakedAmount >= e.minStakeAmount {
+			v.StakedReward += mintNewNAI * v.StakedAmount / totalStaked
+		}
 	}
+	return mintNewNAI, nil
+}
+
+func (e *Emission) DistributeFees(ctx context.Context, mu *state.SimpleMutable, fee uint64, emissionAddr codec.Address) error {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	if fee == 0 {
+		return nil // Nothing to distribute
+	}
+
+	feesForEmission := fee / 2
+	feesForValidators := fee - feesForEmission
+
+	// Give 50% fees to Emission
+	if err := storage.AddBalance(ctx, mu, emissionAddr, feesForEmission, true); err != nil {
+		return err
+	}
+	if err := mu.Commit(ctx); err != nil {
+		return err
+	}
+
+	// Give remaining to Validators
+	totalStaked := e.totalStaked()
+	if totalStaked > 0 {
+		// Distribute rewards based on stake proportion
+		for _, v := range e.validators {
+			if v.StakedAmount >= e.minStakeAmount {
+				v.StakedReward += feesForValidators * v.StakedAmount / totalStaked
+			}
+		}
+	}
+
+	return nil
 }
 
 // totalStaked calculates the total amount staked by all validators
-func (s *Stake) totalStaked() uint64 {
+func (e *Emission) totalStaked() uint64 {
 	var total uint64
-	for _, v := range s.Validators {
-		total += v.StakedAmount
+	for _, v := range e.validators {
+		if v.StakedAmount >= e.minStakeAmount {
+			total += v.StakedAmount
+		}
 	}
 	return total
 }
 
 // ClaimRewards allows validators to claim their accumulated rewards
-func (s *Stake) ClaimRewards(validatorNodeID string) uint64 {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+// TODO: Make it so that we track staking rewards automatically rather than validators having to claim them and distributing it to their stakers
+func (e *Emission) ClaimRewards(ctx context.Context, mu *state.SimpleMutable, emissionAddr codec.Address, validatorNodeID string, sig *bls.Signature, msg []byte, toAddress codec.Address) (uint64, error) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
 
-	v, ok := s.Validators[validatorNodeID]
+	validator, ok := e.validators[validatorNodeID]
 	if !ok {
-		return 0 // Validator not found
+		return 0, nil // Validator not found
 	}
 
-	claimedRewards := v.StakedReward
-	v.StakedReward = 0
-	return claimedRewards
-} */
+	if validator.StakedReward == 0 {
+		return 0, nil // Nothing to claim
+	}
+
+	pubKey, err := bls.PublicKeyFromBytes([]byte(validator.NodePublicKey))
+	if err != nil {
+		return 0, fmt.Errorf("invalid public key") // Invalid public key
+	}
+
+	if !bls.Verify(pubKey, sig, msg) {
+		return 0, fmt.Errorf("invalid signature") // Invalid signature
+	}
+
+	claimedRewards := validator.StakedReward
+	validator.StakedReward = 0
+
+	if err := storage.SubBalance(ctx, mu, emissionAddr, claimedRewards); err != nil {
+		return 0, err
+	}
+	if err := storage.AddBalance(ctx, mu, toAddress, claimedRewards, true); err != nil {
+		return 0, err
+	}
+	if err := mu.Commit(ctx); err != nil {
+		return 0, err
+	}
+
+	return claimedRewards, nil
+}

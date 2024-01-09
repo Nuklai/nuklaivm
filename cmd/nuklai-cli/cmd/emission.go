@@ -23,13 +23,13 @@ var emissionInfoCmd = &cobra.Command{
 		ctx := context.Background()
 
 		// Get clients
-		_, _, _, _, bcli, _, err := handler.DefaultActor()
+		clients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
 		if err != nil {
 			return err
 		}
 
 		// Get emission info
-		_, _, _, err = handler.GetEmissionInfo(ctx, bcli)
+		_, _, _, err = handler.GetEmissionInfo(ctx, clients[0])
 		if err != nil {
 			return err
 		}
@@ -44,13 +44,13 @@ var emissionValidatorsCmd = &cobra.Command{
 		ctx := context.Background()
 
 		// Get clients
-		_, _, _, _, bcli, _, err := handler.DefaultActor()
+		clients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
 		if err != nil {
 			return err
 		}
 
 		// Get validators info
-		_, err = handler.GetAllValidators(ctx, bcli)
+		_, err = handler.GetAllValidators(ctx, clients[0])
 		if err != nil {
 			return err
 		}
@@ -65,13 +65,13 @@ var emissionStakeCmd = &cobra.Command{
 		ctx := context.Background()
 
 		// Get clients
-		_, _, _, _, bcli, _, err := handler.DefaultActor()
+		clients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
 		if err != nil {
 			return err
 		}
 
 		// Get current list of validators
-		validators, err := bcli.Validators(ctx)
+		validators, err := clients[0].Validators(ctx)
 		if err != nil {
 			return err
 		}
@@ -103,7 +103,7 @@ var emissionStakeCmd = &cobra.Command{
 		}
 
 		// Get user stake info
-		_, err = handler.GetUserStake(ctx, bcli, validatorChosen.NodeID, stakeOwner)
+		_, err = handler.GetUserStake(ctx, clients[0], validatorChosen.NodeID, stakeOwner)
 		if err != nil {
 			return err
 		}

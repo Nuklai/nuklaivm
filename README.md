@@ -107,6 +107,23 @@ uri: http://127.0.0.1:45605/ext/bc/29LTS1j68jsRDRkDazY4bRw9MQTdpmjb3LVG6Lx7voUqD
 balance: 853000000.000000000 NAI
 ```
 
+You can also check the balance of another address by passing in the address as the argument
+
+```bash
+./build/nuklai-cli key balance nuklai1de6kkmrpd9mx6anpde5hg72rv2u288wgh6rsrjmup0uzjamjskakqqjyt9u
+```
+
+Should give output
+
+```
+database: .nuklai-cli
+address: nuklai1de6kkmrpd9mx6anpde5hg72rv2u288wgh6rsrjmup0uzjamjskakqqjyt9u
+chainID: 2fc6PDKZ9Dvhcb1vaxbWUoUyvoEp14nbk6NHWhbzfr4HEkTVWi
+balance: 0 NAI
+please send funds to nuklai1de6kkmrpd9mx6anpde5hg72rv2u288wgh6rsrjmup0uzjamjskakqqjyt9u
+exiting...
+```
+
 ### Generate Another Address
 
 Now that we have a balance to send, we need to generate another address to send to. Because
@@ -143,6 +160,26 @@ stored keys: 2
 1) address (secp256r1): nuklai1qyf889stx7rjrgh8tsa4acv4we94kf4w652gwq462tm4vau9ee20gq6k5l2 balance: 0.000000000 NAI
 ✔ set default key: 0█
 ```
+
+### Generate vanity addresses with no private keys
+
+There may be times when you just want to generate random nuklaivm addresses that have no associated private key. In theory, there could be a private key that corresponds to any given address, but the probability of such an occurrence is extremely low, especially when dealing with a sufficiently large random space.
+However, to be certain that an address does not correspond to any private key, we can construct it in such a way that it falls outside the normal range of addresses generated from private keys. One common approach is to use a clearly invalid or special pattern that cannot be derived from a private key under the normal address generation rules of our blockchain.
+
+When you do
+
+```bash
+./build/nuklai-cli key generate-vanity-address
+```
+
+You should see something like:
+
+```
+database: .nuklai-cli
+Address: nuklai1de6kkmrpd9mx6anpde5hg7f6t7dvn7u3dxfgfsz8yh3fggguqqf3wdd7xfy
+```
+
+We are creating an address that includes the word "nuklaivmvanity" followed by random 19 bytes of data. This kind of address is highly unlikely to be generated from a private key because it does not follow the typical structure of addresses derived from private keys.
 
 ### Send Tokens
 
@@ -199,8 +236,7 @@ If successful, the output should be something like:
 
 ```
 database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: DGXvJxdkNS2XAYpw27qSrrqujkdtsGZ9qVBE7NAXWn3hTiK5t
+chainID: 2fc6PDKZ9Dvhcb1vaxbWUoUyvoEp14nbk6NHWhbzfr4HEkTVWi
 emission info:
 TotalSupply=853000000000000000 MaxSupply=10000000000000000000 RewardsPerBlock=2000000000
 ```
@@ -217,7 +253,6 @@ If successful, the output should be something like:
 
 ```
 database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
 chainID: 2rQM1CBDWGtBcdgx8XnAvoDvQkfvSW7Q7XaD58aosAKS4wHMup
 validator 0: NodeID=NodeID-6Eey6vF4nhR6w9PVLtjekPtuF2ayWE5zJ NodePublicKey=tBr6uQRcQkBnVaIxqrac22vIJPhlaUQ7teHbF8xSk8KbGZW5s1LYH82Y/L43ejG3 UserStake=map[] StakedAmount=0 StakedReward=0
 validator 1: NodeID=NodeID-DgK4r1LPjqSouCzzUixyKB5714jiZRF1k NodePublicKey=iPcS9KgoLzMrXi1emUfCwsEIWbACYZ1Hx3/A/+4SzRrzTSwdbM7KA2x80RqFcV3/ UserStake=map[] StakedAmount=0 StakedReward=0
@@ -266,7 +301,6 @@ If successful, the output should be:
 
 ```
 database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
 chainID: 2rQM1CBDWGtBcdgx8XnAvoDvQkfvSW7Q7XaD58aosAKS4wHMup
 validators: 5
 0: NodeID=NodeID-6sPngJ34vevxBRd4Nj9jCCGPPWYA5Boni NodePublicKey=tBNgtWRhWGcMXP7WycOT2M7hsqyRa7uXG2FtF8UMgaHPG9UCKVKO+uaftiHXf7ki
