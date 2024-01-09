@@ -25,5 +25,6 @@ go install -v github.com/goreleaser/goreleaser@latest
 # git tag 1.0.0
 goreleaser release \
 --config .goreleaser.yml \
---skip-announce \
---skip-publish
+--skip=announce \
+--skip=publish \
+--auto-snapshot
