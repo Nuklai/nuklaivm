@@ -240,7 +240,7 @@ var vanityAddressCmd = &cobra.Command{
 		dataPart := append([]byte("nuklaivmvanity"), randomData...)
 
 		// Convert data to 5-bit words as required by Bech32
-		data5Bit, err := bech32.ConvertBits([]byte(dataPart), 8, 5, true)
+		data5Bit, err := bech32.ConvertBits(dataPart, 8, 5, true)
 		if err != nil {
 			return err
 		}
