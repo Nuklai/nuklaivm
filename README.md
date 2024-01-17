@@ -281,24 +281,24 @@ If successful, the output should be:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: wVVys47BgGXPUAsab6Rbio12DXUBVrmdwgwa5WSsxAwF7KH3P
+chainID: GgbXLiBzd8j98CkrcEfsf13sbCTfwonTVMuFKgVVu4GpDNwJF
 validators: 5
-0: NodeID=NodeID-6Eey6vF4nhR6w9PVLtjekPtuF2ayWE5zJ NodePublicKey=tBr6uQRcQkBnVaIxqrac22vIJPhlaUQ7teHbF8xSk8KbGZW5s1LYH82Y/L43ejG3
-1: NodeID=NodeID-DgK4r1LPjqSouCzzUixyKB5714jiZRF1k NodePublicKey=iPcS9KgoLzMrXi1emUfCwsEIWbACYZ1Hx3/A/+4SzRrzTSwdbM7KA2x80RqFcV3/
-2: NodeID=NodeID-Fw4yPxf5WCPrVt4QH1pNfHy92uqWF8UC2 NodePublicKey=qiAeDWL37pJfDBuERd7tX52PjCs+kRwMKuULKKafjYaPRw1VKCo5ZoRu7sRVNAsa
-3: NodeID=NodeID-6sPngJ34vevxBRd4Nj9jCCGPPWYA5Boni NodePublicKey=tBNgtWRhWGcMXP7WycOT2M7hsqyRa7uXG2FtF8UMgaHPG9UCKVKO+uaftiHXf7ki
-4: NodeID=NodeID-9GDrz1zozSus8oSmQfYBzcSkL95tCAQcd NodePublicKey=qZV7xwq5zCG/J8hSf1rK/M2YKvVYaLp/acJGl2D6VxXMm+l+lpGPWgpN8X2yD7Q0
-validator to stake to: 0
-balance: 853000000.000000000 NAI
+0: NodeID=NodeID-wGVvYo7jBvtmnfUTaay2vcL8j8GJyokb NodePublicKey=rnp1CCGFvbni4bjFRFCJo7b3SxdnBIJ8qzOPPbB6HPR8VK8hvHaO37lZGNLJs30S
+1: NodeID=NodeID-NuCwBadeuYbzntFJgBAS8Ut9pwo52XrT6 NodePublicKey=syBPqN0eU9nCBJDyFOVynneq/nia8lM0apG/DpboYtc7CJdm0hXlKGNZF5fwyjWp
+2: NodeID=NodeID-3yxghtfwRdYcG69FjoxZrwjUkSXJAGhY9 NodePublicKey=kvFhrcEVW5Ooann3NaqqE2nANL/XS86AnCUFgrdyBQa2z+xAlCFcwuPHPDnvHyZp
+3: NodeID=NodeID-6dvn9WTA4i7qG2pT3GKUXP46xa2SVY7Po NodePublicKey=oXMYzibvB7gHaGVAKVEB5z0+IFEPcWb0TxjrIz26p3eVjmaHkmKK41S64HDg8paD
+4: NodeID=NodeID-423bGHFH5exxQfuNiRFUqxDquWD9svj6E NodePublicKey=rC9RaeHAUs4mSMw4YoAKBQaWecfrkLHEgKSq/JnfU2EnTXHjYuZu94aDQSTh1M7b
+validator to stake to: 3
+balance: 852999899.999972820 NAI
 ✔ Staked amount: 100█
-End LockUp Height: 100
+End LockUp Height: 70
 ✔ continue (y/n): y█
-✅ txID: 2E7n8WB9tCc65rguoySjaRMzbCTNgkm9kMnfRD3fKYeQ8SF56T
+✅ txID: EYnnHR9jtJvfAAE9UE5tkV9BDvajBhZ25YqJUD82LrRsJrZTo
 ```
 
 ### Get user staking info
 
-We can retrieve our staking info by passing in which validator we have staked to and the address to look up staking for
+We can retrieve our staking info by passing in which validator we have staked to and the address to look up staking for using the new RPC API we defined as part of this exercise.
 
 ```bash
 ./build/nuklai-cli emission user-stake-info
@@ -308,15 +308,75 @@ If successful, the output should be:
 
 ```
 database: .nuklai-cli
-chainID: 2rQM1CBDWGtBcdgx8XnAvoDvQkfvSW7Q7XaD58aosAKS4wHMup
+chainID: GgbXLiBzd8j98CkrcEfsf13sbCTfwonTVMuFKgVVu4GpDNwJF
 validators: 5
-0: NodeID=NodeID-6sPngJ34vevxBRd4Nj9jCCGPPWYA5Boni NodePublicKey=tBNgtWRhWGcMXP7WycOT2M7hsqyRa7uXG2FtF8UMgaHPG9UCKVKO+uaftiHXf7ki
-1: NodeID=NodeID-9GDrz1zozSus8oSmQfYBzcSkL95tCAQcd NodePublicKey=qZV7xwq5zCG/J8hSf1rK/M2YKvVYaLp/acJGl2D6VxXMm+l+lpGPWgpN8X2yD7Q0
-2: NodeID=NodeID-6Eey6vF4nhR6w9PVLtjekPtuF2ayWE5zJ NodePublicKey=tBr6uQRcQkBnVaIxqrac22vIJPhlaUQ7teHbF8xSk8KbGZW5s1LYH82Y/L43ejG3
-3: NodeID=NodeID-DgK4r1LPjqSouCzzUixyKB5714jiZRF1k NodePublicKey=iPcS9KgoLzMrXi1emUfCwsEIWbACYZ1Hx3/A/+4SzRrzTSwdbM7KA2x80RqFcV3/
-4: NodeID=NodeID-Fw4yPxf5WCPrVt4QH1pNfHy92uqWF8UC2 NodePublicKey=qiAeDWL37pJfDBuERd7tX52PjCs+kRwMKuULKKafjYaPRw1VKCo5ZoRu7sRVNAsa
-✔ choose validator whom you have staked to: 0█
-✔ address to get staking info for: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx█
-user stake:  Owner=nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx StakedAmount=100000000000 StakedReward=0
-stake #1: TxID=2E7n8WB9tCc65rguoySjaRMzbCTNgkm9kMnfRD3fKYeQ8SF56T Amount=100000000000 StartLockUp=17 EndLockUp=100 Reward=0
+0: NodeID=NodeID-NuCwBadeuYbzntFJgBAS8Ut9pwo52XrT6 NodePublicKey=syBPqN0eU9nCBJDyFOVynneq/nia8lM0apG/DpboYtc7CJdm0hXlKGNZF5fwyjWp
+1: NodeID=NodeID-3yxghtfwRdYcG69FjoxZrwjUkSXJAGhY9 NodePublicKey=kvFhrcEVW5Ooann3NaqqE2nANL/XS86AnCUFgrdyBQa2z+xAlCFcwuPHPDnvHyZp
+2: NodeID=NodeID-6dvn9WTA4i7qG2pT3GKUXP46xa2SVY7Po NodePublicKey=oXMYzibvB7gHaGVAKVEB5z0+IFEPcWb0TxjrIz26p3eVjmaHkmKK41S64HDg8paD
+3: NodeID=NodeID-423bGHFH5exxQfuNiRFUqxDquWD9svj6E NodePublicKey=rC9RaeHAUs4mSMw4YoAKBQaWecfrkLHEgKSq/JnfU2EnTXHjYuZu94aDQSTh1M7b
+4: NodeID=NodeID-wGVvYo7jBvtmnfUTaay2vcL8j8GJyokb NodePublicKey=rnp1CCGFvbni4bjFRFCJo7b3SxdnBIJ8qzOPPbB6HPR8VK8hvHaO37lZGNLJs30S
+✔ choose validator whom you have staked to: 2█
+address to get staking info for: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+user stake:  Owner=nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx StakedAmount=100000000000
+stake #1: TxID=EYnnHR9jtJvfAAE9UE5tkV9BDvajBhZ25YqJUD82LrRsJrZTo Amount=100000000000 StartLockUp=53
+```
+
+### Unstake from a validator
+
+Let's first check the balance on our account:
+
+```bash
+./build/nuklai-cli key balance
+```
+
+Which should produce a result like:
+
+```
+database: .nuklai-cli
+address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+chainID: GgbXLiBzd8j98CkrcEfsf13sbCTfwonTVMuFKgVVu4GpDNwJF
+uri: http://127.0.0.1:41743/ext/bc/GgbXLiBzd8j98CkrcEfsf13sbCTfwonTVMuFKgVVu4GpDNwJF
+balance: 852999799.999945203 NAI
+```
+
+We can unstake specific stake from a chosen validator.
+
+```bash
+./build/nuklai-cli action unstake-validator
+```
+
+Which produces result:
+
+```
+database: .nuklai-cli
+address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+chainID: GgbXLiBzd8j98CkrcEfsf13sbCTfwonTVMuFKgVVu4GpDNwJF
+validators: 5
+0: NodeID=NodeID-wGVvYo7jBvtmnfUTaay2vcL8j8GJyokb NodePublicKey=rnp1CCGFvbni4bjFRFCJo7b3SxdnBIJ8qzOPPbB6HPR8VK8hvHaO37lZGNLJs30S
+1: NodeID=NodeID-NuCwBadeuYbzntFJgBAS8Ut9pwo52XrT6 NodePublicKey=syBPqN0eU9nCBJDyFOVynneq/nia8lM0apG/DpboYtc7CJdm0hXlKGNZF5fwyjWp
+2: NodeID=NodeID-3yxghtfwRdYcG69FjoxZrwjUkSXJAGhY9 NodePublicKey=kvFhrcEVW5Ooann3NaqqE2nANL/XS86AnCUFgrdyBQa2z+xAlCFcwuPHPDnvHyZp
+3: NodeID=NodeID-6dvn9WTA4i7qG2pT3GKUXP46xa2SVY7Po NodePublicKey=oXMYzibvB7gHaGVAKVEB5z0+IFEPcWb0TxjrIz26p3eVjmaHkmKK41S64HDg8paD
+4: NodeID=NodeID-423bGHFH5exxQfuNiRFUqxDquWD9svj6E NodePublicKey=rC9RaeHAUs4mSMw4YoAKBQaWecfrkLHEgKSq/JnfU2EnTXHjYuZu94aDQSTh1M7b
+validator to unstake from: 3
+stake info:
+0: TxID=EYnnHR9jtJvfAAE9UE5tkV9BDvajBhZ25YqJUD82LrRsJrZTo StakedAmount=100000000000 StartLockUpHeight=53 CurrentHeight=200
+stake ID to unstake: 0 [auto-selected]
+continue (y/n): y
+✅ txID: 2eSkTRQa4KqHDXidoeoQ8XSsjeSbga3x5B52hetwhGw68enbHt
+```
+
+Now, if we check the balance again, we should have our 100 NAI back to our account:
+
+```bash
+./build/nuklai-cli key balance
+```
+
+Which should produce a result like:
+
+```
+database: .nuklai-cli
+address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+chainID: GgbXLiBzd8j98CkrcEfsf13sbCTfwonTVMuFKgVVu4GpDNwJF
+uri: http://127.0.0.1:41743/ext/bc/GgbXLiBzd8j98CkrcEfsf13sbCTfwonTVMuFKgVVu4GpDNwJF
+balance: 852999899.999896407 NAI
 ```

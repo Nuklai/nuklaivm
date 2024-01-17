@@ -94,6 +94,7 @@ type Action interface {
 package actions
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -143,7 +144,7 @@ func (u *UnstakeValidator) Execute(
 	_ ids.ID,
 	_ bool,
 ) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
-	exists, nodeStaked, stakedAmount, _, owner, err := storage.GetStake(ctx, mu, u.Stake)
+	exists, nodeIDStaked, _, _, owner, err := storage.GetStake(ctx, mu, u.Stake)
 	if err != nil {
 		return false, UnstakeValidatorComputeUnits, utils.ErrBytes(err), nil, nil
 	}
@@ -153,18 +154,8 @@ func (u *UnstakeValidator) Execute(
 	if owner != auth.Actor() {
 		return false, UnstakeValidatorComputeUnits, OutputUnauthorized, nil, nil
 	}
-	nodeID, err := ids.ToNodeID(u.NodeID)
-	if err != nil {
-		return false, UnstakeValidatorComputeUnits, OutputInvalidNodeID, nil, nil
-	}
-	if nodeStaked != nodeID {
+	if !bytes.Equal(nodeIDStaked.Bytes(), u.NodeID) {
 		return false, UnstakeValidatorComputeUnits, OutputDifferentNodeIDThanStaked, nil, nil
-	}
-	if err := storage.DeleteStake(ctx, mu, u.Stake); err != nil {
-		return false, UnstakeValidatorComputeUnits, utils.ErrBytes(err), nil, nil
-	}
-	if err := storage.AddBalance(ctx, mu, auth.Actor(), stakedAmount, true); err != nil {
-		return false, UnstakeValidatorComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 	return true, UnstakeValidatorComputeUnits, nil, nil, nil
 }
@@ -179,11 +170,13 @@ func (*UnstakeValidator) Size() int {
 
 func (u *UnstakeValidator) Marshal(p *codec.Packer) {
 	p.PackID(u.Stake)
+	p.PackBytes(u.NodeID)
 }
 
 func UnmarshalUnstakeValidator(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
 	var unstake UnstakeValidator
 	p.UnpackID(true, &unstake.Stake)
+	p.UnpackBytes(consts.NodeIDLen, false, &unstake.NodeID)
 	return &unstake, p.Err()
 }
 
@@ -229,16 +222,30 @@ Let's make sure to handle additional logic needed for our unstake validator acti
 Under `Accepted` function right after tx is successful, let's call `UnstakeFromValidator` from our Emission Balancer so it calculates the staked amount from the validator accordingly.
 
 ```go
-    case *actions.UnstakeValidator:
+      case *actions.UnstakeValidator:
 				c.metrics.unstake.Inc()
 				// Check to make sure the unstake is valid
-				_, _, _, endLockUp, _, _ := storage.GetStake(ctx, mu, action.Stake)
-				if endLockUp < c.inner.LastAcceptedBlock().Height() {
-					return fmt.Errorf("end lockup %d is less than current block height %d", endLockUp, c.inner.LastAcceptedBlock().Height())
-				}
-				err := c.emission.UnstakeFromValidator(tx.ID(), tx.Auth.Actor(), action)
-				if err != nil {
-					return err
+				_, _, stakedAmount, endLockUp, owner, _ := storage.GetStake(ctx, mu, action.Stake)
+				if currentHeight > endLockUp {
+					if err := c.emission.UnstakeFromValidator(owner, action); err != nil {
+						c.inner.Logger().Error("failed to unstake from validator", zap.Error(err))
+						// We exit early if it's an error that must never happen
+						// Otherwise, we move on because while the stake may be  removed from Emission Balancer,
+						// it may not have been removed from the blockchain state yet
+						if err == emission.ErrInvalidNodeID {
+							break
+						}
+					}
+					// We exit early if the stake cannot be deleted from the state
+					if err := storage.DeleteStake(ctx, mu, action.Stake); err != nil {
+						c.inner.Logger().Error("failed to delete stake from blockchain state", zap.Error(err))
+						break
+					}
+					// We exit early if the staked amount cannot be added to the user balance
+					if err := storage.AddBalance(ctx, mu, owner, stakedAmount, true); err != nil {
+						c.inner.Logger().Error("failed to add the staked amount to the user balance", zap.Error(err))
+						break
+					}
 				}
 ```
 
@@ -277,7 +284,7 @@ func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 We now need to define a new function called `UnstakeFromValidator` that will unstake the NAI tokens from the given validator
 
 ```go
-func (e *Emission) UnstakeFromValidator(txID ids.ID, actor codec.Address, action *actions.UnstakeValidator) error {
+func (e *Emission) UnstakeFromValidator(actor codec.Address, action *actions.UnstakeValidator) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -287,7 +294,7 @@ func (e *Emission) UnstakeFromValidator(txID ids.ID, actor codec.Address, action
 	}
 
 	stakeOwner := codec.MustAddressBech32(consts.HRP, actor)
-	validator, ok := e.validators[nodeID.String()]
+	validator, ok := e.validators[nodeID]
 	if !ok {
 		return ErrNotAValidator // Not a validator
 	}
@@ -295,7 +302,7 @@ func (e *Emission) UnstakeFromValidator(txID ids.ID, actor codec.Address, action
 	if !ok {
 		return ErrUserNotStaked // User is not staked
 	}
-	stakeInfo, ok := userStake.StakeInfo[txID.String()]
+	stakeInfo, ok := userStake.StakeInfo[action.Stake]
 	if !ok {
 		return ErrStakeNotFound // Stake not found
 	}
@@ -305,16 +312,11 @@ func (e *Emission) UnstakeFromValidator(txID ids.ID, actor codec.Address, action
 	// Reduce the staked amount from the validator
 	validator.StakedAmount -= stakeInfo.Amount
 	// Remove the stake info
-	delete(userStake.StakeInfo, txID.String())
+	delete(userStake.StakeInfo, action.Stake)
 	// Remove the user stake if there are no more stakes
 	if len(userStake.StakeInfo) == 0 {
 		delete(validator.UserStake, stakeOwner)
 	}
-	// Remove the validator if the staked amount is 0
-	if validator.StakedAmount == 0 {
-		delete(e.validators, nodeID.String())
-	}
-
 	return nil
 }
 ```
@@ -339,7 +341,7 @@ Let's define the function definitions we want exposed to external users via our 
 ```go
 type Controller interface {
   ...
-  GetUserStake(nodeID string, owner string) (*emission.UserStake, error)
+  GetUserStake(nodeID ids.NodeID, owner string) (*emission.UserStake, error)
   ...
 }
 ```
@@ -349,7 +351,7 @@ type Controller interface {
 Now, it's time to implement the functions we defined on rpc/dependencies.go.
 
 ```go
-func (c *Controller) GetUserStake(nodeID string, owner string) (*emission.UserStake, error) {
+func (c *Controller) GetUserStake(nodeID ids.NodeID, owner string) (*emission.UserStake, error) {
 	return c.emission.GetUserStake(nodeID, owner), nil
 }
 ```
@@ -359,7 +361,7 @@ func (c *Controller) GetUserStake(nodeID string, owner string) (*emission.UserSt
 Let's implement the function `GetUserStake` on our Emission Balancer.
 
 ```go
-func (e *Emission) GetUserStake(nodeID, owner string) *UserStake {
+func (e *Emission) GetUserStake(nodeID ids.NodeID, owner string) *UserStake {
 	e.lock.RLock()
 	defer e.lock.RUnlock()
 
@@ -381,18 +383,21 @@ func (e *Emission) GetUserStake(nodeID, owner string) *UserStake {
 We need to define a new function on our RPC Client so users can call this API via external tools like curl, POSTMAN, or third party applications. We can do this on rpc/jsonrpc_client.go:
 
 ```go
-func (cli *JSONRPCClient) Validators(ctx context.Context) ([]*emission.Validator, error) {
-	resp := new(ValidatorsReply)
+func (cli *JSONRPCClient) UserStakeInfo(ctx context.Context, nodeID ids.NodeID, owner string) (*emission.UserStake, error) {
+	resp := new(StakeReply)
 	err := cli.requester.SendRequest(
 		ctx,
-		"validators",
-		nil,
+		"userStakeInfo",
+		&StakeArgs{
+			NodeID: nodeID,
+			Owner:  owner,
+		},
 		resp,
 	)
 	if err != nil {
-		return []*emission.Validator{}, err
+		return &emission.UserStake{}, err
 	}
-	return resp.Validators, err
+	return resp.UserStake, err
 }
 ```
 
@@ -458,32 +463,37 @@ var unstakeValidatorCmd = &cobra.Command{
 			return err
 		}
 		validatorChosen := validators[keyIndex]
-		nodeID, err := ids.NodeIDFromString(validatorChosen.NodeID)
-		if err != nil {
-			return err
-		}
+		nodeID := validatorChosen.NodeID
 
 		// Get stake info
 		owner, err := codec.AddressBech32(consts.HRP, priv.Address)
 		if err != nil {
 			return err
 		}
-		stake, err := bcli.UserStakeInfo(ctx, validatorChosen.NodeID, owner)
+		stake, err := bcli.UserStakeInfo(ctx, nodeID, owner)
 		if err != nil {
 			return err
 		}
 
+		if len(stake.StakeInfo) == 0 {
+			utils.Outf("{{red}}user is not staked to this validator{{/}}\n")
+			return nil
+		}
 		// Get current height
 		_, currentHeight, _, err := cli.Accepted(ctx)
 		if err != nil {
 			return err
 		}
 		// Make sure to iterate over the stake info map in the same order every time
-		keys := make([]string, 0, len(stake.StakeInfo))
+		keys := make([]ids.ID, 0, len(stake.StakeInfo))
 		for k := range stake.StakeInfo {
 			keys = append(keys, k)
 		}
-		sort.Strings(keys)
+		// Sorting based on string representation
+		sort.Slice(keys, func(i, j int) bool {
+			return keys[i].String() < keys[j].String()
+		})
+
 		// Show stake info to the user
 		utils.Outf("{{cyan}}stake info:{{/}}\n")
 		for index, txID := range keys {
@@ -491,7 +501,7 @@ var unstakeValidatorCmd = &cobra.Command{
 			utils.Outf(
 				"{{yellow}}%d:{{/}} TxID=%s StakedAmount=%d StartLockUpHeight=%d CurrentHeight=%d\n",
 				index,
-				txID,
+				txID.String(),
 				stakeInfo.Amount,
 				stakeInfo.StartLockUp,
 				currentHeight,
@@ -499,15 +509,12 @@ var unstakeValidatorCmd = &cobra.Command{
 		}
 
 		// Select the stake Id to unstake
-		stakeIndex, err := handler.Root().PromptChoice("stake to unstake", len(stake.StakeInfo))
+		stakeIndex, err := handler.Root().PromptChoice("stake ID to unstake", len(stake.StakeInfo))
 		if err != nil {
 			return err
 		}
 		stakeChosen := stake.StakeInfo[keys[stakeIndex]]
-		stakeID, err := ids.FromString(stakeChosen.TxID)
-		if err != nil {
-			return err
-		}
+		stakeID := stakeChosen.TxID
 
 		// Confirm action
 		cont, err := handler.Root().PromptContinue()
@@ -606,7 +613,7 @@ There is nothing left to do for our unstake validator action however, for the RP
 
 ```go
 func (*Handler) GetUserStake(ctx context.Context,
-	cli *brpc.JSONRPCClient, nodeID string, owner codec.Address,
+	cli *brpc.JSONRPCClient, nodeID ids.NodeID, owner codec.Address,
 ) (*emission.UserStake, error) {
 	saddr, err := codec.AddressBech32(consts.HRP, owner)
 	if err != nil {

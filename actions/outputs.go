@@ -12,5 +12,4 @@ var (
 	OutputUnauthorized              = []byte("unauthorized")
 	OutputInvalidNodeID             = []byte("invalid node ID")
 	OutputDifferentNodeIDThanStaked = []byte("node ID is different than staked")
-	ErrFieldNotPopulated            = []byte("field is not populated")
 )
