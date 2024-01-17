@@ -11,7 +11,6 @@ import (
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/utils"
 	"github.com/nuklai/nuklaivm/actions"
-	"github.com/nuklai/nuklaivm/consts"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/spf13/cobra"
 )
@@ -173,7 +172,7 @@ var unstakeValidatorCmd = &cobra.Command{
 		nodeID := validatorChosen.NodeID
 
 		// Get stake info
-		owner, err := codec.AddressBech32(consts.HRP, priv.Address)
+		owner, err := codec.AddressBech32(nconsts.HRP, priv.Address)
 		if err != nil {
 			return err
 		}
