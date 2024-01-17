@@ -61,7 +61,7 @@ echo ADDRESS: ${ADDRESS}
 # https://github.com/ava-labs/avalanchego/releases
 GOARCH=$(go env GOARCH)
 GOOS=$(go env GOOS)
-TMPDIR=/tmp/nuklaivm
+TMPDIR=/data/github/tmp/nuklaivm
 
 echo "working directory: $TMPDIR"
 

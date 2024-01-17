@@ -122,8 +122,8 @@ func (j *JSONRPCServer) Validators(req *http.Request, _ *struct{}, reply *Valida
 }
 
 type StakeArgs struct {
-	NodeID string `json:"nodeID"`
-	Owner  string `json:"owner"`
+	NodeID ids.NodeID `json:"nodeID"`
+	Owner  string     `json:"owner"`
 }
 
 type StakeReply struct {

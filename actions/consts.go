@@ -6,5 +6,6 @@ package actions
 const (
 	TransferComputeUnits = 1
 
-	StakeValidatorComputeUnits = 5
+	StakeValidatorComputeUnits   = 5
+	UnstakeValidatorComputeUnits = 5
 )

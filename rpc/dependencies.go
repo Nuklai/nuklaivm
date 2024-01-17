@@ -21,8 +21,8 @@ type Controller interface {
 	GetBalanceFromState(context.Context, codec.Address) (uint64, error)
 	GetEmissionInfo() (uint64, uint64, uint64, error)
 	GetAllValidators() ([]*emission.Validator, error)
-	GetValidator(nodeID string) (*emission.Validator, error)
-	GetUserStake(nodeID string, owner string) (*emission.UserStake, error)
+	GetValidator(nodeID ids.NodeID) (*emission.Validator, error)
+	GetUserStake(nodeID ids.NodeID, owner string) (*emission.UserStake, error)
 	GetValidatorFromState(ctx context.Context, stakeID ids.ID) (
 		bool, // exists
 		ids.NodeID, // NodeID

@@ -13,4 +13,5 @@ var (
 	ErrMinStakeAmountNotReached = errors.New("min stake amount not reached")
 	ErrNotAValidator            = errors.New("not a validator")
 	ErrNotAValidatorOwner       = errors.New("not a validator owner")
+	ErrUserNotStaked            = errors.New("user not staked")
 )

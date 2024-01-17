@@ -115,7 +115,7 @@ func (cli *JSONRPCClient) Validators(ctx context.Context) ([]*emission.Validator
 	return resp.Validators, err
 }
 
-func (cli *JSONRPCClient) UserStakeInfo(ctx context.Context, nodeID, owner string) (*emission.UserStake, error) {
+func (cli *JSONRPCClient) UserStakeInfo(ctx context.Context, nodeID ids.NodeID, owner string) (*emission.UserStake, error) {
 	resp := new(StakeReply)
 	err := cli.requester.SendRequest(
 		ctx,

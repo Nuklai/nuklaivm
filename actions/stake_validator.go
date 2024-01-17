@@ -1,9 +1,6 @@
 // Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-// Copyright (C) 2023, Ava Labs, Inc. All rights reserved.
-// See the file LICENSE for licensing terms.
-
 package actions
 
 import (
@@ -60,10 +57,14 @@ func (s *StakeValidator) Execute(
 	if s.StakedAmount == 0 {
 		return false, StakeValidatorComputeUnits, OutputStakedAmountZero, nil, nil
 	}
+	nodeID, err := ids.ToNodeID(s.NodeID)
+	if err != nil {
+		return false, StakeValidatorComputeUnits, OutputInvalidNodeID, nil, nil
+	}
 	if err := storage.SubBalance(ctx, mu, auth.Actor(), s.StakedAmount); err != nil {
 		return false, StakeValidatorComputeUnits, utils.ErrBytes(err), nil, nil
 	}
-	if err := storage.SetStake(ctx, mu, txID, s.NodeID, s.StakedAmount, s.EndLockUp, auth.Actor()); err != nil {
+	if err := storage.SetStake(ctx, mu, txID, nodeID, s.StakedAmount, s.EndLockUp, auth.Actor()); err != nil {
 		return false, StakeValidatorComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 	return true, StakeValidatorComputeUnits, nil, nil, nil

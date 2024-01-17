@@ -21,6 +21,13 @@ The first step to running this demo is to launch your own `nuklaivm` Subnet. You
 can do so by running the following command from this location (may take a few
 minutes):
 
+Note the working directory for run.sh is `/data/github/tmp/nuklaivm` so you will need to create it first and give it appropriate permissions.
+
+```bash
+sudo mkdir -p /data/github/tmp/nuklaivm;
+sudo chown 777 /data/github/tmp/nuklaivm
+```
+
 ```bash
 ./scripts/run.sh;
 ```

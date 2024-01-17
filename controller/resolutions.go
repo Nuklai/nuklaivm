@@ -47,15 +47,15 @@ func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, error) {
 }
 
 func (c *Controller) GetAllValidators() ([]*emission.Validator, error) {
-	return c.emission.GetValidator(""), nil
+	return c.emission.GetValidator(ids.EmptyNodeID), nil
 }
 
-func (c *Controller) GetValidator(nodeID string) (*emission.Validator, error) {
+func (c *Controller) GetValidator(nodeID ids.NodeID) (*emission.Validator, error) {
 	validators := c.emission.GetValidator(nodeID)
 	return validators[0], nil
 }
 
-func (c *Controller) GetUserStake(nodeID string, owner string) (*emission.UserStake, error) {
+func (c *Controller) GetUserStake(nodeID ids.NodeID, owner string) (*emission.UserStake, error) {
 	return c.emission.GetUserStake(nodeID, owner), nil
 }
 

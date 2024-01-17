@@ -164,7 +164,7 @@ func (*Handler) GetAllValidators(
 }
 
 func (*Handler) GetUserStake(ctx context.Context,
-	cli *brpc.JSONRPCClient, nodeID string, owner codec.Address,
+	cli *brpc.JSONRPCClient, nodeID ids.NodeID, owner codec.Address,
 ) (*emission.UserStake, error) {
 	saddr, err := codec.AddressBech32(consts.HRP, owner)
 	if err != nil {
@@ -188,12 +188,11 @@ func (*Handler) GetUserStake(ctx context.Context,
 	index := 1
 	for txID, stakeInfo := range userStake.StakeInfo {
 		utils.Outf(
-			"{{yellow}}stake #%d:{{/}} TxID=%s Amount=%d StartLockUp=%d EndLockUp=%d\n",
+			"{{yellow}}stake #%d:{{/}} TxID=%s Amount=%d StartLockUp=%d\n",
 			index,
 			txID,
 			stakeInfo.Amount,
 			stakeInfo.StartLockUp,
-			stakeInfo.EndLockUp,
 		)
 		index++
 	}

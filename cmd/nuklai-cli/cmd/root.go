@@ -147,6 +147,7 @@ func init() {
 	actionCmd.AddCommand(
 		transferCmd,
 		stakeValidatorCmd,
+		unstakeValidatorCmd,
 	)
 
 	// emission

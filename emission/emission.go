@@ -25,22 +25,21 @@ var (
 )
 
 type StakeInfo struct {
-	TxID        string `json:"txID"`
+	TxID        ids.ID `json:"txID"`
 	Amount      uint64 `json:"amount"`
 	StartLockUp uint64 `json:"startLockUp"`
-	EndLockUp   uint64 `json:"endLockUp"`
 }
 
 type UserStake struct {
 	Owner        string                `json:"owner"`     // we always send address over RPC
-	StakeInfo    map[string]*StakeInfo `json:"stakeInfo"` // the key is txID
+	StakeInfo    map[ids.ID]*StakeInfo `json:"stakeInfo"` // the key is txID
 	StakedAmount uint64                `json:"amount"`
 
 	owner codec.Address
 }
 
 type Validator struct {
-	NodeID        string                `json:"nodeID"`
+	NodeID        ids.NodeID            `json:"nodeID"`
 	NodePublicKey string                `json:"nodePublicKey"`
 	UserStake     map[string]*UserStake `json:"userStake"` // the key is Owner
 	StakedAmount  uint64                `json:"stakedAmount"`
@@ -54,7 +53,7 @@ type Emission struct {
 	maxSupply       uint64
 	rewardsPerBlock uint64
 
-	validators     map[string]*Validator // the key is NodeID
+	validators     map[ids.NodeID]*Validator // the key is NodeID
 	maxValidators  int
 	minStakeAmount uint64
 
@@ -66,17 +65,16 @@ func New(c Controller, maxSupply, rewardsPerBlock uint64, currentValidators map[
 	once.Do(func() {
 		c.Logger().Info("setting maxSupply and rewardsPerBlock for emission")
 
-		validators := make(map[string]*Validator)
+		validators := make(map[ids.NodeID]*Validator)
 		for nodeID, validator := range currentValidators {
-			nodeIDString := nodeID.String()
 			newValidator := &Validator{
-				NodeID:        nodeIDString,
+				NodeID:        nodeID,
 				NodePublicKey: base64.StdEncoding.EncodeToString(validator.PublicKey.Compress()),
 				UserStake:     make(map[string]*UserStake),
 				StakedAmount:  0,
 				StakedReward:  0,
 			}
-			validators[nodeIDString] = newValidator
+			validators[nodeID] = newValidator
 		}
 
 		emission = &Emission{
@@ -141,13 +139,13 @@ func (e *Emission) StakeToValidator(txID ids.ID, actor codec.Address, currentVal
 	}
 
 	stakeOwner := codec.MustAddressBech32(consts.HRP, actor)
-	validator, ok := e.validators[nodeID.String()]
+	validator, ok := e.validators[nodeID]
 	if !ok {
 		if len(e.validators) >= e.maxValidators {
 			return ErrMaxValidatorsReached // Cap reached, no more validators
 		}
 		validator = &Validator{
-			NodeID:        currentValidator.NodeID.String(),
+			NodeID:        currentValidator.NodeID,
 			NodePublicKey: base64.StdEncoding.EncodeToString(currentValidator.PublicKey.Compress()),
 			UserStake:     map[string]*UserStake{},
 			StakedReward:  0,
@@ -157,34 +155,69 @@ func (e *Emission) StakeToValidator(txID ids.ID, actor codec.Address, currentVal
 	if !ok {
 		userStake = &UserStake{
 			Owner:        stakeOwner,
-			StakeInfo:    map[string]*StakeInfo{},
+			StakeInfo:    map[ids.ID]*StakeInfo{},
 			StakedAmount: action.StakedAmount,
 			owner:        actor,
 		}
 	}
-	stakeInfo, ok := userStake.StakeInfo[txID.String()]
+	stakeInfo, ok := userStake.StakeInfo[txID]
 	if !ok {
 		stakeInfo = &StakeInfo{
-			TxID:        txID.String(),
+			TxID:        txID,
 			Amount:      action.StakedAmount,
 			StartLockUp: startLockUp,
-			EndLockUp:   action.EndLockUp,
 		}
 	}
-	userStake.StakeInfo[txID.String()] = stakeInfo
+	userStake.StakeInfo[txID] = stakeInfo
 	validator.UserStake[stakeOwner] = userStake
 	validator.StakedAmount += action.StakedAmount
 
-	e.validators[nodeID.String()] = validator
+	e.validators[nodeID] = validator
 
 	return nil
 }
 
-func (e *Emission) GetValidator(nodeID string) []*Validator {
+func (e *Emission) UnstakeFromValidator(actor codec.Address, action *actions.UnstakeValidator) error {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	nodeID, err := ids.ToNodeID(action.NodeID)
+	if err != nil {
+		return ErrInvalidNodeID // Invalid NodeID
+	}
+
+	stakeOwner := codec.MustAddressBech32(consts.HRP, actor)
+	validator, ok := e.validators[nodeID]
+	if !ok {
+		return ErrNotAValidator // Not a validator
+	}
+	userStake, ok := validator.UserStake[stakeOwner]
+	if !ok {
+		return ErrUserNotStaked // User is not staked
+	}
+	stakeInfo, ok := userStake.StakeInfo[action.Stake]
+	if !ok {
+		return ErrStakeNotFound // Stake not found
+	}
+
+	// Reduce the staked amount from the userstake
+	userStake.StakedAmount -= stakeInfo.Amount
+	// Reduce the staked amount from the validator
+	validator.StakedAmount -= stakeInfo.Amount
+	// Remove the stake info
+	delete(userStake.StakeInfo, action.Stake)
+	// Remove the user stake if there are no more stakes
+	if len(userStake.StakeInfo) == 0 {
+		delete(validator.UserStake, stakeOwner)
+	}
+	return nil
+}
+
+func (e *Emission) GetValidator(nodeID ids.NodeID) []*Validator {
 	e.lock.RLock()
 	defer e.lock.RUnlock()
 
-	if nodeID == "" {
+	if nodeID == ids.EmptyNodeID {
 		return e.getAllValidators()
 	}
 
@@ -195,7 +228,7 @@ func (e *Emission) GetValidator(nodeID string) []*Validator {
 	return []*Validator{validator}
 }
 
-func (e *Emission) GetUserStake(nodeID, owner string) *UserStake {
+func (e *Emission) GetUserStake(nodeID ids.NodeID, owner string) *UserStake {
 	e.lock.RLock()
 	defer e.lock.RUnlock()
 
@@ -302,7 +335,7 @@ func (e *Emission) totalStaked() uint64 {
 
 // ClaimRewards allows validators to claim their accumulated rewards
 // TODO: Make it so that we track staking rewards automatically rather than validators having to claim them and distributing it to their stakers
-func (e *Emission) ClaimRewards(ctx context.Context, mu *state.SimpleMutable, emissionAddr codec.Address, validatorNodeID string, sig *bls.Signature, msg []byte, toAddress codec.Address) (uint64, error) {
+func (e *Emission) ClaimRewards(ctx context.Context, mu *state.SimpleMutable, emissionAddr codec.Address, validatorNodeID ids.NodeID, sig *bls.Signature, msg []byte, toAddress codec.Address) (uint64, error) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 

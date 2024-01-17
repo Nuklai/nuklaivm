@@ -166,6 +166,14 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 	batch := c.metaDB.NewBatch()
 	defer batch.Reset()
 
+	// Retrieve the vm state
+	stateDB, err := c.inner.State()
+	if err != nil {
+		return err
+	}
+	// Retrieve the state.Mutable to write to
+	mu := state.NewSimpleMutable(stateDB)
+
 	results := blk.Results()
 	for i, tx := range blk.Txs {
 		result := results[i]
@@ -183,6 +191,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				return err
 			}
 		}
+		currentHeight := c.inner.LastAcceptedBlock().Height()
 		if result.Success {
 			switch action := tx.Action.(type) {
 			case *actions.Transfer:
@@ -190,25 +199,43 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 			case *actions.StakeValidator:
 				c.metrics.stake.Inc()
 				currentValidators, _ := c.inner.CurrentValidators(ctx)
-				startLockUp := c.inner.LastAcceptedBlock().Height()
-				if startLockUp >= action.EndLockUp {
-					return fmt.Errorf("start lockup %d is greater than end lockup %d", startLockUp, action.EndLockUp)
+				// Check to make sure the stake is valid
+				if action.EndLockUp > currentHeight {
+					if err := c.emission.StakeToValidator(tx.ID(), tx.Auth.Actor(), currentValidators, currentHeight, action); err != nil {
+						c.inner.Logger().Error("failed to stake to validator", zap.Error(err))
+						break
+					}
+				} else {
+					c.inner.Logger().Error("failed to stake to validator", zap.Error(fmt.Errorf("start lockup %d is greater than end lockup %d", currentHeight, action.EndLockUp)))
 				}
-				err := c.emission.StakeToValidator(tx.ID(), tx.Auth.Actor(), currentValidators, startLockUp, action)
-				if err != nil {
-					return err
+			case *actions.UnstakeValidator:
+				c.metrics.unstake.Inc()
+				// Check to make sure the unstake is valid
+				_, _, stakedAmount, endLockUp, owner, _ := storage.GetStake(ctx, mu, action.Stake)
+				if currentHeight > endLockUp {
+					if err := c.emission.UnstakeFromValidator(owner, action); err != nil {
+						c.inner.Logger().Error("failed to unstake from validator", zap.Error(err))
+						// We exit early if it's an error that must never happen
+						// Otherwise, we move on because while the stake may be  removed from Emission Balancer,
+						// it may not have been removed from the blockchain state yet
+						if err == emission.ErrInvalidNodeID {
+							break
+						}
+					}
+					// We exit early if the stake cannot be deleted from the state
+					if err := storage.DeleteStake(ctx, mu, action.Stake); err != nil {
+						c.inner.Logger().Error("failed to delete stake from blockchain state", zap.Error(err))
+						break
+					}
+					// We exit early if the staked amount cannot be added to the user balance
+					if err := storage.AddBalance(ctx, mu, owner, stakedAmount, true); err != nil {
+						c.inner.Logger().Error("failed to add the staked amount to the user balance", zap.Error(err))
+						break
+					}
 				}
 			}
 		}
 	}
-
-	// Retrieve the vm state
-	stateDB, err := c.inner.State()
-	if err != nil {
-		return err
-	}
-	// Retrieve the state.Mutable to write to
-	mu := state.NewSimpleMutable(stateDB)
 
 	// Calculate and distribute fees
 	feeManager := blk.FeeManager()

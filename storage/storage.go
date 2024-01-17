@@ -263,7 +263,7 @@ func SetStake(
 	ctx context.Context,
 	mu state.Mutable,
 	stake ids.ID,
-	nodeID []byte,
+	nodeID ids.NodeID,
 	stakedAmount uint64,
 	endLockUp uint64,
 	owner codec.Address,
@@ -271,13 +271,8 @@ func SetStake(
 	key := StakeKey(stake)
 	v := make([]byte, consts.NodeIDLen+(2*consts.Uint64Len)+codec.AddressLen) // Calculate the length of the encoded data
 
-	id, err := ids.ToNodeID(nodeID)
-	if err != nil {
-		return err
-	}
-
 	offset := 0
-	copy(v[offset:], id[:])
+	copy(v[offset:], nodeID[:])
 	offset += consts.NodeIDLen
 
 	binary.BigEndian.PutUint64(v[offset:], stakedAmount)
