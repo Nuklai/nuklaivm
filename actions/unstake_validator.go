@@ -30,9 +30,9 @@ func (*UnstakeValidator) GetTypeID() uint8 {
 	return mconsts.UnstakeValidatorID
 }
 
-func (u *UnstakeValidator) StateKeys(auth chain.Auth, _ ids.ID) []string {
+func (u *UnstakeValidator) StateKeys(actor codec.Address, _ ids.ID) []string {
 	return []string{
-		string(storage.BalanceKey(auth.Actor())),
+		string(storage.BalanceKey(actor)),
 		string(storage.StakeKey(u.Stake)),
 	}
 }
@@ -50,7 +50,7 @@ func (u *UnstakeValidator) Execute(
 	_ chain.Rules,
 	mu state.Mutable,
 	_ int64,
-	auth chain.Auth,
+	actor codec.Address,
 	_ ids.ID,
 	_ bool,
 ) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
@@ -61,7 +61,7 @@ func (u *UnstakeValidator) Execute(
 	if !exists {
 		return false, UnstakeValidatorComputeUnits, OutputStakeMissing, nil, nil
 	}
-	if owner != auth.Actor() {
+	if owner != actor {
 		return false, UnstakeValidatorComputeUnits, OutputUnauthorized, nil, nil
 	}
 	if !bytes.Equal(nodeIDStaked.Bytes(), u.NodeID) {

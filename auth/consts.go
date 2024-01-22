@@ -13,7 +13,7 @@ import (
 const (
 	ED25519ComputeUnits   = 5
 	ED25519Size           = ed25519.PublicKeyLen + ed25519.SignatureLen
-	SECP256R1ComputeUnits = 10
+	SECP256R1ComputeUnits = 10 // can't be batched like ed25519
 	SECP256R1Size         = secp256r1.PublicKeyLen + secp256r1.SignatureLen
 )
 

@@ -17,7 +17,7 @@ if ! [[ "$0" =~ scripts/run.sh ]]; then
   exit 255
 fi
 
-VERSION=v1.10.15
+VERSION=v1.10.18
 MAX_UINT64=18446744073709551615
 MODE=${MODE:-run}
 AGO_LOGLEVEL=${AGO_LOGLEVEL:-info}
@@ -151,10 +151,10 @@ cat <<EOF > ${TMPDIR}/nuklaivm.config
   "mempoolSize": 10000000,
   "mempoolSponsorSize": 10000000,
   "mempoolExemptSponsors":["${ADDRESS}"],
-  "signatureVerificationCores": 2,
+  "authVerificationCores": 2,
   "rootGenerationCores": 2,
   "transactionExecutionCores": 2,
-  "verifySignatures":true,
+  "verifyAuth":true,
   "storeTransactions": ${STORE_TXS},
   "streamingBacklogSize": 10000000,
   "logLevel": "${LOGLEVEL}",
