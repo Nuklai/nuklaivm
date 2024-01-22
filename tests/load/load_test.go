@@ -1,8 +1,6 @@
 // Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-// Copyright (C) 2023, AllianceBlock. All rights reserved.
-// See the file LICENSE for licensing terms.
 package load_test
 
 import (
