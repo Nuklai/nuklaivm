@@ -122,8 +122,6 @@ func (e *Emission) GetRewardsPerBlock() uint64 {
 }
 
 // StakeValidator stakes the validator
-//
-//nolint:interfacer
 func (e *Emission) StakeToValidator(txID ids.ID, actor codec.Address, currentValidators map[ids.NodeID]*validators.GetValidatorOutput, startLockUp uint64, action *actions.StakeValidator) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
