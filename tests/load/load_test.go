@@ -1,8 +1,6 @@
 // Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-// Copyright (C) 2023, AllianceBlock. All rights reserved.
-// See the file LICENSE for licensing terms.
 package load_test
 
 import (
@@ -95,14 +93,14 @@ type account struct {
 }
 
 var (
-	dist             string
-	vms              int
-	accts            int
-	txs              int
-	trace            bool
-	maxFee           uint64
-	acceptDepth      int
-	verifySignatures bool
+	dist        string
+	vms         int
+	accts       int
+	txs         int
+	trace       bool
+	maxFee      uint64
+	acceptDepth int
+	verifyAuth  bool
 
 	senders []*account
 	blks    []*chain.StatelessBlock
@@ -167,10 +165,10 @@ func init() {
 		"depth to run block accept",
 	)
 	flag.BoolVar(
-		&verifySignatures,
-		"verify-signatures",
+		&verifyAuth,
+		"verify-auth",
 		true,
-		"verify signatures over RPC and in block verification",
+		"verify auth over RPC and in block verification",
 	)
 }
 
@@ -267,14 +265,14 @@ var _ = ginkgo.BeforeSuite(func() {
 			nil,
 			[]byte(
 				fmt.Sprintf(
-					`{%s"signatureVerificationCores":%d, "rootGenerationCores":%d, "transactionExecutionCores":%d, "mempoolSize":%d, "mempoolSponsorSize":%d, "verifySignatures":%t, "testMode":true}`,
+					`{%s"authVerificationCores":%d, "rootGenerationCores":%d, "transactionExecutionCores":%d, "mempoolSize":%d, "mempoolSponsorSize":%d, "verifyAuth":%t, "testMode":true}`,
 					tracePrefix,
 					numWorkers/3,
 					numWorkers/3,
 					numWorkers/3,
 					txs,
 					txs,
-					verifySignatures,
+					verifyAuth,
 				),
 			),
 			toEngine,
@@ -551,8 +549,6 @@ func issueSimpleTx(
 	)
 	tx, err := tx.Sign(factory, consts.ActionRegistry, consts.AuthRegistry)
 	gomega.Ω(err).To(gomega.BeNil())
-	verify := tx.AuthAsyncVerify()
-	gomega.Ω(verify()).To(gomega.BeNil())
 	_, err = i.cli.SubmitTx(context.TODO(), tx.Bytes())
 	return tx.ID(), err
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2023, AllianceBlock. All rights reserved.
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package registry
@@ -29,6 +29,7 @@ func init() {
 		// When registering new auth, ALWAYS make sure to append at the end.
 		consts.AuthRegistry.Register((&auth.ED25519{}).GetTypeID(), auth.UnmarshalED25519, false),
 		consts.AuthRegistry.Register((&auth.SECP256R1{}).GetTypeID(), auth.UnmarshalSECP256R1, false),
+		consts.AuthRegistry.Register((&auth.BLS{}).GetTypeID(), auth.UnmarshalBLS, false),
 	)
 	if errs.Errored() {
 		panic(errs.Err)

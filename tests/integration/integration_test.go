@@ -1,4 +1,4 @@
-// Copyright (C) 2023, AllianceBlock. All rights reserved.
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package integration_test
@@ -377,7 +377,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			// 0 timestamp)
 			msg, err := tx.Digest()
 			gomega.Ω(err).To(gomega.BeNil())
-			auth, err := factory.Sign(msg, tx.Action)
+			auth, err := factory.Sign(msg)
 			gomega.Ω(err).To(gomega.BeNil())
 			tx.Auth = auth
 			p := codec.NewWriter(0, consts.MaxInt) // test codec growth

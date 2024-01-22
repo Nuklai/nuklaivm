@@ -1,4 +1,4 @@
-// Copyright (C) 2023, AllianceBlock. All rights reserved.
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package cmd
@@ -21,10 +21,12 @@ import (
 )
 
 // sendAndWait may not be used concurrently
+//
+//nolint:unparam
 func sendAndWait(
 	ctx context.Context, _ *warp.Message, action chain.Action, cli *rpc.JSONRPCClient,
 	bcli *brpc.JSONRPCClient, ws *rpc.WebSocketClient, factory chain.AuthFactory, printStatus bool,
-) (bool, ids.ID, error) { //nolint:unparam
+) (bool, ids.ID, error) {
 	parser, err := bcli.Parser(ctx)
 	if err != nil {
 		return false, ids.Empty, err

@@ -30,9 +30,9 @@ func (*StakeValidator) GetTypeID() uint8 {
 	return mconsts.StakeValidatorID
 }
 
-func (*StakeValidator) StateKeys(auth chain.Auth, txID ids.ID) []string {
+func (*StakeValidator) StateKeys(actor codec.Address, txID ids.ID) []string {
 	return []string{
-		string(storage.BalanceKey(auth.Actor())),
+		string(storage.BalanceKey(actor)),
 		string(storage.StakeKey(txID)),
 	}
 }
@@ -50,7 +50,7 @@ func (s *StakeValidator) Execute(
 	_ chain.Rules,
 	mu state.Mutable,
 	_ int64,
-	auth chain.Auth,
+	actor codec.Address,
 	txID ids.ID,
 	_ bool,
 ) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
@@ -61,10 +61,10 @@ func (s *StakeValidator) Execute(
 	if err != nil {
 		return false, StakeValidatorComputeUnits, OutputInvalidNodeID, nil, nil
 	}
-	if err := storage.SubBalance(ctx, mu, auth.Actor(), s.StakedAmount); err != nil {
+	if err := storage.SubBalance(ctx, mu, actor, s.StakedAmount); err != nil {
 		return false, StakeValidatorComputeUnits, utils.ErrBytes(err), nil, nil
 	}
-	if err := storage.SetStake(ctx, mu, txID, nodeID, s.StakedAmount, s.EndLockUp, auth.Actor()); err != nil {
+	if err := storage.SetStake(ctx, mu, txID, nodeID, s.StakedAmount, s.EndLockUp, actor); err != nil {
 		return false, StakeValidatorComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 	return true, StakeValidatorComputeUnits, nil, nil, nil

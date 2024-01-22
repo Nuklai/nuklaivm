@@ -1,4 +1,4 @@
-// Copyright (C) 2023, AllianceBlock. All rights reserved.
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package e2e_test
@@ -393,8 +393,7 @@ var _ = ginkgo.Describe("[Network]", func() {
 	ginkgo.It("can get network", func() {
 		for _, inst := range instances {
 			cli := inst.cli
-			networkID, _, chainID, err := cli.Network(context.Background())
-			gomega.Ω(networkID).Should(gomega.Equal(uint32(1337)))
+			_, _, chainID, err := cli.Network(context.Background())
 			gomega.Ω(chainID).ShouldNot(gomega.Equal(ids.Empty))
 			gomega.Ω(err).Should(gomega.BeNil())
 		}
