@@ -16,7 +16,7 @@ import (
 	"github.com/ava-labs/hypersdk/utils"
 	"github.com/nuklai/nuklaivm/storage"
 
-	mconsts "github.com/nuklai/nuklaivm/consts"
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 var _ chain.Action = (*UnstakeValidator)(nil)
@@ -27,12 +27,12 @@ type UnstakeValidator struct {
 }
 
 func (*UnstakeValidator) GetTypeID() uint8 {
-	return mconsts.UnstakeValidatorID
+	return nconsts.UnstakeValidatorID
 }
 
 func (u *UnstakeValidator) StateKeys(actor codec.Address, _ ids.ID) []string {
 	return []string{
-		string(storage.BalanceKey(actor)),
+		string(storage.BalanceKey(actor, ids.Empty)),
 		string(storage.StakeKey(u.Stake)),
 	}
 }
@@ -75,7 +75,7 @@ func (*UnstakeValidator) MaxComputeUnits(chain.Rules) uint64 {
 }
 
 func (*UnstakeValidator) Size() int {
-	return consts.IDLen
+	return consts.IDLen + consts.NodeIDLen
 }
 
 func (u *UnstakeValidator) Marshal(p *codec.Packer) {

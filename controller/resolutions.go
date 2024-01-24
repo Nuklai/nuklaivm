@@ -35,11 +35,19 @@ func (c *Controller) GetTransaction(
 	return storage.GetTransaction(ctx, c.metaDB, txID)
 }
 
+func (c *Controller) GetAssetFromState(
+	ctx context.Context,
+	asset ids.ID,
+) (bool, []byte, uint8, []byte, uint64, codec.Address, bool, error) {
+	return storage.GetAssetFromState(ctx, c.inner.ReadState, asset)
+}
+
 func (c *Controller) GetBalanceFromState(
 	ctx context.Context,
-	acct codec.Address,
+	addr codec.Address,
+	asset ids.ID,
 ) (uint64, error) {
-	return storage.GetBalanceFromState(ctx, c.inner.ReadState, acct)
+	return storage.GetBalanceFromState(ctx, c.inner.ReadState, addr, asset)
 }
 
 func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, error) {

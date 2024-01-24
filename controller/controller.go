@@ -26,7 +26,7 @@ import (
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/auth"
 	"github.com/nuklai/nuklaivm/config"
-	"github.com/nuklai/nuklaivm/consts"
+	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/rpc"
@@ -42,7 +42,7 @@ type Controller struct {
 	snowCtx      *snow.Context
 	genesis      *genesis.Genesis
 	config       *config.Config
-	stateManager *storage.StateManager
+	stateManager *StateManager
 
 	metrics *metrics
 
@@ -77,7 +77,7 @@ func (c *Controller) Initialize(
 ) {
 	c.inner = inner
 	c.snowCtx = snowCtx
-	c.stateManager = &storage.StateManager{}
+	c.stateManager = &StateManager{}
 
 	// Instantiate metrics
 	var err error
@@ -116,7 +116,7 @@ func (c *Controller) Initialize(
 	// initialize custom handlers here.
 	apis := map[string]http.Handler{}
 	jsonRPCHandler, err := hrpc.NewJSONRPCHandler(
-		consts.Name,
+		nconsts.Name,
 		rpc.NewJSONRPCServer(c),
 	)
 	if err != nil {
@@ -136,6 +136,11 @@ func (c *Controller) Initialize(
 	} else {
 		build = builder.NewTime(inner)
 		gcfg := gossiper.DefaultProposerConfig()
+		gcfg.GossipMaxSize = c.config.GossipMaxSize
+		gcfg.GossipProposerDiff = c.config.GossipProposerDiff
+		gcfg.GossipProposerDepth = c.config.GossipProposerDepth
+		gcfg.NoGossipBuilderDiff = c.config.NoGossipBuilderDiff
+		gcfg.VerifyTimeout = c.config.VerifyTimeout
 		gossip, err = gossiper.NewProposer(inner, gcfg)
 		if err != nil {
 			return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
@@ -150,7 +155,7 @@ func (c *Controller) Initialize(
 	// Initialize emission
 	c.emission = emission.New(c, c.genesis.MaxSupply, c.genesis.RewardsPerBlock, currentValidators)
 
-	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, consts.ActionRegistry, consts.AuthRegistry, auth.Engines(), nil
+	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, nconsts.ActionRegistry, nconsts.AuthRegistry, auth.Engines(), nil
 }
 
 func (c *Controller) Rules(t int64) chain.Rules {
@@ -228,7 +233,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 						break
 					}
 					// We exit early if the staked amount cannot be added to the user balance
-					if err := storage.AddBalance(ctx, mu, owner, stakedAmount, true); err != nil {
+					if err := storage.AddBalance(ctx, mu, owner, ids.Empty, stakedAmount, true); err != nil {
 						c.inner.Logger().Error("failed to add the staked amount to the user balance", zap.Error(err))
 						break
 					}
@@ -245,7 +250,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 	for i := 0; i < len(unitsConsumed); i++ {
 		totalFee += unitsConsumed[i] * unitPrices[i]
 	}
-	emissionAddr, err := codec.ParseAddressBech32(consts.HRP, c.genesis.EmissionAddress)
+	emissionAddr, err := codec.ParseAddressBech32(nconsts.HRP, c.genesis.EmissionAddress)
 	if err != nil {
 		return err
 	}

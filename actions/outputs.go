@@ -4,7 +4,8 @@
 package actions
 
 var (
-	OutputValueZero = []byte("value is zero")
+	OutputValueZero    = []byte("value is zero")
+	OutputMemoTooLarge = []byte("memo is too large")
 
 	OutputStakedAmountZero          = []byte("staked amount is zero")
 	OutputLockupPeriodInvalid       = []byte("lockup period is invalid")

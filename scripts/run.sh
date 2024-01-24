@@ -117,6 +117,10 @@ find ${TMPDIR}/avalanchego-${VERSION}
 ############################
 
 # Always create allocations (linter doesn't like tab)
+#
+# Make sure to replace this address with your own address
+# if you are starting your own devnet (otherwise anyone can access
+# funds using the included demo.pk)
 echo "creating allocations file"
 cat <<EOF > ${TMPDIR}/allocations.json
 [

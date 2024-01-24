@@ -19,7 +19,7 @@ import (
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/auth"
 	"github.com/nuklai/nuklaivm/consts"
-	brpc "github.com/nuklai/nuklaivm/rpc"
+	nrpc "github.com/nuklai/nuklaivm/rpc"
 	"github.com/spf13/cobra"
 )
 
@@ -56,8 +56,8 @@ var runSpamCmd = &cobra.Command{
 		return checkKeyType(args[0])
 	},
 	RunE: func(_ *cobra.Command, args []string) error {
-		var bclient *brpc.JSONRPCClient
 		var wclient *rpc.WebSocketClient
+		var nclient *nrpc.JSONRPCClient
 		var maxFeeParsed *uint64
 		if maxFee >= 0 {
 			v := uint64(maxFee)
@@ -65,7 +65,7 @@ var runSpamCmd = &cobra.Command{
 		}
 		return handler.Root().Spam(maxTxBacklog, maxFeeParsed, randomRecipient,
 			func(uri string, networkID uint32, chainID ids.ID) error { // createClient
-				bclient = brpc.NewJSONRPCClient(uri, networkID, chainID)
+				nclient = nrpc.NewJSONRPCClient(uri, networkID, chainID)
 				ws, err := rpc.NewWebSocketClient(uri, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
 				if err != nil {
 					return err
@@ -78,7 +78,7 @@ var runSpamCmd = &cobra.Command{
 				return generatePrivateKey(args[0])
 			},
 			func(choice int, address string) (uint64, error) { // lookupBalance
-				balance, err := bclient.Balance(context.TODO(), address)
+				balance, err := nclient.Balance(context.TODO(), address, ids.Empty)
 				if err != nil {
 					return 0, err
 				}
@@ -92,11 +92,12 @@ var runSpamCmd = &cobra.Command{
 				return balance, err
 			},
 			func(ctx context.Context, chainID ids.ID) (chain.Parser, error) { // getParser
-				return bclient.Parser(ctx)
+				return nclient.Parser(ctx)
 			},
 			func(addr codec.Address, amount uint64) chain.Action { // getTransfer
 				return &actions.Transfer{
 					To:    addr,
+					Asset: ids.Empty,
 					Value: amount,
 				}
 			},
@@ -109,7 +110,7 @@ var runSpamCmd = &cobra.Command{
 					_, _, err = sendAndWait(ictx, nil, &actions.Transfer{
 						To:    priv.Address,
 						Value: count, // prevent duplicate txs
-					}, cli, bclient, wclient, factory, false)
+					}, cli, wclient, nclient, factory, false)
 					return err
 				}
 			},

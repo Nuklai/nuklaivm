@@ -46,7 +46,7 @@ import (
 	"github.com/ava-labs/hypersdk/rpc"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/auth"
-	"github.com/nuklai/nuklaivm/consts"
+	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/controller"
 	"github.com/nuklai/nuklaivm/genesis"
 	nrpc "github.com/nuklai/nuklaivm/rpc"
@@ -100,7 +100,6 @@ var (
 	trace       bool
 	maxFee      uint64
 	acceptDepth int
-	verifyAuth  bool
 
 	senders []*account
 	blks    []*chain.StatelessBlock
@@ -164,17 +163,11 @@ func init() {
 		1,
 		"depth to run block accept",
 	)
-	flag.BoolVar(
-		&verifyAuth,
-		"verify-auth",
-		true,
-		"verify auth over RPC and in block verification",
-	)
 }
 
 func TestLoad(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "nuklaivm load test suites")
+	ginkgo.RunSpecs(t, "indexvm load test suites")
 }
 
 var _ = ginkgo.BeforeSuite(func() {
@@ -185,7 +178,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	priv, err := ed25519.GeneratePrivateKey()
 	gomega.Ω(err).Should(gomega.BeNil())
 	rsender := auth.NewED25519Address(priv.PublicKey())
-	sender := codec.MustAddressBech32(consts.HRP, rsender)
+	sender := codec.MustAddressBech32(nconsts.HRP, rsender)
 	root = &account{priv, auth.NewED25519Factory(priv), rsender, sender}
 	log.Debug(
 		"generated root key",
@@ -265,14 +258,13 @@ var _ = ginkgo.BeforeSuite(func() {
 			nil,
 			[]byte(
 				fmt.Sprintf(
-					`{%s"authVerificationCores":%d, "rootGenerationCores":%d, "transactionExecutionCores":%d, "mempoolSize":%d, "mempoolSponsorSize":%d, "verifyAuth":%t, "testMode":true}`,
+					`{%s"authVerificationCores":%d, "rootGenerationCores":%d, "transactionExecutionCores":%d, "mempoolSize":%d, "mempoolSponsorSize":%d, "testMode":true}`,
 					tracePrefix,
 					numWorkers/3,
 					numWorkers/3,
 					numWorkers/3,
 					txs,
 					txs,
-					verifyAuth,
 				),
 			),
 			toEngine,
@@ -310,7 +302,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 
 		for _, alloc := range g.CustomAllocation {
-			bal, err := cli.Balance(context.Background(), alloc.Address)
+			bal, err := cli.Balance(context.Background(), alloc.Address, ids.Empty)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(bal).Should(gomega.Equal(alloc.Balance))
 		}
@@ -382,7 +374,7 @@ var _ = ginkgo.Describe("load tests vm", func() {
 				tpriv, err := ed25519.GeneratePrivateKey()
 				gomega.Ω(err).Should(gomega.BeNil())
 				trsender := auth.NewED25519Address(tpriv.PublicKey())
-				tsender := codec.MustAddressBech32(consts.HRP, trsender)
+				tsender := codec.MustAddressBech32(nconsts.HRP, trsender)
 				senders[i] = &account{tpriv, auth.NewED25519Factory(tpriv), trsender, tsender}
 			}
 		})
@@ -423,7 +415,7 @@ var _ = ginkgo.Describe("load tests vm", func() {
 				}
 			}
 
-			gomega.Ω(len(requiredTxs)).To(gomega.BeZero())
+			gomega.Ω(requiredTxs).To(gomega.BeEmpty())
 		})
 	})
 
@@ -437,7 +429,6 @@ var _ = ginkgo.Describe("load tests vm", func() {
 			gomega.Ω(err).Should(gomega.BeNil())
 			for i := 0; i < txs; i++ {
 				j.Go(func() error {
-					// TODO make this way more efficient
 					var txID ids.ID
 					for {
 						// It is ok if a transfer is to self
@@ -497,7 +488,7 @@ var _ = ginkgo.Describe("load tests vm", func() {
 			}
 
 			// Ensure all transactions included in a block
-			gomega.Ω(len(allTxs)).To(gomega.BeZero())
+			gomega.Ω(allTxs).To(gomega.BeEmpty())
 			blockGen = time.Since(start)
 		})
 	})
@@ -547,7 +538,7 @@ func issueSimpleTx(
 			Value: amount,
 		},
 	)
-	tx, err := tx.Sign(factory, consts.ActionRegistry, consts.AuthRegistry)
+	tx, err := tx.Sign(factory, nconsts.ActionRegistry, nconsts.AuthRegistry)
 	gomega.Ω(err).To(gomega.BeNil())
 	_, err = i.cli.SubmitTx(context.TODO(), tx.Bytes())
 	return tx.ID(), err

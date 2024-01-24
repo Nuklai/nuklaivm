@@ -32,6 +32,12 @@ sudo chown 777 /data/github/tmp/nuklaivm
 ./scripts/run.sh;
 ```
 
+You can also choose to skip tests by doing
+
+```bash
+./scripts/run.sh --ginkgo.skip
+```
+
 When the Subnet is running, you'll see the following logs emitted:
 
 ```

@@ -269,7 +269,7 @@ func (e *Emission) MintNewNAI(ctx context.Context, mu *state.SimpleMutable, emis
 	totalStaked := e.totalStaked()
 	// No validators to distribute rewards to if totalStaked is 0
 	if totalStaked == 0 {
-		if err := storage.AddBalance(ctx, mu, emissionAddr, mintNewNAI, true); err != nil {
+		if err := storage.AddBalance(ctx, mu, emissionAddr, ids.Empty, mintNewNAI, true); err != nil {
 			return 0, err
 		}
 		if err := mu.Commit(ctx); err != nil {
@@ -299,7 +299,7 @@ func (e *Emission) DistributeFees(ctx context.Context, mu *state.SimpleMutable, 
 	feesForValidators := fee - feesForEmission
 
 	// Give 50% fees to Emission
-	if err := storage.AddBalance(ctx, mu, emissionAddr, feesForEmission, true); err != nil {
+	if err := storage.AddBalance(ctx, mu, emissionAddr, ids.Empty, feesForEmission, true); err != nil {
 		return err
 	}
 	if err := mu.Commit(ctx); err != nil {
@@ -358,10 +358,10 @@ func (e *Emission) ClaimRewards(ctx context.Context, mu *state.SimpleMutable, em
 	claimedRewards := validator.StakedReward
 	validator.StakedReward = 0
 
-	if err := storage.SubBalance(ctx, mu, emissionAddr, claimedRewards); err != nil {
+	if err := storage.SubBalance(ctx, mu, emissionAddr, ids.Empty, claimedRewards); err != nil {
 		return 0, err
 	}
-	if err := storage.AddBalance(ctx, mu, toAddress, claimedRewards, true); err != nil {
+	if err := storage.AddBalance(ctx, mu, toAddress, ids.Empty, claimedRewards, true); err != nil {
 		return 0, err
 	}
 	if err := mu.Commit(ctx); err != nil {

@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/profiler"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/config"
+	"github.com/ava-labs/hypersdk/gossiper"
 	"github.com/ava-labs/hypersdk/trace"
 	"github.com/ava-labs/hypersdk/vm"
 
@@ -36,6 +37,13 @@ type Config struct {
 	AuthVerificationCores     int `json:"authVerificationCores"`
 	RootGenerationCores       int `json:"rootGenerationCores"`
 	TransactionExecutionCores int `json:"transactionExecutionCores"`
+
+	// Gossip
+	GossipMaxSize       int   `json:"gossipMaxSize"`
+	GossipProposerDiff  int   `json:"gossipProposerDiff"`
+	GossipProposerDepth int   `json:"gossipProposerDepth"`
+	NoGossipBuilderDiff int   `json:"noGossipBuilderDiff"`
+	VerifyTimeout       int64 `json:"verifyTimeout"`
 
 	// Tracing
 	TraceEnabled    bool    `json:"traceEnabled"`
@@ -91,6 +99,12 @@ func New(nodeID ids.NodeID, b []byte) (*Config, error) {
 
 func (c *Config) setDefault() {
 	c.LogLevel = c.Config.GetLogLevel()
+	gcfg := gossiper.DefaultProposerConfig()
+	c.GossipMaxSize = gcfg.GossipMaxSize
+	c.GossipProposerDiff = gcfg.GossipProposerDiff
+	c.GossipProposerDepth = gcfg.GossipProposerDepth
+	c.NoGossipBuilderDiff = gcfg.NoGossipBuilderDiff
+	c.VerifyTimeout = gcfg.VerifyTimeout
 	c.AuthVerificationCores = c.Config.GetAuthVerificationCores()
 	c.RootGenerationCores = c.Config.GetRootGenerationCores()
 	c.TransactionExecutionCores = c.Config.GetTransactionExecutionCores()
@@ -126,7 +140,7 @@ func (c *Config) GetContinuousProfilerConfig() *profiler.Config {
 		return &profiler.Config{Enabled: false}
 	}
 	// Replace all instances of "*" with nodeID. This is useful when
-	// running multiple instances of morpheusvm on the same machine.
+	// running multiple instances of tokenvm on the same machine.
 	c.ContinuousProfilerDir = strings.ReplaceAll(c.ContinuousProfilerDir, "*", c.nodeID.String())
 	return &profiler.Config{
 		Enabled:     true,

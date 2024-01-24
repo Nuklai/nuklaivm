@@ -15,7 +15,7 @@ import (
 	"github.com/ava-labs/hypersdk/utils"
 	"github.com/nuklai/nuklaivm/storage"
 
-	mconsts "github.com/nuklai/nuklaivm/consts"
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 var _ chain.Action = (*StakeValidator)(nil)
@@ -27,12 +27,12 @@ type StakeValidator struct {
 }
 
 func (*StakeValidator) GetTypeID() uint8 {
-	return mconsts.StakeValidatorID
+	return nconsts.StakeValidatorID
 }
 
 func (*StakeValidator) StateKeys(actor codec.Address, txID ids.ID) []string {
 	return []string{
-		string(storage.BalanceKey(actor)),
+		string(storage.BalanceKey(actor, ids.Empty)),
 		string(storage.StakeKey(txID)),
 	}
 }
@@ -61,7 +61,7 @@ func (s *StakeValidator) Execute(
 	if err != nil {
 		return false, StakeValidatorComputeUnits, OutputInvalidNodeID, nil, nil
 	}
-	if err := storage.SubBalance(ctx, mu, actor, s.StakedAmount); err != nil {
+	if err := storage.SubBalance(ctx, mu, actor, ids.Empty, s.StakedAmount); err != nil {
 		return false, StakeValidatorComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 	if err := storage.SetStake(ctx, mu, txID, nodeID, s.StakedAmount, s.EndLockUp, actor); err != nil {
@@ -75,7 +75,7 @@ func (*StakeValidator) MaxComputeUnits(chain.Rules) uint64 {
 }
 
 func (*StakeValidator) Size() int {
-	return consts.NodeIDLen + (4 * consts.Uint64Len) + codec.AddressLen
+	return consts.NodeIDLen + 2*consts.Uint64Len
 }
 
 func (s *StakeValidator) Marshal(p *codec.Packer) {

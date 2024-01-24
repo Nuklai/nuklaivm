@@ -17,8 +17,8 @@ import (
 	"github.com/ava-labs/hypersdk/utils"
 	"github.com/btcsuite/btcd/btcutil/bech32"
 	"github.com/nuklai/nuklaivm/auth"
-	"github.com/nuklai/nuklaivm/consts"
-	brpc "github.com/nuklai/nuklaivm/rpc"
+	nconsts "github.com/nuklai/nuklaivm/consts"
+	nrpc "github.com/nuklai/nuklaivm/rpc"
 	"github.com/spf13/cobra"
 )
 
@@ -39,11 +39,11 @@ func checkKeyType(k string) error {
 
 func getKeyType(addr codec.Address) (string, error) {
 	switch addr[0] {
-	case consts.ED25519ID:
+	case nconsts.ED25519ID:
 		return ed25519Key, nil
-	case consts.SECP256R1ID:
+	case nconsts.SECP256R1ID:
 		return secp256r1Key, nil
-	case consts.BLSID:
+	case nconsts.BLSID:
 		return blsKey, nil
 	default:
 		return "", ErrInvalidKeyType
@@ -153,7 +153,7 @@ var genKeyCmd = &cobra.Command{
 		}
 		utils.Outf(
 			"{{green}}created address:{{/}} %s",
-			codec.MustAddressBech32(consts.HRP, priv.Address),
+			codec.MustAddressBech32(nconsts.HRP, priv.Address),
 		)
 		return nil
 	},
@@ -180,7 +180,7 @@ var importKeyCmd = &cobra.Command{
 		}
 		utils.Outf(
 			"{{green}}imported address:{{/}} %s",
-			codec.MustAddressBech32(consts.HRP, priv.Address),
+			codec.MustAddressBech32(nconsts.HRP, priv.Address),
 		)
 		return nil
 	},
@@ -188,26 +188,34 @@ var importKeyCmd = &cobra.Command{
 
 func lookupSetKeyBalance(choice int, address string, uri string, networkID uint32, chainID ids.ID) error {
 	// TODO: just load once
-	cli := brpc.NewJSONRPCClient(uri, networkID, chainID)
-	balance, err := cli.Balance(context.TODO(), address)
+	cli := nrpc.NewJSONRPCClient(uri, networkID, chainID)
+	balance, err := cli.Balance(context.TODO(), address, ids.Empty)
 	if err != nil {
 		return err
 	}
-	addr, err := codec.ParseAddressBech32(consts.HRP, address)
-	if err != nil {
-		return err
-	}
-	keyType, err := getKeyType(addr)
-	if err != nil {
-		return err
-	}
+	/* 	addr, err := codec.ParseAddressBech32(nconsts.HRP, address)
+	   	if err != nil {
+	   		return err
+	   	}
+	   	keyType, err := getKeyType(addr)
+	   	if err != nil {
+	   		return err
+	   	}
+	   	utils.Outf(
+	   		"%d) {{cyan}}address (%s):{{/}} %s {{cyan}}balance:{{/}} %s %s\n",
+	   		choice,
+	   		keyType,
+	   		address,
+	   		utils.FormatBalance(balance, nconsts.Decimals),
+	   		nconsts.Symbol,
+	   	)
+	*/
 	utils.Outf(
-		"%d) {{cyan}}address (%s):{{/}} %s {{cyan}}balance:{{/}} %s %s\n",
+		"%d) {{cyan}}address:{{/}} %s {{cyan}}balance:{{/}} %s %s\n",
 		choice,
-		keyType,
 		address,
-		utils.FormatBalance(balance, consts.Decimals),
-		consts.Symbol,
+		utils.FormatBalance(balance, nconsts.Decimals),
+		nconsts.Symbol,
 	)
 	return nil
 }
@@ -219,8 +227,10 @@ var setKeyCmd = &cobra.Command{
 	},
 }
 
-func lookupKeyBalance(addr codec.Address, uri string, networkID uint32, chainID ids.ID, _ ids.ID) error {
-	_, err := handler.GetBalance(context.TODO(), brpc.NewJSONRPCClient(uri, networkID, chainID), addr)
+func lookupKeyBalance(addr codec.Address, uri string, networkID uint32, chainID ids.ID, assetID ids.ID) error {
+	_, _, _, _, err := handler.GetAssetInfo(
+		context.TODO(), nrpc.NewJSONRPCClient(uri, networkID, chainID),
+		addr, assetID, true)
 	return err
 }
 
@@ -228,9 +238,9 @@ var balanceKeyCmd = &cobra.Command{
 	Use: "balance [address]",
 	RunE: func(_ *cobra.Command, args []string) error {
 		if len(args) != 1 {
-			return handler.Root().Balance(checkAllChains, false, lookupKeyBalance)
+			return handler.Root().Balance(checkAllChains, true, lookupKeyBalance)
 		}
-		addr, err := codec.ParseAddressBech32(consts.HRP, args[0])
+		addr, err := codec.ParseAddressBech32(nconsts.HRP, args[0])
 		if err != nil {
 			return err
 		}
@@ -239,8 +249,12 @@ var balanceKeyCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		assetID, err := handler.h.PromptAsset("assetID", true)
+		if err != nil {
+			return err
+		}
 		for _, cli := range clients {
-			if _, err := handler.GetBalance(context.TODO(), cli, addr); err != nil {
+			if _, _, _, _, err := handler.GetAssetInfo(context.TODO(), cli, addr, assetID, true); err != nil {
 				return err
 			}
 		}
@@ -275,7 +289,7 @@ var vanityAddressCmd = &cobra.Command{
 		}
 
 		// Encode to Bech32
-		bech32Addr, err := bech32.Encode(consts.HRP, data5Bit)
+		bech32Addr, err := bech32.Encode(nconsts.HRP, data5Bit)
 		if err != nil {
 			return err
 		}

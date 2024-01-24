@@ -26,13 +26,17 @@ var transferCmd = &cobra.Command{
 	Use: "transfer",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, priv, factory, cli, bcli, ws, err := handler.DefaultActor()
+		_, priv, factory, cli, ncli, ws, err := handler.DefaultActor()
 		if err != nil {
 			return err
 		}
 
-		// Get balance info
-		balance, err := handler.GetBalance(ctx, bcli, priv.Address)
+		// Select token to send
+		assetID, err := handler.Root().PromptAsset("assetID", true)
+		if err != nil {
+			return err
+		}
+		_, decimals, balance, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, assetID, true)
 		if balance == 0 || err != nil {
 			return err
 		}
@@ -44,7 +48,7 @@ var transferCmd = &cobra.Command{
 		}
 
 		// Select amount
-		amount, err := handler.Root().PromptAmount("amount", nconsts.Decimals, balance, nil)
+		amount, err := handler.Root().PromptAmount("amount", decimals, balance, nil)
 		if err != nil {
 			return err
 		}
@@ -58,8 +62,9 @@ var transferCmd = &cobra.Command{
 		// Generate transaction
 		_, _, err = sendAndWait(ctx, nil, &actions.Transfer{
 			To:    recipient,
+			Asset: assetID,
 			Value: amount,
-		}, cli, bcli, ws, factory, true)
+		}, cli, ws, ncli, factory, true)
 		return err
 	},
 }
@@ -68,13 +73,13 @@ var stakeValidatorCmd = &cobra.Command{
 	Use: "stake-validator",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, priv, factory, cli, bcli, ws, err := handler.DefaultActor()
+		_, priv, factory, cli, ncli, ws, err := handler.DefaultActor()
 		if err != nil {
 			return err
 		}
 
 		// Get current list of validators
-		validators, err := bcli.Validators(ctx)
+		validators, err := ncli.Validators(ctx)
 		if err != nil {
 			return err
 		}
@@ -101,7 +106,7 @@ var stakeValidatorCmd = &cobra.Command{
 		nodeID := validatorChosen.NodeID
 
 		// Get balance info
-		balance, err := handler.GetBalance(ctx, bcli, priv.Address)
+		balance, err := handler.GetBalance(ctx, ncli, priv.Address, ids.Empty)
 		if balance == 0 || err != nil {
 			return err
 		}
@@ -129,7 +134,7 @@ var stakeValidatorCmd = &cobra.Command{
 			NodeID:       nodeID.Bytes(),
 			StakedAmount: stakedAmount,
 			EndLockUp:    uint64(endLockUp),
-		}, cli, bcli, ws, factory, true)
+		}, cli, ws, ncli, factory, true)
 		return err
 	},
 }
@@ -138,13 +143,13 @@ var unstakeValidatorCmd = &cobra.Command{
 	Use: "unstake-validator",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, priv, factory, cli, bcli, ws, err := handler.DefaultActor()
+		_, priv, factory, cli, ncli, ws, err := handler.DefaultActor()
 		if err != nil {
 			return err
 		}
 
 		// Get current list of validators
-		validators, err := bcli.Validators(ctx)
+		validators, err := ncli.Validators(ctx)
 		if err != nil {
 			return err
 		}
@@ -176,7 +181,7 @@ var unstakeValidatorCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		stake, err := bcli.UserStakeInfo(ctx, nodeID, owner)
+		stake, err := ncli.UserStakeInfo(ctx, nodeID, owner)
 		if err != nil {
 			return err
 		}
@@ -232,7 +237,7 @@ var unstakeValidatorCmd = &cobra.Command{
 		_, _, err = sendAndWait(ctx, nil, &actions.UnstakeValidator{
 			Stake:  stakeID,
 			NodeID: nodeID.Bytes(),
-		}, cli, bcli, ws, factory, true)
+		}, cli, ws, ncli, factory, true)
 		return err
 	},
 }

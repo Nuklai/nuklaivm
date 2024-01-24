@@ -13,28 +13,38 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/ava-labs/hypersdk/utils"
-	mconsts "github.com/nuklai/nuklaivm/consts"
+	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/storage"
 )
 
 var _ chain.Action = (*Transfer)(nil)
 
+const (
+	MaxMemoSize = 256
+)
+
 type Transfer struct {
 	// To is the recipient of the [Value].
 	To codec.Address `json:"to"`
 
+	// Asset to transfer to [To].
+	Asset ids.ID `json:"asset"`
+
 	// Amount are transferred to [To].
 	Value uint64 `json:"value"`
+
+	// Optional message to accompany transaction.
+	Memo []byte `json:"memo"`
 }
 
 func (*Transfer) GetTypeID() uint8 {
-	return mconsts.TransferID
+	return nconsts.TransferID
 }
 
 func (t *Transfer) StateKeys(actor codec.Address, _ ids.ID) []string {
 	return []string{
-		string(storage.BalanceKey(actor)),
-		string(storage.BalanceKey(t.To)),
+		string(storage.BalanceKey(actor, t.Asset)),
+		string(storage.BalanceKey(t.To, t.Asset)),
 	}
 }
 
@@ -56,38 +66,43 @@ func (t *Transfer) Execute(
 	_ bool,
 ) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
 	if t.Value == 0 {
-		return false, 1, OutputValueZero, nil, nil
+		return false, TransferComputeUnits, OutputValueZero, nil, nil
 	}
-	if err := storage.SubBalance(ctx, mu, actor, t.Value); err != nil {
-		return false, 1, utils.ErrBytes(err), nil, nil
+	if len(t.Memo) > MaxMemoSize {
+		return false, CreateAssetComputeUnits, OutputMemoTooLarge, nil, nil
 	}
-	if err := storage.AddBalance(ctx, mu, t.To, t.Value, true); err != nil {
-		return false, 1, utils.ErrBytes(err), nil, nil
+	if err := storage.SubBalance(ctx, mu, actor, t.Asset, t.Value); err != nil {
+		return false, TransferComputeUnits, utils.ErrBytes(err), nil, nil
 	}
-	return true, 1, nil, nil, nil
+	// TODO: allow sender to configure whether they will pay to create
+	if err := storage.AddBalance(ctx, mu, t.To, t.Asset, t.Value, true); err != nil {
+		return false, TransferComputeUnits, utils.ErrBytes(err), nil, nil
+	}
+	return true, TransferComputeUnits, nil, nil, nil
 }
 
 func (*Transfer) MaxComputeUnits(chain.Rules) uint64 {
 	return TransferComputeUnits
 }
 
-func (*Transfer) Size() int {
-	return codec.AddressLen + consts.Uint64Len
+func (t *Transfer) Size() int {
+	return codec.AddressLen + consts.IDLen + consts.Uint64Len + codec.BytesLen(t.Memo)
 }
 
 func (t *Transfer) Marshal(p *codec.Packer) {
 	p.PackAddress(t.To)
+	p.PackID(t.Asset)
 	p.PackUint64(t.Value)
+	p.PackBytes(t.Memo)
 }
 
 func UnmarshalTransfer(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
 	var transfer Transfer
-	p.UnpackAddress(&transfer.To) // we do not verify the typeID is valid
+	p.UnpackAddress(&transfer.To)
+	p.UnpackID(false, &transfer.Asset) // empty ID is the native asset
 	transfer.Value = p.UnpackUint64(true)
-	if err := p.Err(); err != nil {
-		return nil, err
-	}
-	return &transfer, nil
+	p.UnpackBytes(MaxMemoSize, false, &transfer.Memo)
+	return &transfer, p.Err()
 }
 
 func (*Transfer) ValidRange(chain.Rules) (int64, int64) {

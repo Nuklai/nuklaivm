@@ -10,7 +10,7 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/nuklai/nuklaivm/consts"
+	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 )
@@ -61,8 +61,42 @@ func (j *JSONRPCServer) Tx(req *http.Request, args *TxArgs, reply *TxReply) erro
 	return nil
 }
 
+type AssetArgs struct {
+	Asset ids.ID `json:"asset"`
+}
+
+type AssetReply struct {
+	Symbol   []byte `json:"symbol"`
+	Decimals uint8  `json:"decimals"`
+	Metadata []byte `json:"metadata"`
+	Supply   uint64 `json:"supply"`
+	Owner    string `json:"owner"`
+	Warp     bool   `json:"warp"`
+}
+
+func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetReply) error {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Asset")
+	defer span.End()
+
+	exists, symbol, decimals, metadata, supply, owner, warp, err := j.c.GetAssetFromState(ctx, args.Asset)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrAssetNotFound
+	}
+	reply.Symbol = symbol
+	reply.Decimals = decimals
+	reply.Metadata = metadata
+	reply.Supply = supply
+	reply.Owner = codec.MustAddressBech32(nconsts.HRP, owner)
+	reply.Warp = warp
+	return err
+}
+
 type BalanceArgs struct {
 	Address string `json:"address"`
+	Asset   ids.ID `json:"asset"`
 }
 
 type BalanceReply struct {
@@ -73,11 +107,11 @@ func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *Bal
 	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Balance")
 	defer span.End()
 
-	addr, err := codec.ParseAddressBech32(consts.HRP, args.Address)
+	addr, err := codec.ParseAddressBech32(nconsts.HRP, args.Address)
 	if err != nil {
 		return err
 	}
-	balance, err := j.c.GetBalanceFromState(ctx, addr)
+	balance, err := j.c.GetBalanceFromState(ctx, addr, args.Asset)
 	if err != nil {
 		return err
 	}
