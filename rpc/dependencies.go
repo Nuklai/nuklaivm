@@ -1,4 +1,4 @@
-// Copyright (C) 2023, AllianceBlock. All rights reserved.
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package rpc
@@ -20,6 +20,8 @@ type Controller interface {
 	GetTransaction(context.Context, ids.ID) (bool, int64, bool, chain.Dimensions, uint64, error)
 	GetAssetFromState(context.Context, ids.ID) (bool, []byte, uint8, []byte, uint64, codec.Address, bool, error)
 	GetBalanceFromState(context.Context, codec.Address, ids.ID) (uint64, error)
+	GetLoanFromState(context.Context, ids.ID, ids.ID) (uint64, error)
+
 	GetEmissionInfo() (uint64, uint64, uint64, error)
 	GetAllValidators() ([]*emission.Validator, error)
 	GetValidator(nodeID ids.NodeID) (*emission.Validator, error)

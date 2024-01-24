@@ -14,8 +14,9 @@ import (
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/state"
+
 	"github.com/nuklai/nuklaivm/actions"
-	"github.com/nuklai/nuklaivm/consts"
+	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/storage"
 )
 
@@ -136,7 +137,7 @@ func (e *Emission) StakeToValidator(txID ids.ID, actor codec.Address, currentVal
 		return ErrNotAValidator // Not a validator
 	}
 
-	stakeOwner := codec.MustAddressBech32(consts.HRP, actor)
+	stakeOwner := codec.MustAddressBech32(nconsts.HRP, actor)
 	validator, ok := e.validators[nodeID]
 	if !ok {
 		if len(e.validators) >= e.maxValidators {
@@ -184,7 +185,7 @@ func (e *Emission) UnstakeFromValidator(actor codec.Address, action *actions.Uns
 		return ErrInvalidNodeID // Invalid NodeID
 	}
 
-	stakeOwner := codec.MustAddressBech32(consts.HRP, actor)
+	stakeOwner := codec.MustAddressBech32(nconsts.HRP, actor)
 	validator, ok := e.validators[nodeID]
 	if !ok {
 		return ErrNotAValidator // Not a validator

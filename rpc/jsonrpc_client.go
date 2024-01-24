@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/hypersdk/requester"
 	"github.com/ava-labs/hypersdk/rpc"
 	"github.com/ava-labs/hypersdk/utils"
+
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
@@ -124,6 +125,24 @@ func (cli *JSONRPCClient) Balance(ctx context.Context, addr string, asset ids.ID
 		&BalanceArgs{
 			Address: addr,
 			Asset:   asset,
+		},
+		resp,
+	)
+	return resp.Amount, err
+}
+
+func (cli *JSONRPCClient) Loan(
+	ctx context.Context,
+	asset ids.ID,
+	destination ids.ID,
+) (uint64, error) {
+	resp := new(LoanReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"loan",
+		&LoanArgs{
+			Asset:       asset,
+			Destination: destination,
 		},
 		resp,
 	)

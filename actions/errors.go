@@ -1,11 +1,11 @@
 // Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-package genesis
+package actions
 
 import "errors"
 
 var (
-	ErrInvalidHRP    = errors.New("invalid HRP")
-	ErrInvalidTarget = errors.New("invalid target")
+	ErrFieldNotPopulated = []byte("field is not populated")
+	ErrNoSwapToFill      = errors.New("no swap to fill")
 )

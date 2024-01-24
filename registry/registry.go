@@ -11,25 +11,33 @@ import (
 
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/auth"
-	"github.com/nuklai/nuklaivm/consts"
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 // Setup types
 func init() {
-	consts.ActionRegistry = codec.NewTypeParser[chain.Action, *warp.Message]()
-	consts.AuthRegistry = codec.NewTypeParser[chain.Auth, *warp.Message]()
+	nconsts.ActionRegistry = codec.NewTypeParser[chain.Action, *warp.Message]()
+	nconsts.AuthRegistry = codec.NewTypeParser[chain.Auth, *warp.Message]()
 
 	errs := &wrappers.Errs{}
 	errs.Add(
 		// When registering new actions, ALWAYS make sure to append at the end.
-		consts.ActionRegistry.Register((&actions.Transfer{}).GetTypeID(), actions.UnmarshalTransfer, false),
-		consts.ActionRegistry.Register((&actions.StakeValidator{}).GetTypeID(), actions.UnmarshalStakeValidator, false),
-		consts.ActionRegistry.Register((&actions.UnstakeValidator{}).GetTypeID(), actions.UnmarshalUnstakeValidator, false),
+		nconsts.ActionRegistry.Register((&actions.Transfer{}).GetTypeID(), actions.UnmarshalTransfer, false),
+
+		nconsts.ActionRegistry.Register((&actions.StakeValidator{}).GetTypeID(), actions.UnmarshalStakeValidator, false),
+		nconsts.ActionRegistry.Register((&actions.UnstakeValidator{}).GetTypeID(), actions.UnmarshalUnstakeValidator, false),
 
 		// When registering new auth, ALWAYS make sure to append at the end.
-		consts.AuthRegistry.Register((&auth.ED25519{}).GetTypeID(), auth.UnmarshalED25519, false),
-		consts.AuthRegistry.Register((&auth.SECP256R1{}).GetTypeID(), auth.UnmarshalSECP256R1, false),
-		consts.AuthRegistry.Register((&auth.BLS{}).GetTypeID(), auth.UnmarshalBLS, false),
+		nconsts.AuthRegistry.Register((&auth.ED25519{}).GetTypeID(), auth.UnmarshalED25519, false),
+		nconsts.AuthRegistry.Register((&auth.SECP256R1{}).GetTypeID(), auth.UnmarshalSECP256R1, false),
+		nconsts.AuthRegistry.Register((&auth.BLS{}).GetTypeID(), auth.UnmarshalBLS, false),
+
+		nconsts.ActionRegistry.Register((&actions.CreateAsset{}).GetTypeID(), actions.UnmarshalCreateAsset, false),
+		nconsts.ActionRegistry.Register((&actions.MintAsset{}).GetTypeID(), actions.UnmarshalMintAsset, false),
+		nconsts.ActionRegistry.Register((&actions.BurnAsset{}).GetTypeID(), actions.UnmarshalBurnAsset, false),
+
+		nconsts.ActionRegistry.Register((&actions.ImportAsset{}).GetTypeID(), actions.UnmarshalImportAsset, true),
+		nconsts.ActionRegistry.Register((&actions.ExportAsset{}).GetTypeID(), actions.UnmarshalExportAsset, false),
 	)
 	if errs.Errored() {
 		panic(errs.Err)

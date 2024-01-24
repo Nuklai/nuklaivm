@@ -12,15 +12,11 @@ import (
 	"github.com/ava-labs/hypersdk/crypto"
 	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/utils"
-	"github.com/nuklai/nuklaivm/consts"
+
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 var _ chain.Auth = (*BLS)(nil)
-
-const (
-	BLSComputeUnits = 10
-	BLSSize         = bls.PublicKeyLen + bls.SignatureLen
-)
 
 type BLS struct {
 	Signer    *bls.PublicKey `json:"signer,omitempty"`
@@ -37,7 +33,7 @@ func (b *BLS) address() codec.Address {
 }
 
 func (*BLS) GetTypeID() uint8 {
-	return consts.BLSID
+	return nconsts.BLSID
 }
 
 func (*BLS) ComputeUnits(chain.Rules) uint64 {
@@ -114,5 +110,5 @@ func (*BLSFactory) MaxUnits() (uint64, uint64) {
 }
 
 func NewBLSAddress(pk *bls.PublicKey) codec.Address {
-	return codec.CreateAddress(consts.BLSID, utils.ToID(bls.PublicKeyToBytes(pk)))
+	return codec.CreateAddress(nconsts.BLSID, utils.ToID(bls.PublicKeyToBytes(pk)))
 }

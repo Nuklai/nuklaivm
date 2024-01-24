@@ -1,4 +1,4 @@
-// Copyright (C) 2023, AllianceBlock. All rights reserved.
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package main
@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/cobra"
+
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/ulimit"
 	"github.com/ava-labs/avalanchego/vms/rpcchainvm"
+
 	"github.com/nuklai/nuklaivm/cmd/nuklaivm/version"
 	"github.com/nuklai/nuklaivm/controller"
-	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{

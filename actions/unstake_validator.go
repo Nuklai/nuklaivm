@@ -11,12 +11,12 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
+	hconsts "github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/ava-labs/hypersdk/utils"
-	"github.com/nuklai/nuklaivm/storage"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/storage"
 )
 
 var _ chain.Action = (*UnstakeValidator)(nil)
@@ -75,7 +75,7 @@ func (*UnstakeValidator) MaxComputeUnits(chain.Rules) uint64 {
 }
 
 func (*UnstakeValidator) Size() int {
-	return consts.IDLen + consts.NodeIDLen
+	return hconsts.IDLen + hconsts.NodeIDLen
 }
 
 func (u *UnstakeValidator) Marshal(p *codec.Packer) {
@@ -86,7 +86,7 @@ func (u *UnstakeValidator) Marshal(p *codec.Packer) {
 func UnmarshalUnstakeValidator(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
 	var unstake UnstakeValidator
 	p.UnpackID(true, &unstake.Stake)
-	p.UnpackBytes(consts.NodeIDLen, false, &unstake.NodeID)
+	p.UnpackBytes(hconsts.NodeIDLen, false, &unstake.NodeID)
 	return &unstake, p.Err()
 }
 

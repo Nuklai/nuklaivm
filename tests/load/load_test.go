@@ -39,11 +39,11 @@ import (
 	hconsts "github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
 	"github.com/ava-labs/hypersdk/pebble"
+	hrpc "github.com/ava-labs/hypersdk/rpc"
 	hutils "github.com/ava-labs/hypersdk/utils"
 	"github.com/ava-labs/hypersdk/vm"
 	"github.com/ava-labs/hypersdk/workers"
 
-	"github.com/ava-labs/hypersdk/rpc"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/auth"
 	nconsts "github.com/nuklai/nuklaivm/consts"
@@ -77,7 +77,7 @@ type instance struct {
 	toEngine            chan common.Message
 	JSONRPCServer       *httptest.Server
 	NuklaiJSONRPCServer *httptest.Server
-	cli                 *rpc.JSONRPCClient // clients for embedded VMs
+	hcli                *hrpc.JSONRPCClient // clients for embedded VMs
 	ncli                *nrpc.JSONRPCClient
 	dbDir               string
 	parse               []float64
@@ -276,16 +276,16 @@ var _ = ginkgo.BeforeSuite(func() {
 		var hd map[string]http.Handler
 		hd, err = c.CreateHandlers(context.TODO())
 		gomega.Ω(err).Should(gomega.BeNil())
-		jsonRPCServer := httptest.NewServer(hd[rpc.JSONRPCEndpoint])
+		hjsonRPCServer := httptest.NewServer(hd[hrpc.JSONRPCEndpoint])
 		njsonRPCServer := httptest.NewServer(hd[nrpc.JSONRPCEndpoint])
 		instances[i] = &instance{
 			chainID:             snowCtx.ChainID,
 			nodeID:              snowCtx.NodeID,
 			vm:                  c,
 			toEngine:            toEngine,
-			JSONRPCServer:       jsonRPCServer,
+			JSONRPCServer:       hjsonRPCServer,
 			NuklaiJSONRPCServer: njsonRPCServer,
-			cli:                 rpc.NewJSONRPCClient(jsonRPCServer.URL),
+			hcli:                hrpc.NewJSONRPCClient(hjsonRPCServer.URL),
 			ncli:                nrpc.NewJSONRPCClient(njsonRPCServer.URL, snowCtx.NetworkID, snowCtx.ChainID),
 			dbDir:               dname,
 		}
@@ -401,7 +401,7 @@ var _ = ginkgo.Describe("load tests vm", func() {
 				log.Debug("block produced", zap.Uint64("height", blk.Hght), zap.Int("txs", len(blk.Txs)))
 				for _, result := range blk.Results() {
 					if !result.Success {
-						unitPrices, _ := instances[0].cli.UnitPrices(context.Background(), false)
+						unitPrices, _ := instances[0].hcli.UnitPrices(context.Background(), false)
 						fmt.Println("tx failed", "unit prices:", unitPrices, "consumed:", result.Consumed, "fee:", result.Fee, "output:", string(result.Output))
 					}
 					gomega.Ω(result.Success).Should(gomega.BeTrue())
@@ -540,7 +540,7 @@ func issueSimpleTx(
 	)
 	tx, err := tx.Sign(factory, nconsts.ActionRegistry, nconsts.AuthRegistry)
 	gomega.Ω(err).To(gomega.BeNil())
-	_, err = i.cli.SubmitTx(context.TODO(), tx.Bytes())
+	_, err = i.hcli.SubmitTx(context.TODO(), tx.Bytes())
 	return tx.ID(), err
 }
 

@@ -22,6 +22,7 @@ import (
 	"github.com/ava-labs/avalanchego/snow/choices"
 	"github.com/ava-labs/avalanchego/snow/consensus/snowman"
 	"github.com/ava-labs/avalanchego/snow/engine/common"
+	"github.com/ava-labs/avalanchego/snow/engine/snowman/block"
 	"github.com/ava-labs/avalanchego/snow/validators"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -34,10 +35,10 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
+	hconsts "github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
 	"github.com/ava-labs/hypersdk/pubsub"
-	"github.com/ava-labs/hypersdk/rpc"
+	hrpc "github.com/ava-labs/hypersdk/rpc"
 	hutils "github.com/ava-labs/hypersdk/utils"
 	"github.com/ava-labs/hypersdk/vm"
 
@@ -131,7 +132,7 @@ type instance struct {
 	JSONRPCServer       *httptest.Server
 	NuklaiJSONRPCServer *httptest.Server
 	WebSocketServer     *httptest.Server
-	cli                 *rpc.JSONRPCClient // clients for embedded VMs
+	hcli                *hrpc.JSONRPCClient // clients for embedded VMs
 	ncli                *nrpc.JSONRPCClient
 }
 
@@ -236,18 +237,18 @@ var _ = ginkgo.BeforeSuite(func() {
 		hd, err = v.CreateHandlers(context.TODO())
 		gomega.Ω(err).Should(gomega.BeNil())
 
-		jsonRPCServer := httptest.NewServer(hd[rpc.JSONRPCEndpoint])
+		hjsonRPCServer := httptest.NewServer(hd[hrpc.JSONRPCEndpoint])
 		njsonRPCServer := httptest.NewServer(hd[nrpc.JSONRPCEndpoint])
-		webSocketServer := httptest.NewServer(hd[rpc.WebSocketEndpoint])
+		webSocketServer := httptest.NewServer(hd[hrpc.WebSocketEndpoint])
 		instances[i] = instance{
 			chainID:             snowCtx.ChainID,
 			nodeID:              snowCtx.NodeID,
 			vm:                  v,
 			toEngine:            toEngine,
-			JSONRPCServer:       jsonRPCServer,
+			JSONRPCServer:       hjsonRPCServer,
 			NuklaiJSONRPCServer: njsonRPCServer,
 			WebSocketServer:     webSocketServer,
-			cli:                 rpc.NewJSONRPCClient(jsonRPCServer.URL),
+			hcli:                hrpc.NewJSONRPCClient(hjsonRPCServer.URL),
 			ncli:                nrpc.NewJSONRPCClient(njsonRPCServer.URL, snowCtx.NetworkID, snowCtx.ChainID),
 		}
 
@@ -258,18 +259,18 @@ var _ = ginkgo.BeforeSuite(func() {
 	// Verify genesis allocates loaded correctly (do here otherwise test may
 	// check during and it will be inaccurate)
 	for _, inst := range instances {
-		cli := inst.ncli
-		g, err := cli.Genesis(context.Background())
+		ncli := inst.ncli
+		g, err := ncli.Genesis(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
 
 		csupply := uint64(0)
 		for _, alloc := range g.CustomAllocation {
-			balance, err := cli.Balance(context.Background(), alloc.Address, ids.Empty)
+			balance, err := ncli.Balance(context.Background(), alloc.Address, ids.Empty)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(balance).Should(gomega.Equal(alloc.Balance))
 			csupply += alloc.Balance
 		}
-		exists, symbol, decimals, metadata, supply, owner, warp, err := cli.Asset(context.Background(), ids.Empty, false)
+		exists, symbol, decimals, metadata, supply, owner, warp, err := ncli.Asset(context.Background(), ids.Empty, false)
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(exists).Should(gomega.BeTrue())
 		gomega.Ω(string(symbol)).Should(gomega.Equal(nconsts.Symbol))
@@ -298,8 +299,8 @@ var _ = ginkgo.AfterSuite(func() {
 var _ = ginkgo.Describe("[Ping]", func() {
 	ginkgo.It("can ping", func() {
 		for _, inst := range instances {
-			cli := inst.cli
-			ok, err := cli.Ping(context.Background())
+			hcli := inst.hcli
+			ok, err := hcli.Ping(context.Background())
 			gomega.Ω(ok).Should(gomega.BeTrue())
 			gomega.Ω(err).Should(gomega.BeNil())
 		}
@@ -309,8 +310,8 @@ var _ = ginkgo.Describe("[Ping]", func() {
 var _ = ginkgo.Describe("[Network]", func() {
 	ginkgo.It("can get network", func() {
 		for _, inst := range instances {
-			cli := inst.cli
-			networkID, subnetID, chainID, err := cli.Network(context.Background())
+			hcli := inst.hcli
+			networkID, subnetID, chainID, err := hcli.Network(context.Background())
 			gomega.Ω(networkID).Should(gomega.Equal(uint32(1)))
 			gomega.Ω(subnetID).ShouldNot(gomega.Equal(ids.Empty))
 			gomega.Ω(chainID).ShouldNot(gomega.Equal(ids.Empty))
@@ -322,8 +323,8 @@ var _ = ginkgo.Describe("[Network]", func() {
 var _ = ginkgo.Describe("[Tx Processing]", func() {
 	ginkgo.It("get currently accepted block ID", func() {
 		for _, inst := range instances {
-			cli := inst.cli
-			_, _, _, err := cli.Accepted(context.Background())
+			hcli := inst.hcli
+			_, _, _, err := hcli.Accepted(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
 		}
 	})
@@ -333,13 +334,12 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		ginkgo.By("issue TransferTx", func() {
 			parser, err := instances[0].ncli.Parser(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
-			submit, transferTx, _, err := instances[0].cli.GenerateTransaction(
+			submit, transferTx, _, err := instances[0].hcli.GenerateTransaction(
 				context.Background(),
 				parser,
 				nil,
 				&actions.Transfer{
 					To:    rsender2,
-					Asset: ids.Empty,
 					Value: 100_000, // must be more than StateLockup
 				},
 				factory,
@@ -351,7 +351,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		})
 
 		ginkgo.By("skip duplicate", func() {
-			_, err := instances[0].cli.SubmitTx(
+			_, err := instances[0].hcli.SubmitTx(
 				context.Background(),
 				transferTxRoot.Bytes(),
 			)
@@ -373,7 +373,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				nil,
 				&actions.Transfer{
 					To:    rsender2,
-					Asset: ids.Empty,
 					Value: 110,
 				},
 			)
@@ -384,10 +383,10 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			auth, err := factory.Sign(msg)
 			gomega.Ω(err).To(gomega.BeNil())
 			tx.Auth = auth
-			p := codec.NewWriter(0, consts.MaxInt) // test codec growth
+			p := codec.NewWriter(0, hconsts.MaxInt) // test codec growth
 			gomega.Ω(tx.Marshal(p)).To(gomega.BeNil())
 			gomega.Ω(p.Err()).To(gomega.BeNil())
-			_, err = instances[0].cli.SubmitTx(
+			_, err = instances[0].hcli.SubmitTx(
 				context.Background(),
 				p.Bytes(),
 			)
@@ -395,7 +394,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		})
 
 		ginkgo.By("skip duplicate (after gossip, which shouldn't clear)", func() {
-			_, err := instances[0].cli.SubmitTx(
+			_, err := instances[0].hcli.SubmitTx(
 				context.Background(),
 				transferTxRoot.Bytes(),
 			)
@@ -461,13 +460,12 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		ginkgo.By("transfer funds again", func() {
 			parser, err := instances[1].ncli.Parser(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
-			submit, _, _, err := instances[1].cli.GenerateTransaction(
+			submit, _, _, err := instances[1].hcli.GenerateTransaction(
 				context.Background(),
 				parser,
 				nil,
 				&actions.Transfer{
 					To:    rsender2,
-					Asset: ids.Empty,
 					Value: 101,
 				},
 				factory,
@@ -492,13 +490,12 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		ginkgo.By("create processing tip", func() {
 			parser, err := instances[1].ncli.Parser(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
-			submit, _, _, err := instances[1].cli.GenerateTransaction(
+			submit, _, _, err := instances[1].hcli.GenerateTransaction(
 				context.Background(),
 				parser,
 				nil,
 				&actions.Transfer{
 					To:    rsender2,
-					Asset: ids.Empty,
 					Value: 200,
 				},
 				factory,
@@ -508,7 +505,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			time.Sleep(2 * time.Second) // for replay test
 			accept = expectBlk(instances[1])
 
-			submit, _, _, err = instances[1].cli.GenerateTransaction(
+			submit, _, _, err = instances[1].hcli.GenerateTransaction(
 				context.Background(),
 				parser,
 				nil,
@@ -539,13 +536,12 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		ginkgo.By("fail Gossip TransferTx to a stale node when missing previous blocks", func() {
 			parser, err := instances[1].ncli.Parser(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
-			submit, _, _, err := instances[1].cli.GenerateTransaction(
+			submit, _, _, err := instances[1].hcli.GenerateTransaction(
 				context.Background(),
 				parser,
 				nil,
 				&actions.Transfer{
 					To:    rsender2,
-					Asset: ids.Empty,
 					Value: 203,
 				},
 				factory,
@@ -621,9 +617,9 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		accept(false) // don't care about results
 
 		// Subscribe to blocks
-		cli, err := rpc.NewWebSocketClient(instances[0].WebSocketServer.URL, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
+		hcli, err := hrpc.NewWebSocketClient(instances[0].WebSocketServer.URL, hrpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
 		gomega.Ω(err).Should(gomega.BeNil())
-		gomega.Ω(cli.RegisterBlocks()).Should(gomega.BeNil())
+		gomega.Ω(hcli.RegisterBlocks()).Should(gomega.BeNil())
 
 		// Wait for message to be sent
 		time.Sleep(2 * pubsub.MaxMessageWait)
@@ -643,7 +639,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 
 		parser, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		submit, _, _, err := instances[0].cli.GenerateTransaction(
+		submit, _, _, err := instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
@@ -660,7 +656,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		gomega.Ω(results[0].Success).Should(gomega.BeTrue())
 
 		// Read item from connection
-		blk, lresults, prices, err := cli.ListenBlock(context.TODO(), parser)
+		blk, lresults, prices, err := hcli.ListenBlock(context.TODO(), parser)
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(len(blk.Txs)).Should(gomega.Equal(1))
 		tx := blk.Txs[0].Action.(*actions.Transfer)
@@ -675,12 +671,12 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		gomega.Ω(balance).Should(gomega.Equal(balancea + lresults[0].Fee + 1))
 
 		// Close connection when done
-		gomega.Ω(cli.Close()).Should(gomega.BeNil())
+		gomega.Ω(hcli.Close()).Should(gomega.BeNil())
 	})
 
 	ginkgo.It("processes valid index transactions (w/streaming verification)", func() {
 		// Create streaming client
-		cli, err := rpc.NewWebSocketClient(instances[0].WebSocketServer.URL, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
+		hcli, err := hrpc.NewWebSocketClient(instances[0].WebSocketServer.URL, hrpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
 		gomega.Ω(err).Should(gomega.BeNil())
 
 		// Create tx
@@ -693,7 +689,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		}
 		parser, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		_, tx, _, err := instances[0].cli.GenerateTransaction(
+		_, tx, _, err := instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
@@ -703,7 +699,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 
 		// Submit tx and accept block
-		gomega.Ω(cli.RegisterTx(tx)).Should(gomega.BeNil())
+		gomega.Ω(hcli.RegisterTx(tx)).Should(gomega.BeNil())
 
 		// Wait for message to be sent
 		time.Sleep(2 * pubsub.MaxMessageWait)
@@ -721,7 +717,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		gomega.Ω(results[0].Success).Should(gomega.BeTrue())
 
 		// Read decision from connection
-		txID, dErr, result, err := cli.ListenTx(context.TODO())
+		txID, dErr, result, err := hcli.ListenTx(context.TODO())
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(txID).Should(gomega.Equal(tx.ID()))
 		gomega.Ω(dErr).Should(gomega.BeNil())
@@ -729,7 +725,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		gomega.Ω(result).Should(gomega.Equal(results[0]))
 
 		// Close connection when done
-		gomega.Ω(cli.Close()).Should(gomega.BeNil())
+		gomega.Ω(hcli.Close()).Should(gomega.BeNil())
 	})
 
 	ginkgo.It("transfer an asset with a memo", func() {
@@ -737,13 +733,12 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		parser, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		submit, _, _, err := instances[0].cli.GenerateTransaction(
+		submit, _, _, err := instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
 			&actions.Transfer{
 				To:    auth.NewED25519Address(other.PublicKey()),
-				Asset: ids.Empty,
 				Value: 10,
 				Memo:  []byte("hello"),
 			},
@@ -764,14 +759,13 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		tx := chain.NewTx(
 			&chain.Base{
 				ChainID:   instances[0].chainID,
-				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
+				Timestamp: hutils.UnixRMilli(-1, 5*hconsts.MillisecondsPerSecond),
 				MaxFee:    1001,
 			},
 			nil,
 			&actions.Transfer{
 				To:    auth.NewED25519Address(other.PublicKey()),
 				Value: 10,
-				Asset: ids.Empty,
 				Memo:  make([]byte, 1000),
 			},
 		)
@@ -782,23 +776,23 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		auth, err := factory.Sign(msg)
 		gomega.Ω(err).To(gomega.BeNil())
 		tx.Auth = auth
-		p := codec.NewWriter(0, consts.MaxInt) // test codec growth
+		p := codec.NewWriter(0, hconsts.MaxInt) // test codec growth
 		gomega.Ω(tx.Marshal(p)).To(gomega.BeNil())
 		gomega.Ω(p.Err()).To(gomega.BeNil())
-		_, err = instances[0].cli.SubmitTx(
+		_, err = instances[0].hcli.SubmitTx(
 			context.Background(),
 			p.Bytes(),
 		)
 		gomega.Ω(err.Error()).Should(gomega.ContainSubstring("size is larger than limit"))
 	})
 
-	/* ginkgo.It("mint an asset that doesn't exist", func() {
+	ginkgo.It("mint an asset that doesn't exist", func() {
 		other, err := ed25519.GeneratePrivateKey()
 		gomega.Ω(err).Should(gomega.BeNil())
 		assetID := ids.GenerateTestID()
 		parser, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		submit, _, _, err := instances[0].cli.GenerateTransaction(
+		submit, _, _, err := instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
@@ -828,7 +822,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		tx := chain.NewTx(
 			&chain.Base{
 				ChainID:   instances[0].chainID,
-				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
+				Timestamp: hutils.UnixRMilli(-1, 5*hconsts.MillisecondsPerSecond),
 				MaxFee:    1001,
 			},
 			nil,
@@ -845,10 +839,10 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		auth, err := factory.Sign(msg)
 		gomega.Ω(err).To(gomega.BeNil())
 		tx.Auth = auth
-		p := codec.NewWriter(0, consts.MaxInt) // test codec growth
+		p := codec.NewWriter(0, hconsts.MaxInt) // test codec growth
 		gomega.Ω(tx.Marshal(p)).To(gomega.BeNil())
 		gomega.Ω(p.Err()).To(gomega.BeNil())
-		_, err = instances[0].cli.SubmitTx(
+		_, err = instances[0].hcli.SubmitTx(
 			context.Background(),
 			p.Bytes(),
 		)
@@ -859,7 +853,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		tx := chain.NewTx(
 			&chain.Base{
 				ChainID:   instances[0].chainID,
-				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
+				Timestamp: hutils.UnixRMilli(-1, 5*hconsts.MillisecondsPerSecond),
 				MaxFee:    1001,
 			},
 			nil,
@@ -876,10 +870,10 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		auth, err := factory.Sign(msg)
 		gomega.Ω(err).To(gomega.BeNil())
 		tx.Auth = auth
-		p := codec.NewWriter(0, consts.MaxInt) // test codec growth
+		p := codec.NewWriter(0, hconsts.MaxInt) // test codec growth
 		gomega.Ω(tx.Marshal(p)).To(gomega.BeNil())
 		gomega.Ω(p.Err()).To(gomega.BeNil())
-		_, err = instances[0].cli.SubmitTx(
+		_, err = instances[0].hcli.SubmitTx(
 			context.Background(),
 			p.Bytes(),
 		)
@@ -890,7 +884,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		tx := chain.NewTx(
 			&chain.Base{
 				ChainID:   instances[0].chainID,
-				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
+				Timestamp: hutils.UnixRMilli(-1, 5*hconsts.MillisecondsPerSecond),
 				MaxFee:    1000,
 			},
 			nil,
@@ -907,10 +901,10 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		auth, err := factory.Sign(msg)
 		gomega.Ω(err).To(gomega.BeNil())
 		tx.Auth = auth
-		p := codec.NewWriter(0, consts.MaxInt) // test codec growth
+		p := codec.NewWriter(0, hconsts.MaxInt) // test codec growth
 		gomega.Ω(tx.Marshal(p)).To(gomega.BeNil())
 		gomega.Ω(p.Err()).To(gomega.BeNil())
-		_, err = instances[0].cli.SubmitTx(
+		_, err = instances[0].hcli.SubmitTx(
 			context.Background(),
 			p.Bytes(),
 		)
@@ -920,7 +914,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	ginkgo.It("create a new asset (simple metadata)", func() {
 		parser, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		submit, tx, _, err := instances[0].cli.GenerateTransaction(
+		submit, tx, _, err := instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
@@ -957,7 +951,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	ginkgo.It("mint a new asset", func() {
 		parser, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		submit, _, _, err := instances[0].cli.GenerateTransaction(
+		submit, _, _, err := instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
@@ -998,7 +992,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		parser, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		submit, _, _, err := instances[0].cli.GenerateTransaction(
+		submit, _, _, err := instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
@@ -1033,7 +1027,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	ginkgo.It("burn new asset", func() {
 		parser, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		submit, _, _, err := instances[0].cli.GenerateTransaction(
+		submit, _, _, err := instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
@@ -1071,7 +1065,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	ginkgo.It("burn missing asset", func() {
 		parser, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		submit, _, _, err := instances[0].cli.GenerateTransaction(
+		submit, _, _, err := instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
@@ -1108,7 +1102,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		tx := chain.NewTx(
 			&chain.Base{
 				ChainID:   instances[0].chainID,
-				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
+				Timestamp: hutils.UnixRMilli(-1, 5*hconsts.MillisecondsPerSecond),
 				MaxFee:    1000,
 			},
 			nil,
@@ -1124,10 +1118,10 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		auth, err := factory.Sign(msg)
 		gomega.Ω(err).To(gomega.BeNil())
 		tx.Auth = auth
-		p := codec.NewWriter(0, consts.MaxInt) // test codec growth
+		p := codec.NewWriter(0, hconsts.MaxInt) // test codec growth
 		gomega.Ω(tx.Marshal(p)).To(gomega.BeNil())
 		gomega.Ω(p.Err()).To(gomega.BeNil())
-		_, err = instances[0].cli.SubmitTx(
+		_, err = instances[0].hcli.SubmitTx(
 			context.Background(),
 			p.Bytes(),
 		)
@@ -1137,14 +1131,14 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	ginkgo.It("reject max mint", func() {
 		parser, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		submit, _, _, err := instances[0].cli.GenerateTransaction(
+		submit, _, _, err := instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
 			&actions.MintAsset{
 				To:    rsender2,
 				Asset: asset1ID,
-				Value: consts.MaxUint64,
+				Value: hconsts.MaxUint64,
 			},
 			factory,
 		)
@@ -1182,7 +1176,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		tx := chain.NewTx(
 			&chain.Base{
 				ChainID:   instances[0].chainID,
-				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
+				Timestamp: hutils.UnixRMilli(-1, 5*hconsts.MillisecondsPerSecond),
 				MaxFee:    1000,
 			},
 			nil,
@@ -1198,10 +1192,10 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		auth, err := factory.Sign(msg)
 		gomega.Ω(err).To(gomega.BeNil())
 		tx.Auth = auth
-		p := codec.NewWriter(0, consts.MaxInt) // test codec growth
+		p := codec.NewWriter(0, hconsts.MaxInt) // test codec growth
 		gomega.Ω(tx.Marshal(p)).To(gomega.BeNil())
 		gomega.Ω(p.Err()).To(gomega.BeNil())
-		_, err = instances[0].cli.SubmitTx(
+		_, err = instances[0].hcli.SubmitTx(
 			context.Background(),
 			p.Bytes(),
 		)
@@ -1211,7 +1205,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	ginkgo.It("mints another new asset (to self)", func() {
 		parser, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		submit, tx, _, err := instances[0].cli.GenerateTransaction(
+		submit, tx, _, err := instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
@@ -1230,7 +1224,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		gomega.Ω(results[0].Success).Should(gomega.BeTrue())
 		asset2ID = tx.ID()
 
-		submit, _, _, err = instances[0].cli.GenerateTransaction(
+		submit, _, _, err = instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
@@ -1256,7 +1250,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	ginkgo.It("mints another new asset (to self) on another account", func() {
 		parser, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		submit, tx, _, err := instances[0].cli.GenerateTransaction(
+		submit, tx, _, err := instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
@@ -1275,7 +1269,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		gomega.Ω(results[0].Success).Should(gomega.BeTrue())
 		asset3ID = tx.ID()
 
-		submit, _, _, err = instances[0].cli.GenerateTransaction(
+		submit, _, _, err = instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
@@ -1302,7 +1296,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		tx := chain.NewTx(
 			&chain.Base{
 				ChainID:   instances[0].chainID,
-				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
+				Timestamp: hutils.UnixRMilli(-1, 5*hconsts.MillisecondsPerSecond),
 				MaxFee:    1000,
 			},
 			nil,
@@ -1315,10 +1309,10 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		auth, err := factory.Sign(msg)
 		gomega.Ω(err).To(gomega.BeNil())
 		tx.Auth = auth
-		p := codec.NewWriter(0, consts.MaxInt) // test codec growth
+		p := codec.NewWriter(0, hconsts.MaxInt) // test codec growth
 		gomega.Ω(tx.Marshal(p)).To(gomega.BeNil())
 		gomega.Ω(p.Err()).To(gomega.BeNil())
-		_, err = instances[0].cli.SubmitTx(
+		_, err = instances[0].hcli.SubmitTx(
 			context.Background(),
 			p.Bytes(),
 		)
@@ -1331,7 +1325,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		tx := chain.NewTx(
 			&chain.Base{
 				ChainID:   instances[0].chainID,
-				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
+				Timestamp: hutils.UnixRMilli(-1, 5*hconsts.MillisecondsPerSecond),
 				MaxFee:    1000,
 			},
 			wm,
@@ -1344,10 +1338,10 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		auth, err := factory.Sign(msg)
 		gomega.Ω(err).To(gomega.BeNil())
 		tx.Auth = auth
-		p := codec.NewWriter(0, consts.MaxInt) // test codec growth
+		p := codec.NewWriter(0, hconsts.MaxInt) // test codec growth
 		gomega.Ω(tx.Marshal(p)).To(gomega.BeNil())
 		gomega.Ω(p.Err()).To(gomega.BeNil())
-		_, err = instances[0].cli.SubmitTx(
+		_, err = instances[0].hcli.SubmitTx(
 			context.Background(),
 			p.Bytes(),
 		)
@@ -1362,7 +1356,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		tx := chain.NewTx(
 			&chain.Base{
 				ChainID:   instances[0].chainID,
-				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
+				Timestamp: hutils.UnixRMilli(-1, 5*hconsts.MillisecondsPerSecond),
 				MaxFee:    1000,
 			},
 			wm,
@@ -1375,10 +1369,10 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		auth, err := factory.Sign(msg)
 		gomega.Ω(err).To(gomega.BeNil())
 		tx.Auth = auth
-		p := codec.NewWriter(0, consts.MaxInt) // test codec growth
+		p := codec.NewWriter(0, hconsts.MaxInt) // test codec growth
 		gomega.Ω(tx.Marshal(p)).To(gomega.BeNil())
 		gomega.Ω(p.Err()).To(gomega.BeNil())
-		_, err = instances[0].cli.SubmitTx(
+		_, err = instances[0].hcli.SubmitTx(
 			context.Background(),
 			p.Bytes(),
 		)
@@ -1396,7 +1390,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		tx := chain.NewTx(
 			&chain.Base{
 				ChainID:   instances[0].chainID,
-				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
+				Timestamp: hutils.UnixRMilli(-1, 5*hconsts.MillisecondsPerSecond),
 				MaxFee:    1000,
 			},
 			wm,
@@ -1409,10 +1403,10 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		auth, err := factory.Sign(msg)
 		gomega.Ω(err).To(gomega.BeNil())
 		tx.Auth = auth
-		p := codec.NewWriter(0, consts.MaxInt) // test codec growth
+		p := codec.NewWriter(0, hconsts.MaxInt) // test codec growth
 		gomega.Ω(tx.Marshal(p)).To(gomega.BeNil())
 		gomega.Ω(p.Err()).To(gomega.BeNil())
-		_, err = instances[0].cli.SubmitTx(
+		_, err = instances[0].hcli.SubmitTx(
 			context.Background(),
 			p.Bytes(),
 		)
@@ -1439,7 +1433,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		parser, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		submit, _, _, err := instances[0].cli.GenerateTransaction(
+		submit, _, _, err := instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			wm,
@@ -1482,7 +1476,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 
 		parser, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		submit, tx, _, err := instances[0].cli.GenerateTransaction(
+		submit, tx, _, err := instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
@@ -1505,8 +1499,8 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		gomega.Ω(result.Success).Should(gomega.BeTrue())
 		wt := &actions.WarpTransfer{
 			To:                 rsender,
-			Symbol:             []byte(tconsts.Symbol),
-			Decimals:           tconsts.Decimals,
+			Symbol:             []byte(nconsts.Symbol),
+			Decimals:           nconsts.Decimals,
 			Asset:              ids.Empty,
 			Value:              100,
 			Return:             false,
@@ -1528,7 +1522,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	ginkgo.It("export native asset (invalid return)", func() {
 		parser, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		submit, _, _, err := instances[0].cli.GenerateTransaction(
+		submit, _, _, err := instances[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
@@ -1551,7 +1545,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		gomega.Ω(result.Success).Should(gomega.BeFalse())
 		gomega.Ω(string(result.Output)).Should(gomega.ContainSubstring("not warp asset"))
 	})
-	*/
+
 })
 
 func expectBlk(i instance) func(bool) []*chain.Result {
@@ -1587,7 +1581,7 @@ func expectBlk(i instance) func(bool) []*chain.Result {
 	}
 }
 
-/* // TODO: unify with expectBlk
+// TODO: unify with expectBlk
 func expectBlkWithContext(i instance) func(bool) []*chain.Result {
 	ctx := context.TODO()
 
@@ -1621,7 +1615,7 @@ func expectBlkWithContext(i instance) func(bool) []*chain.Result {
 		gomega.Ω(lastAccepted).To(gomega.Equal(blk.ID()))
 		return blk.(*chain.StatelessBlock).Results()
 	}
-} */
+}
 
 var _ common.AppSender = &appSender{}
 

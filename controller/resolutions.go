@@ -50,6 +50,14 @@ func (c *Controller) GetBalanceFromState(
 	return storage.GetBalanceFromState(ctx, c.inner.ReadState, addr, asset)
 }
 
+func (c *Controller) GetLoanFromState(
+	ctx context.Context,
+	asset ids.ID,
+	destination ids.ID,
+) (uint64, error) {
+	return storage.GetLoanFromState(ctx, c.inner.ReadState, asset, destination)
+}
+
 func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, error) {
 	return c.emission.GetTotalSupply(), c.emission.GetMaxSupply(), c.emission.GetRewardsPerBlock(), nil
 }

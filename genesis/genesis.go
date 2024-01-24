@@ -1,4 +1,4 @@
-// Copyright (C) 2023, AllianceBlock. All rights reserved.
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package genesis
@@ -11,7 +11,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/trace"
-	smath "github.com/ava-labs/avalanchego/utils/math"
+	hmath "github.com/ava-labs/avalanchego/utils/math"
 	"github.com/ava-labs/avalanchego/x/merkledb"
 
 	"github.com/ava-labs/hypersdk/chain"
@@ -143,7 +143,7 @@ func (g *Genesis) Load(ctx context.Context, tracer trace.Tracer, mu state.Mutabl
 		if err != nil {
 			return fmt.Errorf("%w: %s", err, alloc.Address)
 		}
-		supply, err = smath.Add64(supply, alloc.Balance)
+		supply, err = hmath.Add64(supply, alloc.Balance)
 		if err != nil {
 			return err
 		}

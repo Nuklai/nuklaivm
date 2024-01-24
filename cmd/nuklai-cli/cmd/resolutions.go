@@ -13,8 +13,9 @@ import (
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/cli"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/rpc"
+	hrpc "github.com/ava-labs/hypersdk/rpc"
 	"github.com/ava-labs/hypersdk/utils"
+
 	"github.com/nuklai/nuklaivm/actions"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	nrpc "github.com/nuklai/nuklaivm/rpc"
@@ -24,24 +25,24 @@ import (
 //
 //nolint:unparam
 func sendAndWait(
-	ctx context.Context, warpMsg *warp.Message, action chain.Action, cli *rpc.JSONRPCClient,
-	scli *rpc.WebSocketClient, ncli *nrpc.JSONRPCClient, factory chain.AuthFactory, printStatus bool,
+	ctx context.Context, warpMsg *warp.Message, action chain.Action, hcli *hrpc.JSONRPCClient,
+	hws *hrpc.WebSocketClient, ncli *nrpc.JSONRPCClient, factory chain.AuthFactory, printStatus bool,
 ) (bool, ids.ID, error) {
 	parser, err := ncli.Parser(ctx)
 	if err != nil {
 		return false, ids.Empty, err
 	}
-	_, tx, _, err := cli.GenerateTransaction(ctx, parser, warpMsg, action, factory)
+	_, tx, _, err := hcli.GenerateTransaction(ctx, parser, warpMsg, action, factory)
 	if err != nil {
 		return false, ids.Empty, err
 	}
 
-	if err := scli.RegisterTx(tx); err != nil {
+	if err := hws.RegisterTx(tx); err != nil {
 		return false, ids.Empty, err
 	}
 	var res *chain.Result
 	for {
-		txID, dErr, result, err := scli.ListenTx(ctx)
+		txID, dErr, result, err := hws.ListenTx(ctx)
 		if dErr != nil {
 			return false, ids.Empty, dErr
 		}
@@ -60,7 +61,7 @@ func sendAndWait(
 	return res.Success, tx.ID(), nil
 }
 
-func handleTx(c *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Result) {
+func handleTx(ncli *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Result) {
 	summaryStr := string(result.Output)
 	actor := tx.Auth.Actor()
 	status := "❌"
@@ -68,7 +69,7 @@ func handleTx(c *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Result
 		status = "✅"
 		switch action := tx.Action.(type) { //nolint:gocritic
 		case *actions.Transfer:
-			_, symbol, decimals, _, _, _, _, err := c.Asset(context.TODO(), action.Asset, true)
+			_, symbol, decimals, _, _, _, _, err := ncli.Asset(context.TODO(), action.Asset, true)
 			if err != nil {
 				utils.Outf("{{red}}could not fetch asset info:{{/}} %v", err)
 				return
@@ -77,6 +78,63 @@ func handleTx(c *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Result
 			summaryStr = fmt.Sprintf("%s %s -> %s", amountStr, symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
 			if len(action.Memo) > 0 {
 				summaryStr += fmt.Sprintf(" (memo: %s)", action.Memo)
+			}
+
+		case *actions.CreateAsset:
+			summaryStr = fmt.Sprintf("assetID: %s symbol: %s decimals: %d metadata: %s", tx.ID(), action.Symbol, action.Decimals, action.Metadata)
+		case *actions.MintAsset:
+			_, symbol, decimals, _, _, _, _, err := ncli.Asset(context.TODO(), action.Asset, true)
+			if err != nil {
+				utils.Outf("{{red}}could not fetch asset info:{{/}} %v", err)
+				return
+			}
+			amountStr := utils.FormatBalance(action.Value, decimals)
+			summaryStr = fmt.Sprintf("%s %s -> %s", amountStr, symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
+		case *actions.BurnAsset:
+			summaryStr = fmt.Sprintf("%d %s -> 🔥", action.Value, action.Asset)
+
+		case *actions.ImportAsset:
+			wm := tx.WarpMessage
+			signers, _ := wm.Signature.NumSigners()
+			wt, _ := actions.UnmarshalWarpTransfer(wm.Payload)
+			summaryStr = fmt.Sprintf("source: %s signers: %d | ", wm.SourceChainID, signers)
+			if wt.Return {
+				summaryStr += fmt.Sprintf("%s %s -> %s (return: %t)", utils.FormatBalance(wt.Value, wt.Decimals), wt.Symbol, codec.MustAddressBech32(nconsts.HRP, wt.To), wt.Return)
+			} else {
+				summaryStr += fmt.Sprintf("%s %s (new: %s, original: %s) -> %s (return: %t)", utils.FormatBalance(wt.Value, wt.Decimals), wt.Symbol, actions.ImportedAssetID(wt.Asset, wm.SourceChainID), wt.Asset, codec.MustAddressBech32(nconsts.HRP, wt.To), wt.Return)
+			}
+			if wt.Reward > 0 {
+				summaryStr += fmt.Sprintf(" | reward: %s", utils.FormatBalance(wt.Reward, wt.Decimals))
+			}
+			if wt.SwapIn > 0 {
+				_, outSymbol, outDecimals, _, _, _, _, err := ncli.Asset(context.TODO(), wt.AssetOut, true)
+				if err != nil {
+					utils.Outf("{{red}}could not fetch asset info:{{/}} %v", err)
+					return
+				}
+				summaryStr += fmt.Sprintf(" | swap in: %s %s swap out: %s %s expiry: %d fill: %t", utils.FormatBalance(wt.SwapIn, wt.Decimals), wt.Symbol, utils.FormatBalance(wt.SwapOut, outDecimals), outSymbol, wt.SwapExpiry, action.Fill)
+			}
+		case *actions.ExportAsset:
+			wt, _ := actions.UnmarshalWarpTransfer(result.WarpMessage.Payload)
+			summaryStr = fmt.Sprintf("destination: %s | ", action.Destination)
+			var outputAssetID ids.ID
+			if !action.Return {
+				outputAssetID = actions.ImportedAssetID(action.Asset, result.WarpMessage.SourceChainID)
+				summaryStr += fmt.Sprintf("%s %s (%s) -> %s (return: %t)", utils.FormatBalance(action.Value, wt.Decimals), wt.Symbol, action.Asset, codec.MustAddressBech32(nconsts.HRP, action.To), action.Return)
+			} else {
+				outputAssetID = wt.Asset
+				summaryStr += fmt.Sprintf("%s %s (current: %s, original: %s) -> %s (return: %t)", utils.FormatBalance(action.Value, wt.Decimals), wt.Symbol, action.Asset, wt.Asset, codec.MustAddressBech32(nconsts.HRP, action.To), action.Return)
+			}
+			if wt.Reward > 0 {
+				summaryStr += fmt.Sprintf(" | reward: %s", utils.FormatBalance(wt.Reward, wt.Decimals))
+			}
+			if wt.SwapIn > 0 {
+				_, outSymbol, outDecimals, _, _, _, _, err := ncli.Asset(context.TODO(), wt.AssetOut, true)
+				if err != nil {
+					utils.Outf("{{red}}could not fetch asset info:{{/}} %v", err)
+					return
+				}
+				summaryStr += fmt.Sprintf(" | swap in: %s %s (%s) swap out: %s %s expiry: %d", utils.FormatBalance(wt.SwapIn, wt.Decimals), wt.Symbol, outputAssetID, utils.FormatBalance(wt.SwapOut, outDecimals), outSymbol, wt.SwapExpiry)
 			}
 		}
 		utils.Outf(

@@ -1,4 +1,4 @@
-// Copyright (C) 2023, AllianceBlock. All rights reserved.
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package version
@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/nuklai/nuklaivm/consts"
+	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/version"
 )
 
@@ -27,6 +27,6 @@ func NewCommand() *cobra.Command {
 }
 
 func versionFunc(*cobra.Command, []string) error {
-	fmt.Printf("%s@%s (%s)\n", consts.Name, version.Version, consts.ID)
+	fmt.Printf("%s@%s (%s)\n", nconsts.Name, version.Version, nconsts.ID)
 	return nil
 }

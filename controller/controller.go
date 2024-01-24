@@ -29,7 +29,7 @@ import (
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
-	"github.com/nuklai/nuklaivm/rpc"
+	nrpc "github.com/nuklai/nuklaivm/rpc"
 	"github.com/nuklai/nuklaivm/storage"
 	"github.com/nuklai/nuklaivm/version"
 )
@@ -117,12 +117,12 @@ func (c *Controller) Initialize(
 	apis := map[string]http.Handler{}
 	jsonRPCHandler, err := hrpc.NewJSONRPCHandler(
 		nconsts.Name,
-		rpc.NewJSONRPCServer(c),
+		nrpc.NewJSONRPCServer(c),
 	)
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
-	apis[rpc.JSONRPCEndpoint] = jsonRPCHandler
+	apis[nrpc.JSONRPCEndpoint] = jsonRPCHandler
 
 	// Create builder and gossiper
 	var (
@@ -147,12 +147,12 @@ func (c *Controller) Initialize(
 		}
 	}
 
+	// Initialize emission balancer
 	currentValidators := make(map[ids.NodeID]*validators.GetValidatorOutput)
 	if !c.config.TestMode {
 		// We only get the validators in non-test mode
 		currentValidators, _ = inner.CurrentValidators(context.TODO())
 	}
-	// Initialize emission
 	c.emission = emission.New(c, c.genesis.MaxSupply, c.genesis.RewardsPerBlock, currentValidators)
 
 	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, nconsts.ActionRegistry, nconsts.AuthRegistry, auth.Engines(), nil
@@ -201,6 +201,16 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 			switch action := tx.Action.(type) {
 			case *actions.Transfer:
 				c.metrics.transfer.Inc()
+			case *actions.CreateAsset:
+				c.metrics.createAsset.Inc()
+			case *actions.MintAsset:
+				c.metrics.mintAsset.Inc()
+			case *actions.BurnAsset:
+				c.metrics.burnAsset.Inc()
+			case *actions.ImportAsset:
+				c.metrics.importAsset.Inc()
+			case *actions.ExportAsset:
+				c.metrics.exportAsset.Inc()
 			case *actions.StakeValidator:
 				c.metrics.stake.Inc()
 				currentValidators, _ := c.inner.CurrentValidators(ctx)

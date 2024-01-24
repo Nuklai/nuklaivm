@@ -15,7 +15,7 @@ import (
 	hmath "github.com/ava-labs/avalanchego/utils/math"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
+	hconsts "github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
@@ -30,40 +30,45 @@ type ReadState func(context.Context, [][]byte) ([][]byte, []error)
 // State
 // / (height) => store in root
 //   -> [heightPrefix] => height
-// 0x0/ (hypersdk-incoming warp)
-// 0x1/ (hypersdk-outgoing warp)
-// 0x2/ (balance)
+//
+// 0x0/ (balance)
 //   -> [owner|asset] => balance
-// 0x3/ (hypersdk-height)
-// 0x4/ (hypersdk-timestamp)
-// 0x5/ (hypersdk-fee)
-// 0x6/ (stake)
-//   -> [txID] => nodeID|stakedAmount|endLockUp|owner
-// 0x7/ (assets)
+// 0x1/ (assets)
 //   -> [asset] => metadataLen|metadata|supply|owner|warp
-// 0x8/ (loans)
+// 0x2/ (stake)
+//   -> [txID] => nodeID|stakedAmount|endLockUp|owner
+// 0x3/ (loans)
 //   -> [assetID|destination] => amount
+// 0x4/ (hypersdk-height)
+// 0x5/ (hypersdk-timestamp)
+// 0x6/ (hypersdk-fee)
+// 0x7/ (hypersdk-incoming warp)
+// 0x8/ (hypersdk-outgoing warp)
 
 const (
 	// metaDB
 	txPrefix = 0x0
 
 	// stateDB
-	balancePrefix      = 0x0
-	assetPrefix        = 0x1
-	stakePrefix        = 0x2
-	loanPrefix         = 0x3
-	heightPrefix       = 0x4
-	timestampPrefix    = 0x5
-	feePrefix          = 0x6
+	balancePrefix = 0x0
+	assetPrefix   = 0x1
+
+	stakePrefix = 0x2
+
+	loanPrefix = 0x3
+
+	heightPrefix    = 0x4
+	timestampPrefix = 0x5
+	feePrefix       = 0x6
+
 	incomingWarpPrefix = 0x7
 	outgoingWarpPrefix = 0x8
 )
 
 const (
 	BalanceChunks uint16 = 1
-	StakeChunks   uint16 = 2
 	AssetChunks   uint16 = 5
+	StakeChunks   uint16 = 2
 	LoanChunks    uint16 = 1
 )
 
@@ -76,14 +81,14 @@ var (
 
 	balanceKeyPool = sync.Pool{
 		New: func() any {
-			return make([]byte, 1+codec.AddressLen+consts.IDLen+consts.Uint16Len)
+			return make([]byte, 1+codec.AddressLen+hconsts.IDLen+hconsts.Uint16Len)
 		},
 	}
 )
 
 // [txPrefix] + [txID]
 func TxKey(id ids.ID) (k []byte) {
-	k = make([]byte, 1+consts.IDLen)
+	k = make([]byte, 1+hconsts.IDLen)
 	k[0] = txPrefix
 	copy(k[1:], id[:])
 	return
@@ -99,15 +104,15 @@ func StoreTransaction(
 	fee uint64,
 ) error {
 	k := TxKey(id)
-	v := make([]byte, consts.Uint64Len+1+chain.DimensionsLen+consts.Uint64Len)
+	v := make([]byte, hconsts.Uint64Len+1+chain.DimensionsLen+hconsts.Uint64Len)
 	binary.BigEndian.PutUint64(v, uint64(t))
 	if success {
-		v[consts.Uint64Len] = successByte
+		v[hconsts.Uint64Len] = successByte
 	} else {
-		v[consts.Uint64Len] = failureByte
+		v[hconsts.Uint64Len] = failureByte
 	}
-	copy(v[consts.Uint64Len+1:], units.Bytes())
-	binary.BigEndian.PutUint64(v[consts.Uint64Len+1+chain.DimensionsLen:], fee)
+	copy(v[hconsts.Uint64Len+1:], units.Bytes())
+	binary.BigEndian.PutUint64(v[hconsts.Uint64Len+1+chain.DimensionsLen:], fee)
 	return db.Put(k, v)
 }
 
@@ -126,14 +131,14 @@ func GetTransaction(
 	}
 	t := int64(binary.BigEndian.Uint64(v))
 	success := true
-	if v[consts.Uint64Len] == failureByte {
+	if v[hconsts.Uint64Len] == failureByte {
 		success = false
 	}
-	d, err := chain.UnpackDimensions(v[consts.Uint64Len+1 : consts.Uint64Len+1+chain.DimensionsLen])
+	d, err := chain.UnpackDimensions(v[hconsts.Uint64Len+1 : hconsts.Uint64Len+1+chain.DimensionsLen])
 	if err != nil {
 		return false, 0, false, chain.Dimensions{}, 0, err
 	}
-	fee := binary.BigEndian.Uint64(v[consts.Uint64Len+1+chain.DimensionsLen:])
+	fee := binary.BigEndian.Uint64(v[hconsts.Uint64Len+1+chain.DimensionsLen:])
 	return true, t, success, d, fee, nil
 }
 
@@ -143,7 +148,7 @@ func BalanceKey(addr codec.Address, asset ids.ID) (k []byte) {
 	k[0] = balancePrefix
 	copy(k[1:], addr[:])
 	copy(k[1+codec.AddressLen:], asset[:])
-	binary.BigEndian.PutUint16(k[1+codec.AddressLen+consts.IDLen:], BalanceChunks)
+	binary.BigEndian.PutUint16(k[1+codec.AddressLen+hconsts.IDLen:], BalanceChunks)
 	return
 }
 
@@ -287,120 +292,12 @@ func SubBalance(
 	return setBalance(ctx, mu, key, nbal)
 }
 
-// [stakePrefix] + [txID]
-func StakeKey(txID ids.ID) (k []byte) {
-	k = make([]byte, 1+consts.IDLen+consts.Uint16Len) // Length of prefix + txID + stakeChunks
-	k[0] = stakePrefix                                // stakePrefix is a constant representing the staking category
-	copy(k[1:], txID[:])
-	binary.BigEndian.PutUint16(k[1+consts.IDLen:], StakeChunks) // Adding StakeChunks
-	return
-}
-
-func SetStake(
-	ctx context.Context,
-	mu state.Mutable,
-	stake ids.ID,
-	nodeID ids.NodeID,
-	stakedAmount uint64,
-	endLockUp uint64,
-	owner codec.Address,
-) error {
-	key := StakeKey(stake)
-	v := make([]byte, consts.NodeIDLen+(2*consts.Uint64Len)+codec.AddressLen) // Calculate the length of the encoded data
-
-	offset := 0
-	copy(v[offset:], nodeID[:])
-	offset += consts.NodeIDLen
-
-	binary.BigEndian.PutUint64(v[offset:], stakedAmount)
-	offset += consts.Uint64Len
-
-	binary.BigEndian.PutUint64(v[offset:], endLockUp)
-	offset += consts.Uint64Len
-
-	copy(v[offset:], owner[:])
-
-	return mu.Insert(ctx, key, v)
-}
-
-func GetStake(
-	ctx context.Context,
-	im state.Immutable,
-	stake ids.ID,
-) (bool, // exists
-	ids.NodeID, // NodeID
-	uint64, // StakedAmount
-	uint64, // EndLockUp
-	codec.Address, // Owner
-	error,
-) {
-	key := StakeKey(stake)
-	v, err := im.GetValue(ctx, key)
-	return innerGetStake(v, err)
-}
-
-// Used to serve RPC queries
-func GetStakeFromState(
-	ctx context.Context,
-	f ReadState,
-	stake ids.ID,
-) (bool, // exists
-	ids.NodeID, // NodeID
-	uint64, // StakedAmount
-	uint64, // EndLockUp
-	codec.Address, // Owner
-	error,
-) {
-	values, errs := f(ctx, [][]byte{StakeKey(stake)})
-	return innerGetStake(values[0], errs[0])
-}
-
-func innerGetStake(v []byte, err error) (
-	bool, // exists
-	ids.NodeID, // NodeID
-	uint64, // StakedAmount
-	uint64, // EndLockUp
-	codec.Address, // Owner
-	error,
-) {
-	if errors.Is(err, database.ErrNotFound) {
-		return false, ids.EmptyNodeID, 0, 0, codec.Address{}, nil
-	}
-	if err != nil {
-		return false, ids.EmptyNodeID, 0, 0, codec.Address{}, err
-	}
-
-	offset := 0
-	var nodeID ids.NodeID
-	copy(nodeID[:], v[offset:offset+consts.NodeIDLen])
-	offset += consts.NodeIDLen
-
-	stakedAmount := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
-	offset += consts.Uint64Len
-
-	endLockUp := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
-	offset += consts.Uint64Len
-
-	var walletAddress codec.Address
-	copy(walletAddress[:], v[offset:offset+codec.AddressLen])
-
-	return true, nodeID, stakedAmount, endLockUp, walletAddress, nil
-}
-
-func DeleteStake(
-	ctx context.Context,
-	mu state.Mutable,
-	stake ids.ID,
-) error {
-	return mu.Remove(ctx, StakeKey(stake))
-}
-
 // [assetPrefix] + [address]
 func AssetKey(asset ids.ID) (k []byte) {
-	k = make([]byte, 1+consts.IDLen+consts.Uint16Len)
+	k = make([]byte, 1+hconsts.IDLen+hconsts.Uint16Len)
 	k[0] = assetPrefix
 	copy(k[1:], asset[:])
-	binary.BigEndian.PutUint16(k[1+consts.IDLen:], AssetChunks)
+	binary.BigEndian.PutUint16(k[1+hconsts.IDLen:], AssetChunks)
 	return
 }
 
@@ -434,14 +331,14 @@ func innerGetAsset(
 		return false, nil, 0, nil, 0, codec.EmptyAddress, false, err
 	}
 	symbolLen := binary.BigEndian.Uint16(v)
-	symbol := v[consts.Uint16Len : consts.Uint16Len+symbolLen]
-	decimals := v[consts.Uint16Len+symbolLen]
-	metadataLen := binary.BigEndian.Uint16(v[consts.Uint16Len+symbolLen+consts.Uint8Len:])
-	metadata := v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len : consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen]
-	supply := binary.BigEndian.Uint64(v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen:])
+	symbol := v[hconsts.Uint16Len : hconsts.Uint16Len+symbolLen]
+	decimals := v[hconsts.Uint16Len+symbolLen]
+	metadataLen := binary.BigEndian.Uint16(v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len:])
+	metadata := v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len : hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen]
+	supply := binary.BigEndian.Uint64(v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen:])
 	var addr codec.Address
-	copy(addr[:], v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len:])
-	warp := v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len+codec.AddressLen] == 0x1
+	copy(addr[:], v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen+hconsts.Uint64Len:])
+	warp := v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen+hconsts.Uint64Len+codec.AddressLen] == 0x1
 	return true, symbol, decimals, metadata, supply, addr, warp, nil
 }
 
@@ -459,19 +356,19 @@ func SetAsset(
 	k := AssetKey(asset)
 	symbolLen := len(symbol)
 	metadataLen := len(metadata)
-	v := make([]byte, consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len+codec.AddressLen+1)
+	v := make([]byte, hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen+hconsts.Uint64Len+codec.AddressLen+1)
 	binary.BigEndian.PutUint16(v, uint16(symbolLen))
-	copy(v[consts.Uint16Len:], symbol)
-	v[consts.Uint16Len+symbolLen] = decimals
-	binary.BigEndian.PutUint16(v[consts.Uint16Len+symbolLen+consts.Uint8Len:], uint16(metadataLen))
-	copy(v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len:], metadata)
-	binary.BigEndian.PutUint64(v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen:], supply)
-	copy(v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len:], owner[:])
+	copy(v[hconsts.Uint16Len:], symbol)
+	v[hconsts.Uint16Len+symbolLen] = decimals
+	binary.BigEndian.PutUint16(v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len:], uint16(metadataLen))
+	copy(v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len:], metadata)
+	binary.BigEndian.PutUint64(v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen:], supply)
+	copy(v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen+hconsts.Uint64Len:], owner[:])
 	b := byte(0x0)
 	if warp {
 		b = 0x1
 	}
-	v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len+codec.AddressLen] = b
+	v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen+hconsts.Uint64Len+codec.AddressLen] = b
 	return mu.Insert(ctx, k, v)
 }
 
@@ -482,11 +379,11 @@ func DeleteAsset(ctx context.Context, mu state.Mutable, asset ids.ID) error {
 
 // [loanPrefix] + [asset] + [destination]
 func LoanKey(asset ids.ID, destination ids.ID) (k []byte) {
-	k = make([]byte, 1+consts.IDLen*2+consts.Uint16Len)
+	k = make([]byte, 1+hconsts.IDLen*2+hconsts.Uint16Len)
 	k[0] = loanPrefix
 	copy(k[1:], asset[:])
-	copy(k[1+consts.IDLen:], destination[:])
-	binary.BigEndian.PutUint16(k[1+consts.IDLen*2:], LoanChunks)
+	copy(k[1+hconsts.IDLen:], destination[:])
+	binary.BigEndian.PutUint16(k[1+hconsts.IDLen*2:], LoanChunks)
 	return
 }
 
@@ -586,6 +483,114 @@ func SubLoan(
 	return SetLoan(ctx, mu, asset, destination, nloan)
 }
 
+// [stakePrefix] + [txID]
+func StakeKey(txID ids.ID) (k []byte) {
+	k = make([]byte, 1+hconsts.IDLen+hconsts.Uint16Len) // Length of prefix + txID + stakeChunks
+	k[0] = stakePrefix                                  // stakePrefix is a constant representing the staking category
+	copy(k[1:], txID[:])
+	binary.BigEndian.PutUint16(k[1+hconsts.IDLen:], StakeChunks) // Adding StakeChunks
+	return
+}
+
+func SetStake(
+	ctx context.Context,
+	mu state.Mutable,
+	stake ids.ID,
+	nodeID ids.NodeID,
+	stakedAmount uint64,
+	endLockUp uint64,
+	owner codec.Address,
+) error {
+	key := StakeKey(stake)
+	v := make([]byte, hconsts.NodeIDLen+(2*hconsts.Uint64Len)+codec.AddressLen) // Calculate the length of the encoded data
+
+	offset := 0
+	copy(v[offset:], nodeID[:])
+	offset += hconsts.NodeIDLen
+
+	binary.BigEndian.PutUint64(v[offset:], stakedAmount)
+	offset += hconsts.Uint64Len
+
+	binary.BigEndian.PutUint64(v[offset:], endLockUp)
+	offset += hconsts.Uint64Len
+
+	copy(v[offset:], owner[:])
+
+	return mu.Insert(ctx, key, v)
+}
+
+func GetStake(
+	ctx context.Context,
+	im state.Immutable,
+	stake ids.ID,
+) (bool, // exists
+	ids.NodeID, // NodeID
+	uint64, // StakedAmount
+	uint64, // EndLockUp
+	codec.Address, // Owner
+	error,
+) {
+	key := StakeKey(stake)
+	v, err := im.GetValue(ctx, key)
+	return innerGetStake(v, err)
+}
+
+// Used to serve RPC queries
+func GetStakeFromState(
+	ctx context.Context,
+	f ReadState,
+	stake ids.ID,
+) (bool, // exists
+	ids.NodeID, // NodeID
+	uint64, // StakedAmount
+	uint64, // EndLockUp
+	codec.Address, // Owner
+	error,
+) {
+	values, errs := f(ctx, [][]byte{StakeKey(stake)})
+	return innerGetStake(values[0], errs[0])
+}
+
+func innerGetStake(v []byte, err error) (
+	bool, // exists
+	ids.NodeID, // NodeID
+	uint64, // StakedAmount
+	uint64, // EndLockUp
+	codec.Address, // Owner
+	error,
+) {
+	if errors.Is(err, database.ErrNotFound) {
+		return false, ids.EmptyNodeID, 0, 0, codec.Address{}, nil
+	}
+	if err != nil {
+		return false, ids.EmptyNodeID, 0, 0, codec.Address{}, err
+	}
+
+	offset := 0
+	var nodeID ids.NodeID
+	copy(nodeID[:], v[offset:offset+hconsts.NodeIDLen])
+	offset += hconsts.NodeIDLen
+
+	stakedAmount := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
+	offset += hconsts.Uint64Len
+
+	endLockUp := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
+	offset += hconsts.Uint64Len
+
+	var walletAddress codec.Address
+	copy(walletAddress[:], v[offset:offset+codec.AddressLen])
+
+	return true, nodeID, stakedAmount, endLockUp, walletAddress, nil
+}
+
+func DeleteStake(
+	ctx context.Context,
+	mu state.Mutable,
+	stake ids.ID,
+) error {
+	return mu.Remove(ctx, StakeKey(stake))
+}
+
 func HeightKey() (k []byte) {
 	return heightKey
 }
@@ -599,15 +604,15 @@ func FeeKey() (k []byte) {
 }
 
 func IncomingWarpKeyPrefix(sourceChainID ids.ID, msgID ids.ID) (k []byte) {
-	k = make([]byte, 1+consts.IDLen*2)
+	k = make([]byte, 1+hconsts.IDLen*2)
 	k[0] = incomingWarpPrefix
 	copy(k[1:], sourceChainID[:])
-	copy(k[1+consts.IDLen:], msgID[:])
+	copy(k[1+hconsts.IDLen:], msgID[:])
 	return k
 }
 
 func OutgoingWarpKeyPrefix(txID ids.ID) (k []byte) {
-	k = make([]byte, 1+consts.IDLen)
+	k = make([]byte, 1+hconsts.IDLen)
 	k[0] = outgoingWarpPrefix
 	copy(k[1:], txID[:])
 	return k

@@ -18,7 +18,7 @@ import (
 	"github.com/ava-labs/hypersdk/trace"
 	"github.com/ava-labs/hypersdk/vm"
 
-	"github.com/nuklai/nuklaivm/consts"
+	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/version"
 )
 
@@ -28,6 +28,7 @@ const (
 	defaultContinuousProfilerFrequency = 1 * time.Minute
 	defaultContinuousProfilerMaxFiles  = 10
 	defaultStoreTransactions           = true
+	defaultMaxOrdersPerPair            = 1024
 )
 
 type Config struct {
@@ -60,6 +61,12 @@ type Config struct {
 	MempoolSponsorSize    int      `json:"mempoolSponsorSize"`
 	MempoolExemptSponsors []string `json:"mempoolExemptSponsors"`
 
+	// Order Book
+	//
+	// This is denoted as <asset 1>-<asset 2>
+	MaxOrdersPerPair int      `json:"maxOrdersPerPair"`
+	TrackedPairs     []string `json:"trackedPairs"` // which asset ID pairs we care about
+
 	// Misc
 	VerifyAuth        bool          `json:"verifyAuth"`
 	StoreTransactions bool          `json:"storeTransactions"`
@@ -88,7 +95,7 @@ func New(nodeID ids.NodeID, b []byte) (*Config, error) {
 	// broadcasting many txs at once)
 	c.parsedExemptSponsors = make([]codec.Address, len(c.MempoolExemptSponsors))
 	for i, sponsor := range c.MempoolExemptSponsors {
-		p, err := codec.ParseAddressBech32(consts.HRP, sponsor)
+		p, err := codec.ParseAddressBech32(nconsts.HRP, sponsor)
 		if err != nil {
 			return nil, err
 		}
@@ -114,6 +121,7 @@ func (c *Config) setDefault() {
 	c.StreamingBacklogSize = c.Config.GetStreamingBacklogSize()
 	c.VerifyAuth = c.Config.GetVerifyAuth()
 	c.StoreTransactions = defaultStoreTransactions
+	c.MaxOrdersPerPair = defaultMaxOrdersPerPair
 }
 
 func (c *Config) GetLogLevel() logging.Level                { return c.LogLevel }
@@ -128,7 +136,7 @@ func (c *Config) GetTraceConfig() *trace.Config {
 	return &trace.Config{
 		Enabled:         c.TraceEnabled,
 		TraceSampleRate: c.TraceSampleRate,
-		AppName:         consts.Name,
+		AppName:         nconsts.Name,
 		Agent:           c.nodeID.String(),
 		Version:         version.Version.String(),
 	}

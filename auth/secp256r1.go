@@ -12,7 +12,8 @@ import (
 	"github.com/ava-labs/hypersdk/crypto"
 	"github.com/ava-labs/hypersdk/crypto/secp256r1"
 	"github.com/ava-labs/hypersdk/utils"
-	"github.com/nuklai/nuklaivm/consts"
+
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 var _ chain.Auth = (*SECP256R1)(nil)
@@ -32,7 +33,7 @@ func (d *SECP256R1) address() codec.Address {
 }
 
 func (*SECP256R1) GetTypeID() uint8 {
-	return consts.SECP256R1ID
+	return nconsts.SECP256R1ID
 }
 
 func (*SECP256R1) ComputeUnits(chain.Rules) uint64 {
@@ -99,5 +100,5 @@ func (*SECP256R1Factory) MaxUnits() (uint64, uint64) {
 }
 
 func NewSECP256R1Address(pk secp256r1.PublicKey) codec.Address {
-	return codec.CreateAddress(consts.SECP256R1ID, utils.ToID(pk[:]))
+	return codec.CreateAddress(nconsts.SECP256R1ID, utils.ToID(pk[:]))
 }
