@@ -18,7 +18,6 @@ import (
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/pubsub"
-	"github.com/ava-labs/hypersdk/rpc"
 	hrpc "github.com/ava-labs/hypersdk/rpc"
 	hutils "github.com/ava-labs/hypersdk/utils"
 
@@ -490,7 +489,7 @@ var importAssetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		scli := rpc.NewJSONRPCClient(uris[0])
+		scli := hrpc.NewJSONRPCClient(uris[0])
 
 		// Perform import
 		return performImport(ctx, scli, dcli, dscli, dtcli, ids.Empty, factory)
@@ -637,11 +636,11 @@ var exportAssetCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			dscli, err := rpc.NewWebSocketClient(uris[0], rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
+			dscli, err := hrpc.NewWebSocketClient(uris[0], hrpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
 			if err != nil {
 				return err
 			}
-			if err := performImport(ctx, hcli, rpc.NewJSONRPCClient(uris[0]), dscli, nrpc.NewJSONRPCClient(uris[0], networkID, destination), txID, factory); err != nil {
+			if err := performImport(ctx, hcli, hrpc.NewJSONRPCClient(uris[0]), dscli, nrpc.NewJSONRPCClient(uris[0], networkID, destination), txID, factory); err != nil {
 				return err
 			}
 		}

@@ -22,8 +22,6 @@ import (
 )
 
 // sendAndWait may not be used concurrently
-//
-//nolint:unparam
 func sendAndWait(
 	ctx context.Context, warpMsg *warp.Message, action chain.Action, hcli *hrpc.JSONRPCClient,
 	hws *hrpc.WebSocketClient, ncli *nrpc.JSONRPCClient, factory chain.AuthFactory, printStatus bool,
@@ -64,10 +62,10 @@ func sendAndWait(
 func handleTx(ncli *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Result) {
 	summaryStr := string(result.Output)
 	actor := tx.Auth.Actor()
-	status := "❌"
+	var status = "❌"
 	if result.Success {
 		status = "✅"
-		switch action := tx.Action.(type) { //nolint:gocritic
+		switch action := tx.Action.(type) {
 		case *actions.Transfer:
 			_, symbol, decimals, _, _, _, _, err := ncli.Asset(context.TODO(), action.Asset, true)
 			if err != nil {
