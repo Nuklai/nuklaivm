@@ -62,7 +62,7 @@ func sendAndWait(
 func handleTx(ncli *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Result) {
 	summaryStr := string(result.Output)
 	actor := tx.Auth.Actor()
-	var status = "❌"
+	status := "❌" //nolint:ineffassign // reason for ignoring
 	if result.Success {
 		status = "✅"
 		switch action := tx.Action.(type) {
