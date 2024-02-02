@@ -511,7 +511,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				nil,
 				&actions.Transfer{
 					To:    rsender2,
-					Asset: ids.Empty,
 					Value: 201,
 				},
 				factory,
@@ -633,7 +632,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		transfer := &actions.Transfer{
 			To:    auth.NewED25519Address(other.PublicKey()),
-			Asset: ids.Empty,
 			Value: 1,
 		}
 
@@ -684,7 +682,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		transfer := &actions.Transfer{
 			To:    auth.NewED25519Address(other.PublicKey()),
-			Asset: ids.Empty,
 			Value: 1,
 		}
 		parser, err := instances[0].ncli.Parser(context.Background())
@@ -1545,7 +1542,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		gomega.Ω(result.Success).Should(gomega.BeFalse())
 		gomega.Ω(string(result.Output)).Should(gomega.ContainSubstring("not warp asset"))
 	})
-
 })
 
 func expectBlk(i instance) func(bool) []*chain.Result {

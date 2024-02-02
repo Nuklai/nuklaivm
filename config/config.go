@@ -61,12 +61,6 @@ type Config struct {
 	MempoolSponsorSize    int      `json:"mempoolSponsorSize"`
 	MempoolExemptSponsors []string `json:"mempoolExemptSponsors"`
 
-	// Order Book
-	//
-	// This is denoted as <asset 1>-<asset 2>
-	MaxOrdersPerPair int      `json:"maxOrdersPerPair"`
-	TrackedPairs     []string `json:"trackedPairs"` // which asset ID pairs we care about
-
 	// Misc
 	VerifyAuth        bool          `json:"verifyAuth"`
 	StoreTransactions bool          `json:"storeTransactions"`
@@ -121,7 +115,6 @@ func (c *Config) setDefault() {
 	c.StreamingBacklogSize = c.Config.GetStreamingBacklogSize()
 	c.VerifyAuth = c.Config.GetVerifyAuth()
 	c.StoreTransactions = defaultStoreTransactions
-	c.MaxOrdersPerPair = defaultMaxOrdersPerPair
 }
 
 func (c *Config) GetLogLevel() logging.Level                { return c.LogLevel }

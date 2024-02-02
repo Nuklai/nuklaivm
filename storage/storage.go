@@ -160,7 +160,7 @@ func GetBalance(
 	asset ids.ID,
 ) (uint64, error) {
 	key, bal, _, err := getBalance(ctx, im, addr, asset)
-	balanceKeyPool.Put(&key)
+	balanceKeyPool.Put(key)
 	return bal, err
 }
 
@@ -185,7 +185,7 @@ func GetBalanceFromState(
 	k := BalanceKey(addr, asset)
 	values, errs := f(ctx, [][]byte{k})
 	bal, _, err := innerGetBalance(values[0], errs[0])
-	balanceKeyPool.Put(&k)
+	balanceKeyPool.Put(k)
 	return bal, err
 }
 
