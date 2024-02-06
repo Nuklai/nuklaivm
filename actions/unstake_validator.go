@@ -11,12 +11,12 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
+	hconsts "github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/ava-labs/hypersdk/utils"
-	"github.com/nuklai/nuklaivm/storage"
 
-	mconsts "github.com/nuklai/nuklaivm/consts"
+	nconsts "github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/storage"
 )
 
 var _ chain.Action = (*UnstakeValidator)(nil)
@@ -27,12 +27,12 @@ type UnstakeValidator struct {
 }
 
 func (*UnstakeValidator) GetTypeID() uint8 {
-	return mconsts.UnstakeValidatorID
+	return nconsts.UnstakeValidatorID
 }
 
 func (u *UnstakeValidator) StateKeys(actor codec.Address, _ ids.ID) []string {
 	return []string{
-		string(storage.BalanceKey(actor)),
+		string(storage.BalanceKey(actor, ids.Empty)),
 		string(storage.StakeKey(u.Stake)),
 	}
 }
@@ -75,7 +75,7 @@ func (*UnstakeValidator) MaxComputeUnits(chain.Rules) uint64 {
 }
 
 func (*UnstakeValidator) Size() int {
-	return consts.IDLen
+	return hconsts.IDLen + hconsts.NodeIDLen
 }
 
 func (u *UnstakeValidator) Marshal(p *codec.Packer) {
@@ -86,7 +86,7 @@ func (u *UnstakeValidator) Marshal(p *codec.Packer) {
 func UnmarshalUnstakeValidator(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
 	var unstake UnstakeValidator
 	p.UnpackID(true, &unstake.Stake)
-	p.UnpackBytes(consts.NodeIDLen, false, &unstake.NodeID)
+	p.UnpackBytes(hconsts.NodeIDLen, false, &unstake.NodeID)
 	return &unstake, p.Err()
 }
 

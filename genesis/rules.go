@@ -1,4 +1,4 @@
-// Copyright (C) 2023, AllianceBlock. All rights reserved.
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package genesis
@@ -24,7 +24,11 @@ func (g *Genesis) Rules(_ int64, networkID uint32, chainID ids.ID) *Rules {
 }
 
 func (*Rules) GetWarpConfig(ids.ID) (bool, uint64, uint64) {
-	return false, 0, 0
+	// We allow inbound transfers from all sources as long as 80% of stake has
+	// signed a message.
+	//
+	// This is safe because the tokenvm scopes all assets by their source chain.
+	return true, 4, 5
 }
 
 func (r *Rules) NetworkID() uint32 {

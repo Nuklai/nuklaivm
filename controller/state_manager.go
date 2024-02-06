@@ -1,7 +1,7 @@
 // Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-package storage
+package controller
 
 import (
 	"context"
@@ -10,6 +10,8 @@ import (
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/state"
+
+	"github.com/nuklai/nuklaivm/storage"
 )
 
 var _ (chain.StateManager) = (*StateManager)(nil)
@@ -17,28 +19,28 @@ var _ (chain.StateManager) = (*StateManager)(nil)
 type StateManager struct{}
 
 func (*StateManager) HeightKey() []byte {
-	return HeightKey()
+	return storage.HeightKey()
 }
 
 func (*StateManager) TimestampKey() []byte {
-	return TimestampKey()
+	return storage.TimestampKey()
 }
 
 func (*StateManager) FeeKey() []byte {
-	return FeeKey()
+	return storage.HeightKey()
 }
 
 func (*StateManager) IncomingWarpKeyPrefix(sourceChainID ids.ID, msgID ids.ID) []byte {
-	return IncomingWarpKeyPrefix(sourceChainID, msgID)
+	return storage.IncomingWarpKeyPrefix(sourceChainID, msgID)
 }
 
 func (*StateManager) OutgoingWarpKeyPrefix(txID ids.ID) []byte {
-	return OutgoingWarpKeyPrefix(txID)
+	return storage.OutgoingWarpKeyPrefix(txID)
 }
 
 func (*StateManager) SponsorStateKeys(addr codec.Address) []string {
 	return []string{
-		string(BalanceKey(addr)),
+		string(storage.BalanceKey(addr, ids.Empty)),
 	}
 }
 
@@ -48,12 +50,12 @@ func (*StateManager) CanDeduct(
 	im state.Immutable,
 	amount uint64,
 ) error {
-	bal, err := GetBalance(ctx, im, addr)
+	bal, err := storage.GetBalance(ctx, im, addr, ids.Empty)
 	if err != nil {
 		return err
 	}
 	if bal < amount {
-		return ErrInvalidBalance
+		return storage.ErrInvalidBalance
 	}
 	return nil
 }
@@ -64,7 +66,7 @@ func (*StateManager) Deduct(
 	mu state.Mutable,
 	amount uint64,
 ) error {
-	return SubBalance(ctx, mu, addr, amount)
+	return storage.SubBalance(ctx, mu, addr, ids.Empty, amount)
 }
 
 func (*StateManager) Refund(
@@ -74,5 +76,5 @@ func (*StateManager) Refund(
 	amount uint64,
 ) error {
 	// Don't create account if it doesn't exist (may have sent all funds).
-	return AddBalance(ctx, mu, addr, amount, false)
+	return storage.AddBalance(ctx, mu, addr, ids.Empty, amount, false)
 }

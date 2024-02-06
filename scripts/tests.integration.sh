@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (C) 2023, AllianceBlock. All rights reserved.
+# Copyright (C) 2024, AllianceBlock. All rights reserved.
 # See the file LICENSE for licensing terms.
 
 set -e
@@ -29,10 +29,11 @@ run \
 --fail-fast \
 -cover \
 -covermode=atomic \
--coverpkg=github.com/ava-labs/hypersdk/... \
+-coverpkg=github.com/nuklai/nuklaivm/... \
 -coverprofile=integration.coverage.out \
 ./tests/integration \
---vms 3
+--vms 3 \
+--min-price 1
 
 # output generate coverage html
 go tool cover -html=integration.coverage.out -o=integration.coverage.html

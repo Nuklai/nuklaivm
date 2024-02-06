@@ -8,18 +8,20 @@ import (
 	"crypto/rand"
 	"fmt"
 
+	"github.com/spf13/cobra"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/cli"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
 	"github.com/ava-labs/hypersdk/crypto/secp256r1"
-	"github.com/ava-labs/hypersdk/utils"
+	hutils "github.com/ava-labs/hypersdk/utils"
 	"github.com/btcsuite/btcd/btcutil/bech32"
+
 	"github.com/nuklai/nuklaivm/auth"
-	"github.com/nuklai/nuklaivm/consts"
-	brpc "github.com/nuklai/nuklaivm/rpc"
-	"github.com/spf13/cobra"
+	nconsts "github.com/nuklai/nuklaivm/consts"
+	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
 
 const (
@@ -39,11 +41,11 @@ func checkKeyType(k string) error {
 
 func getKeyType(addr codec.Address) (string, error) {
 	switch addr[0] {
-	case consts.ED25519ID:
+	case nconsts.ED25519ID:
 		return ed25519Key, nil
-	case consts.SECP256R1ID:
+	case nconsts.SECP256R1ID:
 		return secp256r1Key, nil
-	case consts.BLSID:
+	case nconsts.BLSID:
 		return blsKey, nil
 	default:
 		return "", ErrInvalidKeyType
@@ -87,7 +89,7 @@ func generatePrivateKey(k string) (*cli.PrivateKey, error) {
 func loadPrivateKey(k string, path string) (*cli.PrivateKey, error) {
 	switch k {
 	case ed25519Key:
-		p, err := utils.LoadBytes(path, ed25519.PrivateKeyLen)
+		p, err := hutils.LoadBytes(path, ed25519.PrivateKeyLen)
 		if err != nil {
 			return nil, err
 		}
@@ -97,7 +99,7 @@ func loadPrivateKey(k string, path string) (*cli.PrivateKey, error) {
 			Bytes:   p,
 		}, nil
 	case secp256r1Key:
-		p, err := utils.LoadBytes(path, secp256r1.PrivateKeyLen)
+		p, err := hutils.LoadBytes(path, secp256r1.PrivateKeyLen)
 		if err != nil {
 			return nil, err
 		}
@@ -107,7 +109,7 @@ func loadPrivateKey(k string, path string) (*cli.PrivateKey, error) {
 			Bytes:   p,
 		}, nil
 	case blsKey:
-		p, err := utils.LoadBytes(path, bls.PrivateKeyLen)
+		p, err := hutils.LoadBytes(path, bls.PrivateKeyLen)
 		if err != nil {
 			return nil, err
 		}
@@ -151,9 +153,9 @@ var genKeyCmd = &cobra.Command{
 		if err := handler.h.StoreDefaultKey(priv.Address); err != nil {
 			return err
 		}
-		utils.Outf(
+		hutils.Outf(
 			"{{green}}created address:{{/}} %s",
-			codec.MustAddressBech32(consts.HRP, priv.Address),
+			codec.MustAddressBech32(nconsts.HRP, priv.Address),
 		)
 		return nil
 	},
@@ -178,9 +180,9 @@ var importKeyCmd = &cobra.Command{
 		if err := handler.h.StoreDefaultKey(priv.Address); err != nil {
 			return err
 		}
-		utils.Outf(
+		hutils.Outf(
 			"{{green}}imported address:{{/}} %s",
-			codec.MustAddressBech32(consts.HRP, priv.Address),
+			codec.MustAddressBech32(nconsts.HRP, priv.Address),
 		)
 		return nil
 	},
@@ -188,12 +190,12 @@ var importKeyCmd = &cobra.Command{
 
 func lookupSetKeyBalance(choice int, address string, uri string, networkID uint32, chainID ids.ID) error {
 	// TODO: just load once
-	cli := brpc.NewJSONRPCClient(uri, networkID, chainID)
-	balance, err := cli.Balance(context.TODO(), address)
+	ncli := nrpc.NewJSONRPCClient(uri, networkID, chainID)
+	balance, err := ncli.Balance(context.TODO(), address, ids.Empty)
 	if err != nil {
 		return err
 	}
-	addr, err := codec.ParseAddressBech32(consts.HRP, address)
+	addr, err := codec.ParseAddressBech32(nconsts.HRP, address)
 	if err != nil {
 		return err
 	}
@@ -201,13 +203,13 @@ func lookupSetKeyBalance(choice int, address string, uri string, networkID uint3
 	if err != nil {
 		return err
 	}
-	utils.Outf(
+	hutils.Outf(
 		"%d) {{cyan}}address (%s):{{/}} %s {{cyan}}balance:{{/}} %s %s\n",
 		choice,
 		keyType,
 		address,
-		utils.FormatBalance(balance, consts.Decimals),
-		consts.Symbol,
+		hutils.FormatBalance(balance, nconsts.Decimals),
+		nconsts.Symbol,
 	)
 	return nil
 }
@@ -219,8 +221,10 @@ var setKeyCmd = &cobra.Command{
 	},
 }
 
-func lookupKeyBalance(addr codec.Address, uri string, networkID uint32, chainID ids.ID, _ ids.ID) error {
-	_, err := handler.GetBalance(context.TODO(), brpc.NewJSONRPCClient(uri, networkID, chainID), addr)
+func lookupKeyBalance(addr codec.Address, uri string, networkID uint32, chainID ids.ID, assetID ids.ID) error {
+	_, _, _, _, err := handler.GetAssetInfo(
+		context.TODO(), nrpc.NewJSONRPCClient(uri, networkID, chainID),
+		addr, assetID, true)
 	return err
 }
 
@@ -228,19 +232,23 @@ var balanceKeyCmd = &cobra.Command{
 	Use: "balance [address]",
 	RunE: func(_ *cobra.Command, args []string) error {
 		if len(args) != 1 {
-			return handler.Root().Balance(checkAllChains, false, lookupKeyBalance)
+			return handler.Root().Balance(checkAllChains, true, lookupKeyBalance)
 		}
-		addr, err := codec.ParseAddressBech32(consts.HRP, args[0])
+		addr, err := codec.ParseAddressBech32(nconsts.HRP, args[0])
 		if err != nil {
 			return err
 		}
-		utils.Outf("{{yellow}}address:{{/}} %s\n", args[0])
-		clients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
+		hutils.Outf("{{yellow}}address:{{/}} %s\n", args[0])
+		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
 		if err != nil {
 			return err
 		}
-		for _, cli := range clients {
-			if _, err := handler.GetBalance(context.TODO(), cli, addr); err != nil {
+		assetID, err := handler.h.PromptAsset("assetID", true)
+		if err != nil {
+			return err
+		}
+		for _, ncli := range nclients {
+			if _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, assetID, true); err != nil {
 				return err
 			}
 		}
@@ -275,12 +283,12 @@ var vanityAddressCmd = &cobra.Command{
 		}
 
 		// Encode to Bech32
-		bech32Addr, err := bech32.Encode(consts.HRP, data5Bit)
+		bech32Addr, err := bech32.Encode(nconsts.HRP, data5Bit)
 		if err != nil {
 			return err
 		}
 
-		utils.Outf("{{yellow}}Address: %s{{/}}\n", bech32Addr)
+		hutils.Outf("{{yellow}}Address: %s{{/}}\n", bech32Addr)
 
 		return nil
 	},

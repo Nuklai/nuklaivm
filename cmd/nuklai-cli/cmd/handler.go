@@ -10,17 +10,21 @@ import (
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/cli"
 	"github.com/ava-labs/hypersdk/codec"
+	hconsts "github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
 	"github.com/ava-labs/hypersdk/crypto/secp256r1"
 	"github.com/ava-labs/hypersdk/pubsub"
-	"github.com/ava-labs/hypersdk/rpc"
-	"github.com/ava-labs/hypersdk/utils"
+	hrpc "github.com/ava-labs/hypersdk/rpc"
+	hutils "github.com/ava-labs/hypersdk/utils"
+
 	"github.com/nuklai/nuklaivm/auth"
-	"github.com/nuklai/nuklaivm/consts"
+	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
-	brpc "github.com/nuklai/nuklaivm/rpc"
+	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
+
+var _ cli.Controller = (*Controller)(nil)
 
 type Handler struct {
 	h *cli.Handler
@@ -34,9 +38,72 @@ func (h *Handler) Root() *cli.Handler {
 	return h.h
 }
 
+func (*Handler) GetAssetInfo(
+	ctx context.Context,
+	ncli *nrpc.JSONRPCClient,
+	addr codec.Address,
+	assetID ids.ID,
+	checkBalance bool,
+) ([]byte, uint8, uint64, ids.ID, error) {
+	var sourceChainID ids.ID
+	exists, symbol, decimals, metadata, supply, _, warp, err := ncli.Asset(ctx, assetID, false)
+	if err != nil {
+		return nil, 0, 0, ids.Empty, err
+	}
+	if assetID != ids.Empty {
+		if !exists {
+			hutils.Outf("{{red}}%s does not exist{{/}}\n", assetID)
+			hutils.Outf("{{red}}exiting...{{/}}\n")
+			return nil, 0, 0, ids.Empty, nil
+		}
+		if warp {
+			sourceChainID = ids.ID(metadata[hconsts.IDLen:])
+			sourceAssetID := ids.ID(metadata[:hconsts.IDLen])
+			hutils.Outf(
+				"{{yellow}}sourceChainID:{{/}} %s {{yellow}}sourceAssetID:{{/}} %s {{yellow}}supply:{{/}} %d\n",
+				sourceChainID,
+				sourceAssetID,
+				supply,
+			)
+		} else {
+			hutils.Outf(
+				"{{yellow}}symbol:{{/}} %s {{yellow}}decimals:{{/}} %d {{yellow}}metadata:{{/}} %s {{yellow}}supply:{{/}} %d {{yellow}}warp:{{/}} %t\n",
+				symbol,
+				decimals,
+				metadata,
+				supply,
+				warp,
+			)
+		}
+	}
+	if !checkBalance {
+		return symbol, decimals, 0, sourceChainID, nil
+	}
+	saddr, err := codec.AddressBech32(nconsts.HRP, addr)
+	if err != nil {
+		return nil, 0, 0, ids.Empty, err
+	}
+	balance, err := ncli.Balance(ctx, saddr, assetID)
+	if err != nil {
+		return nil, 0, 0, ids.Empty, err
+	}
+	if balance == 0 {
+		hutils.Outf("{{red}}balance:{{/}} 0 %s\n", assetID)
+		hutils.Outf("{{red}}please send funds to %s{{/}}\n", saddr)
+		hutils.Outf("{{red}}exiting...{{/}}\n")
+	} else {
+		hutils.Outf(
+			"{{yellow}}balance:{{/}} %s %s\n",
+			hutils.FormatBalance(balance, decimals),
+			symbol,
+		)
+	}
+	return symbol, decimals, balance, sourceChainID, nil
+}
+
 func (h *Handler) DefaultActor() (
 	ids.ID, *cli.PrivateKey, chain.AuthFactory,
-	*rpc.JSONRPCClient, *brpc.JSONRPCClient, *rpc.WebSocketClient, error,
+	*hrpc.JSONRPCClient, *hrpc.WebSocketClient, *nrpc.JSONRPCClient, error,
 ) {
 	addr, priv, err := h.h.GetDefaultKey(true)
 	if err != nil {
@@ -44,11 +111,11 @@ func (h *Handler) DefaultActor() (
 	}
 	var factory chain.AuthFactory
 	switch addr[0] {
-	case consts.ED25519ID:
+	case nconsts.ED25519ID:
 		factory = auth.NewED25519Factory(ed25519.PrivateKey(priv))
-	case consts.SECP256R1ID:
+	case nconsts.SECP256R1ID:
 		factory = auth.NewSECP256R1Factory(secp256r1.PrivateKey(priv))
-	case consts.BLSID:
+	case nconsts.BLSID:
 		p, err := bls.PrivateKeyFromBytes(priv)
 		if err != nil {
 			return ids.Empty, nil, nil, nil, nil, nil, err
@@ -61,29 +128,31 @@ func (h *Handler) DefaultActor() (
 	if err != nil {
 		return ids.Empty, nil, nil, nil, nil, nil, err
 	}
-	jcli := rpc.NewJSONRPCClient(uris[0])
-	networkID, _, _, err := jcli.Network(context.TODO())
-	if err != nil {
-		return ids.Empty, nil, nil, nil, nil, nil, err
-	}
-	ws, err := rpc.NewWebSocketClient(uris[0], rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
-	if err != nil {
-		return ids.Empty, nil, nil, nil, nil, nil, err
-	}
 	// For [defaultActor], we always send requests to the first returned URI.
-	return chainID, &cli.PrivateKey{
-			Address: addr,
-			Bytes:   priv,
-		}, factory, jcli,
-		brpc.NewJSONRPCClient(
+	hcli := hrpc.NewJSONRPCClient(uris[0])
+	networkID, _, _, err := hcli.Network(context.TODO())
+	if err != nil {
+		return ids.Empty, nil, nil, nil, nil, nil, err
+	}
+	hws, err := hrpc.NewWebSocketClient(
+		uris[0],
+		hrpc.DefaultHandshakeTimeout,
+		pubsub.MaxPendingMessages,
+		pubsub.MaxReadMessageSize,
+	)
+	if err != nil {
+		return ids.Empty, nil, nil, nil, nil, nil, err
+	}
+	return chainID, &cli.PrivateKey{Address: addr, Bytes: priv}, factory, hcli, hws,
+		nrpc.NewJSONRPCClient(
 			uris[0],
 			networkID,
 			chainID,
-		), ws, nil
+		), nil
 }
 
-func (h *Handler) DefaultNuklaiVMJSONRPCClient(checkAllChains bool) ([]*brpc.JSONRPCClient, error) {
-	clients := make([]*brpc.JSONRPCClient, 0)
+func (h *Handler) DefaultNuklaiVMJSONRPCClient(checkAllChains bool) ([]*nrpc.JSONRPCClient, error) {
+	clients := make([]*nrpc.JSONRPCClient, 0)
 	chainID, uris, err := h.h.GetDefaultChain(true)
 	if err != nil {
 		return nil, err
@@ -93,53 +162,26 @@ func (h *Handler) DefaultNuklaiVMJSONRPCClient(checkAllChains bool) ([]*brpc.JSO
 		max = 1
 	}
 	for _, uri := range uris[:max] {
-		rcli := rpc.NewJSONRPCClient(uris[0])
-		networkID, _, _, err := rcli.Network(context.TODO())
+		hcli := hrpc.NewJSONRPCClient(uris[0])
+		networkID, _, _, err := hcli.Network(context.TODO())
 		if err != nil {
 			return nil, err
 		}
-		clients = append(clients, brpc.NewJSONRPCClient(uri, networkID, chainID))
+		clients = append(clients, nrpc.NewJSONRPCClient(uri, networkID, chainID))
 	}
 	return clients, nil
 }
 
-func (*Handler) GetBalance(
-	ctx context.Context,
-	cli *brpc.JSONRPCClient,
-	addr codec.Address,
-) (uint64, error) {
-	saddr, err := codec.AddressBech32(consts.HRP, addr)
-	if err != nil {
-		return 0, err
-	}
-	balance, err := cli.Balance(ctx, saddr)
-	if err != nil {
-		return 0, err
-	}
-	if balance == 0 {
-		utils.Outf("{{red}}balance:{{/}} 0 %s\n", consts.Symbol)
-		utils.Outf("{{red}}please send funds to %s{{/}}\n", saddr)
-		utils.Outf("{{red}}exiting...{{/}}\n")
-		return 0, nil
-	}
-	utils.Outf(
-		"{{yellow}}balance:{{/}} %s %s\n",
-		utils.FormatBalance(balance, consts.Decimals),
-		consts.Symbol,
-	)
-	return balance, nil
-}
-
 func (*Handler) GetEmissionInfo(
 	ctx context.Context,
-	cli *brpc.JSONRPCClient,
+	cli *nrpc.JSONRPCClient,
 ) (uint64, uint64, uint64, error) {
 	totalSupply, maxSupply, rewardsPerBlock, err := cli.EmissionInfo(ctx)
 	if err != nil {
 		return 0, 0, 0, err
 	}
 
-	utils.Outf(
+	hutils.Outf(
 		"{{yellow}}emission info: {{/}}\nTotalSupply=%d MaxSupply=%d RewardsPerBlock=%d\n",
 		totalSupply,
 		maxSupply,
@@ -150,14 +192,14 @@ func (*Handler) GetEmissionInfo(
 
 func (*Handler) GetAllValidators(
 	ctx context.Context,
-	cli *brpc.JSONRPCClient,
+	cli *nrpc.JSONRPCClient,
 ) ([]*emission.Validator, error) {
 	validators, err := cli.Validators(ctx)
 	if err != nil {
 		return nil, err
 	}
 	for index, validator := range validators {
-		utils.Outf(
+		hutils.Outf(
 			"{{yellow}}validator %d:{{/}} NodeID=%s NodePublicKey=%s UserStake=%v StakedAmount=%d StakedReward=%d\n",
 			index,
 			validator.NodeID,
@@ -171,9 +213,9 @@ func (*Handler) GetAllValidators(
 }
 
 func (*Handler) GetUserStake(ctx context.Context,
-	cli *brpc.JSONRPCClient, nodeID ids.NodeID, owner codec.Address,
+	cli *nrpc.JSONRPCClient, nodeID ids.NodeID, owner codec.Address,
 ) (*emission.UserStake, error) {
-	saddr, err := codec.AddressBech32(consts.HRP, owner)
+	saddr, err := codec.AddressBech32(nconsts.HRP, owner)
 	if err != nil {
 		return nil, err
 	}
@@ -183,9 +225,9 @@ func (*Handler) GetUserStake(ctx context.Context,
 	}
 
 	if userStake.Owner == "" {
-		utils.Outf("{{yellow}}user stake: {{/}} Not staked yet\n")
+		hutils.Outf("{{yellow}}user stake: {{/}} Not staked yet\n")
 	} else {
-		utils.Outf(
+		hutils.Outf(
 			"{{yellow}}user stake: {{/}} Owner=%s StakedAmount=%d\n",
 			userStake.Owner,
 			userStake.StakedAmount,
@@ -194,7 +236,7 @@ func (*Handler) GetUserStake(ctx context.Context,
 
 	index := 1
 	for txID, stakeInfo := range userStake.StakeInfo {
-		utils.Outf(
+		hutils.Outf(
 			"{{yellow}}stake #%d:{{/}} TxID=%s Amount=%d StartLockUp=%d\n",
 			index,
 			txID,
@@ -206,11 +248,11 @@ func (*Handler) GetUserStake(ctx context.Context,
 	return userStake, err
 }
 
+var _ cli.Controller = (*Controller)(nil)
+
 type Controller struct {
 	databasePath string
 }
-
-var _ cli.Controller = (*Controller)(nil)
 
 func NewController(databasePath string) *Controller {
 	return &Controller{databasePath}
@@ -221,17 +263,17 @@ func (c *Controller) DatabasePath() string {
 }
 
 func (*Controller) Symbol() string {
-	return consts.Symbol
+	return nconsts.Symbol
 }
 
 func (*Controller) Decimals() uint8 {
-	return consts.Decimals
+	return nconsts.Decimals
 }
 
 func (*Controller) Address(addr codec.Address) string {
-	return codec.MustAddressBech32(consts.HRP, addr)
+	return codec.MustAddressBech32(nconsts.HRP, addr)
 }
 
-func (*Controller) ParseAddress(addr string) (codec.Address, error) {
-	return codec.ParseAddressBech32(consts.HRP, addr)
+func (*Controller) ParseAddress(address string) (codec.Address, error) {
+	return codec.ParseAddressBech32(nconsts.HRP, address)
 }

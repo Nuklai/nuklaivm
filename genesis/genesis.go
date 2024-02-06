@@ -1,4 +1,4 @@
-// Copyright (C) 2023, AllianceBlock. All rights reserved.
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package genesis
@@ -9,8 +9,9 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/trace"
-	smath "github.com/ava-labs/avalanchego/utils/math"
+	hmath "github.com/ava-labs/avalanchego/utils/math"
 	"github.com/ava-labs/avalanchego/x/merkledb"
 
 	"github.com/ava-labs/hypersdk/chain"
@@ -142,18 +143,28 @@ func (g *Genesis) Load(ctx context.Context, tracer trace.Tracer, mu state.Mutabl
 		if err != nil {
 			return fmt.Errorf("%w: %s", err, alloc.Address)
 		}
-		supply, err = smath.Add64(supply, alloc.Balance)
+		supply, err = hmath.Add64(supply, alloc.Balance)
 		if err != nil {
 			return err
 		}
-		if err := storage.SetBalance(ctx, mu, addr, alloc.Balance); err != nil {
+		if err := storage.SetBalance(ctx, mu, addr, ids.Empty, alloc.Balance); err != nil {
 			return fmt.Errorf("%w: addr=%s, bal=%d", err, alloc.Address, alloc.Balance)
 		}
 	}
 	emission := emission.GetEmission()
 	emission.AddToTotalSupply(supply)
 
-	return nil
+	return storage.SetAsset(
+		ctx,
+		mu,
+		ids.Empty,
+		[]byte(consts.Symbol),
+		consts.Decimals,
+		[]byte(consts.Name),
+		supply,
+		codec.EmptyAddress,
+		false,
+	)
 }
 
 func (g *Genesis) GetStateBranchFactor() merkledb.BranchFactor {

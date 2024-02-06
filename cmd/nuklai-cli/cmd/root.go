@@ -23,10 +23,10 @@ var (
 
 	dbPath                string
 	genesisFile           string
+	minBlockGap           int64
 	minUnitPrice          []string
 	maxBlockUnits         []string
 	windowTargetUnits     []string
-	minBlockGap           int64
 	hideTxs               bool
 	randomRecipient       bool
 	maxTxBacklog          int
@@ -37,6 +37,7 @@ var (
 	prometheusData        string
 	startPrometheus       bool
 	maxFee                int64
+	numCores              int
 
 	rootCmd = &cobra.Command{
 		Use:        "nuklai-cli",
@@ -119,6 +120,12 @@ func init() {
 		false,
 		"check all chains",
 	)
+	balanceKeyCmd.PersistentFlags().IntVar(
+		&numCores,
+		"num-cores",
+		4,
+		"number of cores to use when searching for faucet solutions",
+	)
 	keyCmd.AddCommand(
 		genKeyCmd,
 		importKeyCmd,
@@ -146,8 +153,16 @@ func init() {
 	// actions
 	actionCmd.AddCommand(
 		transferCmd,
+
 		stakeValidatorCmd,
 		unstakeValidatorCmd,
+
+		createAssetCmd,
+		mintAssetCmd,
+		// burnAssetCmd,
+
+		importAssetCmd,
+		exportAssetCmd,
 	)
 
 	// emission

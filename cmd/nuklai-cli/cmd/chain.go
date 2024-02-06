@@ -1,4 +1,4 @@
-// Copyright (C) 2023, AllianceBlock. All rights reserved.
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package cmd
@@ -10,7 +10,7 @@ import (
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/spf13/cobra"
 
-	brpc "github.com/nuklai/nuklaivm/rpc"
+	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
 
 var chainCmd = &cobra.Command{
@@ -64,9 +64,16 @@ var chainInfoCmd = &cobra.Command{
 var watchChainCmd = &cobra.Command{
 	Use: "watch",
 	RunE: func(_ *cobra.Command, args []string) error {
+		var cli *nrpc.JSONRPCClient
 		return handler.Root().WatchChain(hideTxs, func(uri string, networkID uint32, chainID ids.ID) (chain.Parser, error) {
-			cli := brpc.NewJSONRPCClient(uri, networkID, chainID)
+			cli = nrpc.NewJSONRPCClient(uri, networkID, chainID)
 			return cli.Parser(context.TODO())
-		}, handleTx)
+		}, func(tx *chain.Transaction, result *chain.Result) {
+			if cli == nil {
+				// Should never happen
+				return
+			}
+			handleTx(cli, tx, result)
+		})
 	},
 }

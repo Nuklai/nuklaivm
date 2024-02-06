@@ -17,6 +17,13 @@ type metrics struct {
 	unstake prometheus.Counter
 
 	mintNAI prometheus.Counter
+
+	createAsset prometheus.Counter
+	mintAsset   prometheus.Counter
+	burnAsset   prometheus.Counter
+
+	importAsset prometheus.Counter
+	exportAsset prometheus.Counter
 }
 
 func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
@@ -43,6 +50,33 @@ func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 			Name:      "mintNAI",
 			Help:      "number of NAI tokens minted",
 		}),
+
+		createAsset: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "actions",
+			Name:      "create_asset",
+			Help:      "number of create asset actions",
+		}),
+		mintAsset: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "actions",
+			Name:      "mint_asset",
+			Help:      "number of mint asset actions",
+		}),
+		burnAsset: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "actions",
+			Name:      "burn_asset",
+			Help:      "number of burn asset actions",
+		}),
+
+		importAsset: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "actions",
+			Name:      "import_asset",
+			Help:      "number of import asset actions",
+		}),
+		exportAsset: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "actions",
+			Name:      "export_asset",
+			Help:      "number of export asset actions",
+		}),
 	}
 	r := prometheus.NewRegistry()
 	errs := wrappers.Errs{}
@@ -53,6 +87,13 @@ func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 		r.Register(m.unstake),
 
 		r.Register(m.mintNAI),
+
+		r.Register(m.createAsset),
+		r.Register(m.mintAsset),
+		r.Register(m.burnAsset),
+
+		r.Register(m.importAsset),
+		r.Register(m.exportAsset),
 
 		gatherer.Register(consts.Name, r),
 	)

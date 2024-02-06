@@ -13,73 +13,139 @@ import (
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/cli"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/rpc"
+	hrpc "github.com/ava-labs/hypersdk/rpc"
 	"github.com/ava-labs/hypersdk/utils"
+
 	"github.com/nuklai/nuklaivm/actions"
-	"github.com/nuklai/nuklaivm/consts"
-	brpc "github.com/nuklai/nuklaivm/rpc"
+	nconsts "github.com/nuklai/nuklaivm/consts"
+	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
 
 // sendAndWait may not be used concurrently
-//
-//nolint:unparam
 func sendAndWait(
-	ctx context.Context, _ *warp.Message, action chain.Action, cli *rpc.JSONRPCClient,
-	bcli *brpc.JSONRPCClient, ws *rpc.WebSocketClient, factory chain.AuthFactory, printStatus bool,
+	ctx context.Context, warpMsg *warp.Message, action chain.Action, hcli *hrpc.JSONRPCClient,
+	hws *hrpc.WebSocketClient, ncli *nrpc.JSONRPCClient, factory chain.AuthFactory, printStatus bool,
 ) (bool, ids.ID, error) {
-	parser, err := bcli.Parser(ctx)
+	parser, err := ncli.Parser(ctx)
 	if err != nil {
 		return false, ids.Empty, err
 	}
-	_, tx, _, err := cli.GenerateTransaction(ctx, parser, nil, action, factory)
+	_, tx, _, err := hcli.GenerateTransaction(ctx, parser, warpMsg, action, factory)
 	if err != nil {
 		return false, ids.Empty, err
 	}
-	if err := ws.RegisterTx(tx); err != nil {
+
+	if err := hws.RegisterTx(tx); err != nil {
 		return false, ids.Empty, err
 	}
-	var result *chain.Result
+	var res *chain.Result
 	for {
-		txID, txErr, txResult, err := ws.ListenTx(ctx)
+		txID, dErr, result, err := hws.ListenTx(ctx)
+		if dErr != nil {
+			return false, ids.Empty, dErr
+		}
 		if err != nil {
 			return false, ids.Empty, err
 		}
-		if txErr != nil {
-			return false, ids.Empty, txErr
-		}
 		if txID == tx.ID() {
-			result = txResult
+			res = result
 			break
 		}
 		utils.Outf("{{yellow}}skipping unexpected transaction:{{/}} %s\n", tx.ID())
 	}
 	if printStatus {
-		handler.Root().PrintStatus(tx.ID(), result.Success)
+		handler.Root().PrintStatus(tx.ID(), res.Success)
 	}
-	return result.Success, tx.ID(), nil
+	return res.Success, tx.ID(), nil
 }
 
-func handleTx(tx *chain.Transaction, result *chain.Result) {
+func handleTx(ncli *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Result) {
 	summaryStr := string(result.Output)
 	actor := tx.Auth.Actor()
-	status := "❌"
+	status := "❌" //nolint:ineffassign // reason for ignoring
 	if result.Success {
 		status = "✅"
-		switch action := tx.Action.(type) { //nolint:gocritic
+		switch action := tx.Action.(type) {
 		case *actions.Transfer:
-			summaryStr = fmt.Sprintf("%s %s -> %s", utils.FormatBalance(action.Value, consts.Decimals), consts.Symbol, codec.MustAddressBech32(consts.HRP, action.To))
+			_, symbol, decimals, _, _, _, _, err := ncli.Asset(context.TODO(), action.Asset, true)
+			if err != nil {
+				utils.Outf("{{red}}could not fetch asset info:{{/}} %v", err)
+				return
+			}
+			amountStr := utils.FormatBalance(action.Value, decimals)
+			summaryStr = fmt.Sprintf("%s %s -> %s", amountStr, symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
+			if len(action.Memo) > 0 {
+				summaryStr += fmt.Sprintf(" (memo: %s)", action.Memo)
+			}
+
+		case *actions.CreateAsset:
+			summaryStr = fmt.Sprintf("assetID: %s symbol: %s decimals: %d metadata: %s", tx.ID(), action.Symbol, action.Decimals, action.Metadata)
+		case *actions.MintAsset:
+			_, symbol, decimals, _, _, _, _, err := ncli.Asset(context.TODO(), action.Asset, true)
+			if err != nil {
+				utils.Outf("{{red}}could not fetch asset info:{{/}} %v", err)
+				return
+			}
+			amountStr := utils.FormatBalance(action.Value, decimals)
+			summaryStr = fmt.Sprintf("%s %s -> %s", amountStr, symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
+		case *actions.BurnAsset:
+			summaryStr = fmt.Sprintf("%d %s -> 🔥", action.Value, action.Asset)
+
+		case *actions.ImportAsset:
+			wm := tx.WarpMessage
+			signers, _ := wm.Signature.NumSigners()
+			wt, _ := actions.UnmarshalWarpTransfer(wm.Payload)
+			summaryStr = fmt.Sprintf("source: %s signers: %d | ", wm.SourceChainID, signers)
+			if wt.Return {
+				summaryStr += fmt.Sprintf("%s %s -> %s (return: %t)", utils.FormatBalance(wt.Value, wt.Decimals), wt.Symbol, codec.MustAddressBech32(nconsts.HRP, wt.To), wt.Return)
+			} else {
+				summaryStr += fmt.Sprintf("%s %s (new: %s, original: %s) -> %s (return: %t)", utils.FormatBalance(wt.Value, wt.Decimals), wt.Symbol, actions.ImportedAssetID(wt.Asset, wm.SourceChainID), wt.Asset, codec.MustAddressBech32(nconsts.HRP, wt.To), wt.Return)
+			}
+			if wt.Reward > 0 {
+				summaryStr += fmt.Sprintf(" | reward: %s", utils.FormatBalance(wt.Reward, wt.Decimals))
+			}
+			if wt.SwapIn > 0 {
+				_, outSymbol, outDecimals, _, _, _, _, err := ncli.Asset(context.TODO(), wt.AssetOut, true)
+				if err != nil {
+					utils.Outf("{{red}}could not fetch asset info:{{/}} %v", err)
+					return
+				}
+				summaryStr += fmt.Sprintf(" | swap in: %s %s swap out: %s %s expiry: %d fill: %t", utils.FormatBalance(wt.SwapIn, wt.Decimals), wt.Symbol, utils.FormatBalance(wt.SwapOut, outDecimals), outSymbol, wt.SwapExpiry, action.Fill)
+			}
+		case *actions.ExportAsset:
+			wt, _ := actions.UnmarshalWarpTransfer(result.WarpMessage.Payload)
+			summaryStr = fmt.Sprintf("destination: %s | ", action.Destination)
+			var outputAssetID ids.ID
+			if !action.Return {
+				outputAssetID = actions.ImportedAssetID(action.Asset, result.WarpMessage.SourceChainID)
+				summaryStr += fmt.Sprintf("%s %s (%s) -> %s (return: %t)", utils.FormatBalance(action.Value, wt.Decimals), wt.Symbol, action.Asset, codec.MustAddressBech32(nconsts.HRP, action.To), action.Return)
+			} else {
+				outputAssetID = wt.Asset
+				summaryStr += fmt.Sprintf("%s %s (current: %s, original: %s) -> %s (return: %t)", utils.FormatBalance(action.Value, wt.Decimals), wt.Symbol, action.Asset, wt.Asset, codec.MustAddressBech32(nconsts.HRP, action.To), action.Return)
+			}
+			if wt.Reward > 0 {
+				summaryStr += fmt.Sprintf(" | reward: %s", utils.FormatBalance(wt.Reward, wt.Decimals))
+			}
+			if wt.SwapIn > 0 {
+				_, outSymbol, outDecimals, _, _, _, _, err := ncli.Asset(context.TODO(), wt.AssetOut, true)
+				if err != nil {
+					utils.Outf("{{red}}could not fetch asset info:{{/}} %v", err)
+					return
+				}
+				summaryStr += fmt.Sprintf(" | swap in: %s %s (%s) swap out: %s %s expiry: %d", utils.FormatBalance(wt.SwapIn, wt.Decimals), wt.Symbol, outputAssetID, utils.FormatBalance(wt.SwapOut, outDecimals), outSymbol, wt.SwapExpiry)
+			}
 		}
+		utils.Outf(
+			"%s {{yellow}}%s{{/}} {{yellow}}actor:{{/}} %s {{yellow}}summary (%s):{{/}} [%s] {{yellow}}fee (max %.2f%%):{{/}} %s %s {{yellow}}consumed:{{/}} [%s]\n",
+			status,
+			tx.ID(),
+			codec.MustAddressBech32(nconsts.HRP, actor),
+			reflect.TypeOf(tx.Action),
+			summaryStr,
+			float64(result.Fee)/float64(tx.Base.MaxFee)*100,
+			utils.FormatBalance(result.Fee, nconsts.Decimals),
+			nconsts.Symbol,
+			cli.ParseDimensions(result.Consumed),
+		)
 	}
-	utils.Outf(
-		"%s {{yellow}}%s{{/}} {{yellow}}actor:{{/}} %s {{yellow}}summary (%s):{{/}} [%s] {{yellow}}fee (max %.2f%%):{{/}} %s %s {{yellow}}consumed:{{/}} [%s]\n",
-		status,
-		tx.ID(),
-		codec.MustAddressBech32(consts.HRP, actor),
-		reflect.TypeOf(tx.Action),
-		summaryStr,
-		float64(result.Fee)/float64(tx.Base.MaxFee)*100,
-		utils.FormatBalance(result.Fee, consts.Decimals),
-		consts.Symbol,
-		cli.ParseDimensions(result.Consumed),
-	)
 }
