@@ -367,10 +367,10 @@ var mintAssetCmd = &cobra.Command{
 
 func performImport(
 	ctx context.Context,
-	srcHcli *hrpc.JSONRPCClient,
-	destHcli *hrpc.JSONRPCClient,
-	destHws *hrpc.WebSocketClient,
-	destNcli *nrpc.JSONRPCClient,
+	hscli *hrpc.JSONRPCClient,
+	hdcli *hrpc.JSONRPCClient,
+	hws *hrpc.WebSocketClient,
+	ncli *nrpc.JSONRPCClient,
 	exportTxID ids.ID,
 	factory chain.AuthFactory,
 ) error {
@@ -389,7 +389,7 @@ func performImport(
 		subnetWeight, sigWeight uint64
 	)
 	for ctx.Err() == nil {
-		msg, subnetWeight, sigWeight, err = srcHcli.GenerateAggregateWarpSignature(ctx, exportTxID)
+		msg, subnetWeight, sigWeight, err = hscli.GenerateAggregateWarpSignature(ctx, exportTxID)
 		if sigWeight >= (subnetWeight*4)/5 && err == nil {
 			break
 		}
@@ -436,7 +436,7 @@ func performImport(
 		wt.Return,
 	)
 	if wt.SwapIn > 0 {
-		_, outSymbol, outDecimals, _, _, _, _, err := destNcli.Asset(ctx, wt.AssetOut, false)
+		_, outSymbol, outDecimals, _, _, _, _, err := ncli.Asset(ctx, wt.AssetOut, false)
 		if err != nil {
 			return err
 		}
@@ -450,11 +450,6 @@ func performImport(
 			wt.SwapExpiry,
 		)
 	}
-	hutils.Outf(
-		"{{yellow}}signature weight:{{/}} %d {{yellow}}total weight:{{/}} %d\n",
-		sigWeight,
-		subnetWeight,
-	)
 
 	// Select fill
 	var fill bool
@@ -471,7 +466,7 @@ func performImport(
 	// Generate transaction
 	_, _, err = sendAndWait(ctx, msg, &actions.ImportAsset{
 		Fill: fill,
-	}, destHcli, destHws, destNcli, factory, true)
+	}, hdcli, hws, ncli, factory, true)
 	return err
 }
 
@@ -479,7 +474,8 @@ var importAssetCmd = &cobra.Command{
 	Use: "import-asset",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		currentChainID, _, factory, dcli, dscli, dtcli, err := handler.DefaultActor()
+
+		currentChainID, _, factory, hdcli, hws, ncli, err := handler.DefaultActor()
 		if err != nil {
 			return err
 		}
@@ -489,10 +485,10 @@ var importAssetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		scli := hrpc.NewJSONRPCClient(uris[0])
+		hscli := hrpc.NewJSONRPCClient(uris[0])
 
 		// Perform import
-		return performImport(ctx, scli, dcli, dscli, dtcli, ids.Empty, factory)
+		return performImport(ctx, hscli, hdcli, hws, ncli, ids.Empty, factory)
 	},
 }
 
@@ -636,11 +632,11 @@ var exportAssetCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			dscli, err := hrpc.NewWebSocketClient(uris[0], hrpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
+			hdcli, err := hrpc.NewWebSocketClient(uris[0], hrpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
 			if err != nil {
 				return err
 			}
-			if err := performImport(ctx, hcli, hrpc.NewJSONRPCClient(uris[0]), dscli, nrpc.NewJSONRPCClient(uris[0], networkID, destination), txID, factory); err != nil {
+			if err := performImport(ctx, hcli, hrpc.NewJSONRPCClient(uris[0]), hdcli, nrpc.NewJSONRPCClient(uris[0], networkID, destination), txID, factory); err != nil {
 				return err
 			}
 		}

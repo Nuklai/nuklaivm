@@ -410,12 +410,12 @@ When you are done, the output should look something like this:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: jLqD1HxDRb54NpfK7Psb6bkhAHghF36VcokJ6kvSBGZpTT6aj
+chainID: N5Chcji7s7wAxukcoanm98MdjVKVwR5W3vzcp9tv2VpRknENs
 symbol: TOKEN1
-decimals: 9
-✔ metadata: Example token1█
+✔ decimals: 9█
+metadata: Example token1
 ✔ continue (y/n): y█
-✅ txID: 2sq8ThNtmd3ijEsvYUqBgrEkJqFGW9m6b2EmiDKt6ehaFai3qA
+✅ txID: ggMxHuutoobCLfuYyiLRYr1VMq7r9ULcBU621kvurtsqdifjN
 ```
 
 _`txID` is the `assetID` of your new asset._
@@ -438,13 +438,13 @@ just to mint to yourself).
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: jLqD1HxDRb54NpfK7Psb6bkhAHghF36VcokJ6kvSBGZpTT6aj
-assetID: 2sq8ThNtmd3ijEsvYUqBgrEkJqFGW9m6b2EmiDKt6ehaFai3qA
+chainID: N5Chcji7s7wAxukcoanm98MdjVKVwR5W3vzcp9tv2VpRknENs
+assetID: ggMxHuutoobCLfuYyiLRYr1VMq7r9ULcBU621kvurtsqdifjN
 symbol: TOKEN1 decimals: 9 metadata: Example token1 supply: 0
 recipient: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-✔ amount: 100█
+✔ amount: 1000█
 continue (y/n): y
-✅ txID: 2DzquqEAKXUgQZHgQfnaxnUjEhyFrRsna5d995Tr9Lzu7EdJ8R
+✅ txID: 2eG6m32NMgaxdz36W8omF1tQNBAkXr2JHojsU67X1AQzT73PSf
 ```
 
 #### Step 3: View Your Balance
@@ -461,11 +461,11 @@ When you are done, the output should look something like this:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: jLqD1HxDRb54NpfK7Psb6bkhAHghF36VcokJ6kvSBGZpTT6aj
-✔ assetID (use NAI for native token): 2sq8ThNtmd3ijEsvYUqBgrEkJqFGW9m6b2EmiDKt6ehaFai3qA█
-uri: http://127.0.0.1:42719/ext/bc/jLqD1HxDRb54NpfK7Psb6bkhAHghF36VcokJ6kvSBGZpTT6aj
-symbol: TOKEN1 decimals: 9 metadata: Example token1 supply: 100000000000 warp: false
-balance: 100.000000000 TOKEN1
+chainID: N5Chcji7s7wAxukcoanm98MdjVKVwR5W3vzcp9tv2VpRknENs
+assetID (use NAI for native token): ggMxHuutoobCLfuYyiLRYr1VMq7r9ULcBU621kvurtsqdifjN
+uri: http://127.0.0.1:43689/ext/bc/N5Chcji7s7wAxukcoanm98MdjVKVwR5W3vzcp9tv2VpRknENs
+symbol: TOKEN1 decimals: 9 metadata: Example token1 supply: 1000000000000 warp: false
+balance: 1000.000000000 TOKEN1
 ```
 
 ### Transfer Assets to Another Subnet
@@ -483,22 +483,22 @@ When you are done, the output should look something like this:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: jLqD1HxDRb54NpfK7Psb6bkhAHghF36VcokJ6kvSBGZpTT6aj
-✔ assetID (use NAI for native token): NAI█
-balance: 852999999.999939919 NAI
-✔ recipient: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx█
-amount: 50
-reward: 0
-available chains: 1 excluded: [jLqD1HxDRb54NpfK7Psb6bkhAHghF36VcokJ6kvSBGZpTT6aj]
-0) chainID: Ua7vvdAAHzYG2nFaQ33kamYGnvnRPeTaHoifzB3RxyBPmubKr
+chainID: N5Chcji7s7wAxukcoanm98MdjVKVwR5W3vzcp9tv2VpRknENs
+✔ assetID (use NAI for native token): ggMxHuutoobCLfuYyiLRYr1VMq7r9ULcBU621kvurtsqdifjN█
+symbol: TOKEN1 decimals: 9 metadata: Example token1 supply: 1000000000000 warp: false
+balance: 1000.000000000 TOKEN1
+recipient: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+✔ amount: 50█
+✔ reward: 0█
+available chains: 1 excluded: [N5Chcji7s7wAxukcoanm98MdjVKVwR5W3vzcp9tv2VpRknENs]
+0) chainID: qttmKGHGjHfj6749KJxaSzfD1xuhKRrFFjM6TypthH2TSxuLK
 destination: 0 [auto-selected]
-✔ swap on import (y/n): n█
-✔ continue (y/n): y█
-✅ txID: 2K4Sb9xNPsenCUcM6EXUQAqgvrPWX2e3NLUcSXNGmeRXVbytVt
+continue (y/n): y
+✅ txID: 2LwezG85VjTktvfZpwnGigvqH3o74ZC9qBWmWUwjsXmqAwQMsV
 perform import on destination (y/n): y
-3kvVpqa78MG2gTWtfKSvhPryHkKVaWhMEWQ8sL2xBAtVRiChh to: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx source assetID: 11111111111111111111111111111111LpoYY source symbol: NAI output assetID: wkaZgTapGBi122S9deE8XSPd3VunJK6mCBF4ZRBU72sm6Em82 value: 50.000000000 reward: 0.000000000 return: false
-signature weight: 5000 total weight: 5000
-✔ switch default chain to destination (y/n): y
+2RiJax29P6XVQzeXXApigqBBcsmrZjJ1vXKPBv1RaTKc5mqaxW to: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx source assetID: ggMxHuutoobCLfuYyiLRYr1VMq7r9ULcBU621kvurtsqdifjN source symbol: TOKEN1 output assetID: 7W44tf7zcvWW9MYLLvQdoL6Uf7L5MZ2vgNdGqYJ5caeEbMiuB value: 50.000000000 reward: 0.000000000 return: false
+✅ txID: FLkYqXKMmE9HwKksdmiwyJberPzq4zEeEupwHDgDcAXkhjmGX
+✔ switch default chain to destination (y/n): y█
 ```
 
 _The `export` command will automatically run the `import` command on the

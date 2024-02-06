@@ -109,6 +109,7 @@ func (h *Handler) DefaultActor() (
 	if err != nil {
 		return ids.Empty, nil, nil, nil, nil, nil, err
 	}
+
 	var factory chain.AuthFactory
 	switch addr[0] {
 	case nconsts.ED25519ID:
@@ -124,6 +125,7 @@ func (h *Handler) DefaultActor() (
 	default:
 		return ids.Empty, nil, nil, nil, nil, nil, ErrInvalidAddress
 	}
+
 	chainID, uris, err := h.h.GetDefaultChain(true)
 	if err != nil {
 		return ids.Empty, nil, nil, nil, nil, nil, err
