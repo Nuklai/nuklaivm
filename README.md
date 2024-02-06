@@ -394,3 +394,219 @@ chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
 uri: http://127.0.0.1:45849/ext/bc/2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
 balance: 852999899.999922037 NAI
 ```
+
+### Mint an asset
+
+#### Step 1: Create Your Asset
+
+We can create our own asset on nuklaichain. To do so, we do:
+
+```bash
+./build/nuklai-cli action create-asset
+```
+
+When you are done, the output should look something like this:
+
+```
+database: .nuklai-cli
+address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+chainID: jLqD1HxDRb54NpfK7Psb6bkhAHghF36VcokJ6kvSBGZpTT6aj
+symbol: TOKEN1
+decimals: 9
+✔ metadata: Example token1█
+✔ continue (y/n): y█
+✅ txID: 2sq8ThNtmd3ijEsvYUqBgrEkJqFGW9m6b2EmiDKt6ehaFai3qA
+```
+
+_`txID` is the `assetID` of your new asset._
+
+The "loaded address" here is the address of the default private key (`demo.pk`). We
+use this key to authenticate all interactions with the `nuklaivm`.
+
+#### Step 2: Mint Your Asset
+
+After we've created our own asset, we can now mint some of it. You can do so by
+running the following command from this location:
+
+```bash
+./build/nuklai-cli action mint-asset
+```
+
+When you are done, the output should look something like this (usually easiest
+just to mint to yourself).
+
+```
+database: .nuklai-cli
+address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+chainID: jLqD1HxDRb54NpfK7Psb6bkhAHghF36VcokJ6kvSBGZpTT6aj
+assetID: 2sq8ThNtmd3ijEsvYUqBgrEkJqFGW9m6b2EmiDKt6ehaFai3qA
+symbol: TOKEN1 decimals: 9 metadata: Example token1 supply: 0
+recipient: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+✔ amount: 100█
+continue (y/n): y
+✅ txID: 2DzquqEAKXUgQZHgQfnaxnUjEhyFrRsna5d995Tr9Lzu7EdJ8R
+```
+
+#### Step 3: View Your Balance
+
+Now, let's check that the mint worked right by checking our balance. You can do
+so by running the following command from this location:
+
+```bash
+./build/nuklai-cli key balance
+```
+
+When you are done, the output should look something like this:
+
+```
+database: .nuklai-cli
+address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+chainID: jLqD1HxDRb54NpfK7Psb6bkhAHghF36VcokJ6kvSBGZpTT6aj
+✔ assetID (use NAI for native token): 2sq8ThNtmd3ijEsvYUqBgrEkJqFGW9m6b2EmiDKt6ehaFai3qA█
+uri: http://127.0.0.1:42719/ext/bc/jLqD1HxDRb54NpfK7Psb6bkhAHghF36VcokJ6kvSBGZpTT6aj
+symbol: TOKEN1 decimals: 9 metadata: Example token1 supply: 100000000000 warp: false
+balance: 100.000000000 TOKEN1
+```
+
+### Transfer Assets to Another Subnet
+
+Unlike the mint demo, the AWM demo only requires running a single
+command. You can kick off a transfer between the 2 Subnets you created by
+running the following command from this location:
+
+```bash
+./build/nuklai-cli action export
+```
+
+When you are done, the output should look something like this:
+
+```
+database: .nuklai-cli
+address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+chainID: jLqD1HxDRb54NpfK7Psb6bkhAHghF36VcokJ6kvSBGZpTT6aj
+✔ assetID (use NAI for native token): NAI█
+balance: 852999999.999939919 NAI
+✔ recipient: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx█
+amount: 50
+reward: 0
+available chains: 1 excluded: [jLqD1HxDRb54NpfK7Psb6bkhAHghF36VcokJ6kvSBGZpTT6aj]
+0) chainID: Ua7vvdAAHzYG2nFaQ33kamYGnvnRPeTaHoifzB3RxyBPmubKr
+destination: 0 [auto-selected]
+✔ swap on import (y/n): n█
+✔ continue (y/n): y█
+✅ txID: 2K4Sb9xNPsenCUcM6EXUQAqgvrPWX2e3NLUcSXNGmeRXVbytVt
+perform import on destination (y/n): y
+3kvVpqa78MG2gTWtfKSvhPryHkKVaWhMEWQ8sL2xBAtVRiChh to: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx source assetID: 11111111111111111111111111111111LpoYY source symbol: NAI output assetID: wkaZgTapGBi122S9deE8XSPd3VunJK6mCBF4ZRBU72sm6Em82 value: 50.000000000 reward: 0.000000000 return: false
+signature weight: 5000 total weight: 5000
+✔ switch default chain to destination (y/n): y
+```
+
+_The `export` command will automatically run the `import` command on the
+destination. If you wish to import the AWM message using a separate account,
+you can run the `import` command after changing your key._
+
+### Running a Load Test
+
+_Before running this demo, make sure to stop the network you started using
+`killall avalanche-network-runner`._
+
+The `nuklaivm` load test will provision 5 `nuklaivms` and process 500k transfers
+on each between 10k different accounts.
+
+```bash
+./scripts/tests.load.sh
+```
+
+_This test SOLELY tests the speed of the `nuklaivm`. It does not include any
+network delay or consensus overhead. It just tests the underlying performance
+of the `hypersdk` and the storage engine used (in this case MerkleDB on top of
+Pebble)._
+
+#### Measuring Disk Speed
+
+This test is extremely sensitive to disk performance. When reporting any TPS
+results, please include the output of:
+
+```bash
+./scripts/tests.disk.sh
+```
+
+_Run this test RARELY. It writes/reads many GBs from your disk and can fry an
+SSD if you run it too often. We run this in CI to standardize the result of all
+load tests._
+
+## Zipkin Tracing
+
+To trace the performance of `nuklaivm` during load testing, we use `OpenTelemetry + Zipkin`.
+
+To get started, startup the `Zipkin` backend and `ElasticSearch` database (inside `hypersdk/trace`):
+
+```bash
+docker-compose -f trace/zipkin.yml up
+```
+
+Once `Zipkin` is running, you can visit it at `http://localhost:9411`.
+
+Next, startup the load tester (it will automatically send traces to `Zipkin`):
+
+```bash
+TRACE=true ./scripts/tests.load.sh
+```
+
+When you are done, you can tear everything down by running the following
+command:
+
+```bash
+docker-compose -f trace/zipkin.yml down
+```
+
+## Creating a Devnet
+
+_In the world of Avalanche, we refer to short-lived, test-focused Subnets as devnets._
+
+Using [avalanche-ops](https://github.com/ava-labs/avalanche-ops), we can create a private devnet (running on a
+custom Primary Network with traffic scoped to the deployer IP) across any number of regions and nodes
+in ~30 minutes with a single script.
+
+### Step 1: Install Dependencies
+
+#### Install and Configure `aws-cli`
+
+Install the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html). This is used to
+authenticate to AWS and manipulate CloudFormation.
+
+Once you've installed the AWS CLI, run `aws configure sso` to login to AWS locally. See
+[the avalanche-ops documentation](https://github.com/ava-labs/avalanche-ops#permissions) for additional details.
+Set a `profile_name` when logging in, as it will be referenced directly by avalanche-ops commands. **Do not set
+an SSO Session Name (not supported).**
+
+#### Install `yq`
+
+Install `yq` using [Homebrew](https://brew.sh/). `yq` is used to manipulate the YAML files produced by
+`avalanche-ops`.
+
+You can install `yq` using the following command:
+
+```bash
+brew install yq
+```
+
+### Step 2: Deploy Devnet on AWS
+
+Once all dependencies are installed, we can create our devnet using a single script. This script deploys
+10 validators (equally split between us-west-2, us-east-2, and eu-west-1):
+
+```bash
+./scripts/deploy.devnet.sh
+```
+
+_When devnet creation is complete, this script will emit commands that can be used to interact
+with the devnet (i.e. tx load test) and to tear it down._
+
+#### Configuration Options
+
+- `--arch-type`: `avalanche-ops` supports deployment to both `amd64` and `arm64` architectures
+- `--anchor-nodes`/`--non-anchor-nodes`: `anchor-nodes` + `non-anchor-nodes` is the number of validators that will be on the Subnet, split equally between `--regions` (`anchor-nodes` serve as bootstrappers on the custom Primary Network, whereas `non-anchor-nodes` are just validators)
+- `--regions`: `avalanche-ops` will automatically deploy validators across these regions
+- `--instance-types`: `avalanche-ops` allows instance types to be configured by region (make sure it is compatible with `arch-type`)
+- `--upload-artifacts-avalanchego-local-bin`: `avalanche-ops` allows a custom AvalancheGo binary to be provided for validators to run
