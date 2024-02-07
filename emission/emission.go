@@ -170,7 +170,7 @@ func (e *Emission) StakeToValidator(txID ids.ID, actor codec.Address, currentVal
 	return nil
 }
 
-func (e *Emission) UnstakeFromValidator(actor codec.Address, nodeIDByte []byte, stakeId ids.ID) error {
+func (e *Emission) UnstakeFromValidator(actor codec.Address, nodeIDByte []byte, stakeID ids.ID) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -188,7 +188,7 @@ func (e *Emission) UnstakeFromValidator(actor codec.Address, nodeIDByte []byte, 
 	if !ok {
 		return ErrUserNotStaked // User is not staked
 	}
-	stakeInfo, ok := userStake.StakeInfo[stakeId]
+	stakeInfo, ok := userStake.StakeInfo[stakeID]
 	if !ok {
 		return ErrStakeNotFound // Stake not found
 	}
@@ -198,7 +198,7 @@ func (e *Emission) UnstakeFromValidator(actor codec.Address, nodeIDByte []byte, 
 	// Reduce the staked amount from the validator
 	validator.StakedAmount -= stakeInfo.Amount
 	// Remove the stake info
-	delete(userStake.StakeInfo, stakeId)
+	delete(userStake.StakeInfo, stakeID)
 	// Remove the user stake if there are no more stakes
 	if len(userStake.StakeInfo) == 0 {
 		delete(validator.UserStake, stakeOwner)
