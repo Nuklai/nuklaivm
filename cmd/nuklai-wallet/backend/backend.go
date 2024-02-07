@@ -225,7 +225,6 @@ func (b *Backend) collectBlocks() {
 				if actor != b.addr && action.To != b.addr {
 					continue
 				}
-
 				_, symbol, decimals, _, _, owner, _, err := b.tcli.Asset(b.ctx, action.Asset, true)
 				if err != nil {
 					b.fatal(err)
@@ -280,7 +279,6 @@ func (b *Backend) collectBlocks() {
 				if actor != b.addr {
 					continue
 				}
-
 				if err := b.s.StoreAsset(tx.ID(), true); err != nil {
 					b.fatal(err)
 					return
@@ -308,7 +306,6 @@ func (b *Backend) collectBlocks() {
 				if actor != b.addr && action.To != b.addr {
 					continue
 				}
-
 				_, symbol, decimals, _, _, owner, _, err := b.tcli.Asset(b.ctx, action.Asset, true)
 				if err != nil {
 					b.fatal(err)
@@ -356,7 +353,6 @@ func (b *Backend) collectBlocks() {
 						return
 					}
 				}
-
 			}
 		}
 		now := time.Now()

@@ -13,7 +13,6 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 )
 
-//nolint:typecheck
 var assets embed.FS
 
 //go:embed build/appicon.png
