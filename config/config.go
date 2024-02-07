@@ -28,7 +28,6 @@ const (
 	defaultContinuousProfilerFrequency = 1 * time.Minute
 	defaultContinuousProfilerMaxFiles  = 10
 	defaultStoreTransactions           = true
-	defaultMaxOrdersPerPair            = 1024
 )
 
 type Config struct {
@@ -141,7 +140,7 @@ func (c *Config) GetContinuousProfilerConfig() *profiler.Config {
 		return &profiler.Config{Enabled: false}
 	}
 	// Replace all instances of "*" with nodeID. This is useful when
-	// running multiple instances of tokenvm on the same machine.
+	// running multiple instances of nuklaivm on the same machine.
 	c.ContinuousProfilerDir = strings.ReplaceAll(c.ContinuousProfilerDir, "*", c.nodeID.String())
 	return &profiler.Config{
 		Enabled:     true,

@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/state"
 
-	"github.com/nuklai/nuklaivm/actions"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/storage"
 )
@@ -55,7 +54,6 @@ type Emission struct {
 	rewardsPerBlock uint64
 
 	validators     map[ids.NodeID]*Validator // the key is NodeID
-	maxValidators  int
 	minStakeAmount uint64
 
 	lock sync.RWMutex
@@ -83,7 +81,6 @@ func New(c Controller, maxSupply, rewardsPerBlock uint64, currentValidators map[
 			maxSupply:       maxSupply,
 			rewardsPerBlock: rewardsPerBlock,
 			validators:      validators,
-			maxValidators:   7,
 			minStakeAmount:  100,
 		}
 	})
@@ -123,13 +120,13 @@ func (e *Emission) GetRewardsPerBlock() uint64 {
 }
 
 // StakeValidator stakes the validator
-func (e *Emission) StakeToValidator(txID ids.ID, actor codec.Address, currentValidators map[ids.NodeID]*validators.GetValidatorOutput, startLockUp uint64, action *actions.StakeValidator) error {
+func (e *Emission) StakeToValidator(txID ids.ID, actor codec.Address, currentValidators map[ids.NodeID]*validators.GetValidatorOutput, startLockUp uint64, nodeIDByte []byte, stakedAmount uint64) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
-	nodeID, err := ids.ToNodeID(action.NodeID)
+	nodeID, err := ids.ToNodeID(nodeIDByte)
 	if err != nil {
-		return ErrInvalidNodeID // Invalid NodeID
+		return ErrInvalidNodeID // This should never happen
 	}
 
 	currentValidator, ok := currentValidators[nodeID]
@@ -140,9 +137,6 @@ func (e *Emission) StakeToValidator(txID ids.ID, actor codec.Address, currentVal
 	stakeOwner := codec.MustAddressBech32(nconsts.HRP, actor)
 	validator, ok := e.validators[nodeID]
 	if !ok {
-		if len(e.validators) >= e.maxValidators {
-			return ErrMaxValidatorsReached // Cap reached, no more validators
-		}
 		validator = &Validator{
 			NodeID:        currentValidator.NodeID,
 			NodePublicKey: base64.StdEncoding.EncodeToString(currentValidator.PublicKey.Compress()),
@@ -155,7 +149,7 @@ func (e *Emission) StakeToValidator(txID ids.ID, actor codec.Address, currentVal
 		userStake = &UserStake{
 			Owner:        stakeOwner,
 			StakeInfo:    map[ids.ID]*StakeInfo{},
-			StakedAmount: action.StakedAmount,
+			StakedAmount: stakedAmount,
 			owner:        actor,
 		}
 	}
@@ -163,26 +157,26 @@ func (e *Emission) StakeToValidator(txID ids.ID, actor codec.Address, currentVal
 	if !ok {
 		stakeInfo = &StakeInfo{
 			TxID:        txID,
-			Amount:      action.StakedAmount,
+			Amount:      stakedAmount,
 			StartLockUp: startLockUp,
 		}
 	}
 	userStake.StakeInfo[txID] = stakeInfo
 	validator.UserStake[stakeOwner] = userStake
-	validator.StakedAmount += action.StakedAmount
+	validator.StakedAmount += stakedAmount
 
 	e.validators[nodeID] = validator
 
 	return nil
 }
 
-func (e *Emission) UnstakeFromValidator(actor codec.Address, action *actions.UnstakeValidator) error {
+func (e *Emission) UnstakeFromValidator(actor codec.Address, nodeIDByte []byte, stakeId ids.ID) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
-	nodeID, err := ids.ToNodeID(action.NodeID)
+	nodeID, err := ids.ToNodeID(nodeIDByte)
 	if err != nil {
-		return ErrInvalidNodeID // Invalid NodeID
+		return ErrInvalidNodeID // This should never happen
 	}
 
 	stakeOwner := codec.MustAddressBech32(nconsts.HRP, actor)
@@ -194,7 +188,7 @@ func (e *Emission) UnstakeFromValidator(actor codec.Address, action *actions.Uns
 	if !ok {
 		return ErrUserNotStaked // User is not staked
 	}
-	stakeInfo, ok := userStake.StakeInfo[action.Stake]
+	stakeInfo, ok := userStake.StakeInfo[stakeId]
 	if !ok {
 		return ErrStakeNotFound // Stake not found
 	}
@@ -204,7 +198,7 @@ func (e *Emission) UnstakeFromValidator(actor codec.Address, action *actions.Uns
 	// Reduce the staked amount from the validator
 	validator.StakedAmount -= stakeInfo.Amount
 	// Remove the stake info
-	delete(userStake.StakeInfo, action.Stake)
+	delete(userStake.StakeInfo, stakeId)
 	// Remove the user stake if there are no more stakes
 	if len(userStake.StakeInfo) == 0 {
 		delete(validator.UserStake, stakeOwner)
@@ -255,7 +249,7 @@ func (e *Emission) getAllValidators() []*Validator {
 }
 
 // MintNewNAI mints new tokens and distributes them to validators
-func (e *Emission) MintNewNAI(ctx context.Context, mu *state.SimpleMutable, emissionAddr codec.Address) (uint64, error) {
+func (e *Emission) MintNewNAI() (uint64, bool) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -264,19 +258,13 @@ func (e *Emission) MintNewNAI(ctx context.Context, mu *state.SimpleMutable, emis
 		mintNewNAI = e.maxSupply - e.totalSupply // Adjust to not exceed max supply
 	}
 	if mintNewNAI == 0 {
-		return 0, nil // Nothing to mint
+		return 0, false // Nothing to mint
 	}
 
 	totalStaked := e.totalStaked()
 	// No validators to distribute rewards to if totalStaked is 0
 	if totalStaked == 0 {
-		if err := storage.AddBalance(ctx, mu, emissionAddr, ids.Empty, mintNewNAI, true); err != nil {
-			return 0, err
-		}
-		if err := mu.Commit(ctx); err != nil {
-			return 0, err
-		}
-		return mintNewNAI, nil
+		return mintNewNAI, true
 	}
 
 	// Distribute rewards based on stake proportion
@@ -285,27 +273,15 @@ func (e *Emission) MintNewNAI(ctx context.Context, mu *state.SimpleMutable, emis
 			v.StakedReward += mintNewNAI * v.StakedAmount / totalStaked
 		}
 	}
-	return mintNewNAI, nil
+	return mintNewNAI, false
 }
 
-func (e *Emission) DistributeFees(ctx context.Context, mu *state.SimpleMutable, fee uint64, emissionAddr codec.Address) error {
+func (e *Emission) FeesToDistribute(fee uint64) uint64 {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
-	if fee == 0 {
-		return nil // Nothing to distribute
-	}
-
 	feesForEmission := fee / 2
 	feesForValidators := fee - feesForEmission
-
-	// Give 50% fees to Emission
-	if err := storage.AddBalance(ctx, mu, emissionAddr, ids.Empty, feesForEmission, true); err != nil {
-		return err
-	}
-	if err := mu.Commit(ctx); err != nil {
-		return err
-	}
 
 	// Give remaining to Validators
 	totalStaked := e.totalStaked()
@@ -318,7 +294,7 @@ func (e *Emission) DistributeFees(ctx context.Context, mu *state.SimpleMutable, 
 		}
 	}
 
-	return nil
+	return feesForEmission
 }
 
 // totalStaked calculates the total amount staked by all validators

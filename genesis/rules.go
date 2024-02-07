@@ -27,7 +27,7 @@ func (*Rules) GetWarpConfig(ids.ID) (bool, uint64, uint64) {
 	// We allow inbound transfers from all sources as long as 80% of stake has
 	// signed a message.
 	//
-	// This is safe because the tokenvm scopes all assets by their source chain.
+	// This is safe because the nuklaivm scopes all assets by their source chain.
 	return true, 4, 5
 }
 

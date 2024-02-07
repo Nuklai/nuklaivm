@@ -171,14 +171,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 	batch := c.metaDB.NewBatch()
 	defer batch.Reset()
 
-	// Retrieve the vm state
-	stateDB, err := c.inner.State()
-	if err != nil {
-		return err
-	}
-	// Retrieve the state.Mutable to write to
-	mu := state.NewSimpleMutable(stateDB)
-
+	totalFee := uint64(0)
 	results := blk.Results()
 	for i, tx := range blk.Txs {
 		result := results[i]
@@ -196,6 +189,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				return err
 			}
 		}
+		totalFee += result.Fee
 		currentHeight := c.inner.LastAcceptedBlock().Height()
 		if result.Success {
 			switch action := tx.Action.(type) {
@@ -213,69 +207,71 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				c.metrics.exportAsset.Inc()
 			case *actions.StakeValidator:
 				c.metrics.stake.Inc()
-				currentValidators, _ := c.inner.CurrentValidators(ctx)
 				// Check to make sure the stake is valid
 				if action.EndLockUp > currentHeight {
-					if err := c.emission.StakeToValidator(tx.ID(), tx.Auth.Actor(), currentValidators, currentHeight, action); err != nil {
+					currentValidators, _ := c.inner.CurrentValidators(ctx)
+					if err := c.emission.StakeToValidator(tx.ID(), tx.Auth.Actor(), currentValidators, currentHeight, action.NodeID, action.StakedAmount); err != nil {
 						c.inner.Logger().Error("failed to stake to validator", zap.Error(err))
-						break
 					}
 				} else {
 					c.inner.Logger().Error("failed to stake to validator", zap.Error(fmt.Errorf("start lockup %d is greater than end lockup %d", currentHeight, action.EndLockUp)))
 				}
 			case *actions.UnstakeValidator:
 				c.metrics.unstake.Inc()
+				stakeResult, err := actions.UnmarshalStakeResult(result.Output)
+				if err != nil {
+					// This should never happen
+					return err
+				}
+
 				// Check to make sure the unstake is valid
-				_, _, stakedAmount, endLockUp, owner, _ := storage.GetStake(ctx, mu, action.Stake)
-				if currentHeight > endLockUp {
-					if err := c.emission.UnstakeFromValidator(owner, action); err != nil {
+				if currentHeight > stakeResult.EndLockUp {
+					if err := c.emission.UnstakeFromValidator(tx.Auth.Actor(), action.NodeID, action.Stake); err != nil {
 						c.inner.Logger().Error("failed to unstake from validator", zap.Error(err))
-						// We exit early if it's an error that must never happen
-						// Otherwise, we move on because while the stake may be  removed from Emission Balancer,
-						// it may not have been removed from the blockchain state yet
-						if err == emission.ErrInvalidNodeID {
-							break
-						}
-					}
-					// We exit early if the stake cannot be deleted from the state
-					if err := storage.DeleteStake(ctx, mu, action.Stake); err != nil {
-						c.inner.Logger().Error("failed to delete stake from blockchain state", zap.Error(err))
-						break
-					}
-					// We exit early if the staked amount cannot be added to the user balance
-					if err := storage.AddBalance(ctx, mu, owner, ids.Empty, stakedAmount, true); err != nil {
-						c.inner.Logger().Error("failed to add the staked amount to the user balance", zap.Error(err))
-						break
 					}
 				}
 			}
 		}
 	}
 
-	// Calculate and distribute fees
-	feeManager := blk.FeeManager()
-	unitsConsumed := feeManager.UnitsConsumed()
-	unitPrices := feeManager.UnitPrices()
-	totalFee := uint64(0)
-	for i := 0; i < len(unitsConsumed); i++ {
-		totalFee += unitsConsumed[i] * unitPrices[i]
+	// Retrieve the vm state
+	stateDB, err := c.inner.State()
+	if err != nil {
+		return err
 	}
+	// Retrieve the state.Mutable to write to
+	mu := state.NewSimpleMutable(stateDB)
 	emissionAddr, err := codec.ParseAddressBech32(nconsts.HRP, c.genesis.EmissionAddress)
 	if err != nil {
-		return err
+		return err // This should never happen
 	}
-	if err := c.emission.DistributeFees(ctx, mu, totalFee, emissionAddr); err != nil {
-		return err
+
+	// Distribute fees
+	if totalFee > 0 {
+		if feesForEmission := c.emission.FeesToDistribute(totalFee); feesForEmission > 0 {
+			// Give 50% fees to Emission
+			if err := storage.AddBalance(ctx, mu, emissionAddr, ids.Empty, feesForEmission, true); err != nil {
+				c.inner.Logger().Error("failed to distribute fees to emission address", zap.Error(err))
+			}
+			if err := mu.Commit(ctx); err != nil {
+				c.inner.Logger().Error("failed to commit fees to emission address", zap.Error(err))
+			}
+			c.inner.Logger().Info("distributed fees to Emission and Validators", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("total fee", totalFee), zap.Uint64("total supply", c.emission.GetTotalSupply()), zap.Uint64("max supply", c.emission.GetMaxSupply()))
+		}
 	}
-	c.inner.Logger().Info("distributed fees to Emission and Validators", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("total fee", totalFee), zap.Uint64("total supply", c.emission.GetTotalSupply()), zap.Uint64("max supply", c.emission.GetMaxSupply()))
 
 	// Mint new NAI if needed
-	mintNewNAI, err := c.emission.MintNewNAI(ctx, mu, emissionAddr)
-	if err != nil {
-		return err
-	}
+	mintNewNAI, mintToEmissionAddr := c.emission.MintNewNAI()
 	if mintNewNAI > 0 {
 		c.emission.AddToTotalSupply(mintNewNAI)
+		if mintToEmissionAddr {
+			if err := storage.AddBalance(ctx, mu, emissionAddr, ids.Empty, mintNewNAI, true); err != nil {
+				c.inner.Logger().Error("failed to mint new NAI to emission address", zap.Error(err))
+			}
+			if err := mu.Commit(ctx); err != nil {
+				c.inner.Logger().Error("failed to commit new NAI to emission address", zap.Error(err))
+			}
+		}
 		c.inner.Logger().Info("minted new NAI", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("newly minted NAI", mintNewNAI), zap.Uint64("total supply", c.emission.GetTotalSupply()), zap.Uint64("max supply", c.emission.GetMaxSupply()))
 		c.metrics.mintNAI.Add(float64(mintNewNAI))
 	}

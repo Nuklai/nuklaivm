@@ -215,7 +215,7 @@ database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
 chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
 balance: 853000000.000000000 NAI
-✔ recipient: nuklai1qyf889stx7rjrgh8tsa4acv4we94kf4w652gwq462tm4vau9ee20gq6k5l2█
+✔ recipient: nuklai1qyf889stx7rjrgh8tsa4acv4we94kf4w652gwq462tm4vau9ee20gq6k5l2
 amount: 100
 continue (y/n): y
 ✅ txID: 2F5m7Bmy5P4CN6DZBsK7pfDVwGLKCe1cqc2MPGsGnY9Mu9d3qH

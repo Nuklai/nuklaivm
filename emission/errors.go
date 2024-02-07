@@ -6,7 +6,6 @@ package emission
 import "errors"
 
 var (
-	ErrMaxValidatorsReached     = errors.New("max validators reached")
 	ErrValidatorNotFound        = errors.New("validator not found")
 	ErrStakeNotFound            = errors.New("stake not found")
 	ErrInvalidNodeID            = errors.New("invalid node id")

@@ -54,7 +54,7 @@ func (u *UnstakeValidator) Execute(
 	_ ids.ID,
 	_ bool,
 ) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
-	exists, nodeIDStaked, _, _, owner, err := storage.GetStake(ctx, mu, u.Stake)
+	exists, nodeIDStaked, stakedAmount, endLockUp, owner, err := storage.GetStake(ctx, mu, u.Stake)
 	if err != nil {
 		return false, UnstakeValidatorComputeUnits, utils.ErrBytes(err), nil, nil
 	}
@@ -67,7 +67,19 @@ func (u *UnstakeValidator) Execute(
 	if !bytes.Equal(nodeIDStaked.Bytes(), u.NodeID) {
 		return false, UnstakeValidatorComputeUnits, OutputDifferentNodeIDThanStaked, nil, nil
 	}
-	return true, UnstakeValidatorComputeUnits, nil, nil, nil
+	if err := storage.DeleteStake(ctx, mu, u.Stake); err != nil {
+		return false, UnstakeValidatorComputeUnits, utils.ErrBytes(err), nil, nil
+	}
+	if err := storage.AddBalance(ctx, mu, owner, ids.Empty, stakedAmount, true); err != nil {
+		return false, UnstakeValidatorComputeUnits, utils.ErrBytes(err), nil, nil
+	}
+
+	sr := &StakeResult{stakedAmount, endLockUp}
+	output, err := sr.Marshal()
+	if err != nil {
+		return false, UnstakeValidatorComputeUnits, utils.ErrBytes(err), nil, nil
+	}
+	return true, UnstakeValidatorComputeUnits, output, nil, nil
 }
 
 func (*UnstakeValidator) MaxComputeUnits(chain.Rules) uint64 {
@@ -93,4 +105,24 @@ func UnmarshalUnstakeValidator(p *codec.Packer, _ *warp.Message) (chain.Action, 
 func (*UnstakeValidator) ValidRange(chain.Rules) (int64, int64) {
 	// Returning -1, -1 means that the action is always valid.
 	return -1, -1
+}
+
+type StakeResult struct {
+	StakedAmount uint64
+	EndLockUp    uint64
+}
+
+func UnmarshalStakeResult(b []byte) (*StakeResult, error) {
+	p := codec.NewReader(b, hconsts.Uint64Len*2)
+	var result StakeResult
+	result.StakedAmount = p.UnpackUint64(true)
+	result.EndLockUp = p.UnpackUint64(true)
+	return &result, p.Err()
+}
+
+func (s *StakeResult) Marshal() ([]byte, error) {
+	p := codec.NewWriter(hconsts.Uint64Len*2, hconsts.Uint64Len*2)
+	p.PackUint64(s.StakedAmount)
+	p.PackUint64(s.EndLockUp)
+	return p.Bytes(), p.Err()
 }
