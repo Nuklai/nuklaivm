@@ -1,11 +1,11 @@
 // Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-package rpc
+package backend
 
 import "errors"
 
 var (
-	ErrTxNotFound    = errors.New("tx not found")
-	ErrAssetNotFound = errors.New("asset not found")
+	ErrDuplicate    = errors.New("duplicate")
+	ErrAssetMissing = errors.New("asset missing")
 )
