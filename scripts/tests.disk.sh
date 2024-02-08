@@ -12,8 +12,7 @@ if ! [[ "$0" =~ scripts/tests.disk.sh ]]; then
 fi
 
 # You need to install `fio` to run this job
-
-if ! command -v ginkgo &> /dev/null; then
+if ! command -v fio &> /dev/null; then
   echo "installing fio"
   if [[ $OSTYPE == 'darwin'* ]]; then
     echo 'macOS detected'

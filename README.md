@@ -6,12 +6,107 @@
   <a href="https://github.com/Nuklai/nuklaivm/actions/workflows/static-analysis.yml"><img src="https://github.com/Nuklai/nuklaivm/actions/workflows/static-analysis.yml/badge.svg" /></a>
 </p>
 
+---
+
+`nuklaivm` takes inspiration from [morpheusvm](https://github.com/ava-labs/hypersdk/tree/main/examples/morpheusvm) and
+[tokenvm](https://github.com/ava-labs/hypersdk/tree/main/examples/tokenvm) and implements the functionality of both of
+these VMs. In addition, `nuklaivm` also adds additional functionality such as staking native token `NAI`, has an
+emission balancer that keeps track of total supply of NAI, max supply of NAI, staking rewards per block and the emission
+address to direct 50% of all fees to.
+
 ## Status
 
 `nuklaivm` is considered **ALPHA** software and is not safe to use in
 production. The framework is under active development and may change
 significantly over the coming months as its modules are optimized and
 audited.
+
+## Features
+
+### Actions
+
+- ☑ Transfer both the native asset `NAI` and any other token created by users within the same subnet
+- ☑ Transfer both the native asset `NAI` and any other token created by users to another subnet using Avalanche Warp Messaging(AWM)
+- ☑ Create a token
+- ☑ Mint a token
+- ☑ Burn a token
+- ☑ Export both the native asset `NAI` and any other user tokens to another subnet that is also a `nuklaivm`
+- ☑ Import both the native asset `NAI` and any other user tokens from another subnet that is also a `nuklaivm`
+- ☑ Stake `NAI` to any currently running validator
+- ☑ Unstake `NAI` from a staked validator
+
+### Emission Balancer
+
+- ☑ Tracks total supply of `NAI`, max supply of `NAI`, staking rewards per block and the emission address to direct 50% of all fees to
+- ☑ Stake `NAI` to a validator
+- ☑ Unstake `NAi` from a validator
+- ☑ Track the staking information for each users and validators
+- ☑ Distribute 50% fees to emission balancer address and 50% to all the staked validators per block
+- ☑ Distribute `NAI` as staking rewards to the validators that have a minimum stake of at least 100 `NAI` per block
+- [ ] Claim the staking rewards
+
+### Deep Dive on different features of `nuklaivm`
+
+#### Arbitrary Token Minting
+
+The basis of the `nuklaivm` is the ability to create, mint, and transfer user-generated
+tokens with ease. When creating an asset, the owner is given "admin control" of
+the asset functions and can later mint more of an asset, update its metadata
+(during a reveal for example), or transfer/revoke ownership (if rotating their
+key or turning over to their community).
+
+Assets are a native feature of the `nuklaivm` and the storage engine is
+optimized specifically to support their efficient usage (each balance entry
+requires only 72 bytes of state = `assetID|publicKey=>balance(uint64)`). This
+storage format makes it possible to parallelize the execution of any transfers
+that don't touch the same accounts. This parallelism will take effect as soon
+as it is re-added upstream by the `hypersdk` (no action required in the
+`nuklaivm`).
+
+#### Avalanche Warp Support
+
+We take advantage of the Avalanche Warp Messaging (AWM) support provided by the
+`hypersdk` to enable any `nuklaivm` to send assets to any other `nuklaivm` without
+relying on a trusted relayer or bridge (just the validators of the `nuklaivm`
+sending the message).
+
+By default, a `nuklaivm` will accept a message from another `nuklaivm` if 80% of
+the stake weight of the source has signed it. Because each imported asset is
+given a unique `AssetID` (hash of `sourceChainID + sourceAssetID`), it is not
+possible for a malicious/rogue Subnet to corrupt token balances imported from
+other Subnets with this default import setting. `nuklaivms` also track the
+amount of assets exported to all other `nuklaivms` and ensure that more assets
+can't be brought back from a `nuklaivm` than were exported to it (prevents
+infinite minting).
+
+To limit "contagion" in the case of a `nuklaivm` failure, we ONLY allow the
+export of natively minted assets to another `nuklaivm`. This means you can
+transfer an asset between two `nuklaivms` A and B but you can't export from
+`nuklaivm` A to `nuklaivm` B to `nuklaivm` C. This ensures that the import policy
+for an external `nuklaivm` is always transparent and is never inherited
+implicitly by the transfers between other `nuklaivms`. The ability to impose
+this restriction (without massively driving up the cost of each transfer) is
+possible because AWM does not impose an additional overhead per Subnet
+connection (no "per connection" state to maintain). This means it is just as
+cheap/scalable to communicate with every other `nuklaivm` as it is to only
+communicate with one.
+
+Lastly, the `nuklaivm` allows users to both tip relayers (whoever sends
+a transaction that imports their message) and to swap for another asset when
+their message is imported (so they can acquire fee-paying tokens right when
+they arrive).
+
+You can see how this works by checking out the [E2E test suite](./tests/e2e/e2e_test.go)
+that runs through these flows.
+
+#### Staking
+
+On `nuklaivm`, the emission balancer handles the staking mechanism whereby it tracks the
+total supply of `NAI`, max supply of `NAI`, staking rewards per block and the emission address to direct 50% of all fees to.
+Furthermore, it also rewards all the validators that have a minimum stake of at least 100 `NAI`. Note that users who stake
+to the validators don't earn `NAI` rewards automatically, but rather it is the job of the validators to claim these rewards
+and then send some of those rewards to the users based on their stake. This is a manual process however, in the future, validators
+can write a custom Hypersdk program to automatically claim and distribute these rewards.
 
 ## Demo
 
