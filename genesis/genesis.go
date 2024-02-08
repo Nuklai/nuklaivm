@@ -20,7 +20,6 @@ import (
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/ava-labs/hypersdk/vm"
 	"github.com/nuklai/nuklaivm/consts"
-	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/storage"
 )
 
@@ -29,6 +28,13 @@ var _ vm.Genesis = (*Genesis)(nil)
 type CustomAllocation struct {
 	Address string `json:"address"` // bech32 address
 	Balance uint64 `json:"balance"`
+}
+
+type EmissionBalancer struct {
+	TotalSupply     uint64 `json:"totalSupply"`     // Total supply of NAI
+	MaxSupply       uint64 `json:"maxSupply"`       // Max supply of NAI
+	RewardsPerBlock uint64 `json:"rewardsPerBlock"` // Minting rate of NAI
+	EmissionAddress string `json:"emissionAddress"` // Emission address
 }
 
 type Genesis struct {
@@ -63,17 +69,8 @@ type Genesis struct {
 	// Allocates
 	CustomAllocation []*CustomAllocation `json:"customAllocation"`
 
-	// Total supply of NAI
-	TotalSupply uint64 `json:"totalSupply"`
-
-	// Max supply of NAI
-	MaxSupply uint64 `json:"maxSupply"`
-
-	// Minting rate of NAI
-	RewardsPerBlock uint64 `json:"rewardsPerBlock"`
-
-	// Emission address
-	EmissionAddress string `json:"emissionAddress"`
+	// Emission Balancer Info
+	EmissionBalancer EmissionBalancer `json:"emissionBalancer"`
 }
 
 func Default() *Genesis {
@@ -110,12 +107,12 @@ func Default() *Genesis {
 		StorageKeyWriteUnits:      10,
 		StorageValueWriteUnits:    3,
 
-		// Set a default max supply
-		MaxSupply: 10_000_000_000 * uint64(math.Pow10(consts.Decimals)), // 10 billion NAI
-		// Set a default minting rate for NAI
-		RewardsPerBlock: 2 * uint64(math.Pow10(consts.Decimals)), // 2 NAI per block
-
-		EmissionAddress: "nuklai1de6kkmrpd9mx6anpde5hg7f6t7dvn7u3dxfgfsz8yh3fggguqqf3wdd7xfy",
+		EmissionBalancer: EmissionBalancer{
+			TotalSupply:     0,
+			MaxSupply:       10_000_000_000 * uint64(math.Pow10(consts.Decimals)),                 // 10 billion NAI,
+			RewardsPerBlock: 2 * uint64(math.Pow10(consts.Decimals)),                              // 2 NAI per block,
+			EmissionAddress: "nuklai1qqmzlnnredketlj3cu20v56nt5ken6thchra7nylwcrmz77td654w2jmpt9", // NAI emission address(If you don't pass this address, it will be set to the default address)
+		},
 	}
 }
 
@@ -151,8 +148,6 @@ func (g *Genesis) Load(ctx context.Context, tracer trace.Tracer, mu state.Mutabl
 			return fmt.Errorf("%w: addr=%s, bal=%d", err, alloc.Address, alloc.Balance)
 		}
 	}
-	emission := emission.GetEmission()
-	emission.AddToTotalSupply(supply)
 
 	return storage.SetAsset(
 		ctx,

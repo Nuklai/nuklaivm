@@ -18,7 +18,6 @@ import (
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/gossiper"
 	hrpc "github.com/ava-labs/hypersdk/rpc"
-	"github.com/ava-labs/hypersdk/state"
 	hstorage "github.com/ava-labs/hypersdk/storage"
 	"github.com/ava-labs/hypersdk/vm"
 	"go.uber.org/zap"
@@ -153,7 +152,11 @@ func (c *Controller) Initialize(
 		// We only get the validators in non-test mode
 		currentValidators, _ = inner.CurrentValidators(context.TODO())
 	}
-	c.emission = emission.New(c, c.genesis.MaxSupply, c.genesis.RewardsPerBlock, currentValidators)
+	emissionAddr, err := codec.ParseAddressBech32(nconsts.HRP, c.genesis.EmissionBalancer.EmissionAddress)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
+	c.emission = emission.New(c, c.genesis.EmissionBalancer.TotalSupply, c.genesis.EmissionBalancer.MaxSupply, c.genesis.EmissionBalancer.RewardsPerBlock, emissionAddr, currentValidators)
 
 	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, nconsts.ActionRegistry, nconsts.AuthRegistry, auth.Engines(), nil
 }
@@ -234,44 +237,20 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 		}
 	}
 
-	// Retrieve the vm state
-	stateDB, err := c.inner.State()
-	if err != nil {
-		return err
-	}
-	// Retrieve the state.Mutable to write to
-	mu := state.NewSimpleMutable(stateDB)
-	emissionAddr, err := codec.ParseAddressBech32(nconsts.HRP, c.genesis.EmissionAddress)
-	if err != nil {
-		return err // This should never happen
-	}
-
 	// Distribute fees
 	if totalFee > 0 {
-		if feesForEmission := c.emission.FeesToDistribute(totalFee); feesForEmission > 0 {
-			// Give 50% fees to Emission
-			if err := storage.AddBalance(ctx, mu, emissionAddr, ids.Empty, feesForEmission, true); err != nil {
-				c.inner.Logger().Error("failed to distribute fees to emission address", zap.Error(err))
-			}
-			if err := mu.Commit(ctx); err != nil {
-				c.inner.Logger().Error("failed to commit fees to emission address", zap.Error(err))
-			}
-			c.inner.Logger().Info("distributed fees to Emission and Validators", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("total fee", totalFee), zap.Uint64("total supply", c.emission.GetTotalSupply()), zap.Uint64("max supply", c.emission.GetMaxSupply()))
+		c.emission.DistributeFees(totalFee)
+		emissionAddress, err := codec.AddressBech32(nconsts.HRP, c.emission.GetEmissionAccount().Address)
+		if err != nil {
+			return err // This should never happen
 		}
+		c.inner.Logger().Info("distributed fees to Emission and Validators", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("total fee", totalFee), zap.Uint64("total supply", c.emission.GetTotalSupply()), zap.Uint64("max supply", c.emission.GetMaxSupply()), zap.Uint64("rewards per block", c.emission.GetRewardsPerBlock()), zap.String("emission address", emissionAddress), zap.Uint64("emission address balance", c.emission.GetEmissionAccount().Balance))
 	}
 
 	// Mint new NAI if needed
-	mintNewNAI, mintToEmissionAddr := c.emission.MintNewNAI()
+	mintNewNAI := c.emission.MintNewNAI()
 	if mintNewNAI > 0 {
 		c.emission.AddToTotalSupply(mintNewNAI)
-		if mintToEmissionAddr {
-			if err := storage.AddBalance(ctx, mu, emissionAddr, ids.Empty, mintNewNAI, true); err != nil {
-				c.inner.Logger().Error("failed to mint new NAI to emission address", zap.Error(err))
-			}
-			if err := mu.Commit(ctx); err != nil {
-				c.inner.Logger().Error("failed to commit new NAI to emission address", zap.Error(err))
-			}
-		}
 		c.inner.Logger().Info("minted new NAI", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("newly minted NAI", mintNewNAI), zap.Uint64("total supply", c.emission.GetTotalSupply()), zap.Uint64("max supply", c.emission.GetMaxSupply()))
 		c.metrics.mintNAI.Add(float64(mintNewNAI))
 	}

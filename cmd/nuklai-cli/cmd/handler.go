@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/chain"
@@ -87,15 +88,18 @@ func (*Handler) GetAssetInfo(
 	if err != nil {
 		return nil, 0, 0, ids.Empty, err
 	}
+	balanceToShow := fmt.Sprintf("%s %s", hutils.FormatBalance(balance, decimals), symbol)
+	if assetID != ids.Empty {
+		balanceToShow = fmt.Sprintf("%s %s", hutils.FormatBalance(balance, decimals), assetID)
+	}
 	if balance == 0 {
-		hutils.Outf("{{red}}balance:{{/}} 0 %s\n", assetID)
+		hutils.Outf("{{red}}balance:{{/}} %s\n", balanceToShow)
 		hutils.Outf("{{red}}please send funds to %s{{/}}\n", saddr)
 		hutils.Outf("{{red}}exiting...{{/}}\n")
 	} else {
 		hutils.Outf(
-			"{{yellow}}balance:{{/}} %s %s\n",
-			hutils.FormatBalance(balance, decimals),
-			symbol,
+			"{{yellow}}balance:{{/}} %s\n",
+			balanceToShow,
 		)
 	}
 	return symbol, decimals, balance, sourceChainID, nil
@@ -177,19 +181,26 @@ func (h *Handler) DefaultNuklaiVMJSONRPCClient(checkAllChains bool) ([]*nrpc.JSO
 func (*Handler) GetEmissionInfo(
 	ctx context.Context,
 	cli *nrpc.JSONRPCClient,
-) (uint64, uint64, uint64, error) {
-	totalSupply, maxSupply, rewardsPerBlock, err := cli.EmissionInfo(ctx)
+) (uint64, uint64, uint64, string, uint64, error) {
+	totalSupply, maxSupply, rewardsPerBlock, emissionAccount, err := cli.EmissionInfo(ctx)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, "", 0, err
+	}
+
+	emissionAddress, err := codec.AddressBech32(nconsts.HRP, emissionAccount.Address)
+	if err != nil {
+		return 0, 0, 0, "", 0, err
 	}
 
 	hutils.Outf(
-		"{{yellow}}emission info: {{/}}\nTotalSupply=%d MaxSupply=%d RewardsPerBlock=%d\n",
+		"{{yellow}}emission info: {{/}}\nTotalSupply=%d MaxSupply=%d RewardsPerBlock=%d EmissionAddress=%s EmissionBalance=%d\n",
 		totalSupply,
 		maxSupply,
 		rewardsPerBlock,
+		emissionAddress,
+		emissionAccount.Balance,
 	)
-	return totalSupply, maxSupply, rewardsPerBlock, err
+	return totalSupply, maxSupply, rewardsPerBlock, emissionAddress, emissionAccount.Balance, err
 }
 
 func (*Handler) GetAllValidators(

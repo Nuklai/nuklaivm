@@ -5,13 +5,16 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/hypersdk/chain"
+	"github.com/ava-labs/hypersdk/codec"
 
+	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/genesis"
 )
 
@@ -23,10 +26,10 @@ var genesisCmd = &cobra.Command{
 }
 
 var genGenesisCmd = &cobra.Command{
-	Use:   "generate [custom allocates file] [options]",
+	Use:   "generate [custom allocates file] [emission balancer file] [options]",
 	Short: "Creates a new genesis in the default location",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) != 1 {
+		if len(args) != 2 {
 			return ErrInvalidArgs
 		}
 		return nil
@@ -58,6 +61,7 @@ var genGenesisCmd = &cobra.Command{
 			g.MinBlockGap = minBlockGap
 		}
 
+		// Read custom allocations file
 		a, err := os.ReadFile(args[0])
 		if err != nil {
 			return err
@@ -67,6 +71,31 @@ var genGenesisCmd = &cobra.Command{
 			return err
 		}
 		g.CustomAllocation = allocs
+
+		// Read emission balancer file
+		eb, err := os.ReadFile(args[1])
+		if err != nil {
+			return err
+		}
+		emissionBalancer := genesis.EmissionBalancer{}
+		if err := json.Unmarshal(eb, &emissionBalancer); err != nil {
+			return err
+		}
+		totalSupply := uint64(0)
+		for _, alloc := range allocs {
+			if _, err := codec.ParseAddressBech32(nconsts.HRP, alloc.Address); err != nil {
+				return err
+			}
+			totalSupply += alloc.Balance
+		}
+		if _, err := codec.ParseAddressBech32(nconsts.HRP, emissionBalancer.EmissionAddress); err != nil {
+			return err
+		}
+		if emissionBalancer.TotalSupply > 0 && totalSupply != emissionBalancer.TotalSupply {
+			return errors.New("total supply in emission balancer file does not match the sum of balances in custom allocates file")
+		}
+		emissionBalancer.TotalSupply = totalSupply
+		g.EmissionBalancer = emissionBalancer
 
 		b, err := json.Marshal(g)
 		if err != nil {

@@ -26,7 +26,8 @@ STATESYNC_DELAY=${STATESYNC_DELAY:-0}
 MIN_BLOCK_GAP=${MIN_BLOCK_GAP:-100}
 STORE_TXS=${STORE_TXS:-false}
 UNLIMITED_USAGE=${UNLIMITED_USAGE:-false}
-ADDRESS=${ADDRESS:-nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx}
+INITIAL_OWNER_ADDRESS=${INITIAL_OWNER_ADDRESS:-nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx}
+EMISSION_ADDRESS=${EMISSION_ADDRESS:-nuklai1qqmzlnnredketlj3cu20v56nt5ken6thchra7nylwcrmz77td654w2jmpt9}
 if [[ ${MODE} != "run" ]]; then
   LOGLEVEL=debug
   STATESYNC_DELAY=100000000 # 100ms
@@ -54,7 +55,8 @@ echo MIN_BLOCK_GAP \(ms\): ${MIN_BLOCK_GAP}
 echo STORE_TXS: ${STORE_TXS}
 echo WINDOW_TARGET_UNITS: ${WINDOW_TARGET_UNITS}
 echo MAX_BLOCK_UNITS: ${MAX_BLOCK_UNITS}
-echo ADDRESS: ${ADDRESS}
+echo INITIAL_OWNER_ADDRESS: ${INITIAL_OWNER_ADDRESS}
+echo EMISSION_ADDRESS: ${EMISSION_ADDRESS}
 
 ############################
 # build avalanchego
@@ -121,18 +123,29 @@ find ${TMPDIR}/avalanchego-${VERSION}
 # Make sure to replace this address with your own address
 # if you are starting your own devnet (otherwise anyone can access
 # funds using the included demo.pk)
+# Initial balance: 853 million NAI
 echo "creating allocations file"
 cat <<EOF > ${TMPDIR}/allocations.json
 [
-  {"address":"${ADDRESS}", "balance":853000000000000000}
+  {"address":"${INITIAL_OWNER_ADDRESS}", "balance":853000000000000000} 
 ]
+EOF
+echo "creating emission balancer file"
+# maxSupply: 10 billion NAI
+# rewardsPerBlock: 2 NAI
+cat <<EOF > ${TMPDIR}/emission-balancer.json
+{
+  "maxSupply":  10000000000000000000,
+  "rewardsPerBlock": 2000000000,
+  "emissionAddress":"${EMISSION_ADDRESS}"
+}
 EOF
 
 GENESIS_PATH=$2
 if [[ -z "${GENESIS_PATH}" ]]; then
   echo "creating VM genesis file with allocations"
   rm -f ${TMPDIR}/nuklaivm.genesis
-  ${TMPDIR}/nuklai-cli genesis generate ${TMPDIR}/allocations.json \
+  ${TMPDIR}/nuklai-cli genesis generate ${TMPDIR}/allocations.json ${TMPDIR}/emission-balancer.json \
   --window-target-units ${WINDOW_TARGET_UNITS} \
   --max-block-units ${MAX_BLOCK_UNITS} \
   --min-block-gap ${MIN_BLOCK_GAP} \
@@ -154,7 +167,7 @@ cat <<EOF > ${TMPDIR}/nuklaivm.config
 {
   "mempoolSize": 10000000,
   "mempoolSponsorSize": 10000000,
-  "mempoolExemptSponsors":["${ADDRESS}"],
+  "mempoolExemptSponsors":["${INITIAL_OWNER_ADDRESS}", "${EMISSION_ADDRESS}"],
   "authVerificationCores": 2,
   "rootGenerationCores": 2,
   "transactionExecutionCores": 2,

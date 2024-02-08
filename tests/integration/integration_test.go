@@ -185,6 +185,12 @@ var _ = ginkgo.BeforeSuite(func() {
 			Balance: 10_000_000,
 		},
 	}
+	gen.EmissionBalancer = genesis.EmissionBalancer{
+		TotalSupply:     10_000_000,
+		MaxSupply:       10_000_000_000,
+		RewardsPerBlock: 2,
+		EmissionAddress: sender,
+	}
 	genesisBytes, err = json.Marshal(gen)
 	gomega.Ω(err).Should(gomega.BeNil())
 

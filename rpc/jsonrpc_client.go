@@ -149,7 +149,7 @@ func (cli *JSONRPCClient) Loan(
 	return resp.Amount, err
 }
 
-func (cli *JSONRPCClient) EmissionInfo(ctx context.Context) (uint64, uint64, uint64, error) {
+func (cli *JSONRPCClient) EmissionInfo(ctx context.Context) (uint64, uint64, uint64, *emission.EmissionAccount, error) {
 	resp := new(EmissionReply)
 	err := cli.requester.SendRequest(
 		ctx,
@@ -158,9 +158,9 @@ func (cli *JSONRPCClient) EmissionInfo(ctx context.Context) (uint64, uint64, uin
 		resp,
 	)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, &emission.EmissionAccount{}, err
 	}
-	return resp.TotalSupply, resp.MaxSupply, resp.RewardsPerBlock, err
+	return resp.TotalSupply, resp.MaxSupply, resp.RewardsPerBlock, resp.EmissionAccount, err
 }
 
 func (cli *JSONRPCClient) Validators(ctx context.Context) ([]*emission.Validator, error) {

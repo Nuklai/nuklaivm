@@ -142,22 +142,24 @@ func (j *JSONRPCServer) Loan(req *http.Request, args *LoanArgs, reply *LoanReply
 }
 
 type EmissionReply struct {
-	TotalSupply     uint64 `json:"totalSupply"`
-	MaxSupply       uint64 `json:"maxSupply"`
-	RewardsPerBlock uint64 `json:"rewardsPerBlock"`
+	TotalSupply     uint64                    `json:"totalSupply"`
+	MaxSupply       uint64                    `json:"maxSupply"`
+	RewardsPerBlock uint64                    `json:"rewardsPerBlock"`
+	EmissionAccount *emission.EmissionAccount `json:"emissionAccount"`
 }
 
 func (j *JSONRPCServer) EmissionInfo(req *http.Request, _ *struct{}, reply *EmissionReply) (err error) {
 	_, span := j.c.Tracer().Start(req.Context(), "Server.EmissionInfo")
 	defer span.End()
 
-	totalSupply, maxSupply, rewardsPerBlock, err := j.c.GetEmissionInfo()
+	totalSupply, maxSupply, rewardsPerBlock, emissionAccount, err := j.c.GetEmissionInfo()
 	if err != nil {
 		return err
 	}
 	reply.TotalSupply = totalSupply
 	reply.MaxSupply = maxSupply
 	reply.RewardsPerBlock = rewardsPerBlock
+	reply.EmissionAccount = emissionAccount
 	return nil
 }
 

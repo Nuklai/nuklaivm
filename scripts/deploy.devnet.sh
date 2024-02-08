@@ -39,8 +39,11 @@ export AVALANCHEGO_VERSION="1.10.12"
 echo AVALANCHEGO_VERSION: ${AVALANCHEGO_VERSION}
 export NUKLAIVM_VERSION="0.1.0"
 echo NUKLAIVM_VERSION: ${NUKLAIVM_VERSION}
-ADDRESS="nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx"
-echo ADDRESS: ${ADDRESS}
+INITIAL_OWNER_ADDRESS="nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx"
+echo INITIAL_OWNER_ADDRESS: ${INITIAL_OWNER_ADDRESS}
+EMISSION_ADDRESS="nuklai1qqmzlnnredketlj3cu20v56nt5ken6thchra7nylwcrmz77td654w2jmpt9"
+echo EMISSION_ADDRESS: ${EMISSION_ADDRESS}
+
 # TODO: set deploy os/arch
 
 # Check valid setup
@@ -119,15 +122,22 @@ cat ${DEPLOY_ARTIFACT_PREFIX}/nuklaivm-subnet-config.json
 # TODO: make address configurable via ENV
 cat <<EOF > ${DEPLOY_ARTIFACT_PREFIX}/allocations.json
 [
-  {"address":"${ADDRESS}", "balance":853000000000000000}
+  {"address":"${INITIAL_OWNER_ADDRESS}", "balance":853000000000000000} 
 ]
+EOF
+cat <<EOF > ${DEPLOY_ARTIFACT_PREFIX}/emission-balancer.json
+{
+  "maxSupply":  10000000000000000000,
+  "rewardsPerBlock": 2000000000,
+  "emissionAddress":"${EMISSION_ADDRESS}"
+}
 EOF
 
 # Block bandwidth per second is a function of ~1.8MB * 1/blockGap
 #
 # TODO: make fee params configurable via ENV
 MAX_UINT64=18446744073709551615
-${DEPLOY_ARTIFACT_PREFIX}/nuklai-cli genesis generate ${DEPLOY_ARTIFACT_PREFIX}/allocations.json \
+${DEPLOY_ARTIFACT_PREFIX}/nuklai-cli genesis generate ${DEPLOY_ARTIFACT_PREFIX}/allocations.json ${DEPLOY_ARTIFACT_PREFIX}/emission-balancer.json \
 --genesis-file ${DEPLOY_ARTIFACT_PREFIX}/nuklaivm-genesis.json \
 --max-block-units 1800000,${MAX_UINT64},${MAX_UINT64},${MAX_UINT64},${MAX_UINT64} \
 --window-target-units ${MAX_UINT64},${MAX_UINT64},${MAX_UINT64},${MAX_UINT64},${MAX_UINT64} \
@@ -139,7 +149,7 @@ cat <<EOF > ${DEPLOY_ARTIFACT_PREFIX}/nuklaivm-chain-config.json
   "logLevel": "info",
   "mempoolSize": 10000000,
   "mempoolPayerSize": 10000000,
-  "mempoolExemptPayers":["${ADDRESS}"],
+  "mempoolExemptPayers":["${INITIAL_OWNER_ADDRESS}", "${EMISSION_ADDRESS}"],
   "streamingBacklogSize": 10000000,
   "authVerificationCores": 4,
   "rootGenerationCores": 4,

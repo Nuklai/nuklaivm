@@ -22,7 +22,7 @@ type Controller interface {
 	GetBalanceFromState(context.Context, codec.Address, ids.ID) (uint64, error)
 	GetLoanFromState(context.Context, ids.ID, ids.ID) (uint64, error)
 
-	GetEmissionInfo() (uint64, uint64, uint64, error)
+	GetEmissionInfo() (uint64, uint64, uint64, *emission.EmissionAccount, error)
 	GetAllValidators() ([]*emission.Validator, error)
 	GetValidator(nodeID ids.NodeID) (*emission.Validator, error)
 	GetUserStake(nodeID ids.NodeID, owner string) (*emission.UserStake, error)

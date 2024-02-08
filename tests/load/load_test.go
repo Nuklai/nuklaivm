@@ -52,7 +52,7 @@ import (
 	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
 
-const genesisBalance uint64 = hconsts.MaxUint64
+const genesisBalance uint64 = 10_000_000_000_000_000_000
 
 var (
 	logFactory logging.Factory
@@ -201,6 +201,12 @@ var _ = ginkgo.BeforeSuite(func() {
 			Address: sender,
 			Balance: genesisBalance,
 		},
+	}
+	gen.EmissionBalancer = genesis.EmissionBalancer{
+		TotalSupply:     genesisBalance,
+		MaxSupply:       hconsts.MaxUint64,
+		RewardsPerBlock: 2,
+		EmissionAddress: sender,
 	}
 	genesisBytes, err = json.Marshal(gen)
 	gomega.Ω(err).Should(gomega.BeNil())

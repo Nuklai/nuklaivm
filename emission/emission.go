@@ -46,12 +46,18 @@ type Validator struct {
 	StakedReward  uint64                `json:"stakedReward"`
 }
 
+type EmissionAccount struct {
+	Address codec.Address `json:"address"`
+	Balance uint64        `json:"balance"`
+}
+
 type Emission struct {
 	c Controller
 
 	totalSupply     uint64
 	maxSupply       uint64
 	rewardsPerBlock uint64
+	emissionAccount EmissionAccount
 
 	validators     map[ids.NodeID]*Validator // the key is NodeID
 	minStakeAmount uint64
@@ -60,7 +66,7 @@ type Emission struct {
 }
 
 // New initializes the Emission with the maximum supply
-func New(c Controller, maxSupply, rewardsPerBlock uint64, currentValidators map[ids.NodeID]*validators.GetValidatorOutput) *Emission {
+func New(c Controller, totalSupply, maxSupply, rewardsPerBlock uint64, emissionAddress codec.Address, currentValidators map[ids.NodeID]*validators.GetValidatorOutput) *Emission {
 	once.Do(func() {
 		c.Logger().Info("setting maxSupply and rewardsPerBlock for emission")
 
@@ -76,10 +82,17 @@ func New(c Controller, maxSupply, rewardsPerBlock uint64, currentValidators map[
 			validators[nodeID] = newValidator
 		}
 
+		emissionAccount := &EmissionAccount{
+			Address: emissionAddress,
+			Balance: 0,
+		}
+
 		emission = &Emission{
 			c:               c,
+			totalSupply:     totalSupply,
 			maxSupply:       maxSupply,
 			rewardsPerBlock: rewardsPerBlock,
+			emissionAccount: *emissionAccount,
 			validators:      validators,
 			minStakeAmount:  100,
 		}
@@ -117,6 +130,11 @@ func (e *Emission) GetMaxSupply() uint64 {
 func (e *Emission) GetRewardsPerBlock() uint64 {
 	e.c.Logger().Info("fetching amount of NAI rewards per block")
 	return e.rewardsPerBlock
+}
+
+func (e *Emission) GetEmissionAccount() *EmissionAccount {
+	e.c.Logger().Info("fetching Emission Account")
+	return &e.emissionAccount
 }
 
 // StakeValidator stakes the validator
@@ -249,7 +267,7 @@ func (e *Emission) getAllValidators() []*Validator {
 }
 
 // MintNewNAI mints new tokens and distributes them to validators
-func (e *Emission) MintNewNAI() (uint64, bool) {
+func (e *Emission) MintNewNAI() uint64 {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -258,13 +276,15 @@ func (e *Emission) MintNewNAI() (uint64, bool) {
 		mintNewNAI = e.maxSupply - e.totalSupply // Adjust to not exceed max supply
 	}
 	if mintNewNAI == 0 {
-		return 0, false // Nothing to mint
+		return 0 // Nothing to mint
 	}
 
 	totalStaked := e.totalStaked()
 	// No validators to distribute rewards to if totalStaked is 0
+	// So, give all the rewards to Emission Address
 	if totalStaked == 0 {
-		return mintNewNAI, true
+		e.emissionAccount.Balance += mintNewNAI
+		return mintNewNAI
 	}
 
 	// Distribute rewards based on stake proportion
@@ -273,17 +293,24 @@ func (e *Emission) MintNewNAI() (uint64, bool) {
 			v.StakedReward += mintNewNAI * v.StakedAmount / totalStaked
 		}
 	}
-	return mintNewNAI, false
+	return mintNewNAI
 }
 
-func (e *Emission) FeesToDistribute(fee uint64) uint64 {
+func (e *Emission) DistributeFees(fee uint64) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
+	if e.totalSupply+fee > e.maxSupply {
+		fee = e.maxSupply - e.totalSupply // Adjust to not exceed max supply
+	}
+
+	// Give 50% fees to Emission
 	feesForEmission := fee / 2
-	feesForValidators := fee - feesForEmission
+	e.emissionAccount.Balance += feesForEmission
 
 	// Give remaining to Validators
+	feesForValidators := fee - feesForEmission
+
 	totalStaked := e.totalStaked()
 	if totalStaked > 0 {
 		// Distribute rewards based on stake proportion
@@ -293,8 +320,6 @@ func (e *Emission) FeesToDistribute(fee uint64) uint64 {
 			}
 		}
 	}
-
-	return feesForEmission
 }
 
 // totalStaked calculates the total amount staked by all validators

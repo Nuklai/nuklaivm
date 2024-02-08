@@ -90,11 +90,16 @@ If `nuklai-cli` is able to connect to ANR, it will emit the following logs:
 
 ```
 database: .nuklai-cli
-stored chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob uri: http://127.0.0.1:32913/ext/bc/2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
-stored chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob uri: http://127.0.0.1:43531/ext/bc/2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
-stored chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob uri: http://127.0.0.1:45469/ext/bc/2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
-stored chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob uri: http://127.0.0.1:38145/ext/bc/2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
-stored chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob uri: http://127.0.0.1:45849/ext/bc/2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
+stored chainID: QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD uri: http://127.0.0.1:36133/ext/bc/QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD
+stored chainID: QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD uri: http://127.0.0.1:46813/ext/bc/QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD
+stored chainID: QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD uri: http://127.0.0.1:33441/ext/bc/QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD
+stored chainID: QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD uri: http://127.0.0.1:33917/ext/bc/QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD
+stored chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX uri: http://127.0.0.1:39387/ext/bc/277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+stored chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX uri: http://127.0.0.1:42111/ext/bc/277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+stored chainID: QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD uri: http://127.0.0.1:37135/ext/bc/QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD
+stored chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX uri: http://127.0.0.1:44089/ext/bc/277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+stored chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX uri: http://127.0.0.1:36167/ext/bc/277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+stored chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX uri: http://127.0.0.1:38297/ext/bc/277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
 ```
 
 _`./build/nuklai-cli chain import-anr` connects to the Avalanche Network Runner server running in
@@ -115,8 +120,9 @@ If successful, the balance response should look like this:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
-uri: http://127.0.0.1:45849/ext/bc/2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
+chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+assetID (use NAI for native token): NAI
+✔ assetID (use NAI for native token): NAI█
 balance: 853000000.000000000 NAI
 ```
 
@@ -131,8 +137,9 @@ Should give output
 ```
 database: .nuklai-cli
 address: nuklai1de6kkmrpd9mx6anpde5hg72rv2u288wgh6rsrjmup0uzjamjskakqqjyt9u
-chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
-balance: 0 NAI
+chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+assetID (use NAI for native token): NAI
+balance: 0.000000000 NAI
 please send funds to nuklai1de6kkmrpd9mx6anpde5hg72rv2u288wgh6rsrjmup0uzjamjskakqqjyt9u
 exiting...
 ```
@@ -153,7 +160,7 @@ If successful, the `nuklai-cli` will emit the new address:
 
 ```
 database: .nuklai-cli
-created address: nuklai1q9zvhxdftggsdjmpskrg75dd9xyvmxpwfgy0desjuk5dlz78a0r7ueax5f5
+created address: nuklai1qyfl0vx359gtn7vhj52xl9gp3pdphttqgtat9d8dad55c3rd4cnzgl3ma69
 ```
 
 We can also generate a bls key doing
@@ -176,7 +183,8 @@ database: .nuklai-cli
 chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
 stored keys: 2
 0) address (ed25519): nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx balance: 853000000.000000000 NAI
-1) address (secp256r1): nuklai1q9zvhxdftggsdjmpskrg75dd9xyvmxpwfgy0desjuk5dlz78a0r7ueax5f5 balance: 0.000000000 NAI
+1) address (secp256r1): nuklai1qyfl0vx359gtn7vhj52xl9gp3pdphttqgtat9d8dad55c3rd4cnzgl3ma69 balance: 0.000000000 NAI
+2) address (bls): nuklai1qgcty39f7z5q86yy7x8w0cnyuht34ut38wp2n5qp0zmyhglr5fjm5hqkejn balance: 0.000000000 NAI
 ✔ set default key: 0█
 ```
 
@@ -195,7 +203,7 @@ You should see something like:
 
 ```
 database: .nuklai-cli
-Address: nuklai1de6kkmrpd9mx6anpde5hg7faxphvw7uz79f93uftnnq7wyeudknpjav4env
+Address: nuklai1de6kkmrpd9mx6anpde5hg7gxgsjtdrhj6fe8yctv4npqchrey7sfspeyejq
 ```
 
 We are creating an address that includes the word "nuklaivmvanity" followed by random 19 bytes of data. This kind of address is highly unlikely to be generated from a private key because it does not follow the typical structure of addresses derived from private keys.
@@ -213,12 +221,13 @@ The `nuklai-cli` will emit the following logs when the transfer is successful:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
+chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+assetID (use NAI for native token): NAI
 balance: 853000000.000000000 NAI
 ✔ recipient: nuklai1qyf889stx7rjrgh8tsa4acv4we94kf4w652gwq462tm4vau9ee20gq6k5l2
 amount: 100
 continue (y/n): y
-✅ txID: 2F5m7Bmy5P4CN6DZBsK7pfDVwGLKCe1cqc2MPGsGnY9Mu9d3qH
+✅ txID: pPmBtqtjpu4eTmLeBZtWLgSMvUf8Y85cZrdvsVn3vUtv24dzY
 ```
 
 ### Bonus: Watch Activity in Real-Time
@@ -237,13 +246,14 @@ network shuts down or you exit):
 
 ```
 database: .nuklai-cli
-available chains: 1 excluded: []
-0) chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
-select chainID: 0 [auto-selected]
-uri: http://127.0.0.1:45849/ext/bc/2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
-watching for new blocks on 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob 👀
-height:114 txs:0 root:21Z8mBjjifsx1kDqcDugQm8fxRczvDQmdYG75aezwbnoiya8eG size:0.09KB units consumed: [bandwidth=0 compute=0 storage(read)=0 storage(allocate)=0 storage(write)=0] unit prices: [bandwidth=100 compute=100 storage(read)=100 storage(allocate)=100 storage(write)=100]
-✅ 2F5m7Bmy5P4CN6DZBsK7pfDVwGLKCe1cqc2MPGsGnY9Mu9d3qH actor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx summary (*actions.Transfer): [100.000000000 NAI -> nuklai1qyf889stx7rjrgh8tsa4acv4we94kf4w652gwq462tm4vau9ee20gq6k5l2] fee (max 72.34%): 0.000023800 NAI consumed: [bandwidth=191 compute=7 storage(read)=14 storage(allocate)=0 storage(write)=26]
+available chains: 2 excluded: []
+0) chainID: QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD
+1) chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+select chainID: 1
+uri: http://127.0.0.1:44089/ext/bc/277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+watching for new blocks on 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX 👀
+height:292 txs:1 root:RXYUPPSGL2zJiiR6r3ozakfyhEkPbiXkCHnm26H5UvMT23Sy5 size:0.31KB units consumed: [bandwidth=227 compute=7 storage(read)=12 storage(allocate)=25 storage(write)=26] unit prices: [bandwidth=100 compute=100 storage(read)=100 storage(allocate)=100 storage(write)=100] [TPS:4.30 latency:29273ms gap:0ms]
+✅ pPmBtqtjpu4eTmLeBZtWLgSMvUf8Y85cZrdvsVn3vUtv24dzY actor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx summary (*actions.Transfer): [100.000000000 NAI -> nuklai1qyf889stx7rjrgh8tsa4acv4we94kf4w652gwq462tm4vau9ee20gq6k5l2] fee (max 81.37%): 0.000029700 NAI consumed: [bandwidth=227 compute=7 storage(read)=12 storage(allocate)=25 storage(write)=26]
 ```
 
 ### Get Emission Info
@@ -258,9 +268,9 @@ If successful, the output should be something like:
 
 ```
 database: .nuklai-cli
-chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
+chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
 emission info:
-TotalSupply=853000282000000000 MaxSupply=10000000000000000000 RewardsPerBlock=2000000000
+TotalSupply=853000594000000000 MaxSupply=10000000000000000000 RewardsPerBlock=2000000000 EmissionAddress=nuklai1qqmzlnnredketlj3cu20v56nt5ken6thchra7nylwcrmz77td654w2jmpt9 EmissionBalance=594000014850
 ```
 
 ### Get Validators
@@ -275,12 +285,12 @@ If successful, the output should be something like:
 
 ```
 database: .nuklai-cli
-chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
-validator 0: NodeID=NodeID-GpaAwHcn4vjqjN2kWDSWpv6KZ3K7XkfpB NodePublicKey=sG4M9T1zxgXc2UvlZPjCGdijCMcf+TaKKebQZLe2ZUNTQvy6ZG4AadZKtacipoOP UserStake=map[] StakedAmount=0 StakedReward=0
-validator 1: NodeID=NodeID-NC1hkGBb1iFx7cu5vmkw7cMUYBgo6R4YY NodePublicKey=gvUIBc3RrlKyia9SD8AP/tLEHKhoK29upLyCzzNUQtCpARrPrCFTD/hCrFgL2H5K UserStake=map[] StakedAmount=0 StakedReward=0
-validator 2: NodeID=NodeID-Ph81A5DgtyC7Q1fGhxVW3b94zXDcJJngC NodePublicKey=gXKx9IpvEzyDDjHSwEh259XrmL2Vv8JA4nupfegu3fG7F3YDAeGh+sAAsoNGTabA UserStake=map[] StakedAmount=0 StakedReward=0
-validator 3: NodeID=NodeID-Ji9mis6M4D3kNsEv6iGa2VqkMTbruMxH6 NodePublicKey=mO/+NoK/32r4SV4erRl5sw2VeEj+PDfL6ONeDC12haCroLPf6RdhVMNvvS2BImTl UserStake=map[] StakedAmount=0 StakedReward=0
-validator 4: NodeID=NodeID-KSTcHsTmUvfSNKdeDBhaC3KyHLXVygNPK NodePublicKey=pkEMnmJZD6a1nKNsod3LCiRU3TBFk+9A3P3QIU/dlFpUba5pORy6tGdmlZaVAUEG UserStake=map[] StakedAmount=0 StakedReward=0
+chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+validator 0: NodeID=NodeID-7NEx57dgetsQdmgAGw9VjxAmTDWgdqZkP NodePublicKey=st7C9uuKbCM71BkP97PKTn8Vzn+ToE3giO/2z2OyNsY+FwVvIS2qtm6jPChANOXk UserStake=map[] StakedAmount=0 StakedReward=0
+validator 1: NodeID=NodeID-4xW5x8ekVnhqJr5UnPQGRf8emeRiPDfRr NodePublicKey=o3INAYDajQSR2jWTQzq6K8ut0i5/gVXhfEbnDTQB1r2Fi07pU/r+v5rGiEEECp/C UserStake=map[] StakedAmount=0 StakedReward=0
+validator 2: NodeID=NodeID-BrkTkxtNzhxP8przzBUnzZTXST8qMKCMV NodePublicKey=jvv4m5Si1w0TJjzPAVHbk7bcJEOEsGoGu2mjXrsuiVj56PsvVORG843MYhTjE2uW UserStake=map[] StakedAmount=0 StakedReward=0
+validator 3: NodeID=NodeID-4h8Ud3qTEksLBCMNjkKBFhYRKJ5NfJZ2w NodePublicKey=hzGTs30HIPili1lgXjO5BfGJTZw9oAE6bOcoAuIQEMhNbI70d4aUm3B80GMyUyLu UserStake=map[] StakedAmount=0 StakedReward=0
+validator 4: NodeID=NodeID-B2BSzCnzhAM2WwKU5UbwZxpoMPmE9TnNf NodePublicKey=pXYMPMHBASy0Y5/PzNI1B4HGrqSkP1upFtuSiEI2HKAbc+8ZPdkhmCWearjYOWRE UserStake=map[] StakedAmount=0 StakedReward=0
 ```
 
 ### Stake to a validator
@@ -296,18 +306,20 @@ If successful, the output should be:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
+chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
 validators: 5
-0: NodeID=NodeID-KSTcHsTmUvfSNKdeDBhaC3KyHLXVygNPK NodePublicKey=pkEMnmJZD6a1nKNsod3LCiRU3TBFk+9A3P3QIU/dlFpUba5pORy6tGdmlZaVAUEG
-1: NodeID=NodeID-GpaAwHcn4vjqjN2kWDSWpv6KZ3K7XkfpB NodePublicKey=sG4M9T1zxgXc2UvlZPjCGdijCMcf+TaKKebQZLe2ZUNTQvy6ZG4AadZKtacipoOP
-2: NodeID=NodeID-NC1hkGBb1iFx7cu5vmkw7cMUYBgo6R4YY NodePublicKey=gvUIBc3RrlKyia9SD8AP/tLEHKhoK29upLyCzzNUQtCpARrPrCFTD/hCrFgL2H5K
-3: NodeID=NodeID-Ph81A5DgtyC7Q1fGhxVW3b94zXDcJJngC NodePublicKey=gXKx9IpvEzyDDjHSwEh259XrmL2Vv8JA4nupfegu3fG7F3YDAeGh+sAAsoNGTabA
-4: NodeID=NodeID-Ji9mis6M4D3kNsEv6iGa2VqkMTbruMxH6 NodePublicKey=mO/+NoK/32r4SV4erRl5sw2VeEj+PDfL6ONeDC12haCroLPf6RdhVMNvvS2BImTl
-✔ validator to stake to: 0█
-balance: 852999899.999973893 NAI
-✔ End LockUp Height: 200█
+0: NodeID=NodeID-4h8Ud3qTEksLBCMNjkKBFhYRKJ5NfJZ2w NodePublicKey=hzGTs30HIPili1lgXjO5BfGJTZw9oAE6bOcoAuIQEMhNbI70d4aUm3B80GMyUyLu
+1: NodeID=NodeID-B2BSzCnzhAM2WwKU5UbwZxpoMPmE9TnNf NodePublicKey=pXYMPMHBASy0Y5/PzNI1B4HGrqSkP1upFtuSiEI2HKAbc+8ZPdkhmCWearjYOWRE
+2: NodeID=NodeID-7NEx57dgetsQdmgAGw9VjxAmTDWgdqZkP NodePublicKey=st7C9uuKbCM71BkP97PKTn8Vzn+ToE3giO/2z2OyNsY+FwVvIS2qtm6jPChANOXk
+3: NodeID=NodeID-4xW5x8ekVnhqJr5UnPQGRf8emeRiPDfRr NodePublicKey=o3INAYDajQSR2jWTQzq6K8ut0i5/gVXhfEbnDTQB1r2Fi07pU/r+v5rGiEEECp/C
+4: NodeID=NodeID-BrkTkxtNzhxP8przzBUnzZTXST8qMKCMV NodePublicKey=jvv4m5Si1w0TJjzPAVHbk7bcJEOEsGoGu2mjXrsuiVj56PsvVORG843MYhTjE2uW
+validator to stake to: 2
+balance: 852999899.999970317 NAI
+✔ Staked amount: 1000█
+✔ End LockUp Height: 930█
 ✔ continue (y/n): y█
-✅ txID: FTyDSapHcfd58osSk89nLfhMbYQmTGpLLS2bn6n4hzEsaCEFD
+
+✅ txID: xheUBZvoYNm2fWd8xEwvKKC2jwnr7FsrAAvNLTkcouM2LTwcD
 ```
 
 ### Get user staking info
@@ -322,17 +334,17 @@ If successful, the output should be:
 
 ```
 database: .nuklai-cli
-chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
+chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
 validators: 5
-0: NodeID=NodeID-Ph81A5DgtyC7Q1fGhxVW3b94zXDcJJngC NodePublicKey=gXKx9IpvEzyDDjHSwEh259XrmL2Vv8JA4nupfegu3fG7F3YDAeGh+sAAsoNGTabA
-1: NodeID=NodeID-Ji9mis6M4D3kNsEv6iGa2VqkMTbruMxH6 NodePublicKey=mO/+NoK/32r4SV4erRl5sw2VeEj+PDfL6ONeDC12haCroLPf6RdhVMNvvS2BImTl
-2: NodeID=NodeID-KSTcHsTmUvfSNKdeDBhaC3KyHLXVygNPK NodePublicKey=pkEMnmJZD6a1nKNsod3LCiRU3TBFk+9A3P3QIU/dlFpUba5pORy6tGdmlZaVAUEG
-3: NodeID=NodeID-GpaAwHcn4vjqjN2kWDSWpv6KZ3K7XkfpB NodePublicKey=sG4M9T1zxgXc2UvlZPjCGdijCMcf+TaKKebQZLe2ZUNTQvy6ZG4AadZKtacipoOP
-4: NodeID=NodeID-NC1hkGBb1iFx7cu5vmkw7cMUYBgo6R4YY NodePublicKey=gvUIBc3RrlKyia9SD8AP/tLEHKhoK29upLyCzzNUQtCpARrPrCFTD/hCrFgL2H5K
-✔ choose validator whom you have staked to: 2█
-✔ address to get staking info for: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx█
-user stake:  Owner=nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx StakedAmount=100000000000
-stake #1: TxID=FTyDSapHcfd58osSk89nLfhMbYQmTGpLLS2bn6n4hzEsaCEFD Amount=100000000000 StartLockUp=176
+0: NodeID=NodeID-B2BSzCnzhAM2WwKU5UbwZxpoMPmE9TnNf NodePublicKey=pXYMPMHBASy0Y5/PzNI1B4HGrqSkP1upFtuSiEI2HKAbc+8ZPdkhmCWearjYOWRE
+1: NodeID=NodeID-7NEx57dgetsQdmgAGw9VjxAmTDWgdqZkP NodePublicKey=st7C9uuKbCM71BkP97PKTn8Vzn+ToE3giO/2z2OyNsY+FwVvIS2qtm6jPChANOXk
+2: NodeID=NodeID-4xW5x8ekVnhqJr5UnPQGRf8emeRiPDfRr NodePublicKey=o3INAYDajQSR2jWTQzq6K8ut0i5/gVXhfEbnDTQB1r2Fi07pU/r+v5rGiEEECp/C
+3: NodeID=NodeID-BrkTkxtNzhxP8przzBUnzZTXST8qMKCMV NodePublicKey=jvv4m5Si1w0TJjzPAVHbk7bcJEOEsGoGu2mjXrsuiVj56PsvVORG843MYhTjE2uW
+4: NodeID=NodeID-4h8Ud3qTEksLBCMNjkKBFhYRKJ5NfJZ2w NodePublicKey=hzGTs30HIPili1lgXjO5BfGJTZw9oAE6bOcoAuIQEMhNbI70d4aUm3B80GMyUyLu
+choose validator whom you have staked to: 1
+address to get staking info for: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+user stake:  Owner=nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx StakedAmount=1000000000000
+stake #1: TxID=xheUBZvoYNm2fWd8xEwvKKC2jwnr7FsrAAvNLTkcouM2LTwcD Amount=1000000000000 StartLockUp=315
 ```
 
 ### Unstake from a validator
@@ -348,9 +360,10 @@ Which should produce a result like:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
-uri: http://127.0.0.1:45849/ext/bc/2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
-balance: 852999799.999946713 NAI
+chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+assetID (use NAI for native token): NAI
+✔ assetID (use NAI for native token): NAI█
+balance: 852998899.999943018 NAI
 ```
 
 We can unstake specific stake from a chosen validator.
@@ -364,19 +377,19 @@ Which produces result:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
+chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
 validators: 5
-0: NodeID=NodeID-Ph81A5DgtyC7Q1fGhxVW3b94zXDcJJngC NodePublicKey=gXKx9IpvEzyDDjHSwEh259XrmL2Vv8JA4nupfegu3fG7F3YDAeGh+sAAsoNGTabA
-1: NodeID=NodeID-Ji9mis6M4D3kNsEv6iGa2VqkMTbruMxH6 NodePublicKey=mO/+NoK/32r4SV4erRl5sw2VeEj+PDfL6ONeDC12haCroLPf6RdhVMNvvS2BImTl
-2: NodeID=NodeID-KSTcHsTmUvfSNKdeDBhaC3KyHLXVygNPK NodePublicKey=pkEMnmJZD6a1nKNsod3LCiRU3TBFk+9A3P3QIU/dlFpUba5pORy6tGdmlZaVAUEG
-3: NodeID=NodeID-GpaAwHcn4vjqjN2kWDSWpv6KZ3K7XkfpB NodePublicKey=sG4M9T1zxgXc2UvlZPjCGdijCMcf+TaKKebQZLe2ZUNTQvy6ZG4AadZKtacipoOP
-4: NodeID=NodeID-NC1hkGBb1iFx7cu5vmkw7cMUYBgo6R4YY NodePublicKey=gvUIBc3RrlKyia9SD8AP/tLEHKhoK29upLyCzzNUQtCpARrPrCFTD/hCrFgL2H5K
-validator to unstake from: 2
+0: NodeID=NodeID-4h8Ud3qTEksLBCMNjkKBFhYRKJ5NfJZ2w NodePublicKey=hzGTs30HIPili1lgXjO5BfGJTZw9oAE6bOcoAuIQEMhNbI70d4aUm3B80GMyUyLu
+1: NodeID=NodeID-B2BSzCnzhAM2WwKU5UbwZxpoMPmE9TnNf NodePublicKey=pXYMPMHBASy0Y5/PzNI1B4HGrqSkP1upFtuSiEI2HKAbc+8ZPdkhmCWearjYOWRE
+2: NodeID=NodeID-7NEx57dgetsQdmgAGw9VjxAmTDWgdqZkP NodePublicKey=st7C9uuKbCM71BkP97PKTn8Vzn+ToE3giO/2z2OyNsY+FwVvIS2qtm6jPChANOXk
+3: NodeID=NodeID-4xW5x8ekVnhqJr5UnPQGRf8emeRiPDfRr NodePublicKey=o3INAYDajQSR2jWTQzq6K8ut0i5/gVXhfEbnDTQB1r2Fi07pU/r+v5rGiEEECp/C
+4: NodeID=NodeID-BrkTkxtNzhxP8przzBUnzZTXST8qMKCMV NodePublicKey=jvv4m5Si1w0TJjzPAVHbk7bcJEOEsGoGu2mjXrsuiVj56PsvVORG843MYhTjE2uW
+✔ validator to unstake from: 2█
 stake info:
-0: TxID=FTyDSapHcfd58osSk89nLfhMbYQmTGpLLS2bn6n4hzEsaCEFD StakedAmount=100000000000 StartLockUpHeight=176 CurrentHeight=208
+0: TxID=xheUBZvoYNm2fWd8xEwvKKC2jwnr7FsrAAvNLTkcouM2LTwcD StakedAmount=1000000000000 StartLockUpHeight=315 CurrentHeight=403
 stake ID to unstake: 0 [auto-selected]
-✔ continue (y/n): y█
-✅ txID: YcSbyqGCaGgPshuMDvMrzWQPrxv6xEB6dTi6MDPjx7QyrsdYa
+continue (y/n): y
+✅ txID: 7zMSUymBJiEWFViMfGSGS2yWFyovDq1FJ5nPNthQmnoRc9G6w
 ```
 
 Now, if we check the balance again, we should have our 100 NAI back to our account:
@@ -390,9 +403,10 @@ Which should produce a result like:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
-uri: http://127.0.0.1:45849/ext/bc/2CvxouoGcBva3xxisHDmdQggad8bChYbMvu45oAXV7nXGK1Yob
-balance: 852999899.999922037 NAI
+chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+✔ assetID (use NAI for native token): NAI█
+uri: http://127.0.0.1:44089/ext/bc/277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+balance: 852999899.999917388 NAI
 ```
 
 ### Mint an asset
@@ -410,11 +424,11 @@ When you are done, the output should look something like this:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: N5Chcji7s7wAxukcoanm98MdjVKVwR5W3vzcp9tv2VpRknENs
+chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
 symbol: TOKEN1
-✔ decimals: 9█
+✔ decimals: 9
 metadata: Example token1
-✔ continue (y/n): y█
+✔ continue (y/n): y
 ✅ txID: ggMxHuutoobCLfuYyiLRYr1VMq7r9ULcBU621kvurtsqdifjN
 ```
 
@@ -438,7 +452,7 @@ just to mint to yourself).
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: N5Chcji7s7wAxukcoanm98MdjVKVwR5W3vzcp9tv2VpRknENs
+chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
 assetID: ggMxHuutoobCLfuYyiLRYr1VMq7r9ULcBU621kvurtsqdifjN
 symbol: TOKEN1 decimals: 9 metadata: Example token1 supply: 0
 recipient: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
@@ -461,9 +475,9 @@ When you are done, the output should look something like this:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: N5Chcji7s7wAxukcoanm98MdjVKVwR5W3vzcp9tv2VpRknENs
+chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
 assetID (use NAI for native token): ggMxHuutoobCLfuYyiLRYr1VMq7r9ULcBU621kvurtsqdifjN
-uri: http://127.0.0.1:43689/ext/bc/N5Chcji7s7wAxukcoanm98MdjVKVwR5W3vzcp9tv2VpRknENs
+uri: http://127.0.0.1:43689/ext/bc/277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
 symbol: TOKEN1 decimals: 9 metadata: Example token1 supply: 1000000000000 warp: false
 balance: 1000.000000000 TOKEN1
 ```
@@ -483,15 +497,15 @@ When you are done, the output should look something like this:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: N5Chcji7s7wAxukcoanm98MdjVKVwR5W3vzcp9tv2VpRknENs
+chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
 ✔ assetID (use NAI for native token): ggMxHuutoobCLfuYyiLRYr1VMq7r9ULcBU621kvurtsqdifjN█
 symbol: TOKEN1 decimals: 9 metadata: Example token1 supply: 1000000000000 warp: false
 balance: 1000.000000000 TOKEN1
 recipient: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
 ✔ amount: 50█
 ✔ reward: 0█
-available chains: 1 excluded: [N5Chcji7s7wAxukcoanm98MdjVKVwR5W3vzcp9tv2VpRknENs]
-0) chainID: qttmKGHGjHfj6749KJxaSzfD1xuhKRrFFjM6TypthH2TSxuLK
+available chains: 1 excluded: [277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX]
+0) chainID: QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD
 destination: 0 [auto-selected]
 continue (y/n): y
 ✅ txID: 2LwezG85VjTktvfZpwnGigvqH3o74ZC9qBWmWUwjsXmqAwQMsV

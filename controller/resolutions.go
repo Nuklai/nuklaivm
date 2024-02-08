@@ -58,8 +58,8 @@ func (c *Controller) GetLoanFromState(
 	return storage.GetLoanFromState(ctx, c.inner.ReadState, asset, destination)
 }
 
-func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, error) {
-	return c.emission.GetTotalSupply(), c.emission.GetMaxSupply(), c.emission.GetRewardsPerBlock(), nil
+func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, *emission.EmissionAccount, error) {
+	return c.emission.GetTotalSupply(), c.emission.GetMaxSupply(), c.emission.GetRewardsPerBlock(), c.emission.GetEmissionAccount(), nil
 }
 
 func (c *Controller) GetAllValidators() ([]*emission.Validator, error) {
