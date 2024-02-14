@@ -24,15 +24,15 @@ func init() {
 		// When registering new actions, ALWAYS make sure to append at the end.
 		nconsts.ActionRegistry.Register((&actions.Transfer{}).GetTypeID(), actions.UnmarshalTransfer, false),
 
-		nconsts.ActionRegistry.Register((&actions.StakeValidator{}).GetTypeID(), actions.UnmarshalStakeValidator, false),
-		nconsts.ActionRegistry.Register((&actions.UnstakeValidator{}).GetTypeID(), actions.UnmarshalUnstakeValidator, false),
-
 		nconsts.ActionRegistry.Register((&actions.CreateAsset{}).GetTypeID(), actions.UnmarshalCreateAsset, false),
 		nconsts.ActionRegistry.Register((&actions.MintAsset{}).GetTypeID(), actions.UnmarshalMintAsset, false),
 		nconsts.ActionRegistry.Register((&actions.BurnAsset{}).GetTypeID(), actions.UnmarshalBurnAsset, false),
-
 		nconsts.ActionRegistry.Register((&actions.ImportAsset{}).GetTypeID(), actions.UnmarshalImportAsset, true),
 		nconsts.ActionRegistry.Register((&actions.ExportAsset{}).GetTypeID(), actions.UnmarshalExportAsset, false),
+
+		nconsts.ActionRegistry.Register((&actions.RegisterValidatorStake{}).GetTypeID(), actions.UnmarshalRegisterValidatorStake, false),
+		nconsts.ActionRegistry.Register((&actions.StakeValidator{}).GetTypeID(), actions.UnmarshalStakeValidator, false),
+		nconsts.ActionRegistry.Register((&actions.UnstakeValidator{}).GetTypeID(), actions.UnmarshalUnstakeValidator, false),
 
 		// When registering new auth, ALWAYS make sure to append at the end.
 		nconsts.AuthRegistry.Register((&auth.ED25519{}).GetTypeID(), auth.UnmarshalED25519, false),

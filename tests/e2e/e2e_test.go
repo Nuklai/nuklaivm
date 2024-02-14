@@ -7,7 +7,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,6 +20,7 @@ import (
 
 	runner_sdk "github.com/ava-labs/avalanche-network-runner/client"
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
+
 	"github.com/ava-labs/avalanchego/config"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
@@ -55,11 +59,13 @@ var (
 	execPath  string
 	pluginDir string
 
-	vmGenesisPath    string
-	vmConfigPath     string
-	vmConfig         string
-	subnetConfigPath string
-	outputPath       string
+	vmGenesisPath      string
+	vmConfigPath       string
+	vmConfig           string
+	subnetConfigPath   string
+	staticNodeKeyPath  string
+	staticNodeCertPath string
+	outputPath         string
 
 	mode string
 
@@ -371,6 +377,11 @@ var _ = ginkgo.BeforeSuite(func() {
 			hcli:   hcli,
 			ncli:   nrpc.NewJSONRPCClient(u, networkID, bid),
 		})
+
+		// Let's copy the node's staking.cert and staking.key to a temporary directory
+		destDir := fmt.Sprintf("/tmp/nuklaivm/nodes/%s/", info.GetName())
+		err = copyNodeInfo(info.GetDbDir(), destDir)
+		gomega.Expect(err).Should(gomega.BeNil())
 	}
 
 	if mode != modeRunSingle {
@@ -403,6 +414,11 @@ var _ = ginkgo.BeforeSuite(func() {
 				hcli:   hcli,
 				ncli:   nrpc.NewJSONRPCClient(u, networkID, bid),
 			})
+
+			// Let's copy the node's staking.cert and staking.key to a temporary directory
+			destDir := fmt.Sprintf("/tmp/nuklaivm/nodes/%s/", info.GetName())
+			err = copyNodeInfo(info.GetDbDir(), destDir)
+			gomega.Expect(err).Should(gomega.BeNil())
 		}
 	}
 
@@ -1624,4 +1640,56 @@ func acceptTransaction(hcli *hrpc.JSONRPCClient, ncli *nrpc.JSONRPCClient) {
 		hutils.Outf("{{yellow}}found transaction{{/}}\n")
 		break
 	}
+}
+
+// copyNodeInfo handles the entire process of copying staking.* files from the source directory
+// to the destination directory, after stripping out "/db" from the source path.
+func copyNodeInfo(sourceLogPath, destDir string) error {
+	// Step 1: Strip out "/db" from the source path
+	basePath := strings.TrimSuffix(sourceLogPath, "/db")
+
+	// Ensure the destination directory exists, create it if it doesn't
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return fmt.Errorf("failed to create destination directory: %w", err)
+	}
+
+	// Step 2: Define the source directory with "staking.*" pattern
+	sourceDir := filepath.Join(basePath, "staking.*")
+
+	// Step 3: Copy files matching "staking.*" from source to destination, force overwrite
+	return filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		// Match only files that start with "staking."
+		if matched, _ := filepath.Match(sourceDir, path); matched {
+			destPath := filepath.Join(destDir, info.Name())
+			return forceCopyFile(path, destPath)
+		}
+		return nil
+	})
+}
+
+// forceCopyFile copies a file from src to dst, overwriting the dst file if it exists.
+func forceCopyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	// Use os.Create to open the destination file for writing, creating it if it doesn't exist
+	// or truncating it if it does.
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, sourceFile)
+	if err != nil {
+		return err
+	}
+
+	return destFile.Sync()
 }

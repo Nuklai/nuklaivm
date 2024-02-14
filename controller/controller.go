@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	ametrics "github.com/ava-labs/avalanchego/api/metrics"
 	"github.com/ava-labs/avalanchego/database"
@@ -208,6 +209,17 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				c.metrics.importAsset.Inc()
 			case *actions.ExportAsset:
 				c.metrics.exportAsset.Inc()
+			case *actions.RegisterValidatorStake:
+				c.metrics.stakeAmount.Add(float64(action.StakedAmount))
+				c.metrics.registerValidatorStake.Inc()
+				// Check to make sure the stake is valid
+				currentTime := c.inner.LastAcceptedBlock().Timestamp().UTC()
+				stakeStartTime := time.Unix(int64(action.StakeStartTime), 0).UTC()
+				if stakeStartTime.After(currentTime) {
+					// Register validator stake
+				} else {
+					c.inner.Logger().Error("failed to register validator stake", zap.Error(fmt.Errorf("current time %d is after stake start time %d", currentTime.Unix(), action.StakeStartTime)))
+				}
 			case *actions.StakeValidator:
 				c.metrics.stake.Inc()
 				// Check to make sure the stake is valid

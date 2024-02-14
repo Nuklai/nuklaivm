@@ -75,13 +75,15 @@ func (c *Controller) GetUserStake(nodeID ids.NodeID, owner string) (*emission.Us
 	return c.emission.GetUserStake(nodeID, owner), nil
 }
 
-func (c *Controller) GetValidatorFromState(ctx context.Context, stakeID ids.ID) (
+func (c *Controller) GetValidatorStakeFromState(ctx context.Context, nodeID ids.NodeID) (
 	bool, // exists
-	ids.NodeID, // NodeID
+	uint64, // StakeStartTime
+	uint64, // StakeEndTime
 	uint64, // StakedAmount
-	uint64, // EndLockUp
-	codec.Address, // Owner
+	uint64, // DelegationFeeRate
+	codec.Address, // RewardAddress
+	codec.Address, // OwnerAddress
 	error,
 ) {
-	return storage.GetStakeFromState(ctx, c.inner.ReadState, stakeID)
+	return storage.GetRegisterValidatorStakeFromState(ctx, c.inner.ReadState, nodeID)
 }

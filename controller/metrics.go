@@ -11,44 +11,34 @@ import (
 )
 
 type metrics struct {
-	transfer prometheus.Counter
-
-	stake   prometheus.Counter
-	unstake prometheus.Counter
-
 	mintNAI prometheus.Counter
+
+	transfer prometheus.Counter
 
 	createAsset prometheus.Counter
 	mintAsset   prometheus.Counter
 	burnAsset   prometheus.Counter
-
 	importAsset prometheus.Counter
 	exportAsset prometheus.Counter
+
+	stakeAmount            prometheus.Gauge
+	registerValidatorStake prometheus.Counter
+	stake                  prometheus.Counter
+	unstake                prometheus.Counter
 }
 
 func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 	m := &metrics{
-		transfer: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: "actions",
-			Name:      "transfer",
-			Help:      "number of transfer actions",
-		}),
-
-		stake: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: "actions",
-			Name:      "stake",
-			Help:      "number of stake actions",
-		}),
-		unstake: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: "actions",
-			Name:      "unstake",
-			Help:      "number of unstake actions",
-		}),
-
 		mintNAI: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "actions",
 			Name:      "mintNAI",
 			Help:      "number of NAI tokens minted",
+		}),
+
+		transfer: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "actions",
+			Name:      "transfer",
+			Help:      "number of transfer actions",
 		}),
 
 		createAsset: prometheus.NewCounter(prometheus.CounterOpts{
@@ -66,7 +56,6 @@ func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 			Name:      "burn_asset",
 			Help:      "number of burn asset actions",
 		}),
-
 		importAsset: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "actions",
 			Name:      "import_asset",
@@ -77,23 +66,45 @@ func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 			Name:      "export_asset",
 			Help:      "number of export asset actions",
 		}),
+
+		stakeAmount: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "actions",
+			Name:      "stake_amount",
+			Help:      "amount of staked tokens",
+		}),
+		registerValidatorStake: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "actions",
+			Name:      "register_validator_stake",
+			Help:      "number of register validator stake actions",
+		}),
+		stake: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "actions",
+			Name:      "stake",
+			Help:      "number of stake actions",
+		}),
+		unstake: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "actions",
+			Name:      "unstake",
+			Help:      "number of unstake actions",
+		}),
 	}
 	r := prometheus.NewRegistry()
 	errs := wrappers.Errs{}
 	errs.Add(
-		r.Register(m.transfer),
-
-		r.Register(m.stake),
-		r.Register(m.unstake),
-
 		r.Register(m.mintNAI),
+
+		r.Register(m.transfer),
 
 		r.Register(m.createAsset),
 		r.Register(m.mintAsset),
 		r.Register(m.burnAsset),
-
 		r.Register(m.importAsset),
 		r.Register(m.exportAsset),
+
+		r.Register(m.stakeAmount),
+		r.Register(m.registerValidatorStake),
+		r.Register(m.stake),
+		r.Register(m.unstake),
 
 		gatherer.Register(consts.Name, r),
 	)

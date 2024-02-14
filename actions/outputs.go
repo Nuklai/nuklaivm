@@ -35,4 +35,10 @@ var (
 	// mint_asset.go
 	OutputAssetIsNative = []byte("cannot mint native asset")
 	OutputWrongOwner    = []byte("wrong owner")
+
+	// register_validator_stake.go
+	OutputInvalidStakeStartTime      = []byte("invalid stake start time")
+	OutputInvalidStakeEndTime        = []byte("invalid stake end time")
+	OutputInvalidDelegationFeeRate   = []byte("delegation fee rate must be over 2 and under 100")
+	OutputValidatorAlreadyRegistered = []byte("validator already registered")
 )

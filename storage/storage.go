@@ -6,6 +6,7 @@ package storage
 import (
 	"context"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sync"
@@ -17,6 +18,7 @@ import (
 	"github.com/ava-labs/hypersdk/codec"
 	hconsts "github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
+	"github.com/ava-labs/hypersdk/utils"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
@@ -50,26 +52,28 @@ const (
 	txPrefix = 0x0
 
 	// stateDB
-	balancePrefix = 0x0
-	assetPrefix   = 0x1
+	heightPrefix    = 0x1
+	timestampPrefix = 0x2
+	feePrefix       = 0x3
 
-	stakePrefix = 0x2
+	incomingWarpPrefix = 0x4
+	outgoingWarpPrefix = 0x5
 
-	loanPrefix = 0x3
+	balancePrefix = 0x6
 
-	heightPrefix    = 0x4
-	timestampPrefix = 0x5
-	feePrefix       = 0x6
+	assetPrefix = 0x7
+	loanPrefix  = 0x8
 
-	incomingWarpPrefix = 0x7
-	outgoingWarpPrefix = 0x8
+	registerValidatorStakePrefix = 0x9
+	stakePrefix                  = 0xA
 )
 
 const (
-	BalanceChunks uint16 = 1
-	AssetChunks   uint16 = 5
-	StakeChunks   uint16 = 2
-	LoanChunks    uint16 = 1
+	BalanceChunks                uint16 = 1
+	AssetChunks                  uint16 = 5
+	LoanChunks                   uint16 = 1
+	StakeChunks                  uint16 = 2
+	RegisterValidatorStakeChunks uint16 = 1
 )
 
 var (
@@ -483,9 +487,137 @@ func SubLoan(
 	return SetLoan(ctx, mu, asset, destination, nloan)
 }
 
+// [registerValidatorStakePrefix] + [nodeID]
+func RegisterValidatorStakeKey(nodeID ids.NodeID) (k []byte) {
+	k = make([]byte, 1+hconsts.NodeIDLen+hconsts.Uint16Len) // Length of prefix + nodeID + RegisterValidatorStakeChunks
+	k[0] = registerValidatorStakePrefix                     // registerValidatorStakePrefix is a constant representing the registerValidatorStake category
+	copy(k[1:], nodeID[:])
+	binary.BigEndian.PutUint16(k[1+hconsts.NodeIDLen:], RegisterValidatorStakeChunks) // Adding RegisterValidatorStakeChunks
+	return
+}
+
+func SetRegisterValidatorStake(
+	ctx context.Context,
+	mu state.Mutable,
+	nodeID ids.NodeID,
+	stakeStartTime uint64,
+	stakeEndTime uint64,
+	stakedAmount uint64,
+	delegationFeeRate uint64,
+	rewardAddress codec.Address,
+	ownerAddress codec.Address,
+) error {
+	key := RegisterValidatorStakeKey(nodeID)
+	v := make([]byte, (4*hconsts.Uint64Len)+(2*codec.AddressLen)) // Calculate the length of the encoded data
+
+	offset := 0
+	binary.BigEndian.PutUint64(v[offset:], stakeStartTime)
+	offset += hconsts.Uint64Len
+	binary.BigEndian.PutUint64(v[offset:], stakeEndTime)
+	offset += hconsts.Uint64Len
+	binary.BigEndian.PutUint64(v[offset:], stakedAmount)
+	offset += hconsts.Uint64Len
+	binary.BigEndian.PutUint64(v[offset:], delegationFeeRate)
+	offset += hconsts.Uint64Len
+
+	copy(v[offset:], rewardAddress[:])
+	offset += codec.AddressLen
+
+	copy(v[offset:], ownerAddress[:])
+
+	err := mu.Insert(ctx, key, v)
+	if err != nil {
+		utils.Outf("{{red}}--RegisterValidatorStake{{/}}: Error inserting data: key=%s, value=%s, error=%v\n", hex.EncodeToString(key), hex.EncodeToString(v), err)
+		return err
+	}
+
+	return mu.Insert(ctx, key, v)
+}
+
+func GetRegisterValidatorStake(
+	ctx context.Context,
+	im state.Immutable,
+	nodeID ids.NodeID,
+) (bool, // exists
+	uint64, // StakeStartTime
+	uint64, // StakeEndTime
+	uint64, // StakedAmount
+	uint64, // DelegationFeeRate
+	codec.Address, // RewardAddress
+	codec.Address, // OwnerAddress
+	error,
+) {
+	key := RegisterValidatorStakeKey(nodeID)
+	v, err := im.GetValue(ctx, key)
+	return innerGetRegisterValidatorStake(v, err)
+}
+
+// Used to serve RPC queries
+func GetRegisterValidatorStakeFromState(
+	ctx context.Context,
+	f ReadState,
+	nodeID ids.NodeID,
+) (bool, // exists
+	uint64, // StakeStartTime
+	uint64, // StakeEndTime
+	uint64, // StakedAmount
+	uint64, // DelegationFeeRate
+	codec.Address, // RewardAddress
+	codec.Address, // OwnerAddress
+	error,
+) {
+	values, errs := f(ctx, [][]byte{RegisterValidatorStakeKey(nodeID)})
+	return innerGetRegisterValidatorStake(values[0], errs[0])
+}
+
+func innerGetRegisterValidatorStake(v []byte, err error) (
+	bool, // exists
+	uint64, // StakeStartTime
+	uint64, // StakeEndTime
+	uint64, // StakedAmount
+	uint64, // DelegationFeeRate
+	codec.Address, // RewardAddress
+	codec.Address, // OwnerAddress
+	error,
+) {
+	if errors.Is(err, database.ErrNotFound) {
+		return false, 0, 0, 0, 0, codec.Address{}, codec.Address{}, nil
+	}
+	if err != nil {
+		return false, 0, 0, 0, 0, codec.Address{}, codec.Address{}, nil
+	}
+
+	offset := 0
+	stakeStartTime := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
+	offset += hconsts.Uint64Len
+	stakeEndTime := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
+	offset += hconsts.Uint64Len
+	stakedAmount := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
+	offset += hconsts.Uint64Len
+	delegationFeeRate := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
+	offset += hconsts.Uint64Len
+
+	var rewardAddress codec.Address
+	copy(rewardAddress[:], v[offset:offset+codec.AddressLen])
+	offset += codec.AddressLen
+
+	var ownerAddress codec.Address
+	copy(ownerAddress[:], v[offset:offset+codec.AddressLen])
+
+	return true, stakeStartTime, stakeEndTime, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, nil
+}
+
+func DeleteRegisterValidatorStake(
+	ctx context.Context,
+	mu state.Mutable,
+	nodeID ids.NodeID,
+) error {
+	return mu.Remove(ctx, RegisterValidatorStakeKey(nodeID))
+}
+
 // [stakePrefix] + [txID]
 func StakeKey(txID ids.ID) (k []byte) {
-	k = make([]byte, 1+hconsts.IDLen+hconsts.Uint16Len) // Length of prefix + txID + stakeChunks
+	k = make([]byte, 1+hconsts.IDLen+hconsts.Uint16Len) // Length of prefix + txID + StakeChunks
 	k[0] = stakePrefix                                  // stakePrefix is a constant representing the staking category
 	copy(k[1:], txID[:])
 	binary.BigEndian.PutUint16(k[1+hconsts.IDLen:], StakeChunks) // Adding StakeChunks

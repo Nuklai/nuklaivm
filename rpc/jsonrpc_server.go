@@ -199,3 +199,38 @@ func (j *JSONRPCServer) UserStakeInfo(req *http.Request, args *StakeArgs, reply 
 	reply.UserStake = userStake
 	return nil
 }
+
+type ValidatorStakeArgs struct {
+	NodeID ids.NodeID `json:"nodeID"`
+}
+
+type ValidatorStakeReply struct {
+	NodeID            ids.NodeID    `json:"nodeID"`            // NodeID of the validator
+	StakeStartTime    uint64        `json:"stakeStartTime"`    // Start date of the stake
+	StakeEndTime      uint64        `json:"stakeEndTime"`      // End date of the stake
+	StakedAmount      uint64        `json:"stakedAmount"`      // Amount of NAI staked
+	DelegationFeeRate uint64        `json:"delegationFeeRate"` // Delegation fee rate
+	RewardAddress     codec.Address `json:"rewardAddress"`     // Address to receive rewards
+	OwnerAddress      codec.Address `json:"ownerAddress"`      // Address of the owner who registered the validator
+}
+
+func (j *JSONRPCServer) ValidatorStake(req *http.Request, args *ValidatorStakeArgs, reply *ValidatorStakeReply) (err error) {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.ValidatorStake")
+	defer span.End()
+
+	exists, stakeStartTime, stakeEndTime, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, err := j.c.GetValidatorStakeFromState(ctx, args.NodeID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrValidatorStakeNotFound
+	}
+
+	reply.StakeStartTime = stakeStartTime
+	reply.StakeEndTime = stakeEndTime
+	reply.StakedAmount = stakedAmount
+	reply.DelegationFeeRate = delegationFeeRate
+	reply.RewardAddress = rewardAddress
+	reply.OwnerAddress = ownerAddress
+	return nil
+}

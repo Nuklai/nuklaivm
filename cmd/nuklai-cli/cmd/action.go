@@ -6,6 +6,7 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"time"
 
@@ -75,179 +76,6 @@ var transferCmd = &cobra.Command{
 			To:    recipient,
 			Asset: assetID,
 			Value: amount,
-		}, hcli, hws, ncli, factory, true)
-		return err
-	},
-}
-
-var stakeValidatorCmd = &cobra.Command{
-	Use: "stake-validator",
-	RunE: func(*cobra.Command, []string) error {
-		ctx := context.Background()
-		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
-		if err != nil {
-			return err
-		}
-
-		// Get current list of validators
-		validators, err := ncli.Validators(ctx)
-		if err != nil {
-			return err
-		}
-		if len(validators) == 0 {
-			hutils.Outf("{{red}}no validators{{/}}\n")
-			return nil
-		}
-
-		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
-		for i := 0; i < len(validators); i++ {
-			hutils.Outf(
-				"{{yellow}}%d:{{/}} NodeID=%s NodePublicKey=%s\n",
-				i,
-				validators[i].NodeID,
-				validators[i].NodePublicKey,
-			)
-		}
-		// Select validator
-		keyIndex, err := handler.Root().PromptChoice("validator to stake to", len(validators))
-		if err != nil {
-			return err
-		}
-		validatorChosen := validators[keyIndex]
-		nodeID := validatorChosen.NodeID
-
-		// Get balance info
-		_, _, balance, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, ids.Empty, true)
-		if balance == 0 || err != nil {
-			return err
-		}
-
-		// Select staked amount
-		stakedAmount, err := handler.Root().PromptAmount("Staked amount", nconsts.Decimals, balance, nil)
-		if err != nil {
-			return err
-		}
-
-		// Select endLockUp block height
-		endLockUp, err := handler.Root().PromptTime("End LockUp Height")
-		if err != nil {
-			return err
-		}
-
-		// Confirm action
-		cont, err := handler.Root().PromptContinue()
-		if !cont || err != nil {
-			return err
-		}
-
-		// Generate transaction
-		_, _, err = sendAndWait(ctx, nil, &actions.StakeValidator{
-			NodeID:       nodeID.Bytes(),
-			StakedAmount: stakedAmount,
-			EndLockUp:    uint64(endLockUp),
-		}, hcli, hws, ncli, factory, true)
-		return err
-	},
-}
-
-var unstakeValidatorCmd = &cobra.Command{
-	Use: "unstake-validator",
-	RunE: func(*cobra.Command, []string) error {
-		ctx := context.Background()
-		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
-		if err != nil {
-			return err
-		}
-
-		// Get current list of validators
-		validators, err := ncli.Validators(ctx)
-		if err != nil {
-			return err
-		}
-		if len(validators) == 0 {
-			hutils.Outf("{{red}}no validators{{/}}\n")
-			return nil
-		}
-
-		// Show validators to the user
-		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
-		for i := 0; i < len(validators); i++ {
-			hutils.Outf(
-				"{{yellow}}%d:{{/}} NodeID=%s NodePublicKey=%s\n",
-				i,
-				validators[i].NodeID,
-				validators[i].NodePublicKey,
-			)
-		}
-		// Select validator
-		keyIndex, err := handler.Root().PromptChoice("validator to unstake from", len(validators))
-		if err != nil {
-			return err
-		}
-		validatorChosen := validators[keyIndex]
-		nodeID := validatorChosen.NodeID
-
-		// Get stake info
-		owner, err := codec.AddressBech32(nconsts.HRP, priv.Address)
-		if err != nil {
-			return err
-		}
-		stake, err := ncli.UserStakeInfo(ctx, nodeID, owner)
-		if err != nil {
-			return err
-		}
-
-		if len(stake.StakeInfo) == 0 {
-			hutils.Outf("{{red}}user is not staked to this validator{{/}}\n")
-			return nil
-		}
-		// Get current height
-		_, currentHeight, _, err := hcli.Accepted(ctx)
-		if err != nil {
-			return err
-		}
-		// Make sure to iterate over the stake info map in the same order every time
-		keys := make([]ids.ID, 0, len(stake.StakeInfo))
-		for k := range stake.StakeInfo {
-			keys = append(keys, k)
-		}
-		// Sorting based on string representation
-		sort.Slice(keys, func(i, j int) bool {
-			return keys[i].String() < keys[j].String()
-		})
-
-		// Show stake info to the user
-		hutils.Outf("{{cyan}}stake info:{{/}}\n")
-		for index, txID := range keys {
-			stakeInfo := stake.StakeInfo[txID]
-			hutils.Outf(
-				"{{yellow}}%d:{{/}} TxID=%s StakedAmount=%d StartLockUpHeight=%d CurrentHeight=%d\n",
-				index,
-				txID.String(),
-				stakeInfo.Amount,
-				stakeInfo.StartLockUp,
-				currentHeight,
-			)
-		}
-
-		// Select the stake Id to unstake
-		stakeIndex, err := handler.Root().PromptChoice("stake ID to unstake", len(stake.StakeInfo))
-		if err != nil {
-			return err
-		}
-		stakeChosen := stake.StakeInfo[keys[stakeIndex]]
-		stakeID := stakeChosen.TxID
-
-		// Confirm action
-		cont, err := handler.Root().PromptContinue()
-		if !cont || err != nil {
-			return err
-		}
-
-		// Generate transaction
-		_, _, err = sendAndWait(ctx, nil, &actions.UnstakeValidator{
-			Stake:  stakeID,
-			NodeID: nodeID.Bytes(),
 		}, hcli, hws, ncli, factory, true)
 		return err
 	},
@@ -650,5 +478,326 @@ var exportAssetCmd = &cobra.Command{
 			return nil
 		}
 		return handler.Root().StoreDefaultChain(destination)
+	},
+}
+
+var stakeValidatorCmd = &cobra.Command{
+	Use: "stake-validator",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+
+		// Get current list of validators
+		validators, err := ncli.Validators(ctx)
+		if err != nil {
+			return err
+		}
+		if len(validators) == 0 {
+			hutils.Outf("{{red}}no validators{{/}}\n")
+			return nil
+		}
+
+		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
+		for i := 0; i < len(validators); i++ {
+			hutils.Outf(
+				"{{yellow}}%d:{{/}} NodeID=%s NodePublicKey=%s\n",
+				i,
+				validators[i].NodeID,
+				validators[i].NodePublicKey,
+			)
+		}
+		// Select validator
+		keyIndex, err := handler.Root().PromptChoice("validator to stake to", len(validators))
+		if err != nil {
+			return err
+		}
+		validatorChosen := validators[keyIndex]
+		nodeID := validatorChosen.NodeID
+
+		// Get balance info
+		_, _, balance, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, ids.Empty, true)
+		if balance == 0 || err != nil {
+			return err
+		}
+
+		// Select staked amount
+		stakedAmount, err := handler.Root().PromptAmount("Staked amount", nconsts.Decimals, balance, nil)
+		if err != nil {
+			return err
+		}
+
+		// Select endLockUp block height
+		endLockUp, err := handler.Root().PromptTime("End LockUp Height")
+		if err != nil {
+			return err
+		}
+
+		// Confirm action
+		cont, err := handler.Root().PromptContinue()
+		if !cont || err != nil {
+			return err
+		}
+
+		// Generate transaction
+		_, _, err = sendAndWait(ctx, nil, &actions.StakeValidator{
+			NodeID:       nodeID.Bytes(),
+			StakedAmount: stakedAmount,
+			EndLockUp:    uint64(endLockUp),
+		}, hcli, hws, ncli, factory, true)
+		return err
+	},
+}
+
+var unstakeValidatorCmd = &cobra.Command{
+	Use: "unstake-validator",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+
+		// Get current list of validators
+		validators, err := ncli.Validators(ctx)
+		if err != nil {
+			return err
+		}
+		if len(validators) == 0 {
+			hutils.Outf("{{red}}no validators{{/}}\n")
+			return nil
+		}
+
+		// Show validators to the user
+		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
+		for i := 0; i < len(validators); i++ {
+			hutils.Outf(
+				"{{yellow}}%d:{{/}} NodeID=%s NodePublicKey=%s\n",
+				i,
+				validators[i].NodeID,
+				validators[i].NodePublicKey,
+			)
+		}
+		// Select validator
+		keyIndex, err := handler.Root().PromptChoice("validator to unstake from", len(validators))
+		if err != nil {
+			return err
+		}
+		validatorChosen := validators[keyIndex]
+		nodeID := validatorChosen.NodeID
+
+		// Get stake info
+		owner, err := codec.AddressBech32(nconsts.HRP, priv.Address)
+		if err != nil {
+			return err
+		}
+		stake, err := ncli.UserStakeInfo(ctx, nodeID, owner)
+		if err != nil {
+			return err
+		}
+
+		if len(stake.StakeInfo) == 0 {
+			hutils.Outf("{{red}}user is not staked to this validator{{/}}\n")
+			return nil
+		}
+		// Get current height
+		_, currentHeight, _, err := hcli.Accepted(ctx)
+		if err != nil {
+			return err
+		}
+		// Make sure to iterate over the stake info map in the same order every time
+		keys := make([]ids.ID, 0, len(stake.StakeInfo))
+		for k := range stake.StakeInfo {
+			keys = append(keys, k)
+		}
+		// Sorting based on string representation
+		sort.Slice(keys, func(i, j int) bool {
+			return keys[i].String() < keys[j].String()
+		})
+
+		// Show stake info to the user
+		hutils.Outf("{{cyan}}stake info:{{/}}\n")
+		for index, txID := range keys {
+			stakeInfo := stake.StakeInfo[txID]
+			hutils.Outf(
+				"{{yellow}}%d:{{/}} TxID=%s StakedAmount=%d StartLockUpHeight=%d CurrentHeight=%d\n",
+				index,
+				txID.String(),
+				stakeInfo.Amount,
+				stakeInfo.StartLockUp,
+				currentHeight,
+			)
+		}
+
+		// Select the stake Id to unstake
+		stakeIndex, err := handler.Root().PromptChoice("stake ID to unstake", len(stake.StakeInfo))
+		if err != nil {
+			return err
+		}
+		stakeChosen := stake.StakeInfo[keys[stakeIndex]]
+		stakeID := stakeChosen.TxID
+
+		// Confirm action
+		cont, err := handler.Root().PromptContinue()
+		if !cont || err != nil {
+			return err
+		}
+
+		// Generate transaction
+		_, _, err = sendAndWait(ctx, nil, &actions.UnstakeValidator{
+			Stake:  stakeID,
+			NodeID: nodeID.Bytes(),
+		}, hcli, hws, ncli, factory, true)
+		return err
+	},
+}
+
+const (
+	TimeLayout = "2006-01-02 15:04:05"
+)
+
+var registerValidatorStakeCmd = &cobra.Command{
+	Use: "register-validator-stake",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+
+		// Get current list of validators
+		validators, err := ncli.Validators(ctx)
+		if err != nil {
+			return err
+		}
+		if len(validators) == 0 {
+			hutils.Outf("{{red}}no validators{{/}}\n")
+			return nil
+		}
+
+		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
+		for i := 0; i < len(validators); i++ {
+			hutils.Outf(
+				"{{yellow}}%d:{{/}} NodeID=%s NodePublicKey=%s\n",
+				i,
+				validators[i].NodeID,
+				validators[i].NodePublicKey,
+			)
+		}
+		// Select validator
+		keyIndex, err := handler.Root().PromptChoice("validator to register for staking", len(validators))
+		if err != nil {
+			return err
+		}
+		validatorChosen := validators[keyIndex]
+		nodeID := validatorChosen.NodeID
+
+		// Get balance info
+		_, _, balance, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, ids.Empty, true)
+		if balance == 0 || err != nil {
+			return err
+		}
+
+		// Select staked amount
+		stakedAmount, err := handler.Root().PromptAmount("Staked amount", nconsts.Decimals, balance, nil)
+		if err != nil {
+			return err
+		}
+
+		// Define the layout that matches the provided date string
+		// Note: the reference time is "Mon Jan 2 15:04:05 MST 2006" in Go
+
+		// Get current time
+		currentTime := time.Now().UTC()
+
+		// Select stakeStartTime
+		stakeStartTimeString, err := handler.Root().PromptString(
+			fmt.Sprintf("Staking Start Time(must be after %s) [YYYY-MM-DD HH:MM:SS]", currentTime.Format(TimeLayout)),
+			1,
+			32,
+		)
+		if err != nil {
+			return err
+		}
+		stakeStartTime, err := time.Parse(TimeLayout, stakeStartTimeString)
+		if err != nil {
+			return err
+		}
+		if stakeStartTime.Before(currentTime) {
+			return fmt.Errorf("staking start time must be after the current time (%s)", currentTime.Format(TimeLayout))
+		}
+
+		// Select stakeEndTime
+		stakeEndTimeString, err := handler.Root().PromptString(
+			fmt.Sprintf("Staking End Time(must be after %s) [YYYY-MM-DD HH:MM:SS]", stakeStartTimeString),
+			1,
+			32,
+		)
+		if err != nil {
+			return err
+		}
+		stakeEndTime, err := time.Parse(TimeLayout, stakeEndTimeString)
+		if err != nil {
+			return err
+		}
+		if stakeEndTime.Before(stakeStartTime) {
+			return fmt.Errorf("staking end time must be after the staking start time (%s)", stakeStartTimeString)
+		}
+
+		// Select delegationFeeRate
+		delegationFeeRate, err := handler.Root().PromptInt("Delegation Fee Rate(must be over 2)", 100)
+		if err != nil {
+			return err
+		}
+		if delegationFeeRate < 2 || delegationFeeRate > 100 {
+			return fmt.Errorf("delegation fee rate must be over 2 and under 100")
+		}
+
+		// Select rewardAddress
+		rewardAddress, err := handler.Root().PromptAddress("Reward Address")
+		if err != nil {
+			return err
+		}
+
+		// Confirm action
+		cont, err := handler.Root().PromptContinue()
+		if !cont || err != nil {
+			return err
+		}
+
+		// Generate transaction
+		_, _, err = sendAndWait(ctx, nil, &actions.RegisterValidatorStake{
+			NodeID:            nodeID.Bytes(),
+			StakeStartTime:    uint64(stakeStartTime.Unix()),
+			StakeEndTime:      uint64(stakeEndTime.Unix()),
+			StakedAmount:      stakedAmount,
+			DelegationFeeRate: uint64(delegationFeeRate),
+			RewardAddress:     rewardAddress,
+		}, hcli, hws, ncli, factory, true)
+		return err
+	},
+}
+
+var getValidatorStakeCmd = &cobra.Command{
+	Use: "get-validator-stake",
+	RunE: func(_ *cobra.Command, args []string) error {
+		ctx := context.Background()
+
+		// Get clients
+		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
+		if err != nil {
+			return err
+		}
+		ncli := nclients[0]
+
+		// Get validator stake
+		_, _, _, _, _, _, err = handler.GetValidatorStake(ctx, ncli)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	},
 }

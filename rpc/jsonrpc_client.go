@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/ava-labs/hypersdk/chain"
+	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/requester"
 	"github.com/ava-labs/hypersdk/rpc"
 	"github.com/ava-labs/hypersdk/utils"
@@ -192,6 +193,20 @@ func (cli *JSONRPCClient) UserStakeInfo(ctx context.Context, nodeID ids.NodeID, 
 		return &emission.UserStake{}, err
 	}
 	return resp.UserStake, err
+}
+
+func (cli *JSONRPCClient) ValidatorStake(ctx context.Context) (uint64, uint64, uint64, uint64, codec.Address, codec.Address, error) {
+	resp := new(ValidatorStakeReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"validatorStake",
+		nil,
+		resp,
+	)
+	if err != nil {
+		return 0, 0, 0, 0, codec.EmptyAddress, codec.EmptyAddress, err
+	}
+	return resp.StakeStartTime, resp.StakeEndTime, resp.StakedAmount, resp.DelegationFeeRate, resp.RewardAddress, resp.OwnerAddress, err
 }
 
 func (cli *JSONRPCClient) WaitForBalance(

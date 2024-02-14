@@ -19,7 +19,7 @@ const (
 )
 
 var (
-	handler *Handler
+	handler     *Handler
 
 	dbPath                string
 	genesisFile           string
@@ -154,6 +154,8 @@ func init() {
 	actionCmd.AddCommand(
 		transferCmd,
 
+		registerValidatorStakeCmd,
+		getValidatorStakeCmd,
 		stakeValidatorCmd,
 		unstakeValidatorCmd,
 

@@ -8,4 +8,7 @@ import "errors"
 var (
 	ErrTxNotFound    = errors.New("tx not found")
 	ErrAssetNotFound = errors.New("asset not found")
+
+	// register_validator_stake
+	ErrValidatorStakeNotFound = errors.New("validator stake not found")
 )

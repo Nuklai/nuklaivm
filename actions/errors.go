@@ -6,6 +6,5 @@ package actions
 import "errors"
 
 var (
-	ErrFieldNotPopulated = []byte("field is not populated")
-	ErrNoSwapToFill      = errors.New("no swap to fill")
+	ErrNoSwapToFill = errors.New("no swap to fill")
 )
