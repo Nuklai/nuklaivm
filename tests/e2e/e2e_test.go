@@ -59,13 +59,11 @@ var (
 	execPath  string
 	pluginDir string
 
-	vmGenesisPath      string
-	vmConfigPath       string
-	vmConfig           string
-	subnetConfigPath   string
-	staticNodeKeyPath  string
-	staticNodeCertPath string
-	outputPath         string
+	vmGenesisPath    string
+	vmConfigPath     string
+	vmConfig         string
+	subnetConfigPath string
+	outputPath       string
 
 	mode string
 
