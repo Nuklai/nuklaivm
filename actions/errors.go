@@ -5,6 +5,4 @@ package actions
 
 import "errors"
 
-var (
-	ErrNoSwapToFill = errors.New("no swap to fill")
-)
+var ErrNoSwapToFill = errors.New("no swap to fill")

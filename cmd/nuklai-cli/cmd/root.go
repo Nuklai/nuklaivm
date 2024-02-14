@@ -19,7 +19,7 @@ const (
 )
 
 var (
-	handler     *Handler
+	handler *Handler
 
 	dbPath                string
 	genesisFile           string

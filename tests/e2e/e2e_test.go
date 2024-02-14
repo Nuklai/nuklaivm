@@ -1649,7 +1649,7 @@ func copyNodeInfo(sourceLogPath, destDir string) error {
 	basePath := strings.TrimSuffix(sourceLogPath, "/db")
 
 	// Ensure the destination directory exists, create it if it doesn't
-	if err := os.MkdirAll(destDir, 0755); err != nil {
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create destination directory: %w", err)
 	}
 
