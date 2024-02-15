@@ -35,11 +35,14 @@ func (*RegisterValidatorStake) GetTypeID() uint8 {
 }
 
 func (r *RegisterValidatorStake) StateKeys(actor codec.Address, _ ids.ID) []string {
-	nodeID, _ := ids.ToNodeID(r.NodeID)
-	return []string{
-		string(storage.BalanceKey(actor, ids.Empty)),
-		string(storage.RegisterValidatorStakeKey(nodeID)),
+	// TODO: How to better handle a case where the NodeID is invalid?
+	if nodeID, err := ids.ToNodeID(r.NodeID); err == nil {
+		return []string{
+			string(storage.BalanceKey(actor, ids.Empty)),
+			string(storage.RegisterValidatorStakeKey(nodeID)),
+		}
 	}
+	return []string{string(storage.BalanceKey(actor, ids.Empty))}
 }
 
 func (*RegisterValidatorStake) StateKeysMaxChunks() []uint16 {
