@@ -6,7 +6,6 @@ package storage
 import (
 	"context"
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"sync"
@@ -18,7 +17,6 @@ import (
 	"github.com/ava-labs/hypersdk/codec"
 	hconsts "github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
-	"github.com/ava-labs/hypersdk/utils"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
@@ -73,7 +71,7 @@ const (
 	AssetChunks                  uint16 = 5
 	LoanChunks                   uint16 = 1
 	StakeChunks                  uint16 = 2
-	RegisterValidatorStakeChunks uint16 = 1
+	RegisterValidatorStakeChunks uint16 = 5
 )
 
 var (
@@ -524,12 +522,6 @@ func SetRegisterValidatorStake(
 	offset += codec.AddressLen
 
 	copy(v[offset:], ownerAddress[:])
-
-	err := mu.Insert(ctx, key, v)
-	if err != nil {
-		utils.Outf("{{red}}--RegisterValidatorStake{{/}}: Error inserting data: key=%s, value=%s, error=%v\n", hex.EncodeToString(key), hex.EncodeToString(v), err)
-		return err
-	}
 
 	return mu.Insert(ctx, key, v)
 }

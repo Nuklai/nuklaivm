@@ -264,8 +264,9 @@ func (*Handler) GetUserStake(ctx context.Context,
 func (*Handler) GetValidatorStake(
 	ctx context.Context,
 	cli *nrpc.JSONRPCClient,
+	nodeID ids.NodeID,
 ) (uint64, uint64, uint64, uint64, string, string, error) {
-	stakeStartTime, stakeEndTime, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, err := cli.ValidatorStake(ctx)
+	stakeStartTime, stakeEndTime, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, err := cli.ValidatorStake(ctx, nodeID)
 	if err != nil {
 		return 0, 0, 0, 0, "", "", err
 	}

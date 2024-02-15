@@ -351,268 +351,23 @@ height:292 txs:1 root:RXYUPPSGL2zJiiR6r3ozakfyhEkPbiXkCHnm26H5UvMT23Sy5 size:0.3
 ✅ pPmBtqtjpu4eTmLeBZtWLgSMvUf8Y85cZrdvsVn3vUtv24dzY actor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx summary (*actions.Transfer): [100.000000000 NAI -> nuklai1qyf889stx7rjrgh8tsa4acv4we94kf4w652gwq462tm4vau9ee20gq6k5l2] fee (max 81.37%): 0.000029700 NAI consumed: [bandwidth=227 compute=7 storage(read)=12 storage(allocate)=25 storage(write)=26]
 ```
 
-### Get Emission Info
+### Emission Balancer Demo
 
-We can check info that emission is in charge of such as total supply, max supply, rewards per block and the validators' stake
+Refer to [Emission Balancer Demo](./docs/demos/emission_balancer.md) to learn how to retrieve info such as totalsupply, rewardsperblock, staking info, etc from Emission Balancer.
 
-```bash
-./build/nuklai-cli emission info
-```
+### Tokens Demo
 
-If successful, the output should be something like:
+Refer to [Tokens Demo](./docs/demos/tokens.md) to learn how to mint an asset, transfer it within the same subnet or to another subnet with AWM, etc.
 
-```
-database: .nuklai-cli
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-emission info:
-TotalSupply=853000594000000000 MaxSupply=10000000000000000000 RewardsPerBlock=2000000000 EmissionAddress=nuklai1qqmzlnnredketlj3cu20v56nt5ken6thchra7nylwcrmz77td654w2jmpt9 EmissionBalance=594000014850
-```
+## Tests
 
-### Get Validators
+### Running an Integration Test
 
-We can check the validators that have been staked
+You can run the integration tests by doing
 
 ```bash
-./build/nuklai-cli emission validators
+./scripts/tests.integration.sh
 ```
-
-If successful, the output should be something like:
-
-```
-database: .nuklai-cli
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-validator 0: NodeID=NodeID-7NEx57dgetsQdmgAGw9VjxAmTDWgdqZkP NodePublicKey=st7C9uuKbCM71BkP97PKTn8Vzn+ToE3giO/2z2OyNsY+FwVvIS2qtm6jPChANOXk UserStake=map[] StakedAmount=0 StakedReward=0
-validator 1: NodeID=NodeID-4xW5x8ekVnhqJr5UnPQGRf8emeRiPDfRr NodePublicKey=o3INAYDajQSR2jWTQzq6K8ut0i5/gVXhfEbnDTQB1r2Fi07pU/r+v5rGiEEECp/C UserStake=map[] StakedAmount=0 StakedReward=0
-validator 2: NodeID=NodeID-BrkTkxtNzhxP8przzBUnzZTXST8qMKCMV NodePublicKey=jvv4m5Si1w0TJjzPAVHbk7bcJEOEsGoGu2mjXrsuiVj56PsvVORG843MYhTjE2uW UserStake=map[] StakedAmount=0 StakedReward=0
-validator 3: NodeID=NodeID-4h8Ud3qTEksLBCMNjkKBFhYRKJ5NfJZ2w NodePublicKey=hzGTs30HIPili1lgXjO5BfGJTZw9oAE6bOcoAuIQEMhNbI70d4aUm3B80GMyUyLu UserStake=map[] StakedAmount=0 StakedReward=0
-validator 4: NodeID=NodeID-B2BSzCnzhAM2WwKU5UbwZxpoMPmE9TnNf NodePublicKey=pXYMPMHBASy0Y5/PzNI1B4HGrqSkP1upFtuSiEI2HKAbc+8ZPdkhmCWearjYOWRE UserStake=map[] StakedAmount=0 StakedReward=0
-```
-
-### Stake to a validator
-
-We can stake to a validator of our choice
-
-```bash
-./build/nuklai-cli action stake-validator
-```
-
-If successful, the output should be:
-
-```
-database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-validators: 5
-0: NodeID=NodeID-4h8Ud3qTEksLBCMNjkKBFhYRKJ5NfJZ2w NodePublicKey=hzGTs30HIPili1lgXjO5BfGJTZw9oAE6bOcoAuIQEMhNbI70d4aUm3B80GMyUyLu
-1: NodeID=NodeID-B2BSzCnzhAM2WwKU5UbwZxpoMPmE9TnNf NodePublicKey=pXYMPMHBASy0Y5/PzNI1B4HGrqSkP1upFtuSiEI2HKAbc+8ZPdkhmCWearjYOWRE
-2: NodeID=NodeID-7NEx57dgetsQdmgAGw9VjxAmTDWgdqZkP NodePublicKey=st7C9uuKbCM71BkP97PKTn8Vzn+ToE3giO/2z2OyNsY+FwVvIS2qtm6jPChANOXk
-3: NodeID=NodeID-4xW5x8ekVnhqJr5UnPQGRf8emeRiPDfRr NodePublicKey=o3INAYDajQSR2jWTQzq6K8ut0i5/gVXhfEbnDTQB1r2Fi07pU/r+v5rGiEEECp/C
-4: NodeID=NodeID-BrkTkxtNzhxP8przzBUnzZTXST8qMKCMV NodePublicKey=jvv4m5Si1w0TJjzPAVHbk7bcJEOEsGoGu2mjXrsuiVj56PsvVORG843MYhTjE2uW
-validator to stake to: 2
-balance: 852999899.999970317 NAI
-✔ Staked amount: 1000█
-✔ End LockUp Height: 930█
-✔ continue (y/n): y█
-
-✅ txID: xheUBZvoYNm2fWd8xEwvKKC2jwnr7FsrAAvNLTkcouM2LTwcD
-```
-
-### Get user staking info
-
-We can retrieve our staking info by passing in which validator we have staked to and the address to look up staking for using the new RPC API we defined as part of this exercise.
-
-```bash
-./build/nuklai-cli emission user-stake-info
-```
-
-If successful, the output should be:
-
-```
-database: .nuklai-cli
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-validators: 5
-0: NodeID=NodeID-B2BSzCnzhAM2WwKU5UbwZxpoMPmE9TnNf NodePublicKey=pXYMPMHBASy0Y5/PzNI1B4HGrqSkP1upFtuSiEI2HKAbc+8ZPdkhmCWearjYOWRE
-1: NodeID=NodeID-7NEx57dgetsQdmgAGw9VjxAmTDWgdqZkP NodePublicKey=st7C9uuKbCM71BkP97PKTn8Vzn+ToE3giO/2z2OyNsY+FwVvIS2qtm6jPChANOXk
-2: NodeID=NodeID-4xW5x8ekVnhqJr5UnPQGRf8emeRiPDfRr NodePublicKey=o3INAYDajQSR2jWTQzq6K8ut0i5/gVXhfEbnDTQB1r2Fi07pU/r+v5rGiEEECp/C
-3: NodeID=NodeID-BrkTkxtNzhxP8przzBUnzZTXST8qMKCMV NodePublicKey=jvv4m5Si1w0TJjzPAVHbk7bcJEOEsGoGu2mjXrsuiVj56PsvVORG843MYhTjE2uW
-4: NodeID=NodeID-4h8Ud3qTEksLBCMNjkKBFhYRKJ5NfJZ2w NodePublicKey=hzGTs30HIPili1lgXjO5BfGJTZw9oAE6bOcoAuIQEMhNbI70d4aUm3B80GMyUyLu
-choose validator whom you have staked to: 1
-address to get staking info for: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-user stake:  Owner=nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx StakedAmount=1000000000000
-stake #1: TxID=xheUBZvoYNm2fWd8xEwvKKC2jwnr7FsrAAvNLTkcouM2LTwcD Amount=1000000000000 StartLockUp=315
-```
-
-### Unstake from a validator
-
-Let's first check the balance on our account:
-
-```bash
-./build/nuklai-cli key balance
-```
-
-Which should produce a result like:
-
-```
-database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-assetID (use NAI for native token): NAI
-✔ assetID (use NAI for native token): NAI█
-balance: 852998899.999943018 NAI
-```
-
-We can unstake specific stake from a chosen validator.
-
-```bash
-./build/nuklai-cli action unstake-validator
-```
-
-Which produces result:
-
-```
-database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-validators: 5
-0: NodeID=NodeID-4h8Ud3qTEksLBCMNjkKBFhYRKJ5NfJZ2w NodePublicKey=hzGTs30HIPili1lgXjO5BfGJTZw9oAE6bOcoAuIQEMhNbI70d4aUm3B80GMyUyLu
-1: NodeID=NodeID-B2BSzCnzhAM2WwKU5UbwZxpoMPmE9TnNf NodePublicKey=pXYMPMHBASy0Y5/PzNI1B4HGrqSkP1upFtuSiEI2HKAbc+8ZPdkhmCWearjYOWRE
-2: NodeID=NodeID-7NEx57dgetsQdmgAGw9VjxAmTDWgdqZkP NodePublicKey=st7C9uuKbCM71BkP97PKTn8Vzn+ToE3giO/2z2OyNsY+FwVvIS2qtm6jPChANOXk
-3: NodeID=NodeID-4xW5x8ekVnhqJr5UnPQGRf8emeRiPDfRr NodePublicKey=o3INAYDajQSR2jWTQzq6K8ut0i5/gVXhfEbnDTQB1r2Fi07pU/r+v5rGiEEECp/C
-4: NodeID=NodeID-BrkTkxtNzhxP8przzBUnzZTXST8qMKCMV NodePublicKey=jvv4m5Si1w0TJjzPAVHbk7bcJEOEsGoGu2mjXrsuiVj56PsvVORG843MYhTjE2uW
-✔ validator to unstake from: 2█
-stake info:
-0: TxID=xheUBZvoYNm2fWd8xEwvKKC2jwnr7FsrAAvNLTkcouM2LTwcD StakedAmount=1000000000000 StartLockUpHeight=315 CurrentHeight=403
-stake ID to unstake: 0 [auto-selected]
-continue (y/n): y
-✅ txID: 7zMSUymBJiEWFViMfGSGS2yWFyovDq1FJ5nPNthQmnoRc9G6w
-```
-
-Now, if we check the balance again, we should have our 100 NAI back to our account:
-
-```bash
-./build/nuklai-cli key balance
-```
-
-Which should produce a result like:
-
-```
-database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-✔ assetID (use NAI for native token): NAI█
-uri: http://127.0.0.1:44089/ext/bc/277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-balance: 852999899.999917388 NAI
-```
-
-### Mint an asset
-
-#### Step 1: Create Your Asset
-
-We can create our own asset on nuklaichain. To do so, we do:
-
-```bash
-./build/nuklai-cli action create-asset
-```
-
-When you are done, the output should look something like this:
-
-```
-database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-symbol: TOKEN1
-✔ decimals: 9
-metadata: Example token1
-✔ continue (y/n): y
-✅ txID: ggMxHuutoobCLfuYyiLRYr1VMq7r9ULcBU621kvurtsqdifjN
-```
-
-_`txID` is the `assetID` of your new asset._
-
-The "loaded address" here is the address of the default private key (`demo.pk`). We
-use this key to authenticate all interactions with the `nuklaivm`.
-
-#### Step 2: Mint Your Asset
-
-After we've created our own asset, we can now mint some of it. You can do so by
-running the following command from this location:
-
-```bash
-./build/nuklai-cli action mint-asset
-```
-
-When you are done, the output should look something like this (usually easiest
-just to mint to yourself).
-
-```
-database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-assetID: ggMxHuutoobCLfuYyiLRYr1VMq7r9ULcBU621kvurtsqdifjN
-symbol: TOKEN1 decimals: 9 metadata: Example token1 supply: 0
-recipient: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-✔ amount: 1000█
-continue (y/n): y
-✅ txID: 2eG6m32NMgaxdz36W8omF1tQNBAkXr2JHojsU67X1AQzT73PSf
-```
-
-#### Step 3: View Your Balance
-
-Now, let's check that the mint worked right by checking our balance. You can do
-so by running the following command from this location:
-
-```bash
-./build/nuklai-cli key balance
-```
-
-When you are done, the output should look something like this:
-
-```
-database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-assetID (use NAI for native token): ggMxHuutoobCLfuYyiLRYr1VMq7r9ULcBU621kvurtsqdifjN
-uri: http://127.0.0.1:43689/ext/bc/277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-symbol: TOKEN1 decimals: 9 metadata: Example token1 supply: 1000000000000 warp: false
-balance: 1000.000000000 TOKEN1
-```
-
-### Transfer Assets to Another Subnet
-
-Unlike the mint demo, the AWM demo only requires running a single
-command. You can kick off a transfer between the 2 Subnets you created by
-running the following command from this location:
-
-```bash
-./build/nuklai-cli action export
-```
-
-When you are done, the output should look something like this:
-
-```
-database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-✔ assetID (use NAI for native token): ggMxHuutoobCLfuYyiLRYr1VMq7r9ULcBU621kvurtsqdifjN█
-symbol: TOKEN1 decimals: 9 metadata: Example token1 supply: 1000000000000 warp: false
-balance: 1000.000000000 TOKEN1
-recipient: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-✔ amount: 50█
-✔ reward: 0█
-available chains: 1 excluded: [277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX]
-0) chainID: QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD
-destination: 0 [auto-selected]
-continue (y/n): y
-✅ txID: 2LwezG85VjTktvfZpwnGigvqH3o74ZC9qBWmWUwjsXmqAwQMsV
-perform import on destination (y/n): y
-2RiJax29P6XVQzeXXApigqBBcsmrZjJ1vXKPBv1RaTKc5mqaxW to: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx source assetID: ggMxHuutoobCLfuYyiLRYr1VMq7r9ULcBU621kvurtsqdifjN source symbol: TOKEN1 output assetID: 7W44tf7zcvWW9MYLLvQdoL6Uf7L5MZ2vgNdGqYJ5caeEbMiuB value: 50.000000000 reward: 0.000000000 return: false
-✅ txID: FLkYqXKMmE9HwKksdmiwyJberPzq4zEeEupwHDgDcAXkhjmGX
-✔ switch default chain to destination (y/n): y█
-```
-
-_The `export` command will automatically run the `import` command on the
-destination. If you wish to import the AWM message using a separate account,
-you can run the `import` command after changing your key._
 
 ### Running a Load Test
 
@@ -631,7 +386,7 @@ network delay or consensus overhead. It just tests the underlying performance
 of the `hypersdk` and the storage engine used (in this case MerkleDB on top of
 Pebble)._
 
-#### Measuring Disk Speed
+### Measuring Disk Speed
 
 This test is extremely sensitive to disk performance. When reporting any TPS
 results, please include the output of:
@@ -671,51 +426,6 @@ docker-compose -f trace/zipkin.yml down
 
 ## Creating a Devnet
 
-_In the world of Avalanche, we refer to short-lived, test-focused Subnets as devnets._
-
-Using [avalanche-ops](https://github.com/ava-labs/avalanche-ops), we can create a private devnet (running on a
+Refer to [Creating Devnet Demo](./docs/demos/devnet.md) to learn how to create a private devnet (running on a
 custom Primary Network with traffic scoped to the deployer IP) across any number of regions and nodes
 in ~30 minutes with a single script.
-
-### Step 1: Install Dependencies
-
-#### Install and Configure `aws-cli`
-
-Install the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html). This is used to
-authenticate to AWS and manipulate CloudFormation.
-
-Once you've installed the AWS CLI, run `aws configure sso` to login to AWS locally. See
-[the avalanche-ops documentation](https://github.com/ava-labs/avalanche-ops#permissions) for additional details.
-Set a `profile_name` when logging in, as it will be referenced directly by avalanche-ops commands. **Do not set
-an SSO Session Name (not supported).**
-
-#### Install `yq`
-
-Install `yq` using [Homebrew](https://brew.sh/). `yq` is used to manipulate the YAML files produced by
-`avalanche-ops`.
-
-You can install `yq` using the following command:
-
-```bash
-brew install yq
-```
-
-### Step 2: Deploy Devnet on AWS
-
-Once all dependencies are installed, we can create our devnet using a single script. This script deploys
-10 validators (equally split between us-west-2, us-east-2, and eu-west-1):
-
-```bash
-./scripts/deploy.devnet.sh
-```
-
-_When devnet creation is complete, this script will emit commands that can be used to interact
-with the devnet (i.e. tx load test) and to tear it down._
-
-#### Configuration Options
-
-- `--arch-type`: `avalanche-ops` supports deployment to both `amd64` and `arm64` architectures
-- `--anchor-nodes`/`--non-anchor-nodes`: `anchor-nodes` + `non-anchor-nodes` is the number of validators that will be on the Subnet, split equally between `--regions` (`anchor-nodes` serve as bootstrappers on the custom Primary Network, whereas `non-anchor-nodes` are just validators)
-- `--regions`: `avalanche-ops` will automatically deploy validators across these regions
-- `--instance-types`: `avalanche-ops` allows instance types to be configured by region (make sure it is compatible with `arch-type`)
-- `--upload-artifacts-avalanchego-local-bin`: `avalanche-ops` allows a custom AvalancheGo binary to be provided for validators to run

@@ -792,8 +792,35 @@ var getValidatorStakeCmd = &cobra.Command{
 		}
 		ncli := nclients[0]
 
+		// Get current list of validators
+		validators, err := ncli.Validators(ctx)
+		if err != nil {
+			return err
+		}
+		if len(validators) == 0 {
+			hutils.Outf("{{red}}no validators{{/}}\n")
+			return nil
+		}
+
+		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
+		for i := 0; i < len(validators); i++ {
+			hutils.Outf(
+				"{{yellow}}%d:{{/}} NodeID=%s NodePublicKey=%s\n",
+				i,
+				validators[i].NodeID,
+				validators[i].NodePublicKey,
+			)
+		}
+		// Select validator
+		keyIndex, err := handler.Root().PromptChoice("validator to register for staking", len(validators))
+		if err != nil {
+			return err
+		}
+		validatorChosen := validators[keyIndex]
+		nodeID := validatorChosen.NodeID
+
 		// Get validator stake
-		_, _, _, _, _, _, err = handler.GetValidatorStake(ctx, ncli)
+		_, _, _, _, _, _, err = handler.GetValidatorStake(ctx, ncli, nodeID)
 		if err != nil {
 			return err
 		}

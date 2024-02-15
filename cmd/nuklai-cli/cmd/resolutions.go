@@ -90,7 +90,6 @@ func handleTx(ncli *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Res
 			summaryStr = fmt.Sprintf("%s %s -> %s", amountStr, symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
 		case *actions.BurnAsset:
 			summaryStr = fmt.Sprintf("%d %s -> 🔥", action.Value, action.Asset)
-
 		case *actions.ImportAsset:
 			wm := tx.WarpMessage
 			signers, _ := wm.Signature.NumSigners()
@@ -134,6 +133,14 @@ func handleTx(ncli *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Res
 				}
 				summaryStr += fmt.Sprintf(" | swap in: %s %s (%s) swap out: %s %s expiry: %d", utils.FormatBalance(wt.SwapIn, wt.Decimals), wt.Symbol, outputAssetID, utils.FormatBalance(wt.SwapOut, outDecimals), outSymbol, wt.SwapExpiry)
 			}
+
+		case *actions.RegisterValidatorStake:
+			nodeID, err := ids.ToNodeID(action.NodeID)
+			if err != nil {
+				utils.Outf("{{red}}could not fetch asset info:{{/}} %v", err)
+				return
+			}
+			summaryStr = fmt.Sprintf("nodeID: %s stakeStartTime: %d stakeEndTime: %d stakedAmount: %s delegationFeeRate: %d rewardAddress: %s", nodeID.String(), action.StakeStartTime, action.StakeEndTime, utils.FormatBalance(action.StakedAmount, nconsts.Decimals), action.DelegationFeeRate, codec.MustAddressBech32(nconsts.HRP, action.RewardAddress))
 		}
 		utils.Outf(
 			"%s {{yellow}}%s{{/}} {{yellow}}actor:{{/}} %s {{yellow}}summary (%s):{{/}} [%s] {{yellow}}fee (max %.2f%%):{{/}} %s %s {{yellow}}consumed:{{/}} [%s]\n",

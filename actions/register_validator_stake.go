@@ -59,7 +59,6 @@ func (r *RegisterValidatorStake) Execute(
 	_ ids.ID,
 	_ bool,
 ) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
-	utils.Outf("{{yellow}}--RegisterValidatorStake{{/}}: Executing\n")
 	// Check if it's a valid nodeID
 	nodeID, err := ids.ToNodeID(r.NodeID)
 	if err != nil {
@@ -72,8 +71,9 @@ func (r *RegisterValidatorStake) Execute(
 		return false, RegisterValidatorStakeComputeUnits, OutputValidatorAlreadyRegistered, nil, nil
 	}
 
-	// Check if the staked amount is greater than 0
-	if r.StakedAmount == 0 {
+	// Check if the staked amount is greater than or equal to 1.5 million NAI
+	minAmountToStake, _ := utils.ParseBalance("1500000", nconsts.Decimals)
+	if r.StakedAmount < minAmountToStake {
 		return false, RegisterValidatorStakeComputeUnits, OutputStakedAmountZero, nil, nil
 	}
 
@@ -111,11 +111,9 @@ func (r *RegisterValidatorStake) Execute(
 	if err := storage.SubBalance(ctx, mu, actor, ids.Empty, r.StakedAmount); err != nil {
 		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
-	utils.Outf("{{yellow}}--RegisterValidatorStake{{/}}: SubBalance done\n")
 	if err := storage.SetRegisterValidatorStake(ctx, mu, nodeID, r.StakeStartTime, r.StakeEndTime, r.StakedAmount, r.DelegationFeeRate, r.RewardAddress, actor); err != nil {
 		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
-	utils.Outf("{{yellow}}--RegisterValidatorStake{{/}}: SetRegisterValidatorStake done\n")
 	return true, RegisterValidatorStakeComputeUnits, nil, nil, nil
 }
 

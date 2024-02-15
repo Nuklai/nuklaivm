@@ -195,12 +195,14 @@ func (cli *JSONRPCClient) UserStakeInfo(ctx context.Context, nodeID ids.NodeID, 
 	return resp.UserStake, err
 }
 
-func (cli *JSONRPCClient) ValidatorStake(ctx context.Context) (uint64, uint64, uint64, uint64, codec.Address, codec.Address, error) {
+func (cli *JSONRPCClient) ValidatorStake(ctx context.Context, nodeID ids.NodeID) (uint64, uint64, uint64, uint64, codec.Address, codec.Address, error) {
 	resp := new(ValidatorStakeReply)
 	err := cli.requester.SendRequest(
 		ctx,
 		"validatorStake",
-		nil,
+		&ValidatorStakeArgs{
+			NodeID: nodeID,
+		},
 		resp,
 	)
 	if err != nil {
