@@ -12,22 +12,21 @@ import (
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	hconsts "github.com/ava-labs/hypersdk/consts"
+	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/ava-labs/hypersdk/utils"
-	"github.com/nuklai/nuklaivm/storage"
 
+	"github.com/nuklai/nuklaivm/auth"
 	nconsts "github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/emission"
+	"github.com/nuklai/nuklaivm/storage"
 )
 
 var _ chain.Action = (*RegisterValidatorStake)(nil)
 
 type RegisterValidatorStake struct {
-	NodeID            []byte        `json:"nodeID"`            // NodeID of the validator
-	StakeStartTime    uint64        `json:"stakeStartTime"`    // Start date of the stake
-	StakeEndTime      uint64        `json:"stakeEndTime"`      // End date of the stake
-	StakedAmount      uint64        `json:"stakedAmount"`      // Amount of NAI staked
-	DelegationFeeRate uint64        `json:"delegationFeeRate"` // Delegation fee rate
-	RewardAddress     codec.Address `json:"rewardAddress"`     // Address to receive rewards
+	StakeInfo     []byte `json:"stakeInfo"`     // StakeInfo of the validator
+	AuthSignature []byte `json:"authSignature"` // Auth BLS signature of the validator
 }
 
 func (*RegisterValidatorStake) GetTypeID() uint8 {
@@ -36,12 +35,17 @@ func (*RegisterValidatorStake) GetTypeID() uint8 {
 
 func (r *RegisterValidatorStake) StateKeys(actor codec.Address, _ ids.ID) []string {
 	// TODO: How to better handle a case where the NodeID is invalid?
-	if nodeID, err := ids.ToNodeID(r.NodeID); err == nil {
-		return []string{
-			string(storage.BalanceKey(actor, ids.Empty)),
-			string(storage.RegisterValidatorStakeKey(nodeID)),
+	if signer, err := VerifyAuthSignature(r.StakeInfo, r.AuthSignature); err == nil && codec.MustAddressBech32(nconsts.HRP, actor) == codec.MustAddressBech32(nconsts.HRP, signer) {
+		if stakeInfo, err := UnmarshalValidatorStakeInfo(r.StakeInfo); err == nil {
+			if nodeID, err := ids.ToNodeID(stakeInfo.NodeID); err == nil {
+				return []string{
+					string(storage.BalanceKey(actor, ids.Empty)),
+					string(storage.RegisterValidatorStakeKey(nodeID)),
+				}
+			}
 		}
 	}
+
 	return []string{string(storage.BalanceKey(actor, ids.Empty))}
 }
 
@@ -62,8 +66,23 @@ func (r *RegisterValidatorStake) Execute(
 	_ ids.ID,
 	_ bool,
 ) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
+	// Check if it's a valid signature
+	signer, err := VerifyAuthSignature(r.StakeInfo, r.AuthSignature)
+	if err != nil {
+		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
+	}
+	// Check whether the actor is the same as the one who signed the message
+	if codec.MustAddressBech32(nconsts.HRP, actor) != codec.MustAddressBech32(nconsts.HRP, signer) {
+		return false, RegisterValidatorStakeComputeUnits, OutputDifferentSignerThanActor, nil, nil
+	}
+
+	// Unmarshal the stake info
+	stakeInfo, err := UnmarshalValidatorStakeInfo(r.StakeInfo)
+	if err != nil {
+		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
+	}
 	// Check if it's a valid nodeID
-	nodeID, err := ids.ToNodeID(r.NodeID)
+	nodeID, err := ids.ToNodeID(stakeInfo.NodeID)
 	if err != nil {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidNodeID, nil, nil
 	}
@@ -74,47 +93,39 @@ func (r *RegisterValidatorStake) Execute(
 		return false, RegisterValidatorStakeComputeUnits, OutputValidatorAlreadyRegistered, nil, nil
 	}
 
+	stakingConfig := emission.GetStakingConfig()
+
 	// Check if the staked amount is greater than or equal to 1.5 million NAI
-	minAmountToStake, _ := utils.ParseBalance("1500000", nconsts.Decimals)
-	if r.StakedAmount < minAmountToStake {
-		return false, RegisterValidatorStakeComputeUnits, OutputStakedAmountZero, nil, nil
+	if stakeInfo.StakedAmount < stakingConfig.MinValidatorStake && stakeInfo.StakedAmount > stakingConfig.MaxValidatorStake {
+		return false, RegisterValidatorStakeComputeUnits, OutputStakedAmountInvalid, nil, nil
 	}
 
 	// Get current time
 	currentTime := time.Now().UTC()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
-	startTime := time.Unix(int64(r.StakeStartTime), 0).UTC()
+	startTime := time.Unix(int64(stakeInfo.StakeStartTime), 0).UTC()
 	if startTime.Before(currentTime) {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeStartTime, nil, nil
 	}
-	endTime := time.Unix(int64(r.StakeEndTime), 0).UTC()
+	endTime := time.Unix(int64(stakeInfo.StakeEndTime), 0).UTC()
 	// Check that stakeEndTime is greater than stakeStartTime
 	if endTime.Before(startTime) {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeEndTime, nil, nil
 	}
-	// TODO: Disable this when we go to production
-	// Check that the total staking period is at least 60 seconds
-	if r.StakeEndTime-r.StakeStartTime < 60 {
-		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeEndTime, nil, nil
+	// Check that the total staking period is at least the minimum staking period
+	stakeDuration := endTime.Sub(startTime)
+	if stakeDuration < stakingConfig.MinStakeDuration {
+		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeDuration, nil, nil
 	}
-	// TODO: Enable this when we go to production
-	// Check that stakeEndTime is at least 6 months after stakeStartTime
-	// Adding 6 months to startTime
-	/*
-		sixMonthsAfterStart := startTime.AddDate(0, 6, 0)
-		if endTime.Before(sixMonthsAfterStart) {
-			return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeEndTime, nil, nil
-		}
-	*/
-	if r.DelegationFeeRate < 2 || r.DelegationFeeRate > 100 {
+
+	if stakeInfo.DelegationFeeRate < stakingConfig.MinDelegationFee || stakeInfo.DelegationFeeRate > 100 {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidDelegationFeeRate, nil, nil
 	}
-	// TODO: Check if the NodeID belongs to the actor
 
-	if err := storage.SubBalance(ctx, mu, actor, ids.Empty, r.StakedAmount); err != nil {
+	if err := storage.SubBalance(ctx, mu, actor, ids.Empty, stakeInfo.StakedAmount); err != nil {
 		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
-	if err := storage.SetRegisterValidatorStake(ctx, mu, nodeID, r.StakeStartTime, r.StakeEndTime, r.StakedAmount, r.DelegationFeeRate, r.RewardAddress, actor); err != nil {
+	if err := storage.SetRegisterValidatorStake(ctx, mu, nodeID, stakeInfo.StakeStartTime, stakeInfo.StakeEndTime, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate, stakeInfo.RewardAddress, actor); err != nil {
 		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 	return true, RegisterValidatorStakeComputeUnits, nil, nil, nil
@@ -129,26 +140,60 @@ func (*RegisterValidatorStake) Size() int {
 }
 
 func (r *RegisterValidatorStake) Marshal(p *codec.Packer) {
-	p.PackBytes(r.NodeID)
-	p.PackUint64(r.StakeStartTime)
-	p.PackUint64(r.StakeEndTime)
-	p.PackUint64(r.StakedAmount)
-	p.PackUint64(r.DelegationFeeRate)
-	p.PackAddress(r.RewardAddress)
+	p.PackBytes(r.StakeInfo)
+	p.PackBytes(r.AuthSignature)
 }
 
 func UnmarshalRegisterValidatorStake(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
 	var stake RegisterValidatorStake
-	p.UnpackBytes(hconsts.NodeIDLen, false, &stake.NodeID)
-	stake.StakeStartTime = p.UnpackUint64(true)
-	stake.StakeEndTime = p.UnpackUint64(true)
-	stake.StakedAmount = p.UnpackUint64(true)
-	stake.DelegationFeeRate = p.UnpackUint64(true)
-	p.UnpackAddress(&stake.RewardAddress)
+	p.UnpackBytes(hconsts.NodeIDLen+4*hconsts.Uint64Len+codec.AddressLen, true, &stake.StakeInfo)
+	p.UnpackBytes(bls.PublicKeyLen+bls.SignatureLen, true, &stake.AuthSignature)
 	return &stake, p.Err()
 }
 
 func (*RegisterValidatorStake) ValidRange(chain.Rules) (int64, int64) {
 	// Returning -1, -1 means that the action is always valid.
 	return -1, -1
+}
+
+func VerifyAuthSignature(stakeInfo, authSignature []byte) (codec.Address, error) {
+	p := codec.NewReader(authSignature, len(authSignature))
+	sig, err := auth.UnmarshalBLS(p, nil)
+	if err != nil {
+		return codec.EmptyAddress, err
+	}
+	return sig.Actor(), sig.Verify(context.TODO(), stakeInfo)
+}
+
+type ValidatorStakeInfo struct {
+	NodeID            []byte        `json:"nodeID"`            // NodeID of the validator
+	StakeStartTime    uint64        `json:"stakeStartTime"`    // Start date of the stake
+	StakeEndTime      uint64        `json:"stakeEndTime"`      // End date of the stake
+	StakedAmount      uint64        `json:"stakedAmount"`      // Amount of NAI staked
+	DelegationFeeRate uint64        `json:"delegationFeeRate"` // Delegation fee rate
+	RewardAddress     codec.Address `json:"rewardAddress"`     // Address to receive rewards
+}
+
+func UnmarshalValidatorStakeInfo(stakeInfo []byte) (*ValidatorStakeInfo, error) {
+	p := codec.NewReader(stakeInfo, hconsts.NodeIDLen+4*hconsts.Uint64Len+codec.AddressLen)
+	var result ValidatorStakeInfo
+	result.NodeID = make([]byte, hconsts.NodeIDLen)
+	p.UnpackFixedBytes(hconsts.NodeIDLen, &result.NodeID)
+	result.StakeStartTime = p.UnpackUint64(true)
+	result.StakeEndTime = p.UnpackUint64(true)
+	result.StakedAmount = p.UnpackUint64(true)
+	result.DelegationFeeRate = p.UnpackUint64(true)
+	p.UnpackAddress(&result.RewardAddress)
+	return &result, p.Err()
+}
+
+func (s *ValidatorStakeInfo) Marshal() ([]byte, error) {
+	p := codec.NewWriter(hconsts.NodeIDLen+4*hconsts.Uint64Len+codec.AddressLen, hconsts.NodeIDLen+4*hconsts.Uint64Len+codec.AddressLen)
+	p.PackFixedBytes(s.NodeID)
+	p.PackUint64(s.StakeStartTime)
+	p.PackUint64(s.StakeEndTime)
+	p.PackUint64(s.StakedAmount)
+	p.PackUint64(s.DelegationFeeRate)
+	p.PackAddress(s.RewardAddress)
+	return p.Bytes(), p.Err()
 }

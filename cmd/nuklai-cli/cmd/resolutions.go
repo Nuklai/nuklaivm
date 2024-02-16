@@ -135,12 +135,13 @@ func handleTx(ncli *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Res
 			}
 
 		case *actions.RegisterValidatorStake:
-			nodeID, err := ids.ToNodeID(action.NodeID)
+			stakeInfo, _ := actions.UnmarshalValidatorStakeInfo(action.StakeInfo)
+			nodeID, err := ids.ToNodeID(stakeInfo.NodeID)
 			if err != nil {
 				utils.Outf("{{red}}could not fetch asset info:{{/}} %v", err)
 				return
 			}
-			summaryStr = fmt.Sprintf("nodeID: %s stakeStartTime: %d stakeEndTime: %d stakedAmount: %s delegationFeeRate: %d rewardAddress: %s", nodeID.String(), action.StakeStartTime, action.StakeEndTime, utils.FormatBalance(action.StakedAmount, nconsts.Decimals), action.DelegationFeeRate, codec.MustAddressBech32(nconsts.HRP, action.RewardAddress))
+			summaryStr = fmt.Sprintf("nodeID: %s stakeStartTime: %d stakeEndTime: %d stakedAmount: %s delegationFeeRate: %d rewardAddress: %s", nodeID.String(), stakeInfo.StakeStartTime, stakeInfo.StakeEndTime, utils.FormatBalance(stakeInfo.StakedAmount, nconsts.Decimals), stakeInfo.DelegationFeeRate, codec.MustAddressBech32(nconsts.HRP, stakeInfo.RewardAddress))
 		}
 		utils.Outf(
 			"%s {{yellow}}%s{{/}} {{yellow}}actor:{{/}} %s {{yellow}}summary (%s):{{/}} [%s] {{yellow}}fee (max %.2f%%):{{/}} %s %s {{yellow}}consumed:{{/}} [%s]\n",

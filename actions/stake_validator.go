@@ -55,7 +55,7 @@ func (s *StakeValidator) Execute(
 	_ bool,
 ) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
 	if s.StakedAmount == 0 {
-		return false, StakeValidatorComputeUnits, OutputStakedAmountZero, nil, nil
+		return false, StakeValidatorComputeUnits, OutputStakedAmountInvalid, nil, nil
 	}
 	nodeID, err := ids.ToNodeID(s.NodeID)
 	if err != nil {

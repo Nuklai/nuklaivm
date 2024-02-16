@@ -195,6 +195,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 		}
 		totalFee += result.Fee
 		currentHeight := c.inner.LastAcceptedBlock().Height()
+		currentValidators, _ := c.inner.CurrentValidators(ctx)
 		if result.Success {
 			switch action := tx.Action.(type) {
 			case *actions.Transfer:
@@ -210,21 +211,42 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 			case *actions.ExportAsset:
 				c.metrics.exportAsset.Inc()
 			case *actions.RegisterValidatorStake:
-				c.metrics.stakeAmount.Add(float64(action.StakedAmount))
-				c.metrics.registerValidatorStake.Inc()
+				stakeInfo, err := actions.UnmarshalValidatorStakeInfo(action.StakeInfo)
+				if err != nil {
+					// This should never happen
+					return err
+				}
+
+				// Check if the tx actor has signing permission for this NodeID
+				isValidatorOwner := false
+				for _, validator := range currentValidators {
+					signer := auth.NewBLSAddress(validator.PublicKey)
+					if codec.MustAddressBech32(nconsts.HRP, tx.Auth.Actor()) == codec.MustAddressBech32(nconsts.HRP, signer) {
+						isValidatorOwner = true
+						break
+					}
+				}
+				if !isValidatorOwner {
+					c.inner.Logger().Error("failed to register validator stake", zap.Error(fmt.Errorf("actor %s is not the owner of the validator", codec.MustAddressBech32(nconsts.HRP, tx.Auth.Actor()))))
+					continue
+				}
+
 				// Check to make sure the stake is valid
 				currentTime := c.inner.LastAcceptedBlock().Timestamp().UTC()
-				stakeStartTime := time.Unix(int64(action.StakeStartTime), 0).UTC()
-				if stakeStartTime.After(currentTime) {
-					// Register validator stake
-				} else {
-					c.inner.Logger().Error("failed to register validator stake", zap.Error(fmt.Errorf("current time %d is after stake start time %d", currentTime.Unix(), action.StakeStartTime)))
+				stakeStartTime := time.Unix(int64(stakeInfo.StakeStartTime), 0).UTC()
+				if stakeStartTime.Before(currentTime) {
+					// This should never happen as we check for this in register_validator_stake action
+					c.inner.Logger().Error("failed to register validator stake", zap.Error(fmt.Errorf("stake start time %d is before current time %d", stakeInfo.StakeStartTime, currentTime.Unix())))
+					return fmt.Errorf("stake start time %d is before current time %d", stakeInfo.StakeStartTime, currentTime.Unix())
 				}
+				// TODO: Register validator stake
+
+				c.metrics.stakeAmount.Add(float64(stakeInfo.StakedAmount))
+				c.metrics.registerValidatorStake.Inc()
 			case *actions.StakeValidator:
 				c.metrics.stake.Inc()
 				// Check to make sure the stake is valid
 				if action.EndLockUp > currentHeight {
-					currentValidators, _ := c.inner.CurrentValidators(ctx)
 					if err := c.emission.StakeToValidator(tx.ID(), tx.Auth.Actor(), currentValidators, currentHeight, action.NodeID, action.StakedAmount); err != nil {
 						c.inner.Logger().Error("failed to stake to validator", zap.Error(err))
 					}

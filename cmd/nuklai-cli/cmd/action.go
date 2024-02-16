@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"sort"
@@ -17,12 +18,14 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
+	hconsts "github.com/ava-labs/hypersdk/consts"
+	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/pubsub"
 	hrpc "github.com/ava-labs/hypersdk/rpc"
 	hutils "github.com/ava-labs/hypersdk/utils"
 
 	"github.com/nuklai/nuklaivm/actions"
+	"github.com/nuklai/nuklaivm/auth"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
@@ -172,7 +175,7 @@ var mintAssetCmd = &cobra.Command{
 		}
 
 		// Select amount
-		amount, err := handler.Root().PromptAmount("amount", decimals, consts.MaxUint64-supply, nil)
+		amount, err := handler.Root().PromptAmount("amount", decimals, hconsts.MaxUint64-supply, nil)
 		if err != nil {
 			return err
 		}
@@ -408,7 +411,7 @@ var exportAssetCmd = &cobra.Command{
 			swapOut, err = handler.Root().PromptAmount(
 				"swap out (on destination, no decimals)",
 				decimals,
-				consts.MaxUint64,
+				hconsts.MaxUint64,
 				nil,
 			)
 			if err != nil {
@@ -667,6 +670,17 @@ var registerValidatorStakeCmd = &cobra.Command{
 			return err
 		}
 
+		keyType, _ := getKeyType(priv.Address)
+		if keyType != blsKey {
+			return fmt.Errorf("actor must be a BLS key")
+		}
+		secretKey, err := bls.PrivateKeyFromBytes(priv.Bytes)
+		if err != nil {
+			return err
+		}
+		publicKey := base64.StdEncoding.EncodeToString(bls.PublicFromPrivateKey(secretKey).Compress())
+
+		// Get the validator for which the actor is a signer
 		// Get current list of validators
 		validators, err := ncli.Validators(ctx)
 		if err != nil {
@@ -677,22 +691,18 @@ var registerValidatorStakeCmd = &cobra.Command{
 			return nil
 		}
 
-		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
+		var nodeID ids.NodeID
 		for i := 0; i < len(validators); i++ {
-			hutils.Outf(
-				"{{yellow}}%d:{{/}} NodeID=%s NodePublicKey=%s\n",
-				i,
-				validators[i].NodeID,
-				validators[i].NodePublicKey,
-			)
+			if publicKey == validators[i].NodePublicKey {
+				nodeID = validators[i].NodeID
+				break
+			}
 		}
-		// Select validator
-		keyIndex, err := handler.Root().PromptChoice("validator to register for staking", len(validators))
-		if err != nil {
-			return err
+		if nodeID.Compare(ids.EmptyNodeID) == 0 {
+			hutils.Outf("{{red}}actor is not a signer for any of the validators{{/}}\n")
+			return nil
 		}
-		validatorChosen := validators[keyIndex]
-		nodeID := validatorChosen.NodeID
+		hutils.Outf("{{yellow}}NodeID:{{/}} %s\n", nodeID.String())
 
 		// Get balance info
 		_, _, balance, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, ids.Empty, true)
@@ -713,7 +723,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 		currentTime := time.Now().UTC()
 
 		// Select stakeStartTime
-		stakeStartTimeString, err := handler.Root().PromptString(
+		/* stakeStartTimeString, err := handler.Root().PromptString(
 			fmt.Sprintf("Staking Start Time(must be after %s) [YYYY-MM-DD HH:MM:SS]", currentTime.Format(TimeLayout)),
 			1,
 			32,
@@ -745,6 +755,10 @@ var registerValidatorStakeCmd = &cobra.Command{
 		if stakeEndTime.Before(stakeStartTime) {
 			return fmt.Errorf("staking end time must be after the staking start time (%s)", stakeStartTimeString)
 		}
+		*/
+
+		stakeStartTime := currentTime.Add(2 * time.Minute)
+		stakeEndTime := currentTime.Add(3 * time.Minute)
 
 		// Select delegationFeeRate
 		delegationFeeRate, err := handler.Root().PromptInt("Delegation Fee Rate(must be over 2)", 100)
@@ -767,14 +781,31 @@ var registerValidatorStakeCmd = &cobra.Command{
 			return err
 		}
 
-		// Generate transaction
-		_, _, err = sendAndWait(ctx, nil, &actions.RegisterValidatorStake{
+		stakeInfo := &actions.ValidatorStakeInfo{
 			NodeID:            nodeID.Bytes(),
 			StakeStartTime:    uint64(stakeStartTime.Unix()),
 			StakeEndTime:      uint64(stakeEndTime.Unix()),
 			StakedAmount:      stakedAmount,
 			DelegationFeeRate: uint64(delegationFeeRate),
 			RewardAddress:     rewardAddress,
+		}
+		stakeInfoBytes, err := stakeInfo.Marshal()
+		if err != nil {
+			return err
+		}
+		authFactory := auth.NewBLSFactory(secretKey)
+		signature, err := authFactory.Sign(stakeInfoBytes)
+		if err != nil {
+			return err
+		}
+		signaturePacker := codec.NewWriter(signature.Size(), signature.Size())
+		signature.Marshal(signaturePacker)
+		authSignature := signaturePacker.Bytes()
+
+		// Generate transaction
+		_, _, err = sendAndWait(ctx, nil, &actions.RegisterValidatorStake{
+			StakeInfo:     stakeInfoBytes,
+			AuthSignature: authSignature,
 		}, hcli, hws, ncli, factory, true)
 		return err
 	},

@@ -7,7 +7,6 @@ var (
 	OutputValueZero    = []byte("value is zero")
 	OutputMemoTooLarge = []byte("memo is too large")
 
-	OutputStakedAmountZero          = []byte("staked amount is zero")
 	OutputLockupPeriodInvalid       = []byte("lockup period is invalid")
 	OutputStakeMissing              = []byte("stake is missing")
 	OutputUnauthorized              = []byte("unauthorized")
@@ -37,8 +36,11 @@ var (
 	OutputWrongOwner    = []byte("wrong owner")
 
 	// register_validator_stake.go
+	OutputDifferentSignerThanActor   = []byte("different signer than actor")
+	OutputStakedAmountInvalid        = []byte("staked amount must be between 1.5 million and 1 billion")
 	OutputInvalidStakeStartTime      = []byte("invalid stake start time")
 	OutputInvalidStakeEndTime        = []byte("invalid stake end time")
+	OutputInvalidStakeDuration       = []byte("invalid stake duration")
 	OutputInvalidDelegationFeeRate   = []byte("delegation fee rate must be over 2 and under 100")
 	OutputValidatorAlreadyRegistered = []byte("validator already registered")
 )

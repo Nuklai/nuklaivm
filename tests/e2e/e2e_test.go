@@ -1640,7 +1640,7 @@ func acceptTransaction(hcli *hrpc.JSONRPCClient, ncli *nrpc.JSONRPCClient) {
 	}
 }
 
-// copyNodeInfo handles the entire process of copying staking.* files from the source directory
+// copyNodeInfo handles the entire process of copying signer.key & staking.* files from the source directory
 // to the destination directory, after stripping out "/db" from the source path.
 func copyNodeInfo(sourceLogPath, destDir string) error {
 	// Step 1: Strip out "/db" from the source path
@@ -1651,8 +1651,19 @@ func copyNodeInfo(sourceLogPath, destDir string) error {
 		return fmt.Errorf("failed to create destination directory: %w", err)
 	}
 
-	// Step 2: Define the source directory with "staking.*" pattern
-	sourceDir := filepath.Join(basePath, "staking.*")
+	// Define the full path for signer.key
+	signerKeyPath := filepath.Join(basePath, "signer.key")
+
+	// Step 2: Copy the signer.key file if it exists
+	if _, err := os.Stat(signerKeyPath); err == nil {
+		destSignerKeyPath := filepath.Join(destDir, "signer.key")
+		if err := forceCopyFile(signerKeyPath, destSignerKeyPath); err != nil {
+			return fmt.Errorf("failed to copy signer.key: %w", err)
+		}
+	} else if !os.IsNotExist(err) {
+		// If the error is not due to the file not existing, return the error
+		return fmt.Errorf("error checking signer.key: %w", err)
+	}
 
 	// Step 3: Copy files matching "staking.*" from source to destination, force overwrite
 	return filepath.Walk(basePath, func(path string, info os.FileInfo, err error) error {
@@ -1660,7 +1671,7 @@ func copyNodeInfo(sourceLogPath, destDir string) error {
 			return err
 		}
 		// Match only files that start with "staking."
-		if matched, _ := filepath.Match(sourceDir, path); matched {
+		if matched, _ := filepath.Match("staking.*", info.Name()); matched {
 			destPath := filepath.Join(destDir, info.Name())
 			return forceCopyFile(path, destPath)
 		}
