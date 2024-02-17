@@ -58,7 +58,7 @@ func (s *DelegateUserStake) Execute(
 	mu state.Mutable,
 	_ int64,
 	actor codec.Address,
-	txID ids.ID,
+	_ ids.ID,
 	_ bool,
 ) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
 	nodeID, err := ids.ToNodeID(s.NodeID)
