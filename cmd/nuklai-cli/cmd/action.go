@@ -8,6 +8,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math"
+	"regexp"
 	"sort"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/hypersdk/chain"
+	hyperCli "github.com/ava-labs/hypersdk/cli"
 	"github.com/ava-labs/hypersdk/codec"
 	hconsts "github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/crypto/bls"
@@ -662,12 +665,62 @@ const (
 )
 
 var registerValidatorStakeCmd = &cobra.Command{
-	Use: "register-validator-stake",
-	RunE: func(*cobra.Command, []string) error {
+	Use: "register-validator-stake [manual | auto <node#>]",
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) == 0 || (args[0] != "manual" && args[0] != "auto") {
+			return ErrInvalidArgs
+		}
+		return nil
+	},
+	RunE: func(_ *cobra.Command, args []string) error {
+		autoRegister := args[0] == "auto"
+		nodeNumber := "node1"
+		if len(args) == 2 {
+			isValid := regexp.MustCompile(`^node([1-9]|10)$`).MatchString(nodeNumber)
+			if !isValid {
+				return fmt.Errorf("invalid node number")
+			}
+			nodeNumber = args[1]
+		}
+
 		ctx := context.Background()
 		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
 		if err != nil {
 			return err
+		}
+
+		if autoRegister {
+			hutils.Outf("{{yellow}}Loading private key for %s{{/}}\n", nodeNumber)
+			validatorSignerKey, err := loadPrivateKey("bls", fmt.Sprintf("/tmp/nuklaivm/nodes/%s-bls/signer.key", nodeNumber))
+			if err != nil {
+				return err
+			}
+			validatorSignerAddress := codec.MustAddressBech32(nconsts.HRP, validatorSignerKey.Address)
+			nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
+			if err != nil {
+				return err
+			}
+			_, _, balance, _, err := handler.GetAssetInfo(ctx, nclients[0], validatorSignerKey.Address, ids.Empty, true)
+			if err != nil {
+				return err
+			}
+			hutils.Outf("{{yellow}}Balance of validator signer:{{/}} %s\n", hutils.FormatBalance(balance, nconsts.Decimals))
+			if balance < uint64(100*math.Pow10(int(nconsts.Decimals))) {
+				hutils.Outf("{{yellow}} You need a minimum of 100 NAI to register a validator{{/}}\n")
+				return nil
+			}
+			// Set the default key to the validator signer key
+			hutils.Outf("{{yellow}}Loading validator signer key :{{/}} %s\n", validatorSignerAddress)
+			if err := handler.h.StoreKey(validatorSignerKey); err != nil && !errors.Is(err, hyperCli.ErrDuplicate) {
+				return err
+			}
+			if err := handler.h.StoreDefaultKey(validatorSignerKey.Address); err != nil {
+				return err
+			}
+			_, priv, factory, hcli, hws, ncli, err = handler.DefaultActor()
+			if err != nil {
+				return err
+			}
 		}
 
 		keyType, _ := getKeyType(priv.Address)
@@ -679,6 +732,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 			return err
 		}
 		publicKey := base64.StdEncoding.EncodeToString(bls.PublicFromPrivateKey(secretKey).Compress())
+		hutils.Outf("{{yellow}}Validator Signer Address: %s Public Key:{{/}} %s\n", codec.MustAddressBech32(nconsts.HRP, priv.Address), publicKey)
 
 		// Get the validator for which the actor is a signer
 		// Get current list of validators
@@ -698,16 +752,20 @@ var registerValidatorStakeCmd = &cobra.Command{
 				break
 			}
 		}
+		hutils.Outf("{{yellow}}Validator NodeID:{{/}} %s\n", nodeID.String())
 		if nodeID.Compare(ids.EmptyNodeID) == 0 {
 			hutils.Outf("{{red}}actor is not a signer for any of the validators{{/}}\n")
 			return nil
 		}
-		hutils.Outf("{{yellow}}NodeID:{{/}} %s\n", nodeID.String())
 
 		// Get balance info
 		_, _, balance, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, ids.Empty, true)
 		if balance == 0 || err != nil {
 			return err
+		}
+		if balance < uint64(100*math.Pow10(int(nconsts.Decimals))) {
+			hutils.Outf("{{yellow}} You need a minimum of 100 NAI to register a validator{{/}}\n")
+			return nil
 		}
 
 		// Select staked amount
@@ -721,59 +779,63 @@ var registerValidatorStakeCmd = &cobra.Command{
 
 		// Get current time
 		currentTime := time.Now().UTC()
+		stakeStartTime := currentTime.Add(2 * time.Minute)
+		stakeEndTime := currentTime.Add(3 * time.Minute)
+		delegationFeeRate := 10
+		rewardAddress := priv.Address
 
-		// Select stakeStartTime
-		/* stakeStartTimeString, err := handler.Root().PromptString(
-			fmt.Sprintf("Staking Start Time(must be after %s) [YYYY-MM-DD HH:MM:SS]", currentTime.Format(TimeLayout)),
-			1,
-			32,
-		)
-		if err != nil {
-			return err
+		if !autoRegister {
+			// Select stakeStartTime
+			stakeStartTimeString, err := handler.Root().PromptString(
+				fmt.Sprintf("Staking Start Time(must be after %s) [YYYY-MM-DD HH:MM:SS]", currentTime.Format(TimeLayout)),
+				1,
+				32,
+			)
+			if err != nil {
+				return err
+			}
+			stakeStartTime, err = time.Parse(TimeLayout, stakeStartTimeString)
+			if err != nil {
+				return err
+			}
+
+			// Select stakeEndTime
+			stakeEndTimeString, err := handler.Root().PromptString(
+				fmt.Sprintf("Staking End Time(must be after %s) [YYYY-MM-DD HH:MM:SS]", stakeStartTimeString),
+				1,
+				32,
+			)
+			if err != nil {
+				return err
+			}
+			stakeEndTime, err = time.Parse(TimeLayout, stakeEndTimeString)
+			if err != nil {
+				return err
+			}
+
+			// Select delegationFeeRate
+			delegationFeeRate, err = handler.Root().PromptInt("Delegation Fee Rate(must be over 2)", 100)
+			if err != nil {
+				return err
+			}
+
+			// Select rewardAddress
+			rewardAddress, err = handler.Root().PromptAddress("Reward Address")
+			if err != nil {
+				return err
+			}
 		}
-		stakeStartTime, err := time.Parse(TimeLayout, stakeStartTimeString)
-		if err != nil {
-			return err
-		}
+
 		if stakeStartTime.Before(currentTime) {
 			return fmt.Errorf("staking start time must be after the current time (%s)", currentTime.Format(TimeLayout))
 		}
-
-		// Select stakeEndTime
-		stakeEndTimeString, err := handler.Root().PromptString(
-			fmt.Sprintf("Staking End Time(must be after %s) [YYYY-MM-DD HH:MM:SS]", stakeStartTimeString),
-			1,
-			32,
-		)
-		if err != nil {
-			return err
-		}
-		stakeEndTime, err := time.Parse(TimeLayout, stakeEndTimeString)
-		if err != nil {
-			return err
-		}
 		if stakeEndTime.Before(stakeStartTime) {
-			return fmt.Errorf("staking end time must be after the staking start time (%s)", stakeStartTimeString)
-		}
-		*/
-
-		stakeStartTime := currentTime.Add(2 * time.Minute)
-		stakeEndTime := currentTime.Add(3 * time.Minute)
-
-		// Select delegationFeeRate
-		delegationFeeRate, err := handler.Root().PromptInt("Delegation Fee Rate(must be over 2)", 100)
-		if err != nil {
-			return err
+			return fmt.Errorf("staking end time must be after the staking start time (%s)", stakeStartTime.Format(TimeLayout))
 		}
 		if delegationFeeRate < 2 || delegationFeeRate > 100 {
 			return fmt.Errorf("delegation fee rate must be over 2 and under 100")
 		}
-
-		// Select rewardAddress
-		rewardAddress, err := handler.Root().PromptAddress("Reward Address")
-		if err != nil {
-			return err
-		}
+		hutils.Outf("{{yellow}}Staking Info - stakeStartTime: %s stakeEndTime: %s delegationFeeRate: %d rewardAddress: %s\n", stakeStartTime.Format(TimeLayout), stakeEndTime.Format(TimeLayout), delegationFeeRate, codec.MustAddressBech32(nconsts.HRP, rewardAddress))
 
 		// Confirm action
 		cont, err := handler.Root().PromptContinue()

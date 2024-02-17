@@ -4,36 +4,138 @@ Even if there may be validators that are already taking part in the consensus of
 staking mechanism. In order for a validator to register for staking on `nuklaivm`, they need to use the exact same account as they used while setting up the validator for
 the Avalanche primary network.
 
+When you run the `run.sh` script, it runs the `tests/e2e/e2e_test.go` which in turn copies over the `signer.key` for all the auto-generated validator nodes. The reason we do this is to make it easier to test the registration of the validator for staking on `nuklaivm` using `nuklai-cli`.
+
+There are two ways of registering your validator for staking.
+
+#### Automatic run
+
+We can let everything be configured automatically which means it'll set the values for staking automatically such as for:
+
+- stakeStartTime: Sets it to 2 minutes from now
+- stakeEndTime: Sets it to 3 minutes from now
+- delegationFeeRate: Sets it to 10%
+- rewardAddress: Sets it to the transaction actor
+
+The only thing we would need to do is send some NAI that will be used for staking.
+
 ```bash
-./build/nuklai-cli action register-validator-stake
+./build/nuklai-cli action register-validator-stake auto node1
 ```
 
-If successful, the output should be something like:
+What this does is it imports the `staking.key` file located at `/tmp/nuklaivm/nodes/node1-bls/signer.key` and then tries to use it to register `node1` for staking.
+
+This is because in order for registration of validator staking to work, you will need to use the same account you used while registering the validator to the Avalanche primary network to prevent unauthorized users from registering someone else's validator node.
+
+If you don't have enough NAI in your account, you will see something like:
 
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: wkYgAYam1EB6Q7qPnRS8zMMaU13S27fYwgxS3fjGAH9JKHdUi
-validators: 5
-0: NodeID=NodeID-7jdCBX7cZkCTALUZVoCoAqLRhpa3jkw35 NodePublicKey=hcnVrQ12qQvH0Pb4IxNESVcYkztDn/kzn3WWrpRRZHvixmtIgatMjgDIJ8cRjOAB
-1: NodeID=NodeID-JvQ7MZJd2M3xZFst86s2igP3jpyYRpDpD NodePublicKey=iz+92825d6rKcV7jGkEPAib28lySAHhI9X0Wqe6UM1Q2LBh5nnFKXCB0ak8c9b/S
-2: NodeID=NodeID-5Eb8KR68tPHXEVK9gDXMvr7kfkUDuaZEz NodePublicKey=g2amgbfekrodLUDI08wOSqMnZ6jBZfVGFBL30AGmEVURDIpArmCdlOcbqbFftrIH
-3: NodeID=NodeID-HQtHNjV4iabHpMaD7sEBTUrftHRsuZFGc NodePublicKey=jjnD22xVBzxwIDve4hDQfSSy79UGUG3zk/LRbemlzSrfPJ9YQYvb6dqYv3AHLnh3
-4: NodeID=NodeID-6VH8eEDcUaaLDU3MeHPyQS78ctdSGwWEw NodePublicKey=if+D18Vt6DHScKdOnHyaWuegNFK7S12mIW3CCfWp6eia1jwI2Vsc+3xzByNtb7iY
-validator to register for staking: 0
-balance: 853000000.000000000 NAI
+chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
+Loading private key for node1
+chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
+balance: 0.000000000 NAI
+please send funds to nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc
+exiting...
+Balance of validator signer: 0.000000000
+ You need a minimum of 100 NAI to register a validator
+```
+
+So, all we need to do is send at least 100 NAI to `nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc`
+
+After sending some NAI to this account using `./build/nuklai-cli action transfer`, let's try this again:
+
+```bash
+./build/nuklai-cli action register-validator-stake auto node1
+```
+
+If successful, you should see something like:
+
+```
+database: .nuklai-cli
+address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
+Loading private key for node1
+chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
+balance: 101.000000000 NAI
+Balance of validator signer: 101.000000000
+Loading validator signer key : nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc
+address: nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc
+chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
+Validator Signer Address: nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc Public Key: t7et4jcSplg6okXPLyWVaWmEMajENU82RREoqCZUNtzatC9AVIdfUkbrtPKyPDd3
+Validator NodeID: NodeID-AySfsjEAiDZUZwW8XN8gFmvRU4PAbdPTQ
+balance: 101.000000000 NAI
 Staked amount: 100
-✔ Staking Start Time(must be after 2024-02-15 15:53:44) [YYYY-MM-DD HH:MM:SS]: 2024-02-15 15:56:00█
-✔ Staking End Time(must be after 2024-02-15 15:56:00) [YYYY-MM-DD HH:MM:SS]: 2024-02-15 15:57:00█
-✔ Delegation Fee Rate(must be over 2): 50█
-Reward Address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+Staking Info -  stakeStartTime: 2024-02-17 00:47:48 stakeEndTime: 2024-02-17 00:48:48 delegationFeeRate: 10 rewardAddress: nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc
 ✔ continue (y/n): y█
-✅ txID: FUQA9KV4z7JcPNNh6WiSHXdGYS6RSqMVNrxUVMhyfyrJgJJUT
+✅ txID: 2kZWFPX242f7o6FJRGxnCZERvW2vH3f2jgbwuaW9w7xff95BGc
+```
+
+#### Manual run
+
+Here, we can be granular and set our own values for stakeStartTime, stakeEndTime, delegationFeeRate and rewardAddress.
+
+First, let's import the key manually:
+
+```bash
+./build/nuklai-cli key import bls /tmp/nuklaivm/nodes/node2-bls/signer.key
+```
+
+Which should output:
+
+```
+database: .nuklai-cli
+imported address: nuklai1qgzqljfa8zzrg9ne8vuu9txjxvt9n3ns58zq3kfry9pryw4kqknjkfkr30c
+```
+
+Let's make sure we have enough balance to send
+
+```bash
+./build/nuklai-cli key balance
+```
+
+Which outputs:
+
+```
+database: .nuklai-cli
+address: nuklai1qgzqljfa8zzrg9ne8vuu9txjxvt9n3ns58zq3kfry9pryw4kqknjkfkr30c
+chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
+assetID (use NAI for native token): NAI
+uri: http://127.0.0.1:32911/ext/bc/2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
+balance: 400.000000000 NAI
+```
+
+To register our validator for staking manually, we can do:
+
+```bash
+./build/nuklai-cli action register-validator-stake manual
+```
+
+If successful, you should see something like:
+
+```
+database: .nuklai-cli
+address: nuklai1qgzqljfa8zzrg9ne8vuu9txjxvt9n3ns58zq3kfry9pryw4kqknjkfkr30c
+chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
+Validator Signer Address: nuklai1qgzqljfa8zzrg9ne8vuu9txjxvt9n3ns58zq3kfry9pryw4kqknjkfkr30c Public Key: rxgK6sl8wgKLTNidfKrXgPRuwTDC8SqRy25ZXl8Sy20U6nEXv0nrVj0XYKbGynMd
+Validator NodeID: NodeID-Lz8FCjSXyLwF8WUKAPWwFgmLYhwhEQzXe
+balance: 400.000000000 NAI
+✔ Staked amount: 200█
+Staking Start Time(must be after 2024-02-17 01:02:48) [YYYY-MM-DD HH:MM:SS]:  2024-02-17 01:05:00
+✔ Staking End Time(must be after 2024-02-17 01:05:00) [YYYY-MM-DD HH:MM:SS]:  2024-02-17 01:09:00█
+✔ Delegation Fee Rate(must be over 2): 3█
+✔ Reward Address: nuklai1qgzqljfa8zzrg9ne8vuu9txjxvt9n3ns58zq3kfry9pryw4kqknjkfkr30c█
+Staking Info - stakeStartTime: 2024-02-17 01:05:00 stakeEndTime: 2024-02-17 01:09:00 delegationFeeRate: 3 rewardAddress: nuklai1qgzqljfa8zzrg9ne8vuu9txjxvt9n3ns58zq3kfry9pryw4kqknjkfkr30c
+✔ continue (y/n): y█
+✅ txID: 2NSaH96NYQuSk1FEppo1sxJPuceMzDRxQVE1dzrmHuLGEFy7FC
 ```
 
 ### Get Validator stake info
 
-You may want to check your staking info such as stake start time, stake end time, staked amount, delegation fee rate and reward address. To do so, you can do:
+You may want to check your validator staking info such as stake start time, stake end time, staked amount, delegation fee rate and reward address. To do so, you can do:
+
+Let's check the validator staking info for node1 or `NodeID=NodeID-AySfsjEAiDZUZwW8XN8gFmvRU4PAbdPTQ` which we staked above.
 
 ```bash
 ./build/nuklai-cli action get-validator-stake
@@ -43,16 +145,16 @@ If successful, the output should be something like:
 
 ```
 database: .nuklai-cli
-chainID: wkYgAYam1EB6Q7qPnRS8zMMaU13S27fYwgxS3fjGAH9JKHdUi
+chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
 validators: 5
-0: NodeID=NodeID-6VH8eEDcUaaLDU3MeHPyQS78ctdSGwWEw NodePublicKey=if+D18Vt6DHScKdOnHyaWuegNFK7S12mIW3CCfWp6eia1jwI2Vsc+3xzByNtb7iY
-1: NodeID=NodeID-7jdCBX7cZkCTALUZVoCoAqLRhpa3jkw35 NodePublicKey=hcnVrQ12qQvH0Pb4IxNESVcYkztDn/kzn3WWrpRRZHvixmtIgatMjgDIJ8cRjOAB
-2: NodeID=NodeID-JvQ7MZJd2M3xZFst86s2igP3jpyYRpDpD NodePublicKey=iz+92825d6rKcV7jGkEPAib28lySAHhI9X0Wqe6UM1Q2LBh5nnFKXCB0ak8c9b/S
-3: NodeID=NodeID-5Eb8KR68tPHXEVK9gDXMvr7kfkUDuaZEz NodePublicKey=g2amgbfekrodLUDI08wOSqMnZ6jBZfVGFBL30AGmEVURDIpArmCdlOcbqbFftrIH
-4: NodeID=NodeID-HQtHNjV4iabHpMaD7sEBTUrftHRsuZFGc NodePublicKey=jjnD22xVBzxwIDve4hDQfSSy79UGUG3zk/LRbemlzSrfPJ9YQYvb6dqYv3AHLnh3
-validator to register for staking: 1
+0: NodeID=NodeID-8toEuCFZ9E3jqee6X6ynWagzEXdYy6XZU NodePublicKey=pz2sY5ChOJljXCPcB2MJSTKGjJ7aipJ7N4TUon/k5kWTA+pCoxqAPpWiGNpM6VHK
+1: NodeID=NodeID-PZofQ3NucKr43wxZN9vWzxiMnvW4k2Ygp NodePublicKey=q0EvKTkjfDjY4YzE7AX4hldyhe2HjXf6JsZMkmtcES99qaiZu5J4VPaZ5U4BWFPT
+2: NodeID=NodeID-Lz8FCjSXyLwF8WUKAPWwFgmLYhwhEQzXe NodePublicKey=rxgK6sl8wgKLTNidfKrXgPRuwTDC8SqRy25ZXl8Sy20U6nEXv0nrVj0XYKbGynMd
+3: NodeID=NodeID-AySfsjEAiDZUZwW8XN8gFmvRU4PAbdPTQ NodePublicKey=t7et4jcSplg6okXPLyWVaWmEMajENU82RREoqCZUNtzatC9AVIdfUkbrtPKyPDd3
+4: NodeID=NodeID-F4fToB3WiUVZbBqTMEyNz7rZQ9h4Vp9YC NodePublicKey=s8KHv77JjvPkVi0xdLYnqA5XCgH2dKXzI2leBBSvbDaOcH0cCNQbCoEXz1oNmHes
+✔ validator to register for staking: 3█
 validator stake:
-StakeStartTime=1708012560 StakeEndTime=1708012620 StakedAmount=100000000000 DelegationFeeRate=50 RewardAddress=nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx OwnerAddress=nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+StakeStartTime=1708130868 StakeEndTime=1708130928 StakedAmount=100000000000 DelegationFeeRate=10 RewardAddress=nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc OwnerAddress=nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc
 ```
 
 ### Get Emission Info
