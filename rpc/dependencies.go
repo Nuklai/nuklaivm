@@ -25,13 +25,21 @@ type Controller interface {
 	GetEmissionInfo() (uint64, uint64, uint64, *emission.EmissionAccount, error)
 	GetAllValidators() ([]*emission.Validator, error)
 	GetValidator(nodeID ids.NodeID) (*emission.Validator, error)
-	GetUserStake(nodeID ids.NodeID, owner string) (*emission.UserStake, error)
 	GetValidatorStakeFromState(ctx context.Context, nodeID ids.NodeID) (
 		bool, // exists
 		uint64, // StakeStartTime
 		uint64, // StakeEndTime
 		uint64, // StakedAmount
 		uint64, // DelegationFeeRate
+		codec.Address, // RewardAddress
+		codec.Address, // OwnerAddress
+		error,
+	)
+	GetDelegateUserStake(ctx context.Context, owner codec.Address, nodeID ids.NodeID) (
+		bool, // exists
+		uint64, // StakeStartTime
+		uint64, // StakeEndTime
+		uint64, // StakedAmount
 		codec.Address, // RewardAddress
 		codec.Address, // OwnerAddress
 		error,

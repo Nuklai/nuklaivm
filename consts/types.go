@@ -15,9 +15,10 @@ const (
 	ImportAssetID uint8 = 5
 
 	RegisterValidatorStakeID uint8 = 6
-	StakeValidatorID         uint8 = 7
-	UnstakeValidatorID       uint8 = 8
-	ClaimStakingRewardID     uint8 = 9
+	WithdrawValidatorStakeID uint8 = 7
+	DelegateUserStakeID      uint8 = 8
+	UndelegateUserStakeID    uint8 = 9
+	ClaimStakingRewardsID    uint8 = 10
 
 	// Auth TypeIDs
 	ED25519ID   uint8 = 0

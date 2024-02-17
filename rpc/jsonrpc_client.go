@@ -178,23 +178,6 @@ func (cli *JSONRPCClient) Validators(ctx context.Context) ([]*emission.Validator
 	return resp.Validators, err
 }
 
-func (cli *JSONRPCClient) UserStakeInfo(ctx context.Context, nodeID ids.NodeID, owner string) (*emission.UserStake, error) {
-	resp := new(StakeReply)
-	err := cli.requester.SendRequest(
-		ctx,
-		"userStakeInfo",
-		&StakeArgs{
-			NodeID: nodeID,
-			Owner:  owner,
-		},
-		resp,
-	)
-	if err != nil {
-		return &emission.UserStake{}, err
-	}
-	return resp.UserStake, err
-}
-
 func (cli *JSONRPCClient) ValidatorStake(ctx context.Context, nodeID ids.NodeID) (uint64, uint64, uint64, uint64, codec.Address, codec.Address, error) {
 	resp := new(ValidatorStakeReply)
 	err := cli.requester.SendRequest(
@@ -209,6 +192,23 @@ func (cli *JSONRPCClient) ValidatorStake(ctx context.Context, nodeID ids.NodeID)
 		return 0, 0, 0, 0, codec.EmptyAddress, codec.EmptyAddress, err
 	}
 	return resp.StakeStartTime, resp.StakeEndTime, resp.StakedAmount, resp.DelegationFeeRate, resp.RewardAddress, resp.OwnerAddress, err
+}
+
+func (cli *JSONRPCClient) UserStake(ctx context.Context, owner codec.Address, nodeID ids.NodeID) (uint64, uint64, uint64, codec.Address, codec.Address, error) {
+	resp := new(UserStakeReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"userStake",
+		&UserStakeArgs{
+			Owner:  owner,
+			NodeID: nodeID,
+		},
+		resp,
+	)
+	if err != nil {
+		return 0, 0, 0, codec.EmptyAddress, codec.EmptyAddress, err
+	}
+	return resp.StakeStartTime, resp.StakeEndTime, resp.StakedAmount, resp.RewardAddress, resp.OwnerAddress, err
 }
 
 func (cli *JSONRPCClient) WaitForBalance(

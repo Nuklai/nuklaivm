@@ -194,7 +194,6 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 			}
 		}
 		totalFee += result.Fee
-		currentHeight := c.inner.LastAcceptedBlock().Height()
 		currentValidators, _ := c.inner.CurrentValidators(ctx)
 		if result.Success {
 			switch action := tx.Action.(type) {
@@ -216,7 +215,6 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 					// This should never happen
 					return err
 				}
-
 				// Check if the tx actor has signing permission for this NodeID
 				isValidatorOwner := false
 				for _, validator := range currentValidators {
@@ -228,9 +226,8 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				}
 				if !isValidatorOwner {
 					c.inner.Logger().Error("failed to register validator stake", zap.Error(fmt.Errorf("actor %s is not the owner of the validator", codec.MustAddressBech32(nconsts.HRP, tx.Auth.Actor()))))
-					continue
+					return fmt.Errorf("actor %s is not the owner of the validator", codec.MustAddressBech32(nconsts.HRP, tx.Auth.Actor()))
 				}
-
 				// Check to make sure the stake is valid
 				currentTime := c.inner.LastAcceptedBlock().Timestamp().UTC()
 				stakeStartTime := time.Unix(int64(stakeInfo.StakeStartTime), 0).UTC()
@@ -239,34 +236,38 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 					c.inner.Logger().Error("failed to register validator stake", zap.Error(fmt.Errorf("stake start time %d is before current time %d", stakeInfo.StakeStartTime, currentTime.Unix())))
 					return fmt.Errorf("stake start time %d is before current time %d", stakeInfo.StakeStartTime, currentTime.Unix())
 				}
-				// TODO: Register validator stake
-
+				// TODO: Register validator stake on Emission Balancer?
 				c.metrics.stakeAmount.Add(float64(stakeInfo.StakedAmount))
 				c.metrics.registerValidatorStake.Inc()
-			case *actions.StakeValidator:
-				c.metrics.stake.Inc()
+			case *actions.DelegateUserStake:
 				// Check to make sure the stake is valid
-				if action.EndLockUp > currentHeight {
-					if err := c.emission.StakeToValidator(tx.ID(), tx.Auth.Actor(), currentValidators, currentHeight, action.NodeID, action.StakedAmount); err != nil {
-						c.inner.Logger().Error("failed to stake to validator", zap.Error(err))
-					}
-				} else {
-					c.inner.Logger().Error("failed to stake to validator", zap.Error(fmt.Errorf("start lockup %d is greater than end lockup %d", currentHeight, action.EndLockUp)))
+				currentTime := c.inner.LastAcceptedBlock().Timestamp().UTC()
+				stakeStartTime := time.Unix(int64(action.StakeStartTime), 0).UTC()
+				if stakeStartTime.Before(currentTime) {
+					// This should never happen as we check for this in delegate_user_stake action
+					c.inner.Logger().Error("failed to delegate user stake", zap.Error(fmt.Errorf("stake start time %d is before current time %d", action.StakeStartTime, currentTime.Unix())))
+					return fmt.Errorf("stake start time %d is before current time %d", action.StakeStartTime, currentTime.Unix())
 				}
-			case *actions.UnstakeValidator:
-				c.metrics.unstake.Inc()
-				stakeResult, err := actions.UnmarshalStakeResult(result.Output)
+				// TODO: Delegate user stake on Emission Balancer?
+				c.metrics.stakeAmount.Add(float64(action.StakedAmount))
+				c.metrics.delegateUserStake.Inc()
+			case *actions.UndelegateUserStake:
+				stakeResult, err := actions.UnmarshalDelegateUserStakeResult(result.Output)
 				if err != nil {
 					// This should never happen
 					return err
 				}
-
-				// Check to make sure the unstake is valid
-				if currentHeight > stakeResult.EndLockUp {
-					if err := c.emission.UnstakeFromValidator(tx.Auth.Actor(), action.NodeID, action.Stake); err != nil {
-						c.inner.Logger().Error("failed to unstake from validator", zap.Error(err))
-					}
+				// Check to make sure the stake period has ended
+				currentTime := c.inner.LastAcceptedBlock().Timestamp().UTC()
+				endTime := time.Unix(int64(stakeResult.StakeEndTime), 0).UTC()
+				if currentTime.Before(endTime) {
+					// This should never happen as we check for this in undelegate_user_stake action
+					c.inner.Logger().Error("failed to unstake validator", zap.Error(fmt.Errorf("current time %d is before stake end time %d", currentTime.Unix(), stakeResult.StakeEndTime)))
+					return fmt.Errorf("current time %d is before stake end time %d", currentTime.Unix(), stakeResult.StakeEndTime)
 				}
+				// TODO: Undelegate user stake on Emission Balancer?
+				c.metrics.stakeAmount.Sub(float64(stakeResult.StakedAmount))
+				c.metrics.undelegateUserStake.Inc()
 			}
 		}
 	}

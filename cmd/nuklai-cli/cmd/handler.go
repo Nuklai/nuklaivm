@@ -225,42 +225,6 @@ func (*Handler) GetAllValidators(
 	return validators, nil
 }
 
-func (*Handler) GetUserStake(ctx context.Context,
-	cli *nrpc.JSONRPCClient, nodeID ids.NodeID, owner codec.Address,
-) (*emission.UserStake, error) {
-	saddr, err := codec.AddressBech32(nconsts.HRP, owner)
-	if err != nil {
-		return nil, err
-	}
-	userStake, err := cli.UserStakeInfo(ctx, nodeID, saddr)
-	if err != nil {
-		return nil, err
-	}
-
-	if userStake.Owner == "" {
-		hutils.Outf("{{yellow}}user stake: {{/}} Not staked yet\n")
-	} else {
-		hutils.Outf(
-			"{{yellow}}user stake: {{/}} Owner=%s StakedAmount=%d\n",
-			userStake.Owner,
-			userStake.StakedAmount,
-		)
-	}
-
-	index := 1
-	for txID, stakeInfo := range userStake.StakeInfo {
-		hutils.Outf(
-			"{{yellow}}stake #%d:{{/}} TxID=%s Amount=%d StartLockUp=%d\n",
-			index,
-			txID,
-			stakeInfo.Amount,
-			stakeInfo.StartLockUp,
-		)
-		index++
-	}
-	return userStake, err
-}
-
 func (*Handler) GetValidatorStake(
 	ctx context.Context,
 	cli *nrpc.JSONRPCClient,
@@ -293,6 +257,38 @@ func (*Handler) GetValidatorStake(
 		stakeEndTime,
 		stakedAmount,
 		delegationFeeRate,
+		rewardAddressString,
+		ownerAddressString, err
+}
+
+func (*Handler) GetUserStake(ctx context.Context,
+	cli *nrpc.JSONRPCClient, owner codec.Address, nodeID ids.NodeID,
+) (uint64, uint64, uint64, string, string, error) {
+	stakeStartTime, stakeEndTime, stakedAmount, rewardAddress, ownerAddress, err := cli.UserStake(ctx, owner, nodeID)
+	if err != nil {
+		return 0, 0, 0, "", "", err
+	}
+
+	rewardAddressString, err := codec.AddressBech32(nconsts.HRP, rewardAddress)
+	if err != nil {
+		return 0, 0, 0, "", "", err
+	}
+	ownerAddressString, err := codec.AddressBech32(nconsts.HRP, ownerAddress)
+	if err != nil {
+		return 0, 0, 0, "", "", err
+	}
+
+	hutils.Outf(
+		"{{yellow}}validator stake: {{/}}\nStakeStartTime=%d StakeEndTime=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
+		stakeStartTime,
+		stakeEndTime,
+		stakedAmount,
+		rewardAddressString,
+		ownerAddressString,
+	)
+	return stakeStartTime,
+		stakeEndTime,
+		stakedAmount,
 		rewardAddressString,
 		ownerAddressString, err
 }

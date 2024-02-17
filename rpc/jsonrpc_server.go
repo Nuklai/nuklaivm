@@ -179,27 +179,6 @@ func (j *JSONRPCServer) Validators(req *http.Request, _ *struct{}, reply *Valida
 	return nil
 }
 
-type StakeArgs struct {
-	NodeID ids.NodeID `json:"nodeID"`
-	Owner  string     `json:"owner"`
-}
-
-type StakeReply struct {
-	UserStake *emission.UserStake `json:"userStake"`
-}
-
-func (j *JSONRPCServer) UserStakeInfo(req *http.Request, args *StakeArgs, reply *StakeReply) (err error) {
-	_, span := j.c.Tracer().Start(req.Context(), "Server.UserStakeInfo")
-	defer span.End()
-
-	userStake, err := j.c.GetUserStake(args.NodeID, args.Owner)
-	if err != nil {
-		return err
-	}
-	reply.UserStake = userStake
-	return nil
-}
-
 type ValidatorStakeArgs struct {
 	NodeID ids.NodeID `json:"nodeID"`
 }
@@ -230,6 +209,39 @@ func (j *JSONRPCServer) ValidatorStake(req *http.Request, args *ValidatorStakeAr
 	reply.StakeEndTime = stakeEndTime
 	reply.StakedAmount = stakedAmount
 	reply.DelegationFeeRate = delegationFeeRate
+	reply.RewardAddress = rewardAddress
+	reply.OwnerAddress = ownerAddress
+	return nil
+}
+
+type UserStakeArgs struct {
+	Owner  codec.Address `json:"owner"`
+	NodeID ids.NodeID    `json:"nodeID"`
+}
+
+type UserStakeReply struct {
+	StakeStartTime uint64        `json:"stakeStartTime"` // Start date of the stake
+	StakeEndTime   uint64        `json:"stakeEndTime"`   // End date of the stake
+	StakedAmount   uint64        `json:"stakedAmount"`   // Amount of NAI staked
+	RewardAddress  codec.Address `json:"rewardAddress"`  // Address to receive rewards
+	OwnerAddress   codec.Address `json:"ownerAddress"`   // Address of the owner who delegated
+}
+
+func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply *UserStakeReply) (err error) {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.UserStake")
+	defer span.End()
+
+	exists, stakeStartTime, stakeEndTime, stakedAmount, rewardAddress, ownerAddress, err := j.c.GetDelegateUserStake(ctx, args.Owner, args.NodeID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrUserStakeNotFound
+	}
+
+	reply.StakeStartTime = stakeStartTime
+	reply.StakeEndTime = stakeEndTime
+	reply.StakedAmount = stakedAmount
 	reply.RewardAddress = rewardAddress
 	reply.OwnerAddress = ownerAddress
 	return nil

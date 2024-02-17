@@ -34,12 +34,15 @@ type StakingConfig struct {
 	// Minimum delegation fee, in the range [0, 100], that can be charged
 	// for delegation on the nuklai network.
 	MinDelegationFee uint64 `json:"minDelegationFee"`
-	// MinStakeDuration is the minimum amount of time a validator can validate
+	// MinValidatorStakeDuration is the minimum amount of time a validator can validate
 	// for in a single period.
-	MinStakeDuration time.Duration `json:"minStakeDuration"`
+	MinValidatorStakeDuration time.Duration `json:"minValidatorStakeDuration"`
 	// MaxStakeDuration is the maximum amount of time a validator can validate
 	// for in a single period.
-	MaxStakeDuration time.Duration `json:"maxStakeDuration"`
+	MaxValidatorStakeDuration time.Duration `json:"maxValidatorStakeDuration"`
+	// MinDelegatorStakeDuration is the minimum amount of time a user can delegate
+	// for in a single period.
+	MinDelegatorStakeDuration time.Duration `json:"minDelegatorStakeDuration"`
 	// RewardConfig is the config for the reward function.
 	RewardConfig RewardConfig `json:"rewardConfig"`
 }
@@ -52,14 +55,16 @@ func GetStakingConfig() StakingConfig {
 	minDelegatorStake, _ := hutils.ParseBalance("25", nconsts.Decimals)
 	supplyCap, _ := hutils.ParseBalance("10000000000", nconsts.Decimals)
 	return StakingConfig{
-		UptimeRequirement: 80, // 80%
-		MinValidatorStake: minValidatorStake,
-		MaxValidatorStake: maxValidatorStake,
-		MinDelegatorStake: minDelegatorStake,
-		MinDelegationFee:  2,               // 2%
-		MinStakeDuration:  1 * time.Minute, // 1 minute
+		UptimeRequirement:         80, // 80%
+		MinValidatorStake:         minValidatorStake,
+		MaxValidatorStake:         maxValidatorStake,
+		MinDelegatorStake:         minDelegatorStake,
+		MinDelegationFee:          2,               // 2%
+		MinValidatorStakeDuration: 1 * time.Minute, // 1 minute
 		// MinStakeDuration:  6 * 4 * 7 * 24 * time.Hour, // 6 months TODO: Enable this in production
-		MaxStakeDuration: 365 * 24 * time.Hour, // 1 year,
+		MaxValidatorStakeDuration: 365 * 24 * time.Hour, // 1 year,
+		MinDelegatorStakeDuration: 1 * time.Minute,      // 1 minute
+		// MinStakeDuration:  2 * 7 * 24 * time.Hour, // 2 weeks TODO: Enable this in production
 		RewardConfig: RewardConfig{
 			MintingPeriod: 365 * 24 * time.Hour,
 			SupplyCap:     supplyCap,

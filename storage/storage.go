@@ -63,15 +63,15 @@ const (
 	loanPrefix  = 0x8
 
 	registerValidatorStakePrefix = 0x9
-	stakePrefix                  = 0xA
+	delegateUserStakePrefix      = 0xA
 )
 
 const (
 	BalanceChunks                uint16 = 1
 	AssetChunks                  uint16 = 5
 	LoanChunks                   uint16 = 1
-	StakeChunks                  uint16 = 2
 	RegisterValidatorStakeChunks uint16 = 5
+	DelegateUserStakeChunks      uint16 = 3
 )
 
 var (
@@ -607,112 +607,122 @@ func DeleteRegisterValidatorStake(
 	return mu.Remove(ctx, RegisterValidatorStakeKey(nodeID))
 }
 
-// [stakePrefix] + [txID]
-func StakeKey(txID ids.ID) (k []byte) {
-	k = make([]byte, 1+hconsts.IDLen+hconsts.Uint16Len) // Length of prefix + txID + StakeChunks
-	k[0] = stakePrefix                                  // stakePrefix is a constant representing the staking category
-	copy(k[1:], txID[:])
-	binary.BigEndian.PutUint16(k[1+hconsts.IDLen:], StakeChunks) // Adding StakeChunks
+// [delegateUserStakePrefix] + [txID]
+func DelegateUserStakeKey(owner codec.Address, nodeID ids.NodeID) (k []byte) {
+	k = make([]byte, 1+codec.AddressLen+hconsts.NodeIDLen+hconsts.Uint16Len) // Length of prefix + owner + nodeID + DelegateUserStakeChunks
+	k[0] = delegateUserStakePrefix                                           // delegateUserStakePrefix is a constant representing the staking category
+	copy(k[1:], owner[:])
+	copy(k[1+codec.AddressLen:], nodeID[:])
+	binary.BigEndian.PutUint16(k[1+codec.AddressLen+hconsts.NodeIDLen:], DelegateUserStakeChunks) // Adding DelegateUserStakeChunks
 	return
 }
 
-func SetStake(
+func SetDelegateUserStake(
 	ctx context.Context,
 	mu state.Mutable,
-	stake ids.ID,
-	nodeID ids.NodeID,
-	stakedAmount uint64,
-	endLockUp uint64,
 	owner codec.Address,
+	nodeID ids.NodeID,
+	stakeStartTime uint64,
+	stakeEndTime uint64,
+	stakedAmount uint64,
+	rewardAddress codec.Address,
 ) error {
-	key := StakeKey(stake)
-	v := make([]byte, hconsts.NodeIDLen+(2*hconsts.Uint64Len)+codec.AddressLen) // Calculate the length of the encoded data
+	key := DelegateUserStakeKey(owner, nodeID)
+	v := make([]byte, 3*hconsts.Uint64Len+2*codec.AddressLen) // Calculate the length of the encoded data
 
 	offset := 0
-	copy(v[offset:], nodeID[:])
-	offset += hconsts.NodeIDLen
 
+	binary.BigEndian.PutUint64(v[offset:], stakeStartTime)
+	offset += hconsts.Uint64Len
+	binary.BigEndian.PutUint64(v[offset:], stakeEndTime)
+	offset += hconsts.Uint64Len
 	binary.BigEndian.PutUint64(v[offset:], stakedAmount)
 	offset += hconsts.Uint64Len
 
-	binary.BigEndian.PutUint64(v[offset:], endLockUp)
-	offset += hconsts.Uint64Len
-
+	copy(v[offset:], rewardAddress[:])
+	offset += codec.AddressLen
 	copy(v[offset:], owner[:])
 
 	return mu.Insert(ctx, key, v)
 }
 
-func GetStake(
+func GetDelegateUserStake(
 	ctx context.Context,
 	im state.Immutable,
-	stake ids.ID,
+	owner codec.Address,
+	nodeID ids.NodeID,
 ) (bool, // exists
-	ids.NodeID, // NodeID
+	uint64, // StakeStartTime
+	uint64, // StakeEndTime
 	uint64, // StakedAmount
-	uint64, // EndLockUp
-	codec.Address, // Owner
+	codec.Address, // RewardAddress
+	codec.Address, // OwnerAddress
 	error,
 ) {
-	key := StakeKey(stake)
+	key := DelegateUserStakeKey(owner, nodeID)
 	v, err := im.GetValue(ctx, key)
-	return innerGetStake(v, err)
+	return innerGetDelegateUserStake(v, err)
 }
 
 // Used to serve RPC queries
-func GetStakeFromState(
+func GetDelegateUserStakeFromState(
 	ctx context.Context,
 	f ReadState,
-	stake ids.ID,
+	owner codec.Address,
+	nodeID ids.NodeID,
 ) (bool, // exists
-	ids.NodeID, // NodeID
+	uint64, // StakeStartTime
+	uint64, // StakeEndTime
 	uint64, // StakedAmount
-	uint64, // EndLockUp
-	codec.Address, // Owner
+	codec.Address, // RewardAddress
+	codec.Address, // OwnerAddress
 	error,
 ) {
-	values, errs := f(ctx, [][]byte{StakeKey(stake)})
-	return innerGetStake(values[0], errs[0])
+	values, errs := f(ctx, [][]byte{DelegateUserStakeKey(owner, nodeID)})
+	return innerGetDelegateUserStake(values[0], errs[0])
 }
 
-func innerGetStake(v []byte, err error) (
+func innerGetDelegateUserStake(v []byte, err error) (
 	bool, // exists
-	ids.NodeID, // NodeID
+	uint64, // StakeStartTime
+	uint64, // StakeEndTime
 	uint64, // StakedAmount
-	uint64, // EndLockUp
-	codec.Address, // Owner
+	codec.Address, // RewardAddress
+	codec.Address, // OwnerAddress
 	error,
 ) {
 	if errors.Is(err, database.ErrNotFound) {
-		return false, ids.EmptyNodeID, 0, 0, codec.Address{}, nil
+		return false, 0, 0, 0, codec.Address{}, codec.Address{}, nil
 	}
 	if err != nil {
-		return false, ids.EmptyNodeID, 0, 0, codec.Address{}, err
+		return false, 0, 0, 0, codec.Address{}, codec.Address{}, nil
 	}
 
 	offset := 0
-	var nodeID ids.NodeID
-	copy(nodeID[:], v[offset:offset+hconsts.NodeIDLen])
-	offset += hconsts.NodeIDLen
 
+	stakeStartTime := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
+	offset += hconsts.Uint64Len
+	stakeEndTime := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
+	offset += hconsts.Uint64Len
 	stakedAmount := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
 	offset += hconsts.Uint64Len
 
-	endLockUp := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
-	offset += hconsts.Uint64Len
+	var rewardAddress codec.Address
+	copy(rewardAddress[:], v[offset:offset+codec.AddressLen])
+	offset += codec.AddressLen
+	var ownerAddress codec.Address
+	copy(ownerAddress[:], v[offset:offset+codec.AddressLen])
 
-	var walletAddress codec.Address
-	copy(walletAddress[:], v[offset:offset+codec.AddressLen])
-
-	return true, nodeID, stakedAmount, endLockUp, walletAddress, nil
+	return true, stakeStartTime, stakeEndTime, stakedAmount, rewardAddress, ownerAddress, nil
 }
 
-func DeleteStake(
+func DeleteDelegateUserStake(
 	ctx context.Context,
 	mu state.Mutable,
-	stake ids.ID,
+	owner codec.Address,
+	nodeID ids.NodeID,
 ) error {
-	return mu.Remove(ctx, StakeKey(stake))
+	return mu.Remove(ctx, DelegateUserStakeKey(owner, nodeID))
 }
 
 func HeightKey() (k []byte) {

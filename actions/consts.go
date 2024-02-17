@@ -8,12 +8,13 @@ const (
 
 	CreateAssetComputeUnits = 10
 	ExportAssetComputeUnits = 10
-	ImportAssetComputeUnits = 10
-	MintAssetComputeUnits   = 2
+	ImportAssetComputeUnits = 14
+	MintAssetComputeUnits   = 10
 	BurnAssetComputeUnits   = 2
 
 	RegisterValidatorStakeComputeUnits = 10
-	StakeValidatorComputeUnits         = 5
-	UnstakeValidatorComputeUnits       = 5
+	WithdrawValidatorStakeComputeUnits = 2
+	DelegateUserStakeComputeUnits      = 6
+	UndelegateUserStakeComputeUnits    = 2
 	ClaimStakingRewardComputeUnits     = 10
 )

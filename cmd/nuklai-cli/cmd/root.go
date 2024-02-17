@@ -154,24 +154,23 @@ func init() {
 	actionCmd.AddCommand(
 		transferCmd,
 
-		registerValidatorStakeCmd,
-		getValidatorStakeCmd,
-		stakeValidatorCmd,
-		unstakeValidatorCmd,
-
 		createAssetCmd,
 		mintAssetCmd,
 		// burnAssetCmd,
-
 		importAssetCmd,
 		exportAssetCmd,
+
+		registerValidatorStakeCmd,
+		getValidatorStakeCmd,
+		delegateUserStakeCmd,
+		undelegateUserStakeCmd,
+		getUserStakeCmd,
 	)
 
 	// emission
 	emissionCmd.AddCommand(
 		emissionInfoCmd,
 		emissionValidatorsCmd,
-		emissionStakeCmd,
 	)
 
 	// spam

@@ -45,7 +45,6 @@ func (r *RegisterValidatorStake) StateKeys(actor codec.Address, _ ids.ID) []stri
 			}
 		}
 	}
-
 	return []string{string(storage.BalanceKey(actor, ids.Empty))}
 }
 
@@ -95,9 +94,9 @@ func (r *RegisterValidatorStake) Execute(
 
 	stakingConfig := emission.GetStakingConfig()
 
-	// Check if the staked amount is greater than or equal to 1.5 million NAI
+	// Check if the staked amount is a valid amount
 	if stakeInfo.StakedAmount < stakingConfig.MinValidatorStake && stakeInfo.StakedAmount > stakingConfig.MaxValidatorStake {
-		return false, RegisterValidatorStakeComputeUnits, OutputStakedAmountInvalid, nil, nil
+		return false, RegisterValidatorStakeComputeUnits, OutputValidatorStakedAmountInvalid, nil, nil
 	}
 
 	// Get current time
@@ -114,7 +113,7 @@ func (r *RegisterValidatorStake) Execute(
 	}
 	// Check that the total staking period is at least the minimum staking period
 	stakeDuration := endTime.Sub(startTime)
-	if stakeDuration < stakingConfig.MinStakeDuration {
+	if stakeDuration < stakingConfig.MinValidatorStakeDuration || stakeDuration > stakingConfig.MaxValidatorStakeDuration {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeDuration, nil, nil
 	}
 

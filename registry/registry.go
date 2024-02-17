@@ -31,8 +31,8 @@ func init() {
 		nconsts.ActionRegistry.Register((&actions.ExportAsset{}).GetTypeID(), actions.UnmarshalExportAsset, false),
 
 		nconsts.ActionRegistry.Register((&actions.RegisterValidatorStake{}).GetTypeID(), actions.UnmarshalRegisterValidatorStake, false),
-		nconsts.ActionRegistry.Register((&actions.StakeValidator{}).GetTypeID(), actions.UnmarshalStakeValidator, false),
-		nconsts.ActionRegistry.Register((&actions.UnstakeValidator{}).GetTypeID(), actions.UnmarshalUnstakeValidator, false),
+		nconsts.ActionRegistry.Register((&actions.DelegateUserStake{}).GetTypeID(), actions.UnmarshalDelegateUserStake, false),
+		nconsts.ActionRegistry.Register((&actions.UndelegateUserStake{}).GetTypeID(), actions.UnmarshalUndelegateUserStake, false),
 
 		// When registering new auth, ALWAYS make sure to append at the end.
 		nconsts.AuthRegistry.Register((&auth.ED25519{}).GetTypeID(), auth.UnmarshalED25519, false),

@@ -11,4 +11,7 @@ var (
 
 	// register_validator_stake
 	ErrValidatorStakeNotFound = errors.New("validator stake not found")
+
+	// delegate_user_stake
+	ErrUserStakeNotFound = errors.New("user stake not found")
 )
