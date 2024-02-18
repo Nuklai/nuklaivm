@@ -490,18 +490,20 @@ var exportAssetCmd = &cobra.Command{
 // Note: the reference time is "Mon Jan 2 15:04:05 MST 2006" in Go
 const (
 	TimeLayout = "2006-01-02 15:04:05"
+	Auto       = "auto"
+	Manual     = "manual"
 )
 
 var registerValidatorStakeCmd = &cobra.Command{
 	Use: "register-validator-stake [manual | auto <node#>]",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 || (args[0] != "manual" && args[0] != "auto") {
+		if len(args) == 0 || (args[0] != Manual && args[0] != Auto) {
 			return ErrInvalidArgs
 		}
 		return nil
 	},
 	RunE: func(_ *cobra.Command, args []string) error {
-		autoRegister := args[0] == "auto"
+		autoRegister := args[0] == Auto
 		nodeNumber := "node1"
 		if len(args) == 2 {
 			isValid := regexp.MustCompile(`^node([1-9]|10)$`).MatchString(nodeNumber)
@@ -751,13 +753,13 @@ var getValidatorStakeCmd = &cobra.Command{
 var delegateUserStakeCmd = &cobra.Command{
 	Use: "delegate-user-stake [manual | auto]",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
-		if len(args) == 0 || (args[0] != "manual" && args[0] != "auto") {
+		if len(args) == 0 || (args[0] != Manual && args[0] != Auto) {
 			return ErrInvalidArgs
 		}
 		return nil
 	},
 	RunE: func(_ *cobra.Command, args []string) error {
-		autoRegister := args[0] == "auto"
+		autoRegister := args[0] == Auto
 		ctx := context.Background()
 		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
 		if err != nil {
