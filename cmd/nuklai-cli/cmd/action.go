@@ -749,8 +749,15 @@ var getValidatorStakeCmd = &cobra.Command{
 }
 
 var delegateUserStakeCmd = &cobra.Command{
-	Use: "delegate-user-stake",
-	RunE: func(*cobra.Command, []string) error {
+	Use: "delegate-user-stake [manual | auto]",
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) == 0 || (args[0] != "manual" && args[0] != "auto") {
+			return ErrInvalidArgs
+		}
+		return nil
+	},
+	RunE: func(_ *cobra.Command, args []string) error {
+		autoRegister := args[0] == "auto"
 		ctx := context.Background()
 		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
 		if err != nil {
@@ -798,37 +805,44 @@ var delegateUserStakeCmd = &cobra.Command{
 
 		// Get current time
 		currentTime := time.Now().UTC()
-		// Select stakeStartTime
-		stakeStartTimeString, err := handler.Root().PromptString(
-			fmt.Sprintf("Staking Start Time(must be after %s) [YYYY-MM-DD HH:MM:SS]", currentTime.Format(TimeLayout)),
-			1,
-			32,
-		)
-		if err != nil {
-			return err
-		}
-		stakeStartTime, err := time.Parse(TimeLayout, stakeStartTimeString)
-		if err != nil {
-			return err
-		}
+		stakeStartTime := currentTime.Add(2 * time.Minute)
+		stakeEndTime := currentTime.Add(3 * time.Minute)
+		rewardAddress := priv.Address
 
-		// Select stakeEndTime
-		stakeEndTimeString, err := handler.Root().PromptString(
-			fmt.Sprintf("Staking End Time(must be after %s) [YYYY-MM-DD HH:MM:SS]", stakeStartTimeString),
-			1,
-			32,
-		)
-		if err != nil {
-			return err
-		}
-		stakeEndTime, err := time.Parse(TimeLayout, stakeEndTimeString)
-		if err != nil {
-			return err
-		}
-		// Select rewardAddress
-		rewardAddress, err := handler.Root().PromptAddress("Reward Address")
-		if err != nil {
-			return err
+		if !autoRegister {
+			// Select stakeStartTime
+			stakeStartTimeString, err := handler.Root().PromptString(
+				fmt.Sprintf("Staking Start Time(must be after %s) [YYYY-MM-DD HH:MM:SS]", currentTime.Format(TimeLayout)),
+				1,
+				32,
+			)
+			if err != nil {
+				return err
+			}
+			stakeStartTime, err = time.Parse(TimeLayout, stakeStartTimeString)
+			if err != nil {
+				return err
+			}
+
+			// Select stakeEndTime
+			stakeEndTimeString, err := handler.Root().PromptString(
+				fmt.Sprintf("Staking End Time(must be after %s) [YYYY-MM-DD HH:MM:SS]", stakeStartTimeString),
+				1,
+				32,
+			)
+			if err != nil {
+				return err
+			}
+			stakeEndTime, err = time.Parse(TimeLayout, stakeEndTimeString)
+			if err != nil {
+				return err
+			}
+
+			// Select rewardAddress
+			rewardAddress, err = handler.Root().PromptAddress("Reward Address")
+			if err != nil {
+				return err
+			}
 		}
 
 		if stakeStartTime.Before(currentTime) {

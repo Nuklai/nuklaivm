@@ -76,7 +76,7 @@ func (u *UndelegateUserStake) Execute(
 	currentTime := time.Now().UTC()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
 	endTime := time.Unix(int64(stakeEndTime), 0).UTC()
-	// Check that currentTime is greater than stakeEndTime
+	// Check that currentTime is after stakeEndTime
 	if currentTime.Before(endTime) {
 		return false, UndelegateUserStakeComputeUnits, OutputStakeNotEnded, nil, nil
 	}
@@ -87,6 +87,7 @@ func (u *UndelegateUserStake) Execute(
 	if err := storage.AddBalance(ctx, mu, ownerAddress, ids.Empty, stakedAmount, true); err != nil {
 		return false, UndelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
+	// TODO: Claim Delegated Staking Rewards
 
 	sr := &DelegateStakeResult{stakedAmount, stakeEndTime}
 	output, err := sr.Marshal()

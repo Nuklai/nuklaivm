@@ -39,6 +39,7 @@ func (s *DelegateUserStake) StateKeys(actor codec.Address, _ ids.ID) []string {
 		return []string{
 			string(storage.BalanceKey(actor, ids.Empty)),
 			string(storage.DelegateUserStakeKey(actor, nodeID)),
+			string(storage.RegisterValidatorStakeKey(nodeID)),
 		}
 	}
 	return []string{string(storage.BalanceKey(actor, ids.Empty))}
@@ -65,8 +66,13 @@ func (s *DelegateUserStake) Execute(
 	if err != nil {
 		return false, DelegateUserStakeComputeUnits, OutputInvalidNodeID, nil, nil
 	}
-	// Check if the user has already delegated before
-	exists, _, _, _, _, _, _ := storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
+	// Check if the validator the user is trying to delegate to is registered for staking
+	exists, _, validatorStakeEndTime, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
+	if !exists {
+		return false, RegisterValidatorStakeComputeUnits, OutputValidatorNotYetRegistered, nil, nil
+	}
+	// Check if the user has already delegated to this validator node before
+	exists, _, _, _, _, _, _ = storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
 	if exists {
 		return false, DelegateUserStakeComputeUnits, OutputUserAlreadyStaked, nil, nil
 	}
@@ -86,8 +92,8 @@ func (s *DelegateUserStake) Execute(
 		return false, DelegateUserStakeComputeUnits, OutputInvalidStakeStartTime, nil, nil
 	}
 	endTime := time.Unix(int64(s.StakeEndTime), 0).UTC()
-	// Check that stakeEndTime is greater than stakeStartTime
-	if endTime.Before(startTime) {
+	// Check that stakeEndTime is not before stakeStartTime and validatorStakeEndTime is not after stakeEndTime
+	if endTime.Before(startTime) && !(time.Unix(int64(validatorStakeEndTime), 0).UTC()).After(endTime) {
 		return false, DelegateUserStakeComputeUnits, OutputInvalidStakeEndTime, nil, nil
 	}
 	// Check that the total staking period is at least the minimum staking period

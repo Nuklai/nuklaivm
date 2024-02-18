@@ -6,15 +6,15 @@ package actions
 const (
 	TransferComputeUnits = 1
 
-	CreateAssetComputeUnits = 10
-	ExportAssetComputeUnits = 10
-	ImportAssetComputeUnits = 14
-	MintAssetComputeUnits   = 10
-	BurnAssetComputeUnits   = 2
+	CreateAssetComputeUnits = 5
+	ExportAssetComputeUnits = 5
+	ImportAssetComputeUnits = 5
+	MintAssetComputeUnits   = 5
+	BurnAssetComputeUnits   = 1
 
-	RegisterValidatorStakeComputeUnits = 10
-	WithdrawValidatorStakeComputeUnits = 2
-	DelegateUserStakeComputeUnits      = 6
-	UndelegateUserStakeComputeUnits    = 2
-	ClaimStakingRewardComputeUnits     = 10
+	RegisterValidatorStakeComputeUnits = 5
+	WithdrawValidatorStakeComputeUnits = 1
+	DelegateUserStakeComputeUnits      = 5
+	UndelegateUserStakeComputeUnits    = 1
+	ClaimStakingRewardComputeUnits     = 2
 )
