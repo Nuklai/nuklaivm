@@ -111,6 +111,6 @@ func (r *Rules) GetWindowTargetUnits() chain.Dimensions {
 	return r.g.WindowTargetUnits
 }
 
-func (r *Rules) FetchCustom(string) (any, bool) {
+func (*Rules) FetchCustom(string) (any, bool) {
 	return nil, false
 }

@@ -69,7 +69,7 @@ func (u *UndelegateUserStake) Execute(
 	}
 
 	// Get current time
-	currentTime := time.Unix(int64(timestamp), 0).UTC()
+	currentTime := time.Unix(timestamp, 0).UTC()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
 	endTime := time.Unix(int64(stakeEndTime), 0).UTC()
 	// Check that currentTime is after stakeEndTime

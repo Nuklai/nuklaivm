@@ -95,7 +95,7 @@ func (r *RegisterValidatorStake) Execute(
 	}
 
 	// Get current time
-	currentTime := time.Unix(int64(timestamp), 0).UTC()
+	currentTime := time.Unix(timestamp, 0).UTC()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
 	startTime := time.Unix(int64(stakeInfo.StakeStartTime), 0).UTC()
 	if startTime.Before(currentTime) {
