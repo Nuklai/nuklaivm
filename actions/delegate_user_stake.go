@@ -35,18 +35,17 @@ func (*DelegateUserStake) GetTypeID() uint8 {
 }
 
 func (s *DelegateUserStake) StateKeys(actor codec.Address, _ ids.ID) []string {
-	if nodeID, err := ids.ToNodeID(s.NodeID); err == nil {
-		return []string{
-			string(storage.BalanceKey(actor, ids.Empty)),
-			string(storage.DelegateUserStakeKey(actor, nodeID)),
-			string(storage.RegisterValidatorStakeKey(nodeID)),
-		}
+	// TODO: How to better handle a case where the NodeID is invalid?
+	nodeID, _ := ids.ToNodeID(s.NodeID)
+	return []string{
+		string(storage.BalanceKey(actor, ids.Empty)),
+		string(storage.DelegateUserStakeKey(actor, nodeID)),
+		string(storage.RegisterValidatorStakeKey(nodeID)),
 	}
-	return []string{string(storage.BalanceKey(actor, ids.Empty))}
 }
 
 func (*DelegateUserStake) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.DelegateUserStakeChunks}
+	return []uint16{storage.BalanceChunks, storage.DelegateUserStakeChunks, storage.RegisterValidatorStakeChunks}
 }
 
 func (*DelegateUserStake) OutputsWarpMessage() bool {
@@ -57,7 +56,7 @@ func (s *DelegateUserStake) Execute(
 	ctx context.Context,
 	_ chain.Rules,
 	mu state.Mutable,
-	_ int64,
+	timestamp int64,
 	actor codec.Address,
 	_ ids.ID,
 	_ bool,
@@ -85,7 +84,7 @@ func (s *DelegateUserStake) Execute(
 	}
 
 	// Get current time
-	currentTime := time.Now().UTC()
+	currentTime := time.Unix(int64(timestamp), 0).UTC()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
 	startTime := time.Unix(int64(s.StakeStartTime), 0).UTC()
 	if startTime.Before(currentTime) {

@@ -229,25 +229,15 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 					return fmt.Errorf("actor %s is not the owner of the validator", codec.MustAddressBech32(nconsts.HRP, tx.Auth.Actor()))
 				}
 				// Check to make sure the stake is valid
-				currentTime := c.inner.LastAcceptedBlock().Timestamp().UTC()
-				stakeStartTime := time.Unix(int64(stakeInfo.StakeStartTime), 0).UTC()
-				if stakeStartTime.Before(currentTime) {
-					// This should never happen as we check for this in register_validator_stake action
-					c.inner.Logger().Error("failed to register validator stake", zap.Error(fmt.Errorf("stake start time %d is before current time %d", stakeInfo.StakeStartTime, currentTime.Unix())))
-					return fmt.Errorf("stake start time %d is before current time %d", stakeInfo.StakeStartTime, currentTime.Unix())
-				}
+				// currentTime := c.inner.LastAcceptedBlock().Timestamp().UTC()
+				// stakeStartTime := time.Unix(int64(stakeInfo.StakeStartTime), 0).UTC()
 				// TODO: Register validator stake on Emission Balancer?
 				c.metrics.stakeAmount.Add(float64(stakeInfo.StakedAmount))
 				c.metrics.registerValidatorStake.Inc()
 			case *actions.DelegateUserStake:
 				// Check to make sure the stake is valid
-				currentTime := c.inner.LastAcceptedBlock().Timestamp().UTC()
-				stakeStartTime := time.Unix(int64(action.StakeStartTime), 0).UTC()
-				if stakeStartTime.Before(currentTime) {
-					// This should never happen as we check for this in delegate_user_stake action
-					c.inner.Logger().Error("failed to delegate user stake", zap.Error(fmt.Errorf("stake start time %d is before current time %d", action.StakeStartTime, currentTime.Unix())))
-					return fmt.Errorf("stake start time %d is before current time %d", action.StakeStartTime, currentTime.Unix())
-				}
+				// currentTime := c.inner.LastAcceptedBlock().Timestamp().UTC()
+				// stakeStartTime := time.Unix(int64(action.StakeStartTime), 0).UTC()
 				// TODO: Delegate user stake on Emission Balancer?
 				c.metrics.stakeAmount.Add(float64(action.StakedAmount))
 				c.metrics.delegateUserStake.Inc()
@@ -268,6 +258,8 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				// TODO: Undelegate user stake on Emission Balancer?
 				c.metrics.stakeAmount.Sub(float64(stakeResult.StakedAmount))
 				c.metrics.undelegateUserStake.Inc()
+			case *actions.ClaimStakingRewards:
+				c.metrics.claimStakingRewards.Inc()
 			}
 		}
 	}

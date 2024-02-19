@@ -22,7 +22,7 @@ import (
 var _ chain.Action = (*UndelegateUserStake)(nil)
 
 type UndelegateUserStake struct {
-	NodeID []byte `json:"nodeID"`
+	NodeID []byte `json:"nodeID"` // Node ID of the validator where NAI is staked
 }
 
 func (*UndelegateUserStake) GetTypeID() uint8 {
@@ -30,13 +30,12 @@ func (*UndelegateUserStake) GetTypeID() uint8 {
 }
 
 func (u *UndelegateUserStake) StateKeys(actor codec.Address, _ ids.ID) []string {
-	if nodeID, err := ids.ToNodeID(u.NodeID); err == nil {
-		return []string{
-			string(storage.BalanceKey(actor, ids.Empty)),
-			string(storage.DelegateUserStakeKey(actor, nodeID)),
-		}
+	// TODO: How to better handle a case where the NodeID is invalid?
+	nodeID, _ := ids.ToNodeID(u.NodeID)
+	return []string{
+		string(storage.BalanceKey(actor, ids.Empty)),
+		string(storage.DelegateUserStakeKey(actor, nodeID)),
 	}
-	return []string{string(storage.BalanceKey(actor, ids.Empty))}
 }
 
 func (*UndelegateUserStake) StateKeysMaxChunks() []uint16 {
@@ -51,7 +50,7 @@ func (u *UndelegateUserStake) Execute(
 	ctx context.Context,
 	_ chain.Rules,
 	mu state.Mutable,
-	_ int64,
+	timestamp int64,
 	actor codec.Address,
 	_ ids.ID,
 	_ bool,
@@ -61,10 +60,7 @@ func (u *UndelegateUserStake) Execute(
 		return false, UndelegateUserStakeComputeUnits, OutputInvalidNodeID, nil, nil
 	}
 
-	exists, _, stakeEndTime, stakedAmount, _, ownerAddress, err := storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
-	if err != nil {
-		return false, UndelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
-	}
+	exists, _, stakeEndTime, stakedAmount, _, ownerAddress, _ := storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
 	if !exists {
 		return false, UndelegateUserStakeComputeUnits, OutputStakeMissing, nil, nil
 	}
@@ -73,7 +69,7 @@ func (u *UndelegateUserStake) Execute(
 	}
 
 	// Get current time
-	currentTime := time.Now().UTC()
+	currentTime := time.Unix(int64(timestamp), 0).UTC()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
 	endTime := time.Unix(int64(stakeEndTime), 0).UTC()
 	// Check that currentTime is after stakeEndTime
