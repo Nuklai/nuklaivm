@@ -193,14 +193,14 @@ func (*Handler) GetEmissionInfo(
 	}
 
 	hutils.Outf(
-		"{{yellow}}emission info: {{/}}\nTotalSupply=%d MaxSupply=%d RewardsPerBlock=%d EmissionAddress=%s EmissionBalance=%d\n",
+		"{{yellow}}emission info: {{/}}\nTotalSupply=%d MaxSupply=%d RewardsPerBlock=%d EmissionAddress=%s EmissionUnclaimedBalance=%d\n",
 		totalSupply,
 		maxSupply,
 		rewardsPerBlock,
 		emissionAddress,
-		emissionAccount.Balance,
+		emissionAccount.UnclaimedBalance,
 	)
-	return totalSupply, maxSupply, rewardsPerBlock, emissionAddress, emissionAccount.Balance, err
+	return totalSupply, maxSupply, rewardsPerBlock, emissionAddress, emissionAccount.UnclaimedBalance, err
 }
 
 func (*Handler) GetAllValidators(
@@ -213,13 +213,13 @@ func (*Handler) GetAllValidators(
 	}
 	for index, validator := range validators {
 		hutils.Outf(
-			"{{yellow}}validator %d:{{/}} NodeID=%s NodePublicKey=%s UserStake=%v StakedAmount=%d StakedReward=%d\n",
+			"{{yellow}}validator %d:{{/}} NodeID=%s StakedAmount=%d DelegatedStake=%d DelegatedAmount=%d UnclaimedStakedReward=%d\n",
 			index,
 			validator.NodeID,
-			validator.NodePublicKey,
-			validator.UserStake,
 			validator.StakedAmount,
-			validator.StakedReward,
+			validator.DelegatedStake,
+			validator.DelegatedAmount,
+			validator.UnclaimedStakedReward,
 		)
 	}
 	return validators, nil
@@ -263,31 +263,29 @@ func (*Handler) GetValidatorStake(
 
 func (*Handler) GetUserStake(ctx context.Context,
 	cli *nrpc.JSONRPCClient, owner codec.Address, nodeID ids.NodeID,
-) (uint64, uint64, uint64, string, string, error) {
-	stakeStartTime, stakeEndTime, stakedAmount, rewardAddress, ownerAddress, err := cli.UserStake(ctx, owner, nodeID)
+) (uint64, uint64, string, string, error) {
+	stakeStartTime, stakedAmount, rewardAddress, ownerAddress, err := cli.UserStake(ctx, owner, nodeID)
 	if err != nil {
-		return 0, 0, 0, "", "", err
+		return 0, 0, "", "", err
 	}
 
 	rewardAddressString, err := codec.AddressBech32(nconsts.HRP, rewardAddress)
 	if err != nil {
-		return 0, 0, 0, "", "", err
+		return 0, 0, "", "", err
 	}
 	ownerAddressString, err := codec.AddressBech32(nconsts.HRP, ownerAddress)
 	if err != nil {
-		return 0, 0, 0, "", "", err
+		return 0, 0, "", "", err
 	}
 
 	hutils.Outf(
-		"{{yellow}}validator stake: {{/}}\nStakeStartTime=%d StakeEndTime=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
+		"{{yellow}}validator stake: {{/}}\nStakeStartTime=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
 		stakeStartTime,
-		stakeEndTime,
 		stakedAmount,
 		rewardAddressString,
 		ownerAddressString,
 	)
 	return stakeStartTime,
-		stakeEndTime,
 		stakedAmount,
 		rewardAddressString,
 		ownerAddressString, err

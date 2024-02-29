@@ -35,10 +35,9 @@ type Controller interface {
 		codec.Address, // OwnerAddress
 		error,
 	)
-	GetDelegateUserStake(ctx context.Context, owner codec.Address, nodeID ids.NodeID) (
+	GetDelegatedUserStakeFromState(ctx context.Context, owner codec.Address, nodeID ids.NodeID) (
 		bool, // exists
 		uint64, // StakeStartTime
-		uint64, // StakeEndTime
 		uint64, // StakedAmount
 		codec.Address, // RewardAddress
 		codec.Address, // OwnerAddress

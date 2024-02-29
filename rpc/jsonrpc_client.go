@@ -194,7 +194,7 @@ func (cli *JSONRPCClient) ValidatorStake(ctx context.Context, nodeID ids.NodeID)
 	return resp.StakeStartTime, resp.StakeEndTime, resp.StakedAmount, resp.DelegationFeeRate, resp.RewardAddress, resp.OwnerAddress, err
 }
 
-func (cli *JSONRPCClient) UserStake(ctx context.Context, owner codec.Address, nodeID ids.NodeID) (uint64, uint64, uint64, codec.Address, codec.Address, error) {
+func (cli *JSONRPCClient) UserStake(ctx context.Context, owner codec.Address, nodeID ids.NodeID) (uint64, uint64, codec.Address, codec.Address, error) {
 	resp := new(UserStakeReply)
 	err := cli.requester.SendRequest(
 		ctx,
@@ -206,9 +206,9 @@ func (cli *JSONRPCClient) UserStake(ctx context.Context, owner codec.Address, no
 		resp,
 	)
 	if err != nil {
-		return 0, 0, 0, codec.EmptyAddress, codec.EmptyAddress, err
+		return 0, 0, codec.EmptyAddress, codec.EmptyAddress, err
 	}
-	return resp.StakeStartTime, resp.StakeEndTime, resp.StakedAmount, resp.RewardAddress, resp.OwnerAddress, err
+	return resp.StakeStartTime, resp.StakedAmount, resp.RewardAddress, resp.OwnerAddress, err
 }
 
 func (cli *JSONRPCClient) WaitForBalance(
