@@ -623,18 +623,15 @@ func SetDelegateUserStake(
 	owner codec.Address,
 	nodeID ids.NodeID,
 	stakeStartTime uint64,
-	stakeEndTime uint64,
 	stakedAmount uint64,
 	rewardAddress codec.Address,
 ) error {
 	key := DelegateUserStakeKey(owner, nodeID)
-	v := make([]byte, 3*hconsts.Uint64Len+2*codec.AddressLen) // Calculate the length of the encoded data
+	v := make([]byte, 2*hconsts.Uint64Len+codec.AddressLen) // Calculate the length of the encoded data
 
 	offset := 0
 
 	binary.BigEndian.PutUint64(v[offset:], stakeStartTime)
-	offset += hconsts.Uint64Len
-	binary.BigEndian.PutUint64(v[offset:], stakeEndTime)
 	offset += hconsts.Uint64Len
 	binary.BigEndian.PutUint64(v[offset:], stakedAmount)
 	offset += hconsts.Uint64Len
@@ -653,7 +650,6 @@ func GetDelegateUserStake(
 	nodeID ids.NodeID,
 ) (bool, // exists
 	uint64, // StakeStartTime
-	uint64, // StakeEndTime
 	uint64, // StakedAmount
 	codec.Address, // RewardAddress
 	codec.Address, // OwnerAddress
@@ -672,7 +668,6 @@ func GetDelegateUserStakeFromState(
 	nodeID ids.NodeID,
 ) (bool, // exists
 	uint64, // StakeStartTime
-	uint64, // StakeEndTime
 	uint64, // StakedAmount
 	codec.Address, // RewardAddress
 	codec.Address, // OwnerAddress
@@ -685,24 +680,21 @@ func GetDelegateUserStakeFromState(
 func innerGetDelegateUserStake(v []byte, err error) (
 	bool, // exists
 	uint64, // StakeStartTime
-	uint64, // StakeEndTime
 	uint64, // StakedAmount
 	codec.Address, // RewardAddress
 	codec.Address, // OwnerAddress
 	error,
 ) {
 	if errors.Is(err, database.ErrNotFound) {
-		return false, 0, 0, 0, codec.Address{}, codec.Address{}, nil
+		return false, 0, 0, codec.Address{}, codec.Address{}, nil
 	}
 	if err != nil {
-		return false, 0, 0, 0, codec.Address{}, codec.Address{}, nil
+		return false, 0, 0, codec.Address{}, codec.Address{}, nil
 	}
 
 	offset := 0
 
 	stakeStartTime := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
-	offset += hconsts.Uint64Len
-	stakeEndTime := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
 	offset += hconsts.Uint64Len
 	stakedAmount := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
 	offset += hconsts.Uint64Len
@@ -713,7 +705,7 @@ func innerGetDelegateUserStake(v []byte, err error) (
 	var ownerAddress codec.Address
 	copy(ownerAddress[:], v[offset:offset+codec.AddressLen])
 
-	return true, stakeStartTime, stakeEndTime, stakedAmount, rewardAddress, ownerAddress, nil
+	return true, stakeStartTime, stakedAmount, rewardAddress, ownerAddress, nil
 }
 
 func DeleteDelegateUserStake(

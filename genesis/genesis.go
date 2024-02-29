@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/trace"
@@ -20,6 +19,7 @@ import (
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/ava-labs/hypersdk/vm"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/storage"
 )
 
@@ -33,7 +33,6 @@ type CustomAllocation struct {
 type EmissionBalancer struct {
 	TotalSupply     uint64 `json:"totalSupply"`     // Total supply of NAI
 	MaxSupply       uint64 `json:"maxSupply"`       // Max supply of NAI
-	RewardsPerBlock uint64 `json:"rewardsPerBlock"` // Minting rate of NAI
 	EmissionAddress string `json:"emissionAddress"` // Emission address
 }
 
@@ -109,9 +108,8 @@ func Default() *Genesis {
 
 		EmissionBalancer: EmissionBalancer{
 			TotalSupply:     0,
-			MaxSupply:       10_000_000_000 * uint64(math.Pow10(consts.Decimals)),                 // 10 billion NAI,
-			RewardsPerBlock: 2 * uint64(math.Pow10(consts.Decimals)),                              // 2 NAI per block,
-			EmissionAddress: "nuklai1qqmzlnnredketlj3cu20v56nt5ken6thchra7nylwcrmz77td654w2jmpt9", // NAI emission address(If you don't pass this address, it will be set to the default address)
+			MaxSupply:       emission.GetStakingConfig().RewardConfig.SupplyCap,       // 10 billion NAI,
+			EmissionAddress: emission.GetStakingConfig().RewardConfig.EmissionAddress, // NAI emission address(If you don't pass this address, it will be set to the default address)
 		},
 	}
 }

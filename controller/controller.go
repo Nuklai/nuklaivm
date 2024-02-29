@@ -7,13 +7,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	ametrics "github.com/ava-labs/avalanchego/api/metrics"
 	"github.com/ava-labs/avalanchego/database"
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow"
-	"github.com/ava-labs/avalanchego/snow/validators"
 	"github.com/ava-labs/hypersdk/builder"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
@@ -43,11 +40,13 @@ type Controller struct {
 	genesis      *genesis.Genesis
 	config       *config.Config
 	stateManager *StateManager
+	// uptimeManager uptime.Manager
 
 	metrics *metrics
 
 	metaDB database.Database
 
+	// Emission Balancer for NuklaiVM
 	emission *emission.Emission
 }
 
@@ -148,16 +147,11 @@ func (c *Controller) Initialize(
 	}
 
 	// Initialize emission balancer
-	currentValidators := make(map[ids.NodeID]*validators.GetValidatorOutput)
-	if !c.config.TestMode {
-		// We only get the validators in non-test mode
-		currentValidators, _ = inner.CurrentValidators(context.TODO())
-	}
 	emissionAddr, err := codec.ParseAddressBech32(nconsts.HRP, c.genesis.EmissionBalancer.EmissionAddress)
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
-	c.emission = emission.New(c, c.genesis.EmissionBalancer.TotalSupply, c.genesis.EmissionBalancer.MaxSupply, c.genesis.EmissionBalancer.RewardsPerBlock, emissionAddr, currentValidators)
+	c.emission = emission.New(c, c.inner, c.genesis.EmissionBalancer.TotalSupply, c.genesis.EmissionBalancer.MaxSupply, emissionAddr)
 
 	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, nconsts.ActionRegistry, nconsts.AuthRegistry, auth.Engines(), nil
 }
@@ -194,7 +188,6 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 			}
 		}
 		totalFee += result.Fee
-		currentValidators, _ := c.inner.CurrentValidators(ctx)
 		if result.Success {
 			switch action := tx.Action.(type) {
 			case *actions.Transfer:
@@ -215,30 +208,9 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 					// This should never happen
 					return err
 				}
-				// Check if the tx actor has signing permission for this NodeID
-				isValidatorOwner := false
-				for _, validator := range currentValidators {
-					signer := auth.NewBLSAddress(validator.PublicKey)
-					if codec.MustAddressBech32(nconsts.HRP, tx.Auth.Actor()) == codec.MustAddressBech32(nconsts.HRP, signer) {
-						isValidatorOwner = true
-						break
-					}
-				}
-				if !isValidatorOwner {
-					c.inner.Logger().Error("failed to register validator stake", zap.Error(fmt.Errorf("actor %s is not the owner of the validator", codec.MustAddressBech32(nconsts.HRP, tx.Auth.Actor()))))
-					return fmt.Errorf("actor %s is not the owner of the validator", codec.MustAddressBech32(nconsts.HRP, tx.Auth.Actor()))
-				}
-				// Check to make sure the stake is valid
-				// currentTime := c.inner.LastAcceptedBlock().Timestamp().UTC()
-				// stakeStartTime := time.Unix(int64(stakeInfo.StakeStartTime), 0).UTC()
-				// TODO: Register validator stake on Emission Balancer?
 				c.metrics.stakeAmount.Add(float64(stakeInfo.StakedAmount))
 				c.metrics.registerValidatorStake.Inc()
 			case *actions.DelegateUserStake:
-				// Check to make sure the stake is valid
-				// currentTime := c.inner.LastAcceptedBlock().Timestamp().UTC()
-				// stakeStartTime := time.Unix(int64(action.StakeStartTime), 0).UTC()
-				// TODO: Delegate user stake on Emission Balancer?
 				c.metrics.stakeAmount.Add(float64(action.StakedAmount))
 				c.metrics.delegateUserStake.Inc()
 			case *actions.UndelegateUserStake:
@@ -247,15 +219,6 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 					// This should never happen
 					return err
 				}
-				// Check to make sure the stake period has ended
-				currentTime := c.inner.LastAcceptedBlock().Timestamp().UTC()
-				endTime := time.Unix(int64(stakeResult.StakeEndTime), 0).UTC()
-				if currentTime.Before(endTime) {
-					// This should never happen as we check for this in undelegate_user_stake action
-					c.inner.Logger().Error("failed to unstake validator", zap.Error(fmt.Errorf("current time %d is before stake end time %d", currentTime.Unix(), stakeResult.StakeEndTime)))
-					return fmt.Errorf("current time %d is before stake end time %d", currentTime.Unix(), stakeResult.StakeEndTime)
-				}
-				// TODO: Undelegate user stake on Emission Balancer?
 				c.metrics.stakeAmount.Sub(float64(stakeResult.StakedAmount))
 				c.metrics.undelegateUserStake.Inc()
 			case *actions.ClaimStakingRewards:
@@ -271,7 +234,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 		if err != nil {
 			return err // This should never happen
 		}
-		c.inner.Logger().Info("distributed fees to Emission and Validators", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("total fee", totalFee), zap.Uint64("total supply", c.emission.GetTotalSupply()), zap.Uint64("max supply", c.emission.GetMaxSupply()), zap.Uint64("rewards per block", c.emission.GetRewardsPerBlock()), zap.String("emission address", emissionAddress), zap.Uint64("emission address balance", c.emission.GetEmissionAccount().Balance))
+		c.inner.Logger().Info("distributed fees to Emission and Validators", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("total fee", totalFee), zap.Uint64("total supply", c.emission.GetTotalSupply()), zap.Uint64("max supply", c.emission.GetMaxSupply()), zap.Uint64("rewards per block", c.emission.GetRewardsPerBlock()), zap.String("emission address", emissionAddress), zap.Uint64("emission address unclaimed balance", c.emission.GetEmissionAccount().UnclaimedBalance))
 	}
 
 	// Mint new NAI if needed

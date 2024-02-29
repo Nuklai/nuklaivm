@@ -122,13 +122,12 @@ cat ${DEPLOY_ARTIFACT_PREFIX}/nuklaivm-subnet-config.json
 # TODO: make address configurable via ENV
 cat <<EOF > ${DEPLOY_ARTIFACT_PREFIX}/allocations.json
 [
-  {"address":"${INITIAL_OWNER_ADDRESS}", "balance":853000000000000000} 
+  {"address":"${INITIAL_OWNER_ADDRESS}", "balance":853000000000000000}
 ]
 EOF
 cat <<EOF > ${DEPLOY_ARTIFACT_PREFIX}/emission-balancer.json
 {
   "maxSupply":  10000000000000000000,
-  "rewardsPerBlock": 2000000000,
   "emissionAddress":"${EMISSION_ADDRESS}"
 }
 EOF

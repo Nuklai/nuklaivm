@@ -66,8 +66,26 @@ func (r *RegisterValidatorStake) Execute(
 		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 	// Check whether the actor is the same as the one who signed the message
-	if codec.MustAddressBech32(nconsts.HRP, actor) != codec.MustAddressBech32(nconsts.HRP, signer) {
+	actorAddress := codec.MustAddressBech32(nconsts.HRP, actor)
+	if actorAddress != codec.MustAddressBech32(nconsts.HRP, signer) {
 		return false, RegisterValidatorStakeComputeUnits, OutputDifferentSignerThanActor, nil, nil
+	}
+
+	// Check if the tx actor has signing permission for this NodeID
+	isValidatorOwner := false
+
+	// Get the emission instance
+	emissionInstance := emission.GetEmission()
+	currentValidators, _ := emissionInstance.GetNuklaiVMValidators(ctx)
+	for _, validator := range currentValidators {
+		signer := auth.NewBLSAddress(validator.PublicKey)
+		if actorAddress == codec.MustAddressBech32(nconsts.HRP, signer) {
+			isValidatorOwner = true
+			break
+		}
+	}
+	if !isValidatorOwner {
+		return false, RegisterValidatorStakeComputeUnits, OutputUnauthorized, nil, nil
 	}
 
 	// Unmarshal the stake info
@@ -95,7 +113,7 @@ func (r *RegisterValidatorStake) Execute(
 	}
 
 	// Get current time
-	currentTime := time.Unix(timestamp, 0).UTC()
+	currentTime := emissionInstance.GetLastAcceptedBlockTimestamp()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
 	startTime := time.Unix(int64(stakeInfo.StakeStartTime), 0).UTC()
 	if startTime.Before(currentTime) {
@@ -112,8 +130,15 @@ func (r *RegisterValidatorStake) Execute(
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeDuration, nil, nil
 	}
 
+	// Check if the delegation fee rate is valid
 	if stakeInfo.DelegationFeeRate < stakingConfig.MinDelegationFee || stakeInfo.DelegationFeeRate > 100 {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidDelegationFeeRate, nil, nil
+	}
+
+	// Register in Emission Balancer
+	err = emissionInstance.RegisterValidatorStake(nodeID, stakeInfo.StakedAmount)
+	if err != nil {
+		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 
 	if err := storage.SubBalance(ctx, mu, actor, ids.Empty, stakeInfo.StakedAmount); err != nil {

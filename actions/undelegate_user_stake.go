@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/hypersdk/utils"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/storage"
 )
 
@@ -60,7 +61,7 @@ func (u *UndelegateUserStake) Execute(
 		return false, UndelegateUserStakeComputeUnits, OutputInvalidNodeID, nil, nil
 	}
 
-	exists, _, stakeEndTime, stakedAmount, _, ownerAddress, _ := storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
+	exists, stakeStartTime, stakedAmount, rewardAddress, ownerAddress, _ := storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
 	if !exists {
 		return false, UndelegateUserStakeComputeUnits, OutputStakeMissing, nil, nil
 	}
@@ -68,13 +69,25 @@ func (u *UndelegateUserStake) Execute(
 		return false, UndelegateUserStakeComputeUnits, OutputUnauthorized, nil, nil
 	}
 
+	// Get the emission instance
+	emissionInstance := emission.GetEmission()
+
 	// Get current time
-	currentTime := time.Unix(timestamp, 0).UTC()
+	currentTime := emissionInstance.GetLastAcceptedBlockTimestamp()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
-	endTime := time.Unix(int64(stakeEndTime), 0).UTC()
-	// Check that currentTime is after stakeEndTime
-	if currentTime.Before(endTime) {
-		return false, UndelegateUserStakeComputeUnits, OutputStakeNotEnded, nil, nil
+	startTime := time.Unix(int64(stakeStartTime), 0).UTC()
+	// Check that currentTime is after stakeStartTime
+	if currentTime.Before(startTime) {
+		return false, UndelegateUserStakeComputeUnits, OutputStakeNotStarted, nil, nil
+	}
+
+	// Undelegate in Emission Balancer
+	rewardAmount, err := emissionInstance.UndelegateUserStake(nodeID, actor, stakedAmount)
+	if err != nil {
+		return false, UndelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
+	}
+	if err := storage.AddBalance(ctx, mu, rewardAddress, ids.Empty, rewardAmount, true); err != nil {
+		return false, UndelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 
 	if err := storage.DeleteDelegateUserStake(ctx, mu, ownerAddress, nodeID); err != nil {
@@ -83,9 +96,8 @@ func (u *UndelegateUserStake) Execute(
 	if err := storage.AddBalance(ctx, mu, ownerAddress, ids.Empty, stakedAmount, true); err != nil {
 		return false, UndelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
-	// TODO: Claim Delegated Staking Rewards
 
-	sr := &DelegateStakeResult{stakedAmount, stakeEndTime}
+	sr := &DelegateStakeResult{stakedAmount}
 	output, err := sr.Marshal()
 	if err != nil {
 		return false, UndelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
@@ -118,20 +130,17 @@ func (*UndelegateUserStake) ValidRange(chain.Rules) (int64, int64) {
 
 type DelegateStakeResult struct {
 	StakedAmount uint64
-	StakeEndTime uint64
 }
 
 func UnmarshalDelegateUserStakeResult(b []byte) (*DelegateStakeResult, error) {
-	p := codec.NewReader(b, hconsts.Uint64Len*2)
+	p := codec.NewReader(b, hconsts.Uint64Len)
 	var result DelegateStakeResult
 	result.StakedAmount = p.UnpackUint64(true)
-	result.StakeEndTime = p.UnpackUint64(true)
 	return &result, p.Err()
 }
 
 func (s *DelegateStakeResult) Marshal() ([]byte, error) {
-	p := codec.NewWriter(hconsts.Uint64Len*2, hconsts.Uint64Len*2)
+	p := codec.NewWriter(hconsts.Uint64Len, hconsts.Uint64Len)
 	p.PackUint64(s.StakedAmount)
-	p.PackUint64(s.StakeEndTime)
 	return p.Bytes(), p.Err()
 }

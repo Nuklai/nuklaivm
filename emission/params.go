@@ -19,11 +19,12 @@ type RewardConfig struct {
 	// SupplyCap is the target value that the reward calculation should be
 	// asymptotic to.
 	SupplyCap uint64 `json:"supplyCap"`
+
+	// Emission Balancer Address
+	EmissionAddress string `json:"emissionAddress"`
 }
 
 type StakingConfig struct {
-	// Staking uptime requirements
-	UptimeRequirement uint64 `json:"uptimeRequirement"`
 	// Minimum stake, in NAI, required to validate the nuklai network
 	MinValidatorStake uint64 `json:"minValidatorStake"`
 	// Maximum stake, in NAI, allowed to be placed on a single validator in
@@ -40,9 +41,6 @@ type StakingConfig struct {
 	// MaxStakeDuration is the maximum amount of time a validator can validate
 	// for in a single period.
 	MaxValidatorStakeDuration time.Duration `json:"maxValidatorStakeDuration"`
-	// MinDelegatorStakeDuration is the minimum amount of time a user can delegate
-	// for in a single period.
-	MinDelegatorStakeDuration time.Duration `json:"minDelegatorStakeDuration"`
 	// RewardConfig is the config for the reward function.
 	RewardConfig RewardConfig `json:"rewardConfig"`
 }
@@ -51,23 +49,21 @@ func GetStakingConfig() StakingConfig {
 	// TODO: Enable this in production
 	// minValidatorStake, _ := hutils.ParseBalance("1500000", nconsts.Decimals)
 	minValidatorStake, _ := hutils.ParseBalance("100", nconsts.Decimals)
-	maxValidatorStake, _ := hutils.ParseBalance("1000000000", nconsts.Decimals)
+	maxValidatorStake, _ := hutils.ParseBalance("100000000", nconsts.Decimals) // 100 million NAI
 	minDelegatorStake, _ := hutils.ParseBalance("25", nconsts.Decimals)
 	supplyCap, _ := hutils.ParseBalance("10000000000", nconsts.Decimals)
 	return StakingConfig{
-		UptimeRequirement:         80, // 80%
 		MinValidatorStake:         minValidatorStake,
 		MaxValidatorStake:         maxValidatorStake,
 		MinDelegatorStake:         minDelegatorStake,
 		MinDelegationFee:          2,               // 2%
 		MinValidatorStakeDuration: 1 * time.Minute, // 1 minute
-		// MinStakeDuration:  6 * 4 * 7 * 24 * time.Hour, // 6 months TODO: Enable this in production
+		// MinValidatorStakeDuration:  6 * 4 * 7 * 24 * time.Hour, // 6 months TODO: Enable this in production
 		MaxValidatorStakeDuration: 365 * 24 * time.Hour, // 1 year,
-		MinDelegatorStakeDuration: 1 * time.Minute,      // 1 minute
-		// MinStakeDuration:  2 * 7 * 24 * time.Hour, // 2 weeks TODO: Enable this in production
 		RewardConfig: RewardConfig{
-			MintingPeriod: 365 * 24 * time.Hour,
-			SupplyCap:     supplyCap,
+			MintingPeriod:   365 * 24 * time.Hour,
+			SupplyCap:       supplyCap,
+			EmissionAddress: "nuklai1qqmzlnnredketlj3cu20v56nt5ken6thchra7nylwcrmz77td654w2jmpt9",
 		},
 	}
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/hypersdk/utils"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/storage"
 )
 
@@ -74,11 +75,7 @@ func (c *ClaimStakingRewards) Execute(
 	// Check whether a validator is trying to claim its reward
 	exists, _, stakeEndTime, _, _, rewardAddress, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
 	if c.UserStakeAddress != codec.EmptyAddress {
-		var stakeAddressCheck codec.Address // Temporary variable for comparison
-		exists, _, stakeEndTime, _, rewardAddress, stakeAddressCheck, _ = storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
-		if c.UserStakeAddress != stakeAddressCheck {
-			return false, ClaimStakingRewardComputeUnits, OutputUnauthorized, nil, nil
-		}
+		exists, _, _, rewardAddress, _, _ = storage.GetDelegateUserStake(ctx, mu, c.UserStakeAddress, nodeID)
 	}
 	if !exists {
 		return false, ClaimStakingRewardComputeUnits, OutputStakeMissing, nil, nil
@@ -87,17 +84,27 @@ func (c *ClaimStakingRewards) Execute(
 		return false, ClaimStakingRewardComputeUnits, OutputUnauthorized, nil, nil
 	}
 
-	// Get current time
-	currentTime := time.Unix(timestamp, 0).UTC()
-	// Convert Unix timestamps to Go's time.Time for easier manipulation
-	endTime := time.Unix(int64(stakeEndTime), 0).UTC()
-	// Check that currentTime is after stakeEndTime
-	if currentTime.Before(endTime) {
-		return false, ClaimStakingRewardComputeUnits, OutputStakeNotEnded, nil, nil
+	// Get the emission instance
+	emissionInstance := emission.GetEmission()
+
+	// Check if the stake has ended for the validator
+	if c.UserStakeAddress == codec.EmptyAddress {
+		// Get current time
+		currentTime := emissionInstance.GetLastAcceptedBlockTimestamp()
+		// Convert Unix timestamps to Go's time.Time for easier manipulation
+		endTime := time.Unix(int64(stakeEndTime), 0).UTC()
+		// Check that currentTime is after stakeEndTime
+		if currentTime.Before(endTime) {
+			return false, ClaimStakingRewardComputeUnits, OutputStakeNotEnded, nil, nil
+		}
 	}
 
-	// TODO: Claim Delegated Staking Rewards
-	rewardAmount := uint64(0)
+	// Claim rewards in Emission Balancer
+	rewardAmount, err := emissionInstance.ClaimStakingRewards(nodeID, c.UserStakeAddress)
+	if err != nil {
+		return false, ClaimStakingRewardComputeUnits, utils.ErrBytes(err), nil, nil
+	}
+
 	if err := storage.AddBalance(ctx, mu, rewardAddress, ids.Empty, rewardAmount, true); err != nil {
 		return false, ClaimStakingRewardComputeUnits, utils.ErrBytes(err), nil, nil
 	}
