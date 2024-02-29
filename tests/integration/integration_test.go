@@ -188,7 +188,6 @@ var _ = ginkgo.BeforeSuite(func() {
 	gen.EmissionBalancer = genesis.EmissionBalancer{
 		TotalSupply:     10_000_000,
 		MaxSupply:       10_000_000_000,
-		RewardsPerBlock: 2,
 		EmissionAddress: sender,
 	}
 	genesisBytes, err = json.Marshal(gen)
