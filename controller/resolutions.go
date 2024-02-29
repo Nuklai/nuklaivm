@@ -63,11 +63,11 @@ func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, *emission.Emissi
 }
 
 func (c *Controller) GetAllValidators() ([]*emission.Validator, error) {
-	return c.emission.GetValidator(ids.EmptyNodeID), nil
+	return c.emission.GetStakedValidator(ids.EmptyNodeID), nil
 }
 
 func (c *Controller) GetValidator(nodeID ids.NodeID) (*emission.Validator, error) {
-	validators := c.emission.GetValidator(nodeID)
+	validators := c.emission.GetStakedValidator(nodeID)
 	return validators[0], nil
 }
 
@@ -84,10 +84,9 @@ func (c *Controller) GetValidatorStakeFromState(ctx context.Context, nodeID ids.
 	return storage.GetRegisterValidatorStakeFromState(ctx, c.inner.ReadState, nodeID)
 }
 
-func (c *Controller) GetDelegateUserStake(ctx context.Context, owner codec.Address, nodeID ids.NodeID) (
+func (c *Controller) GetDelegatedUserStakeFromState(ctx context.Context, owner codec.Address, nodeID ids.NodeID) (
 	bool, // exists
 	uint64, // StakeStartTime
-	uint64, // StakeEndTime
 	uint64, // StakedAmount
 	codec.Address, // RewardAddress
 	codec.Address, // OwnerAddress

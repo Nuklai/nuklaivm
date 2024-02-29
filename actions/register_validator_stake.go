@@ -35,17 +35,12 @@ func (*RegisterValidatorStake) GetTypeID() uint8 {
 
 func (r *RegisterValidatorStake) StateKeys(actor codec.Address, _ ids.ID) []string {
 	// TODO: How to better handle a case where the NodeID is invalid?
-	if signer, err := VerifyAuthSignature(r.StakeInfo, r.AuthSignature); err == nil && codec.MustAddressBech32(nconsts.HRP, actor) == codec.MustAddressBech32(nconsts.HRP, signer) {
-		if stakeInfo, err := UnmarshalValidatorStakeInfo(r.StakeInfo); err == nil {
-			if nodeID, err := ids.ToNodeID(stakeInfo.NodeID); err == nil {
-				return []string{
-					string(storage.BalanceKey(actor, ids.Empty)),
-					string(storage.RegisterValidatorStakeKey(nodeID)),
-				}
-			}
-		}
+	stakeInfo, _ := UnmarshalValidatorStakeInfo(r.StakeInfo)
+	nodeID, _ := ids.ToNodeID(stakeInfo.NodeID)
+	return []string{
+		string(storage.BalanceKey(actor, ids.Empty)),
+		string(storage.RegisterValidatorStakeKey(nodeID)),
 	}
-	return []string{string(storage.BalanceKey(actor, ids.Empty))}
 }
 
 func (*RegisterValidatorStake) StateKeysMaxChunks() []uint16 {
@@ -60,7 +55,7 @@ func (r *RegisterValidatorStake) Execute(
 	ctx context.Context,
 	_ chain.Rules,
 	mu state.Mutable,
-	_ int64,
+	timestamp int64,
 	actor codec.Address,
 	_ ids.ID,
 	_ bool,
@@ -71,8 +66,26 @@ func (r *RegisterValidatorStake) Execute(
 		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 	// Check whether the actor is the same as the one who signed the message
-	if codec.MustAddressBech32(nconsts.HRP, actor) != codec.MustAddressBech32(nconsts.HRP, signer) {
+	actorAddress := codec.MustAddressBech32(nconsts.HRP, actor)
+	if actorAddress != codec.MustAddressBech32(nconsts.HRP, signer) {
 		return false, RegisterValidatorStakeComputeUnits, OutputDifferentSignerThanActor, nil, nil
+	}
+
+	// Check if the tx actor has signing permission for this NodeID
+	isValidatorOwner := false
+
+	// Get the emission instance
+	emissionInstance := emission.GetEmission()
+	currentValidators, _ := emissionInstance.GetNuklaiVMValidators(ctx)
+	for _, validator := range currentValidators {
+		signer := auth.NewBLSAddress(validator.PublicKey)
+		if actorAddress == codec.MustAddressBech32(nconsts.HRP, signer) {
+			isValidatorOwner = true
+			break
+		}
+	}
+	if !isValidatorOwner {
+		return false, RegisterValidatorStakeComputeUnits, OutputUnauthorized, nil, nil
 	}
 
 	// Unmarshal the stake info
@@ -100,7 +113,7 @@ func (r *RegisterValidatorStake) Execute(
 	}
 
 	// Get current time
-	currentTime := time.Now().UTC()
+	currentTime := emissionInstance.GetLastAcceptedBlockTimestamp()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
 	startTime := time.Unix(int64(stakeInfo.StakeStartTime), 0).UTC()
 	if startTime.Before(currentTime) {
@@ -117,8 +130,15 @@ func (r *RegisterValidatorStake) Execute(
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeDuration, nil, nil
 	}
 
+	// Check if the delegation fee rate is valid
 	if stakeInfo.DelegationFeeRate < stakingConfig.MinDelegationFee || stakeInfo.DelegationFeeRate > 100 {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidDelegationFeeRate, nil, nil
+	}
+
+	// Register in Emission Balancer
+	err = emissionInstance.RegisterValidatorStake(nodeID, stakeInfo.StakedAmount)
+	if err != nil {
+		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 
 	if err := storage.SubBalance(ctx, mu, actor, ids.Empty, stakeInfo.StakedAmount); err != nil {
@@ -135,7 +155,7 @@ func (*RegisterValidatorStake) MaxComputeUnits(chain.Rules) uint64 {
 }
 
 func (*RegisterValidatorStake) Size() int {
-	return hconsts.NodeIDLen + 4*hconsts.Uint64Len + codec.AddressLen
+	return hconsts.NodeIDLen + 4*hconsts.Uint64Len + codec.AddressLen + bls.PublicKeyLen + bls.SignatureLen
 }
 
 func (r *RegisterValidatorStake) Marshal(p *codec.Packer) {

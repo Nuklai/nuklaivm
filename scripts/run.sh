@@ -127,16 +127,14 @@ find ${TMPDIR}/avalanchego-${VERSION}
 echo "creating allocations file"
 cat <<EOF > ${TMPDIR}/allocations.json
 [
-  {"address":"${INITIAL_OWNER_ADDRESS}", "balance":853000000000000000} 
+  {"address":"${INITIAL_OWNER_ADDRESS}", "balance":853000000000000000}
 ]
 EOF
 echo "creating emission balancer file"
 # maxSupply: 10 billion NAI
-# rewardsPerBlock: 2 NAI
 cat <<EOF > ${TMPDIR}/emission-balancer.json
 {
   "maxSupply":  10000000000000000000,
-  "rewardsPerBlock": 2000000000,
   "emissionAddress":"${EMISSION_ADDRESS}"
 }
 EOF

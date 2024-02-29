@@ -726,10 +726,9 @@ var getValidatorStakeCmd = &cobra.Command{
 		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
 		for i := 0; i < len(validators); i++ {
 			hutils.Outf(
-				"{{yellow}}%d:{{/}} NodeID=%s NodePublicKey=%s\n",
+				"{{yellow}}%d:{{/}} NodeID=%s\n",
 				i,
 				validators[i].NodeID,
-				validators[i].NodePublicKey,
 			)
 		}
 		// Select validator
@@ -779,10 +778,9 @@ var delegateUserStakeCmd = &cobra.Command{
 
 		for i := 0; i < len(validators); i++ {
 			hutils.Outf(
-				"{{yellow}}%d:{{/}} NodeID=%s NodePublicKey=%s\n",
+				"{{yellow}}%d:{{/}} NodeID=%s\n",
 				i,
 				validators[i].NodeID,
-				validators[i].NodePublicKey,
 			)
 		}
 		// Select validator
@@ -826,20 +824,6 @@ var delegateUserStakeCmd = &cobra.Command{
 				return err
 			}
 
-			// Select stakeEndTime
-			stakeEndTimeString, err := handler.Root().PromptString(
-				fmt.Sprintf("Staking End Time(must be after %s) [YYYY-MM-DD HH:MM:SS]", stakeStartTimeString),
-				1,
-				32,
-			)
-			if err != nil {
-				return err
-			}
-			stakeEndTime, err = time.Parse(TimeLayout, stakeEndTimeString)
-			if err != nil {
-				return err
-			}
-
 			// Select rewardAddress
 			rewardAddress, err = handler.Root().PromptAddress("Reward Address")
 			if err != nil {
@@ -866,7 +850,6 @@ var delegateUserStakeCmd = &cobra.Command{
 		_, _, err = sendAndWait(ctx, nil, &actions.DelegateUserStake{
 			NodeID:         nodeID.Bytes(),
 			StakeStartTime: uint64(stakeStartTime.Unix()),
-			StakeEndTime:   uint64(stakeEndTime.Unix()),
 			StakedAmount:   stakedAmount,
 			RewardAddress:  rewardAddress,
 		}, hcli, hws, ncli, factory, true)
@@ -897,10 +880,9 @@ var undelegateUserStakeCmd = &cobra.Command{
 		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
 		for i := 0; i < len(validators); i++ {
 			hutils.Outf(
-				"{{yellow}}%d:{{/}} NodeID=%s NodePublicKey=%s\n",
+				"{{yellow}}%d:{{/}} NodeID=%s\n",
 				i,
 				validators[i].NodeID,
-				validators[i].NodePublicKey,
 			)
 		}
 		// Select validator
@@ -912,7 +894,7 @@ var undelegateUserStakeCmd = &cobra.Command{
 		nodeID := validatorChosen.NodeID
 
 		// Get stake info
-		_, _, stakedAmount, _, _, err := ncli.UserStake(ctx, priv.Address, nodeID)
+		_, stakedAmount, _, _, err := ncli.UserStake(ctx, priv.Address, nodeID)
 		if err != nil {
 			return err
 		}
@@ -976,10 +958,9 @@ var getUserStakeCmd = &cobra.Command{
 		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
 		for i := 0; i < len(validators); i++ {
 			hutils.Outf(
-				"{{yellow}}%d:{{/}} NodeID=%s NodePublicKey=%s\n",
+				"{{yellow}}%d:{{/}} NodeID=%s\n",
 				i,
 				validators[i].NodeID,
-				validators[i].NodePublicKey,
 			)
 		}
 		// Select validator
@@ -991,7 +972,7 @@ var getUserStakeCmd = &cobra.Command{
 		nodeID := validatorChosen.NodeID
 
 		// Get user stake
-		_, _, _, _, _, err = handler.GetUserStake(ctx, ncli, address, nodeID)
+		_, _, _, _, err = handler.GetUserStake(ctx, ncli, address, nodeID)
 		if err != nil {
 			return err
 		}

@@ -37,6 +37,7 @@ var (
 
 	// staking
 	// register_validator_stake.go
+	OutputNotValidator                 = []byte("not a validator")
 	OutputDifferentSignerThanActor     = []byte("different signer than actor")
 	OutputValidatorStakedAmountInvalid = []byte("invalid stake amount")
 	OutputInvalidStakeStartTime        = []byte("invalid stake start time")
@@ -44,6 +45,7 @@ var (
 	OutputInvalidStakeDuration         = []byte("invalid stake duration")
 	OutputInvalidDelegationFeeRate     = []byte("delegation fee rate must be over 2 and under 100")
 	OutputValidatorAlreadyRegistered   = []byte("validator already registered for staking")
+	OutputStakeNotStarted              = []byte("stake not started")
 	OutputStakeNotEnded                = []byte("stake not ended")
 	// delegate_user_stake.go
 	OutputDelegateStakedAmountInvalid = []byte("staked amount must be at least 25 NAI")

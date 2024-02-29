@@ -24,8 +24,7 @@ var _ chain.Action = (*DelegateUserStake)(nil)
 
 type DelegateUserStake struct {
 	NodeID         []byte        `json:"nodeID"`         // Node ID of the validator to stake to
-	StakeStartTime uint64        `json:"stakeStartTime"` // Start date of the stake
-	StakeEndTime   uint64        `json:"stakeEndTime"`   // End date of the stake
+	StakeStartTime uint64        `json:"stakeStartTime"` // Start time of the stake
 	StakedAmount   uint64        `json:"stakedAmount"`   // Amount of NAI staked
 	RewardAddress  codec.Address `json:"rewardAddress"`  // Address to receive rewards
 }
@@ -35,18 +34,17 @@ func (*DelegateUserStake) GetTypeID() uint8 {
 }
 
 func (s *DelegateUserStake) StateKeys(actor codec.Address, _ ids.ID) []string {
-	if nodeID, err := ids.ToNodeID(s.NodeID); err == nil {
-		return []string{
-			string(storage.BalanceKey(actor, ids.Empty)),
-			string(storage.DelegateUserStakeKey(actor, nodeID)),
-			string(storage.RegisterValidatorStakeKey(nodeID)),
-		}
+	// TODO: How to better handle a case where the NodeID is invalid?
+	nodeID, _ := ids.ToNodeID(s.NodeID)
+	return []string{
+		string(storage.BalanceKey(actor, ids.Empty)),
+		string(storage.DelegateUserStakeKey(actor, nodeID)),
+		string(storage.RegisterValidatorStakeKey(nodeID)),
 	}
-	return []string{string(storage.BalanceKey(actor, ids.Empty))}
 }
 
 func (*DelegateUserStake) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.DelegateUserStakeChunks}
+	return []uint16{storage.BalanceChunks, storage.DelegateUserStakeChunks, storage.RegisterValidatorStakeChunks}
 }
 
 func (*DelegateUserStake) OutputsWarpMessage() bool {
@@ -57,7 +55,7 @@ func (s *DelegateUserStake) Execute(
 	ctx context.Context,
 	_ chain.Rules,
 	mu state.Mutable,
-	_ int64,
+	timestamp int64,
 	actor codec.Address,
 	_ ids.ID,
 	_ bool,
@@ -67,12 +65,12 @@ func (s *DelegateUserStake) Execute(
 		return false, DelegateUserStakeComputeUnits, OutputInvalidNodeID, nil, nil
 	}
 	// Check if the validator the user is trying to delegate to is registered for staking
-	exists, _, validatorStakeEndTime, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
+	exists, _, _, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
 	if !exists {
 		return false, RegisterValidatorStakeComputeUnits, OutputValidatorNotYetRegistered, nil, nil
 	}
 	// Check if the user has already delegated to this validator node before
-	exists, _, _, _, _, _, _ = storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
+	exists, _, _, _, _, _ = storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
 	if exists {
 		return false, DelegateUserStakeComputeUnits, OutputUserAlreadyStaked, nil, nil
 	}
@@ -84,28 +82,27 @@ func (s *DelegateUserStake) Execute(
 		return false, DelegateUserStakeComputeUnits, OutputDelegateStakedAmountInvalid, nil, nil
 	}
 
+	// Get the emission instance
+	emissionInstance := emission.GetEmission()
+
 	// Get current time
-	currentTime := time.Now().UTC()
+	currentTime := emissionInstance.GetLastAcceptedBlockTimestamp()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
 	startTime := time.Unix(int64(s.StakeStartTime), 0).UTC()
 	if startTime.Before(currentTime) {
 		return false, DelegateUserStakeComputeUnits, OutputInvalidStakeStartTime, nil, nil
 	}
-	endTime := time.Unix(int64(s.StakeEndTime), 0).UTC()
-	// Check that stakeEndTime is not before stakeStartTime and validatorStakeEndTime is not after stakeEndTime
-	if endTime.Before(startTime) && !(time.Unix(int64(validatorStakeEndTime), 0).UTC()).After(endTime) {
-		return false, DelegateUserStakeComputeUnits, OutputInvalidStakeEndTime, nil, nil
-	}
-	// Check that the total staking period is at least the minimum staking period
-	stakeDuration := endTime.Sub(startTime)
-	if stakeDuration < stakingConfig.MinDelegatorStakeDuration {
-		return false, DelegateUserStakeComputeUnits, OutputInvalidStakeDuration, nil, nil
+
+	// Delegate in Emission Balancer
+	err = emissionInstance.DelegateUserStake(nodeID, s.StakedAmount)
+	if err != nil {
+		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 
 	if err := storage.SubBalance(ctx, mu, actor, ids.Empty, s.StakedAmount); err != nil {
 		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
-	if err := storage.SetDelegateUserStake(ctx, mu, actor, nodeID, s.StakeStartTime, s.StakeEndTime, s.StakedAmount, s.RewardAddress); err != nil {
+	if err := storage.SetDelegateUserStake(ctx, mu, actor, nodeID, s.StakeStartTime, s.StakedAmount, s.RewardAddress); err != nil {
 		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 	return true, DelegateUserStakeComputeUnits, nil, nil, nil
@@ -116,13 +113,12 @@ func (*DelegateUserStake) MaxComputeUnits(chain.Rules) uint64 {
 }
 
 func (*DelegateUserStake) Size() int {
-	return hconsts.NodeIDLen + 3*hconsts.Uint64Len + codec.AddressLen
+	return hconsts.NodeIDLen + 2*hconsts.Uint64Len + codec.AddressLen
 }
 
 func (s *DelegateUserStake) Marshal(p *codec.Packer) {
 	p.PackBytes(s.NodeID)
 	p.PackUint64(s.StakeStartTime)
-	p.PackUint64(s.StakeEndTime)
 	p.PackUint64(s.StakedAmount)
 	p.PackAddress(s.RewardAddress)
 }
@@ -131,7 +127,6 @@ func UnmarshalDelegateUserStake(p *codec.Packer, _ *warp.Message) (chain.Action,
 	var stake DelegateUserStake
 	p.UnpackBytes(hconsts.NodeIDLen, true, &stake.NodeID)
 	stake.StakeStartTime = p.UnpackUint64(true)
-	stake.StakeEndTime = p.UnpackUint64(true)
 	stake.StakedAmount = p.UnpackUint64(true)
 	p.UnpackAddress(&stake.RewardAddress)
 	return &stake, p.Err()

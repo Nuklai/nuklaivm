@@ -99,14 +99,13 @@ they arrive).
 You can see how this works by checking out the [E2E test suite](./tests/e2e/e2e_test.go)
 that runs through these flows.
 
-#### Staking
+#### Emission Balancer and Staking Mechanism
 
 On `nuklaivm`, the emission balancer handles the staking mechanism whereby it tracks the
 total supply of `NAI`, max supply of `NAI`, staking rewards per block and the emission address to direct 50% of all fees to.
-Furthermore, it also rewards all the validators that have a minimum stake of at least 100 `NAI`. Note that users who stake
-to the validators don't earn `NAI` rewards automatically, but rather it is the job of the validators to claim these rewards
-and then send some of those rewards to the users based on their stake. This is a manual process however, in the future, validators
-can write a custom Hypersdk program to automatically claim and distribute these rewards.
+Furthermore, it also rewards all the validators that have a minimum stake and all the users who have a minimum delegated stake to a validator of their choice.
+
+Read more about [Emission Balancer](./docs/emission_balancer.md).
 
 ## Demo
 
