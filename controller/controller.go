@@ -40,14 +40,12 @@ type Controller struct {
 	genesis      *genesis.Genesis
 	config       *config.Config
 	stateManager *StateManager
-	// uptimeManager uptime.Manager
 
 	metrics *metrics
 
 	metaDB database.Database
 
-	// Emission Balancer for NuklaiVM
-	emission *emission.Emission
+	emission *emission.Emission // Emission Balancer for NuklaiVM
 }
 
 func New() *vm.VM {

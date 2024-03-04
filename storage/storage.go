@@ -33,23 +33,31 @@ type ReadState func(context.Context, [][]byte) ([][]byte, []error)
 //
 // 0x0/ (balance)
 //   -> [owner|asset] => balance
-// 0x1/ (assets)
+
+// 0x1/ (hypersdk-height)
+// 0x2/ (hypersdk-timestamp)
+// 0x3/ (hypersdk-fee)
+
+// 0x4/ (hypersdk-incoming warp)
+// 0x5/ (hypersdk-outgoing warp)
+
+// 0x6/ (assets)
 //   -> [asset] => metadataLen|metadata|supply|owner|warp
-// 0x2/ (stake)
-//   -> [txID] => nodeID|stakedAmount|endLockUp|owner
-// 0x3/ (loans)
+// 0x7/ (loans)
 //   -> [assetID|destination] => amount
-// 0x4/ (hypersdk-height)
-// 0x5/ (hypersdk-timestamp)
-// 0x6/ (hypersdk-fee)
-// 0x7/ (hypersdk-incoming warp)
-// 0x8/ (hypersdk-outgoing warp)
+
+// 0x8/ (stake)
+//   -> [nodeID] => stakeStartTime|stakeEndTime|stakedAmount|delegationFeeRate|rewardAddress|ownerAddress
+// 0x9/ (delegate)
+//   -> [owner|nodeID] => stakeStartTime|stakedAmount|rewardAddress|ownerAddress
 
 const (
 	// metaDB
 	txPrefix = 0x0
 
 	// stateDB
+	balancePrefix = 0x0
+
 	heightPrefix    = 0x1
 	timestampPrefix = 0x2
 	feePrefix       = 0x3
@@ -57,13 +65,11 @@ const (
 	incomingWarpPrefix = 0x4
 	outgoingWarpPrefix = 0x5
 
-	balancePrefix = 0x6
+	assetPrefix = 0x6
+	loanPrefix  = 0x7
 
-	assetPrefix = 0x7
-	loanPrefix  = 0x8
-
-	registerValidatorStakePrefix = 0x9
-	delegateUserStakePrefix      = 0xA
+	registerValidatorStakePrefix = 0x8
+	delegateUserStakePrefix      = 0x9
 )
 
 const (
