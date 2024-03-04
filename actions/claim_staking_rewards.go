@@ -90,11 +90,15 @@ func (c *ClaimStakingRewards) Execute(
 	// Check if the stake has ended for the validator
 	if c.UserStakeAddress == codec.EmptyAddress {
 		// Get current time
-		currentTime := emissionInstance.GetLastAcceptedBlockTimestamp()
+		currentTime := time.Unix(timestamp, 0).UTC()
+		// Get last accepted block time
+		lastBlockTime := emissionInstance.GetLastAcceptedBlockTimestamp()
+
 		// Convert Unix timestamps to Go's time.Time for easier manipulation
 		endTime := time.Unix(int64(stakeEndTime), 0).UTC()
-		// Check that currentTime is after stakeEndTime
-		if currentTime.Before(endTime) {
+
+		// Check that currentTime and lastBlockTime are after stakeEndTime
+		if currentTime.Before(endTime) || lastBlockTime.Before(endTime) {
 			return false, ClaimStakingRewardComputeUnits, OutputStakeNotEnded, nil, nil
 		}
 	}
@@ -115,7 +119,7 @@ func (*ClaimStakingRewards) MaxComputeUnits(chain.Rules) uint64 {
 	return ClaimStakingRewardComputeUnits
 }
 
-func (c *ClaimStakingRewards) Size() int {
+func (*ClaimStakingRewards) Size() int {
 	return hconsts.NodeIDLen + codec.AddressLen
 }
 

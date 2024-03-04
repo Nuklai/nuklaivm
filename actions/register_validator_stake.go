@@ -116,14 +116,17 @@ func (r *RegisterValidatorStake) Execute(
 	}
 
 	// Get current time
-	currentTime := emissionInstance.GetLastAcceptedBlockTimestamp()
+	currentTime := time.Unix(timestamp, 0).UTC()
+	// Get last accepted block time
+	lastBlockTime := emissionInstance.GetLastAcceptedBlockTimestamp()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
 	startTime := time.Unix(int64(stakeInfo.StakeStartTime), 0).UTC()
-	if startTime.Before(currentTime) {
+	// Check that stakeStartTime is after currentTime and lastBlockTime
+	if startTime.Before(currentTime) || startTime.Before(lastBlockTime) {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeStartTime, nil, nil
 	}
 	endTime := time.Unix(int64(stakeInfo.StakeEndTime), 0).UTC()
-	// Check that stakeEndTime is greater than stakeStartTime
+	// Check that stakeEndTime is after stakeStartTime
 	if endTime.Before(startTime) {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeEndTime, nil, nil
 	}

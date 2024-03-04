@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanchego/snow/validators"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/state"
-	"github.com/ava-labs/hypersdk/vm"
 	"github.com/nuklai/nuklaivm/storage"
 	"go.uber.org/zap"
 )
@@ -59,7 +58,7 @@ type Emission struct {
 
 // New initializes the Emission struct with initial parameters and sets up the validators heap
 // and indices map.
-func New(c Controller, vm *vm.VM, totalSupply, maxSupply uint64, emissionAddress codec.Address) *Emission {
+func New(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emissionAddress codec.Address) *Emission {
 	once.Do(func() {
 		c.Logger().Info("Initializing emission with max supply and rewards per block settings")
 
@@ -150,7 +149,7 @@ func (e *Emission) GetAPRForValidators() float64 {
 }
 
 // CalculateAnnualRewards computes the annual rewards based on the total staked amount and the APR.
-func (e *Emission) CalculateAnnualRewards(totalStaked uint64, apr float64) uint64 {
+func (*Emission) CalculateAnnualRewards(totalStaked uint64, apr float64) uint64 {
 	blocksPerYear := GetStakingConfig().RewardConfig.MintingPeriod.Seconds() / 5 // Block time is assumed to be 5 seconds
 	totalAnnualRewards := float64(totalStaked) * apr
 	rewardsPerBlock := totalAnnualRewards / blocksPerYear
@@ -381,7 +380,6 @@ func (e *Emission) ClaimStakingRewards(nodeID ids.NodeID, actor codec.Address) (
 			return 0, err
 		}
 		rewardAmount = reward
-
 	} else {
 		// For a validator claiming their rewards
 		reward, _, err := e.CalculateValidatorRewards(nodeID)

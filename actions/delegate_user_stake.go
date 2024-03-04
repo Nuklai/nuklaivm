@@ -86,10 +86,13 @@ func (s *DelegateUserStake) Execute(
 	emissionInstance := emission.GetEmission()
 
 	// Get current time
-	currentTime := emissionInstance.GetLastAcceptedBlockTimestamp()
+	currentTime := time.Unix(timestamp, 0).UTC()
+	// Get last accepted block time
+	lastBlockTime := emissionInstance.GetLastAcceptedBlockTimestamp()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
 	startTime := time.Unix(int64(s.StakeStartTime), 0).UTC()
-	if startTime.Before(currentTime) {
+	// Check that stakeStartTime is after currentTime and lastBlockTime
+	if startTime.Before(currentTime) || startTime.Before(lastBlockTime) {
 		return false, DelegateUserStakeComputeUnits, OutputInvalidStakeStartTime, nil, nil
 	}
 
