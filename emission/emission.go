@@ -30,6 +30,7 @@ var (
 
 type Validator struct {
 	NodeID                ids.NodeID `json:"nodeID"`          // Node ID of the validator
+	PublicKey             string     `json:"publicKey"`       // Public key of the validator
 	StakedAmount          uint64     `json:"stakedAmount"`    // Total amount staked by the validator
 	DelegatedStake        uint64     `json:"delegatedStake"`  // Total number of user delegations to the validator
 	DelegatedAmount       uint64     `json:"delegatedAmount"` // Total amount delegated to the validator
@@ -266,7 +267,7 @@ func (e *Emission) CalculateUserDelegationRewards(nodeID ids.NodeID, actor codec
 
 // RegisterValidatorStake adds a new validator to the heap with the specified staked amount
 // and updates the total staked amount.
-func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, stakedAmount uint64) error {
+func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey string, stakedAmount uint64) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -277,6 +278,7 @@ func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, stakedAmount uint64
 
 	validator := &Validator{
 		NodeID:                nodeID,
+		PublicKey:             nodePublicKey,
 		StakedAmount:          stakedAmount,
 		DelegatedStake:        0,
 		DelegatedAmount:       0,

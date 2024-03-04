@@ -577,7 +577,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 
 		var nodeID ids.NodeID
 		for i := 0; i < len(validators); i++ {
-			if publicKey == validators[i].NodePublicKey {
+			if publicKey == validators[i].PublicKey {
 				nodeID = validators[i].NodeID
 				break
 			}

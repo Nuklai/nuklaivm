@@ -5,6 +5,7 @@ package actions
 
 import (
 	"context"
+	"encoding/base64"
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -77,10 +78,12 @@ func (r *RegisterValidatorStake) Execute(
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
 	currentValidators, _ := emissionInstance.GetNuklaiVMValidators(ctx)
+	nodePublicKey := ""
 	for _, validator := range currentValidators {
 		signer := auth.NewBLSAddress(validator.PublicKey)
 		if actorAddress == codec.MustAddressBech32(nconsts.HRP, signer) {
 			isValidatorOwner = true
+			nodePublicKey = base64.StdEncoding.EncodeToString(validator.PublicKey.Compress())
 			break
 		}
 	}
@@ -136,7 +139,7 @@ func (r *RegisterValidatorStake) Execute(
 	}
 
 	// Register in Emission Balancer
-	err = emissionInstance.RegisterValidatorStake(nodeID, stakeInfo.StakedAmount)
+	err = emissionInstance.RegisterValidatorStake(nodeID, nodePublicKey, stakeInfo.StakedAmount)
 	if err != nil {
 		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}

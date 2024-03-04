@@ -184,7 +184,6 @@ type ValidatorStakeArgs struct {
 }
 
 type ValidatorStakeReply struct {
-	NodeID            ids.NodeID    `json:"nodeID"`            // NodeID of the validator
 	StakeStartTime    uint64        `json:"stakeStartTime"`    // Start date of the stake
 	StakeEndTime      uint64        `json:"stakeEndTime"`      // End date of the stake
 	StakedAmount      uint64        `json:"stakedAmount"`      // Amount of NAI staked
