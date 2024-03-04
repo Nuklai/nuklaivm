@@ -5,6 +5,7 @@ package actions
 
 import (
 	"context"
+	"encoding/base64"
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -77,10 +78,12 @@ func (r *RegisterValidatorStake) Execute(
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
 	currentValidators, _ := emissionInstance.GetNuklaiVMValidators(ctx)
+	nodePublicKey := ""
 	for _, validator := range currentValidators {
 		signer := auth.NewBLSAddress(validator.PublicKey)
 		if actorAddress == codec.MustAddressBech32(nconsts.HRP, signer) {
 			isValidatorOwner = true
+			nodePublicKey = base64.StdEncoding.EncodeToString(validator.PublicKey.Compress())
 			break
 		}
 	}
@@ -113,14 +116,17 @@ func (r *RegisterValidatorStake) Execute(
 	}
 
 	// Get current time
-	currentTime := emissionInstance.GetLastAcceptedBlockTimestamp()
+	currentTime := time.Unix(timestamp, 0).UTC()
+	// Get last accepted block time
+	lastBlockTime := emissionInstance.GetLastAcceptedBlockTimestamp()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
 	startTime := time.Unix(int64(stakeInfo.StakeStartTime), 0).UTC()
-	if startTime.Before(currentTime) {
+	// Check that stakeStartTime is after currentTime and lastBlockTime
+	if startTime.Before(currentTime) || startTime.Before(lastBlockTime) {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeStartTime, nil, nil
 	}
 	endTime := time.Unix(int64(stakeInfo.StakeEndTime), 0).UTC()
-	// Check that stakeEndTime is greater than stakeStartTime
+	// Check that stakeEndTime is after stakeStartTime
 	if endTime.Before(startTime) {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeEndTime, nil, nil
 	}
@@ -136,7 +142,7 @@ func (r *RegisterValidatorStake) Execute(
 	}
 
 	// Register in Emission Balancer
-	err = emissionInstance.RegisterValidatorStake(nodeID, stakeInfo.StakedAmount)
+	err = emissionInstance.RegisterValidatorStake(nodeID, nodePublicKey, stakeInfo.StakedAmount)
 	if err != nil {
 		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}

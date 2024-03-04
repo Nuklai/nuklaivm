@@ -13,7 +13,6 @@ import (
 	"github.com/ava-labs/avalanchego/snow/validators"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/state"
-	"github.com/ava-labs/hypersdk/vm"
 	"github.com/nuklai/nuklaivm/storage"
 	"go.uber.org/zap"
 )
@@ -30,6 +29,7 @@ var (
 
 type Validator struct {
 	NodeID                ids.NodeID `json:"nodeID"`          // Node ID of the validator
+	PublicKey             string     `json:"publicKey"`       // Public key of the validator
 	StakedAmount          uint64     `json:"stakedAmount"`    // Total amount staked by the validator
 	DelegatedStake        uint64     `json:"delegatedStake"`  // Total number of user delegations to the validator
 	DelegatedAmount       uint64     `json:"delegatedAmount"` // Total amount delegated to the validator
@@ -58,7 +58,7 @@ type Emission struct {
 
 // New initializes the Emission struct with initial parameters and sets up the validators heap
 // and indices map.
-func New(c Controller, vm *vm.VM, totalSupply, maxSupply uint64, emissionAddress codec.Address) *Emission {
+func New(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emissionAddress codec.Address) *Emission {
 	once.Do(func() {
 		c.Logger().Info("Initializing emission with max supply and rewards per block settings")
 
@@ -149,7 +149,7 @@ func (e *Emission) GetAPRForValidators() float64 {
 }
 
 // CalculateAnnualRewards computes the annual rewards based on the total staked amount and the APR.
-func (e *Emission) CalculateAnnualRewards(totalStaked uint64, apr float64) uint64 {
+func (*Emission) CalculateAnnualRewards(totalStaked uint64, apr float64) uint64 {
 	blocksPerYear := GetStakingConfig().RewardConfig.MintingPeriod.Seconds() / 5 // Block time is assumed to be 5 seconds
 	totalAnnualRewards := float64(totalStaked) * apr
 	rewardsPerBlock := totalAnnualRewards / blocksPerYear
@@ -266,7 +266,7 @@ func (e *Emission) CalculateUserDelegationRewards(nodeID ids.NodeID, actor codec
 
 // RegisterValidatorStake adds a new validator to the heap with the specified staked amount
 // and updates the total staked amount.
-func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, stakedAmount uint64) error {
+func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey string, stakedAmount uint64) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -277,6 +277,7 @@ func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, stakedAmount uint64
 
 	validator := &Validator{
 		NodeID:                nodeID,
+		PublicKey:             nodePublicKey,
 		StakedAmount:          stakedAmount,
 		DelegatedStake:        0,
 		DelegatedAmount:       0,
@@ -379,7 +380,6 @@ func (e *Emission) ClaimStakingRewards(nodeID ids.NodeID, actor codec.Address) (
 			return 0, err
 		}
 		rewardAmount = reward
-
 	} else {
 		// For a validator claiming their rewards
 		reward, _, err := e.CalculateValidatorRewards(nodeID)
