@@ -5,7 +5,9 @@ package cmd
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/chain"
@@ -181,45 +183,83 @@ func (h *Handler) DefaultNuklaiVMJSONRPCClient(checkAllChains bool) ([]*nrpc.JSO
 func (*Handler) GetEmissionInfo(
 	ctx context.Context,
 	cli *nrpc.JSONRPCClient,
-) (uint64, uint64, uint64, string, uint64, error) {
-	totalSupply, maxSupply, rewardsPerBlock, emissionAccount, err := cli.EmissionInfo(ctx)
+) (uint64, uint64, uint64, uint64, uint64, uint64, string, uint64, error) {
+	totalSupply, maxSupply, totalStaked, rewardsPerEpoch, emissionAccount, epochTracker, err := cli.EmissionInfo(ctx)
 	if err != nil {
-		return 0, 0, 0, "", 0, err
+		return 0, 0, 0, 0, 0, 0, "", 0, err
 	}
 
 	emissionAddress, err := codec.AddressBech32(nconsts.HRP, emissionAccount.Address)
 	if err != nil {
-		return 0, 0, 0, "", 0, err
+		return 0, 0, 0, 0, 0, 0, "", 0, err
 	}
 
 	hutils.Outf(
-		"{{yellow}}emission info: {{/}}\nTotalSupply=%d MaxSupply=%d RewardsPerBlock=%d EmissionAddress=%s EmissionUnclaimedBalance=%d\n",
+		"{{yellow}}emission info: {{/}}\nTotalSupply=%d MaxSupply=%d TotalStaked=%d RewardsPerEpoch=%d BlocksSinceLastReward=%d NumBlocksInEpoch=%d EmissionAddress=%s EmissionUnclaimedBalance=%d\n",
 		totalSupply,
 		maxSupply,
-		rewardsPerBlock,
+		totalStaked,
+		rewardsPerEpoch,
+		epochTracker.BlockCounter,
+		epochTracker.EpochLength,
 		emissionAddress,
 		emissionAccount.UnclaimedBalance,
 	)
-	return totalSupply, maxSupply, rewardsPerBlock, emissionAddress, emissionAccount.UnclaimedBalance, err
+	return totalSupply, maxSupply, totalStaked, rewardsPerEpoch, epochTracker.BlockCounter,
+		epochTracker.EpochLength, emissionAddress, emissionAccount.UnclaimedBalance, err
 }
 
 func (*Handler) GetAllValidators(
 	ctx context.Context,
 	cli *nrpc.JSONRPCClient,
 ) ([]*emission.Validator, error) {
-	validators, err := cli.Validators(ctx)
+	validators, err := cli.AllValidators(ctx)
 	if err != nil {
 		return nil, err
 	}
 	for index, validator := range validators {
+		publicKey, err := bls.PublicKeyFromBytes(validator.PublicKey)
+		if err != nil {
+			return nil, err
+		}
 		hutils.Outf(
-			"{{yellow}}validator %d:{{/}} NodeID=%s StakedAmount=%d DelegatedStake=%d DelegatedAmount=%d UnclaimedStakedReward=%d\n",
+			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s StakedAmount=%d UnclaimedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d UnclaimedDelegatedReward=%d\n",
 			index,
 			validator.NodeID,
+			base64.StdEncoding.EncodeToString(publicKey.Compress()),
 			validator.StakedAmount,
-			validator.DelegatedStake,
-			validator.DelegatedAmount,
 			validator.UnclaimedStakedReward,
+			validator.DelegationFeeRate,
+			validator.DelegatedAmount,
+			validator.UnclaimedDelegatedReward,
+		)
+	}
+	return validators, nil
+}
+
+func (*Handler) GetStakedValidators(
+	ctx context.Context,
+	cli *nrpc.JSONRPCClient,
+) ([]*emission.Validator, error) {
+	validators, err := cli.StakedValidators(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for index, validator := range validators {
+		publicKey, err := bls.PublicKeyFromBytes(validator.PublicKey)
+		if err != nil {
+			return nil, err
+		}
+		hutils.Outf(
+			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s StakedAmount=%d UnclaimedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d UnclaimedDelegatedReward=%d\n",
+			index,
+			validator.NodeID,
+			base64.StdEncoding.EncodeToString(publicKey.Compress()),
+			validator.StakedAmount,
+			validator.UnclaimedStakedReward,
+			validator.DelegationFeeRate,
+			validator.DelegatedAmount,
+			validator.UnclaimedDelegatedReward,
 		)
 	}
 	return validators, nil
@@ -245,9 +285,9 @@ func (*Handler) GetValidatorStake(
 	}
 
 	hutils.Outf(
-		"{{yellow}}validator stake: {{/}}\nStakeStartTime=%d StakeEndTime=%d StakedAmount=%d DelegationFeeRate=%d RewardAddress=%s OwnerAddress=%s\n",
-		stakeStartTime,
-		stakeEndTime,
+		"{{yellow}}validator stake: {{/}}\nStakeStartTime=%v StakeEndTime=%v StakedAmount=%d DelegationFeeRate=%d RewardAddress=%s OwnerAddress=%s\n",
+		time.Unix(int64(stakeStartTime), 0).UTC(),
+		time.Unix(int64(stakeEndTime), 0).UTC(),
 		stakedAmount,
 		delegationFeeRate,
 		rewardAddressString,
@@ -279,8 +319,8 @@ func (*Handler) GetUserStake(ctx context.Context,
 	}
 
 	hutils.Outf(
-		"{{yellow}}validator stake: {{/}}\nStakeStartTime=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
-		stakeStartTime,
+		"{{yellow}}validator stake: {{/}}\nStakeStartTime=%v StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
+		time.Unix(int64(stakeStartTime), 0).UTC(),
 		stakedAmount,
 		rewardAddressString,
 		ownerAddressString,

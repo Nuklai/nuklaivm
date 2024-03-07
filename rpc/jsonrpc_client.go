@@ -150,7 +150,7 @@ func (cli *JSONRPCClient) Loan(
 	return resp.Amount, err
 }
 
-func (cli *JSONRPCClient) EmissionInfo(ctx context.Context) (uint64, uint64, uint64, *emission.EmissionAccount, error) {
+func (cli *JSONRPCClient) EmissionInfo(ctx context.Context) (uint64, uint64, uint64, uint64, emission.EmissionAccount, emission.EpochTracker, error) {
 	resp := new(EmissionReply)
 	err := cli.requester.SendRequest(
 		ctx,
@@ -159,16 +159,31 @@ func (cli *JSONRPCClient) EmissionInfo(ctx context.Context) (uint64, uint64, uin
 		resp,
 	)
 	if err != nil {
-		return 0, 0, 0, &emission.EmissionAccount{}, err
+		return 0, 0, 0, 0, emission.EmissionAccount{}, emission.EpochTracker{}, err
 	}
-	return resp.TotalSupply, resp.MaxSupply, resp.RewardsPerBlock, resp.EmissionAccount, err
+
+	return resp.TotalSupply, resp.MaxSupply, resp.TotalStaked, resp.RewardsPerEpoch, resp.EmissionAccount, resp.EpochTracker, err
 }
 
-func (cli *JSONRPCClient) Validators(ctx context.Context) ([]*emission.Validator, error) {
+func (cli *JSONRPCClient) AllValidators(ctx context.Context) ([]*emission.Validator, error) {
 	resp := new(ValidatorsReply)
 	err := cli.requester.SendRequest(
 		ctx,
-		"validators",
+		"allValidators",
+		nil,
+		resp,
+	)
+	if err != nil {
+		return []*emission.Validator{}, err
+	}
+	return resp.Validators, err
+}
+
+func (cli *JSONRPCClient) StakedValidators(ctx context.Context) ([]*emission.Validator, error) {
+	resp := new(ValidatorsReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"stakedValidators",
 		nil,
 		resp,
 	)

@@ -11,6 +11,10 @@ var (
 	ErrValidatorNotFound          = errors.New("validator not found")
 	ErrInvalidStakeDuration       = errors.New("invalid stake duration")
 	ErrInsufficientRewards        = errors.New("insufficient rewards")
+	ErrStakeExpired               = errors.New("stake expired")
+	ErrDelegatorAlreadyStaked     = errors.New("delegator already staked")
+	ErrDelegatorNotFound          = errors.New("delegator not found")
+	ErrInvalidBlockHeight         = errors.New("invalid block height")
 
 	ErrInvalidNodeID      = errors.New("invalid node id")
 	ErrStakeNotFound      = errors.New("stake not found")

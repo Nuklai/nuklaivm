@@ -633,7 +633,7 @@ func SetDelegateUserStake(
 	rewardAddress codec.Address,
 ) error {
 	key := DelegateUserStakeKey(owner, nodeID)
-	v := make([]byte, 2*hconsts.Uint64Len+codec.AddressLen) // Calculate the length of the encoded data
+	v := make([]byte, 2*hconsts.Uint64Len+2*codec.AddressLen) // Calculate the length of the encoded data
 
 	offset := 0
 

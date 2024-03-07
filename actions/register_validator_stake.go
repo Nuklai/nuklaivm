@@ -5,7 +5,6 @@ package actions
 
 import (
 	"context"
-	"encoding/base64"
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -56,7 +55,7 @@ func (r *RegisterValidatorStake) Execute(
 	ctx context.Context,
 	_ chain.Rules,
 	mu state.Mutable,
-	timestamp int64,
+	_ int64,
 	actor codec.Address,
 	_ ids.ID,
 	_ bool,
@@ -77,13 +76,17 @@ func (r *RegisterValidatorStake) Execute(
 
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
-	currentValidators, _ := emissionInstance.GetNuklaiVMValidators(ctx)
-	nodePublicKey := ""
+	currentValidators := emissionInstance.GetAllValidators(ctx)
+	var nodePublicKey *bls.PublicKey
 	for _, validator := range currentValidators {
-		signer := auth.NewBLSAddress(validator.PublicKey)
+		publicKey, err := bls.PublicKeyFromBytes(validator.PublicKey)
+		if err != nil {
+			return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
+		}
+		signer := auth.NewBLSAddress(publicKey)
 		if actorAddress == codec.MustAddressBech32(nconsts.HRP, signer) {
 			isValidatorOwner = true
-			nodePublicKey = base64.StdEncoding.EncodeToString(validator.PublicKey.Compress())
+			nodePublicKey = publicKey
 			break
 		}
 	}
@@ -114,9 +117,8 @@ func (r *RegisterValidatorStake) Execute(
 	if stakeInfo.StakedAmount < stakingConfig.MinValidatorStake && stakeInfo.StakedAmount > stakingConfig.MaxValidatorStake {
 		return false, RegisterValidatorStakeComputeUnits, OutputValidatorStakedAmountInvalid, nil, nil
 	}
-
 	// Get current time
-	currentTime := time.Unix(timestamp, 0).UTC()
+	currentTime := time.Now().UTC()
 	// Get last accepted block time
 	lastBlockTime := emissionInstance.GetLastAcceptedBlockTimestamp()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
@@ -130,6 +132,7 @@ func (r *RegisterValidatorStake) Execute(
 	if endTime.Before(startTime) {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeEndTime, nil, nil
 	}
+
 	// Check that the total staking period is at least the minimum staking period
 	stakeDuration := endTime.Sub(startTime)
 	if stakeDuration < stakingConfig.MinValidatorStakeDuration || stakeDuration > stakingConfig.MaxValidatorStakeDuration {
@@ -142,7 +145,7 @@ func (r *RegisterValidatorStake) Execute(
 	}
 
 	// Register in Emission Balancer
-	err = emissionInstance.RegisterValidatorStake(nodeID, nodePublicKey, stakeInfo.StakedAmount)
+	err = emissionInstance.RegisterValidatorStake(nodeID, nodePublicKey, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate)
 	if err != nil {
 		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}

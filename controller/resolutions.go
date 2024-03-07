@@ -58,15 +58,19 @@ func (c *Controller) GetLoanFromState(
 	return storage.GetLoanFromState(ctx, c.inner.ReadState, asset, destination)
 }
 
-func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, *emission.EmissionAccount, error) {
-	return c.emission.GetTotalSupply(), c.emission.GetMaxSupply(), c.emission.GetRewardsPerBlock(), c.emission.GetEmissionAccount(), nil
+func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, uint64, emission.EmissionAccount, emission.EpochTracker, error) {
+	return c.emission.TotalSupply, c.emission.MaxSupply, c.emission.TotalStaked, c.emission.GetRewardsPerEpoch(), c.emission.EmissionAccount, c.emission.EpochTracker, nil
 }
 
-func (c *Controller) GetAllValidators() ([]*emission.Validator, error) {
-	return c.emission.GetStakedValidator(ids.EmptyNodeID), nil
+func (c *Controller) GetValidators(ctx context.Context, staked bool) ([]*emission.Validator, error) {
+	if staked {
+		return c.emission.GetStakedValidator(ids.EmptyNodeID), nil
+	} else {
+		return c.emission.GetAllValidators(ctx), nil
+	}
 }
 
-func (c *Controller) GetValidator(nodeID ids.NodeID) (*emission.Validator, error) {
+func (c *Controller) GetStakedValidatorInfo(nodeID ids.NodeID) (*emission.Validator, error) {
 	validators := c.emission.GetStakedValidator(nodeID)
 	return validators[0], nil
 }

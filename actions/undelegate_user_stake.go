@@ -51,7 +51,7 @@ func (u *UndelegateUserStake) Execute(
 	ctx context.Context,
 	_ chain.Rules,
 	mu state.Mutable,
-	timestamp int64,
+	_ int64,
 	actor codec.Address,
 	_ ids.ID,
 	_ bool,
@@ -73,7 +73,7 @@ func (u *UndelegateUserStake) Execute(
 	emissionInstance := emission.GetEmission()
 
 	// Get current time
-	currentTime := time.Unix(timestamp, 0).UTC()
+	currentTime := time.Now().UTC()
 	// Get last accepted block time
 	lastBlockTime := emissionInstance.GetLastAcceptedBlockTimestamp()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation

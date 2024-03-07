@@ -55,7 +55,7 @@ func (s *DelegateUserStake) Execute(
 	ctx context.Context,
 	_ chain.Rules,
 	mu state.Mutable,
-	timestamp int64,
+	_ int64,
 	actor codec.Address,
 	_ ids.ID,
 	_ bool,
@@ -86,7 +86,7 @@ func (s *DelegateUserStake) Execute(
 	emissionInstance := emission.GetEmission()
 
 	// Get current time
-	currentTime := time.Unix(timestamp, 0).UTC()
+	currentTime := time.Now().UTC()
 	// Get last accepted block time
 	lastBlockTime := emissionInstance.GetLastAcceptedBlockTimestamp()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
@@ -97,7 +97,7 @@ func (s *DelegateUserStake) Execute(
 	}
 
 	// Delegate in Emission Balancer
-	err = emissionInstance.DelegateUserStake(nodeID, s.StakedAmount)
+	err = emissionInstance.DelegateUserStake(nodeID, actor, s.StakedAmount)
 	if err != nil {
 		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}

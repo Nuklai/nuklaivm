@@ -4,8 +4,8 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"math"
@@ -561,12 +561,12 @@ var registerValidatorStakeCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		publicKey := base64.StdEncoding.EncodeToString(bls.PublicFromPrivateKey(secretKey).Compress())
-		hutils.Outf("{{yellow}}Validator Signer Address: %s Public Key:{{/}} %s\n", codec.MustAddressBech32(nconsts.HRP, priv.Address), publicKey)
+		publicKey := bls.PublicKeyToBytes(bls.PublicFromPrivateKey(secretKey))
+		hutils.Outf("{{yellow}}Validator Signer Address: %s\n", codec.MustAddressBech32(nconsts.HRP, priv.Address))
 
 		// Get the validator for which the actor is a signer
 		// Get current list of validators
-		validators, err := ncli.Validators(ctx)
+		validators, err := ncli.AllValidators(ctx)
 		if err != nil {
 			return err
 		}
@@ -577,7 +577,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 
 		var nodeID ids.NodeID
 		for i := 0; i < len(validators); i++ {
-			if publicKey == validators[i].PublicKey {
+			if bytes.Equal(publicKey, validators[i].PublicKey) {
 				nodeID = validators[i].NodeID
 				break
 			}
@@ -714,7 +714,7 @@ var getValidatorStakeCmd = &cobra.Command{
 		ncli := nclients[0]
 
 		// Get current list of validators
-		validators, err := ncli.Validators(ctx)
+		validators, err := ncli.StakedValidators(ctx)
 		if err != nil {
 			return err
 		}
@@ -749,6 +749,67 @@ var getValidatorStakeCmd = &cobra.Command{
 	},
 }
 
+var claimValidatorStakeRewardCmd = &cobra.Command{
+	Use: "claim-validator-stake-reward",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, _, factory, hcli, hws, ncli, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+
+		// Get current list of validators
+		validators, err := ncli.StakedValidators(ctx)
+		if err != nil {
+			return err
+		}
+		if len(validators) == 0 {
+			hutils.Outf("{{red}}no validators{{/}}\n")
+			return nil
+		}
+
+		// Show validators to the user
+		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
+		for i := 0; i < len(validators); i++ {
+			hutils.Outf(
+				"{{yellow}}%d:{{/}} NodeID=%s\n",
+				i,
+				validators[i].NodeID,
+			)
+		}
+		// Select validator
+		keyIndex, err := handler.Root().PromptChoice("validator to claim staking rewards for", len(validators))
+		if err != nil {
+			return err
+		}
+		validatorChosen := validators[keyIndex]
+		nodeID := validatorChosen.NodeID
+
+		// Get stake info
+		_, _, stakedAmount, _, _, _, err := ncli.ValidatorStake(ctx, nodeID)
+		if err != nil {
+			return err
+		}
+
+		if stakedAmount == 0 {
+			hutils.Outf("{{red}}validator has not yet staked{{/}}\n")
+			return nil
+		}
+
+		// Confirm action
+		cont, err := handler.Root().PromptContinue()
+		if !cont || err != nil {
+			return err
+		}
+
+		// Generate transaction
+		_, _, err = sendAndWait(ctx, nil, &actions.ClaimStakingRewards{
+			NodeID: nodeID.Bytes(),
+		}, hcli, hws, ncli, factory, true)
+		return err
+	},
+}
+
 var delegateUserStakeCmd = &cobra.Command{
 	Use: "delegate-user-stake [manual | auto]",
 	PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -766,7 +827,7 @@ var delegateUserStakeCmd = &cobra.Command{
 		}
 
 		// Get current list of validators
-		validators, err := ncli.Validators(ctx)
+		validators, err := ncli.StakedValidators(ctx)
 		if err != nil {
 			return err
 		}
@@ -857,6 +918,131 @@ var delegateUserStakeCmd = &cobra.Command{
 	},
 }
 
+var getUserStakeCmd = &cobra.Command{
+	Use: "get-user-stake [address]",
+	RunE: func(_ *cobra.Command, args []string) error {
+		ctx := context.Background()
+
+		var address codec.Address
+		if len(args) == 0 {
+			_, priv, _, _, _, _, err := handler.DefaultActor()
+			if err != nil {
+				return err
+			}
+			address = priv.Address
+		} else {
+			addr, err := codec.ParseAddressBech32(nconsts.HRP, args[0])
+			if err != nil {
+				return err
+			}
+			address = addr
+		}
+
+		// Get clients
+		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
+		if err != nil {
+			return err
+		}
+		ncli := nclients[0]
+
+		// Get current list of validators
+		validators, err := ncli.StakedValidators(ctx)
+		if err != nil {
+			return err
+		}
+		if len(validators) == 0 {
+			hutils.Outf("{{red}}no validators{{/}}\n")
+			return nil
+		}
+
+		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
+		for i := 0; i < len(validators); i++ {
+			hutils.Outf(
+				"{{yellow}}%d:{{/}} NodeID=%s\n",
+				i,
+				validators[i].NodeID,
+			)
+		}
+		// Select validator
+		keyIndex, err := handler.Root().PromptChoice("validator to get staking info for", len(validators))
+		if err != nil {
+			return err
+		}
+		validatorChosen := validators[keyIndex]
+		nodeID := validatorChosen.NodeID
+
+		// Get user stake
+		_, _, _, _, err = handler.GetUserStake(ctx, ncli, address, nodeID)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
+var claimUserStakeRewardCmd = &cobra.Command{
+	Use: "claim-user-stake-reward",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+
+		// Get current list of validators
+		validators, err := ncli.StakedValidators(ctx)
+		if err != nil {
+			return err
+		}
+		if len(validators) == 0 {
+			hutils.Outf("{{red}}no validators{{/}}\n")
+			return nil
+		}
+
+		// Show validators to the user
+		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
+		for i := 0; i < len(validators); i++ {
+			hutils.Outf(
+				"{{yellow}}%d:{{/}} NodeID=%s\n",
+				i,
+				validators[i].NodeID,
+			)
+		}
+		// Select validator
+		keyIndex, err := handler.Root().PromptChoice("validator to claim staking rewards from", len(validators))
+		if err != nil {
+			return err
+		}
+		validatorChosen := validators[keyIndex]
+		nodeID := validatorChosen.NodeID
+
+		// Get stake info
+		_, stakedAmount, _, _, err := ncli.UserStake(ctx, priv.Address, nodeID)
+		if err != nil {
+			return err
+		}
+
+		if stakedAmount == 0 {
+			hutils.Outf("{{red}}user has not yet delegated to this validator{{/}}\n")
+			return nil
+		}
+
+		// Confirm action
+		cont, err := handler.Root().PromptContinue()
+		if !cont || err != nil {
+			return err
+		}
+
+		// Generate transaction
+		_, _, err = sendAndWait(ctx, nil, &actions.ClaimStakingRewards{
+			NodeID:           nodeID.Bytes(),
+			UserStakeAddress: priv.Address,
+		}, hcli, hws, ncli, factory, true)
+		return err
+	},
+}
+
 var undelegateUserStakeCmd = &cobra.Command{
 	Use: "undelegate-user-stake",
 	RunE: func(*cobra.Command, []string) error {
@@ -867,7 +1053,7 @@ var undelegateUserStakeCmd = &cobra.Command{
 		}
 
 		// Get current list of validators
-		validators, err := ncli.Validators(ctx)
+		validators, err := ncli.StakedValidators(ctx)
 		if err != nil {
 			return err
 		}
@@ -915,68 +1101,5 @@ var undelegateUserStakeCmd = &cobra.Command{
 			NodeID: nodeID.Bytes(),
 		}, hcli, hws, ncli, factory, true)
 		return err
-	},
-}
-
-var getUserStakeCmd = &cobra.Command{
-	Use: "get-user-stake [address]",
-	RunE: func(_ *cobra.Command, args []string) error {
-		ctx := context.Background()
-
-		var address codec.Address
-		if len(args) == 0 {
-			_, priv, _, _, _, _, err := handler.DefaultActor()
-			if err != nil {
-				return err
-			}
-			address = priv.Address
-		} else {
-			addr, err := codec.ParseAddressBech32(nconsts.HRP, args[0])
-			if err != nil {
-				return err
-			}
-			address = addr
-		}
-
-		// Get clients
-		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
-		if err != nil {
-			return err
-		}
-		ncli := nclients[0]
-
-		// Get current list of validators
-		validators, err := ncli.Validators(ctx)
-		if err != nil {
-			return err
-		}
-		if len(validators) == 0 {
-			hutils.Outf("{{red}}no validators{{/}}\n")
-			return nil
-		}
-
-		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
-		for i := 0; i < len(validators); i++ {
-			hutils.Outf(
-				"{{yellow}}%d:{{/}} NodeID=%s\n",
-				i,
-				validators[i].NodeID,
-			)
-		}
-		// Select validator
-		keyIndex, err := handler.Root().PromptChoice("validator to get staking info for", len(validators))
-		if err != nil {
-			return err
-		}
-		validatorChosen := validators[keyIndex]
-		nodeID := validatorChosen.NodeID
-
-		// Get user stake
-		_, _, _, _, err = handler.GetUserStake(ctx, ncli, address, nodeID)
-		if err != nil {
-			return err
-		}
-
-		return nil
 	},
 }

@@ -29,7 +29,7 @@ var emissionInfoCmd = &cobra.Command{
 		ncli := nclients[0]
 
 		// Get emission info
-		_, _, _, _, _, err = handler.GetEmissionInfo(ctx, ncli)
+		_, _, _, _, _, _, _, _, err = handler.GetEmissionInfo(ctx, ncli)
 		if err != nil {
 			return err
 		}
@@ -38,8 +38,8 @@ var emissionInfoCmd = &cobra.Command{
 	},
 }
 
-var emissionValidatorsCmd = &cobra.Command{
-	Use: "validators",
+var emissionAllValidatorsCmd = &cobra.Command{
+	Use: "all-validators",
 	RunE: func(_ *cobra.Command, args []string) error {
 		ctx := context.Background()
 
@@ -52,6 +52,28 @@ var emissionValidatorsCmd = &cobra.Command{
 
 		// Get validators info
 		_, err = handler.GetAllValidators(ctx, ncli)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
+var emissionStakedValidatorsCmd = &cobra.Command{
+	Use: "staked-validators",
+	RunE: func(_ *cobra.Command, args []string) error {
+		ctx := context.Background()
+
+		// Get clients
+		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
+		if err != nil {
+			return err
+		}
+		ncli := nclients[0]
+
+		// Get validators info
+		_, err = handler.GetStakedValidators(ctx, ncli)
 		if err != nil {
 			return err
 		}

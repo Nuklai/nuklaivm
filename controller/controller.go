@@ -228,19 +228,20 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 	// Distribute fees
 	if totalFee > 0 {
 		c.emission.DistributeFees(totalFee)
-		emissionAddress, err := codec.AddressBech32(nconsts.HRP, c.emission.GetEmissionAccount().Address)
+		emissionAddress, err := codec.AddressBech32(nconsts.HRP, c.emission.EmissionAccount.Address)
 		if err != nil {
 			return err // This should never happen
 		}
-		c.inner.Logger().Info("distributed fees to Emission and Validators", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("total fee", totalFee), zap.Uint64("total supply", c.emission.GetTotalSupply()), zap.Uint64("max supply", c.emission.GetMaxSupply()), zap.Uint64("rewards per block", c.emission.GetRewardsPerBlock()), zap.String("emission address", emissionAddress), zap.Uint64("emission address unclaimed balance", c.emission.GetEmissionAccount().UnclaimedBalance))
+		c.inner.Logger().Info("distributed fees to Emission and Validators", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("total fee", totalFee), zap.Uint64("total supply", c.emission.TotalSupply), zap.Uint64("max supply", c.emission.MaxSupply), zap.Uint64("rewards per epock", c.emission.GetRewardsPerEpoch()), zap.String("emission address", emissionAddress), zap.Uint64("emission address unclaimed balance", c.emission.EmissionAccount.UnclaimedBalance))
+		c.metrics.feesDistributed.Add(float64(totalFee))
 	}
 
 	// Mint new NAI if needed
 	mintNewNAI := c.emission.MintNewNAI()
 	if mintNewNAI > 0 {
 		c.emission.AddToTotalSupply(mintNewNAI)
-		c.inner.Logger().Info("minted new NAI", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("newly minted NAI", mintNewNAI), zap.Uint64("total supply", c.emission.GetTotalSupply()), zap.Uint64("max supply", c.emission.GetMaxSupply()))
-		c.metrics.mintNAI.Add(float64(mintNewNAI))
+		c.inner.Logger().Info("minted new NAI", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("newly minted NAI", mintNewNAI), zap.Uint64("total supply", c.emission.TotalSupply), zap.Uint64("max supply", c.emission.MaxSupply))
+		c.metrics.mintedNAI.Add(float64(mintNewNAI))
 	}
 
 	return batch.Write()

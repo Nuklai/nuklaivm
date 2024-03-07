@@ -142,24 +142,28 @@ func (j *JSONRPCServer) Loan(req *http.Request, args *LoanArgs, reply *LoanReply
 }
 
 type EmissionReply struct {
-	TotalSupply     uint64                    `json:"totalSupply"`
-	MaxSupply       uint64                    `json:"maxSupply"`
-	RewardsPerBlock uint64                    `json:"rewardsPerBlock"`
-	EmissionAccount *emission.EmissionAccount `json:"emissionAccount"`
+	TotalSupply     uint64                   `json:"totalSupply"`
+	MaxSupply       uint64                   `json:"maxSupply"`
+	TotalStaked     uint64                   `json:"totalStaked"`
+	RewardsPerEpoch uint64                   `json:"rewardsPerEpoch"`
+	EmissionAccount emission.EmissionAccount `json:"emissionAccount"`
+	EpochTracker    emission.EpochTracker    `json:"epochTracker"`
 }
 
 func (j *JSONRPCServer) EmissionInfo(req *http.Request, _ *struct{}, reply *EmissionReply) (err error) {
 	_, span := j.c.Tracer().Start(req.Context(), "Server.EmissionInfo")
 	defer span.End()
 
-	totalSupply, maxSupply, rewardsPerBlock, emissionAccount, err := j.c.GetEmissionInfo()
+	totalSupply, maxSupply, totalStaked, rewardsPerEpoch, emissionAccount, epochTracker, err := j.c.GetEmissionInfo()
 	if err != nil {
 		return err
 	}
 	reply.TotalSupply = totalSupply
 	reply.MaxSupply = maxSupply
-	reply.RewardsPerBlock = rewardsPerBlock
+	reply.TotalStaked = totalStaked
+	reply.RewardsPerEpoch = rewardsPerEpoch
 	reply.EmissionAccount = emissionAccount
+	reply.EpochTracker = epochTracker
 	return nil
 }
 
@@ -167,11 +171,23 @@ type ValidatorsReply struct {
 	Validators []*emission.Validator `json:"validators"`
 }
 
-func (j *JSONRPCServer) Validators(req *http.Request, _ *struct{}, reply *ValidatorsReply) (err error) {
-	_, span := j.c.Tracer().Start(req.Context(), "Server.Validators")
+func (j *JSONRPCServer) AllValidators(req *http.Request, _ *struct{}, reply *ValidatorsReply) (err error) {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.AllValidators")
 	defer span.End()
 
-	validators, err := j.c.GetAllValidators()
+	validators, err := j.c.GetValidators(ctx, false)
+	if err != nil {
+		return err
+	}
+	reply.Validators = validators
+	return nil
+}
+
+func (j *JSONRPCServer) StakedValidators(req *http.Request, _ *struct{}, reply *ValidatorsReply) (err error) {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.StakedValidators")
+	defer span.End()
+
+	validators, err := j.c.GetValidators(ctx, true)
 	if err != nil {
 		return err
 	}
@@ -230,6 +246,7 @@ func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply 
 	defer span.End()
 
 	exists, stakeStartTime, stakedAmount, rewardAddress, ownerAddress, err := j.c.GetDelegatedUserStakeFromState(ctx, args.Owner, args.NodeID)
+
 	if err != nil {
 		return err
 	}

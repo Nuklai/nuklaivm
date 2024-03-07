@@ -22,9 +22,9 @@ type Controller interface {
 	GetBalanceFromState(context.Context, codec.Address, ids.ID) (uint64, error)
 	GetLoanFromState(context.Context, ids.ID, ids.ID) (uint64, error)
 
-	GetEmissionInfo() (uint64, uint64, uint64, *emission.EmissionAccount, error)
-	GetAllValidators() ([]*emission.Validator, error)
-	GetValidator(nodeID ids.NodeID) (*emission.Validator, error)
+	GetEmissionInfo() (uint64, uint64, uint64, uint64, emission.EmissionAccount, emission.EpochTracker, error)
+	GetValidators(ctx context.Context, staked bool) ([]*emission.Validator, error)
+	GetStakedValidatorInfo(nodeID ids.NodeID) (*emission.Validator, error)
 	GetValidatorStakeFromState(ctx context.Context, nodeID ids.NodeID) (
 		bool, // exists
 		uint64, // StakeStartTime

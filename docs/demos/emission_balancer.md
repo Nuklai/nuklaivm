@@ -32,18 +32,18 @@ If you don't have enough NAI in your account, you will see something like:
 
 ```
 database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
+address: nuklai1qthtcezagawz0musdn9y4l7wx02j3xjm4q423fup9qpvkgquhmmkzmad9nh
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
 Loading private key for node1
-chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
 balance: 0.000000000 NAI
-please send funds to nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc
+please send funds to nuklai1qtfc4q9vz30v8nvgllf4decucpdux007495sh5kuc3hx53h264q5uvwp5m3
 exiting...
 Balance of validator signer: 0.000000000
  You need a minimum of 100 NAI to register a validator
 ```
 
-So, all we need to do is send at least 100 NAI to `nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc`
+So, all we need to do is send at least 100 NAI to `nuklai1qtfc4q9vz30v8nvgllf4decucpdux007495sh5kuc3hx53h264q5uvwp5m3`
 
 After sending some NAI to this account using `./build/nuklai-cli action transfer`, let's try this again:
 
@@ -55,22 +55,22 @@ If successful, you should see something like:
 
 ```
 database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
-Loading private key for node1
-chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
-balance: 101.000000000 NAI
-Balance of validator signer: 101.000000000
-Loading validator signer key : nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc
-address: nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc
-chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
-Validator Signer Address: nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc Public Key: t7et4jcSplg6okXPLyWVaWmEMajENU82RREoqCZUNtzatC9AVIdfUkbrtPKyPDd3
-Validator NodeID: NodeID-AySfsjEAiDZUZwW8XN8gFmvRU4PAbdPTQ
-balance: 101.000000000 NAI
-✔ Staked amount: 100
-continue (y/n): y█
-Register Validator Stake Info -  stakeStartTime: 2024-02-17 00:47:48 stakeEndTime: 2024-02-17 00:48:48 delegationFeeRate: 10 rewardAddress: nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc
-✅ txID: 2kZWFPX242f7o6FJRGxnCZERvW2vH3f2jgbwuaW9w7xff95BGc
+address: nuklai1qthtcezagawz0musdn9y4l7wx02j3xjm4q423fup9qpvkgquhmmkzmad9nh
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+Loading private key for node6
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+balance: 999.000000000 NAI
+Balance of validator signer: 999.000000000
+Loading validator signer key : nuklai1qtfc4q9vz30v8nvgllf4decucpdux007495sh5kuc3hx53h264q5uvwp5m3
+address: nuklai1qtfc4q9vz30v8nvgllf4decucpdux007495sh5kuc3hx53h264q5uvwp5m3
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+Validator Signer Address: nuklai1qtfc4q9vz30v8nvgllf4decucpdux007495sh5kuc3hx53h264q5uvwp5m3
+Validator NodeID: NodeID-67n4HUguYgerqGoVJcggpevxodYgccpAb
+balance: 999.000000000 NAI
+Staked amount: 100
+continue (y/n): y
+Register Validator Stake Info - stakeStartTime: 2024-03-07 16:05:31 stakeEndTime: 2024-03-07 16:06:31 delegationFeeRate: 10 rewardAddress: nuklai1qtfc4q9vz30v8nvgllf4decucpdux007495sh5kuc3hx53h264q5uvwp5m3
+✅ txID: osg6LKLLv9UaLtwJTe4QXquNBiimKWqzWntGQY3ioZj19PnJm
 ```
 
 #### Manual run
@@ -87,7 +87,7 @@ Which should output:
 
 ```
 database: .nuklai-cli
-imported address: nuklai1qgzqljfa8zzrg9ne8vuu9txjxvt9n3ns58zq3kfry9pryw4kqknjkfkr30c
+imported address: nuklai1qgrkfqwkedr80ka8lhd8kefjtdvvh0e2rq9el72pye86cy5mnr3w6k6c8hu
 ```
 
 Let's make sure we have enough balance to send
@@ -100,11 +100,11 @@ Which outputs:
 
 ```
 database: .nuklai-cli
-address: nuklai1qgzqljfa8zzrg9ne8vuu9txjxvt9n3ns58zq3kfry9pryw4kqknjkfkr30c
-chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
+address: nuklai1qgrkfqwkedr80ka8lhd8kefjtdvvh0e2rq9el72pye86cy5mnr3w6k6c8hu
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
 assetID (use NAI for native token): NAI
-uri: http://127.0.0.1:32911/ext/bc/2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
-balance: 400.000000000 NAI
+uri: http://127.0.0.1:33759/ext/bc/UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+balance: 1000.000000000 NAI
 ```
 
 To register our validator for staking manually, we can do:
@@ -117,27 +117,30 @@ If successful, you should see something like:
 
 ```
 database: .nuklai-cli
-address: nuklai1qgzqljfa8zzrg9ne8vuu9txjxvt9n3ns58zq3kfry9pryw4kqknjkfkr30c
-chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
-Validator Signer Address: nuklai1qgzqljfa8zzrg9ne8vuu9txjxvt9n3ns58zq3kfry9pryw4kqknjkfkr30c Public Key: rxgK6sl8wgKLTNidfKrXgPRuwTDC8SqRy25ZXl8Sy20U6nEXv0nrVj0XYKbGynMd
-Validator NodeID: NodeID-Lz8FCjSXyLwF8WUKAPWwFgmLYhwhEQzXe
-balance: 400.000000000 NAI
-✔ Staked amount: 200█
-Staking Start Time(must be after 2024-02-17 01:02:48) [YYYY-MM-DD HH:MM:SS]:  2024-02-17 01:05:00
-✔ Staking End Time(must be after 2024-02-17 01:05:00) [YYYY-MM-DD HH:MM:SS]:  2024-02-17 01:09:00█
-✔ Delegation Fee Rate(must be over 2): 3█
-✔ Reward Address: nuklai1qgzqljfa8zzrg9ne8vuu9txjxvt9n3ns58zq3kfry9pryw4kqknjkfkr30c█
-✔ continue (y/n): y█
-Register Validator Stake Info - stakeStartTime: 2024-02-17 01:05:00 stakeEndTime: 2024-02-17 01:09:00 delegationFeeRate: 3 rewardAddress: nuklai1qgzqljfa8zzrg9ne8vuu9txjxvt9n3ns58zq3kfry9pryw4kqknjkfkr30c
-
-✅ txID: 2NSaH96NYQuSk1FEppo1sxJPuceMzDRxQVE1dzrmHuLGEFy7FC
+imported address: nuklai1qgrkfqwkedr80ka8lhd8kefjtdvvh0e2rq9el72pye86cy5mnr3w6k6c8hu
+[~/repos/github.com/nuklai/nuklaivm]
+ke manual)-(kpachhai)-(1008)-> ./build/nuklai-cli action register-validator-sta
+database: .nuklai-cli
+address: nuklai1qgrkfqwkedr80ka8lhd8kefjtdvvh0e2rq9el72pye86cy5mnr3w6k6c8hu
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+Validator Signer Address: nuklai1qgrkfqwkedr80ka8lhd8kefjtdvvh0e2rq9el72pye86cy5mnr3w6k6c8hu
+Validator NodeID: NodeID-LSvpQLK7t8XzMhcNr3TK687cKquG1AtUG
+balance: 1000.000000000 NAI
+Staked amount: 100
+✔ Staking Start Time(must be after 2024-03-07 16:05:24) [YYYY-MM-DD HH:MM:SS]: 2024-03-07 16:07:00█
+Staking End Time(must be after 2024-03-07 16:07:00) [YYYY-MM-DD HH:MM:SS]: 2024-03-07 16:25:00
+Delegation Fee Rate(must be over 2): 90
+✔ Reward Address: nuklai1qgrkfqwkedr80ka8lhd8kefjtdvvh0e2rq9el72pye86cy5mnr3w6k6c8hu█
+continue (y/n): y
+Register Validator Stake Info - stakeStartTime: 2024-03-07 16:07:00 stakeEndTime: 2024-03-07 16:25:00 delegationFeeRate: 90 rewardAddress: nuklai1qgrkfqwkedr80ka8lhd8kefjtdvvh0e2rq9el72pye86cy5mnr3w6k6c8hu
+✅ txID: FDAa8RKAV1s1nTfd1LCboGFwmiCLUpnaA7JAuxoNCeDACu7ZN
 ```
 
 ### Get Validator stake info
 
 You may want to check your validator staking info such as stake start time, stake end time, staked amount, delegation fee rate and reward address. To do so, you can do:
 
-Let's check the validator staking info for node1 or `NodeID=NodeID-AySfsjEAiDZUZwW8XN8gFmvRU4PAbdPTQ` which we staked above.
+Let's check the validator staking info for node1 or `NodeID=NodeID-67n4HUguYgerqGoVJcggpevxodYgccpAb` which we staked above.
 
 ```bash
 ./build/nuklai-cli action get-validator-stake
@@ -147,16 +150,28 @@ If successful, the output should be something like:
 
 ```
 database: .nuklai-cli
-chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
-validators: 5
-0: NodeID=NodeID-8toEuCFZ9E3jqee6X6ynWagzEXdYy6XZU NodePublicKey=pz2sY5ChOJljXCPcB2MJSTKGjJ7aipJ7N4TUon/k5kWTA+pCoxqAPpWiGNpM6VHK
-1: NodeID=NodeID-PZofQ3NucKr43wxZN9vWzxiMnvW4k2Ygp NodePublicKey=q0EvKTkjfDjY4YzE7AX4hldyhe2HjXf6JsZMkmtcES99qaiZu5J4VPaZ5U4BWFPT
-2: NodeID=NodeID-Lz8FCjSXyLwF8WUKAPWwFgmLYhwhEQzXe NodePublicKey=rxgK6sl8wgKLTNidfKrXgPRuwTDC8SqRy25ZXl8Sy20U6nEXv0nrVj0XYKbGynMd
-3: NodeID=NodeID-AySfsjEAiDZUZwW8XN8gFmvRU4PAbdPTQ NodePublicKey=t7et4jcSplg6okXPLyWVaWmEMajENU82RREoqCZUNtzatC9AVIdfUkbrtPKyPDd3
-4: NodeID=NodeID-F4fToB3WiUVZbBqTMEyNz7rZQ9h4Vp9YC NodePublicKey=s8KHv77JjvPkVi0xdLYnqA5XCgH2dKXzI2leBBSvbDaOcH0cCNQbCoEXz1oNmHes
-✔ validator to register for staking: 3
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+validators: 2
+0: NodeID=NodeID-LSvpQLK7t8XzMhcNr3TK687cKquG1AtUG
+1: NodeID=NodeID-67n4HUguYgerqGoVJcggpevxodYgccpAb
+validator to get staking info for: 1
 validator stake:
-StakeStartTime=1708130868 StakeEndTime=1708130928 StakedAmount=100000000000 DelegationFeeRate=10 RewardAddress=nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc OwnerAddress=nuklai1qfhh55jdfeg27l8w9acrq3ytcx45rcs26rskdaam58jcdtuuzpgsxsy8rsc
+StakeStartTime=2024-03-07 16:05:31 +0000 UTC StakeEndTime=2024-03-07 16:06:31 +0000 UTC StakedAmount=100000000000 DelegationFeeRate=10 RewardAddress=nuklai1qtfc4q9vz30v8nvgllf4decucpdux007495sh5kuc3hx53h264q5uvwp5m3 OwnerAddress=nuklai1qtfc4q9vz30v8nvgllf4decucpdux007495sh5kuc3hx53h264q5uvwp5m3
+```
+
+You can also retrieve other useful info from Emission Balancer by doing
+
+```bash
+./build/nuklai-cli emission staked-validators
+```
+
+If successful, the output should be something like:
+
+```
+database: .nuklai-cli
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+validator 0: NodeID=NodeID-67n4HUguYgerqGoVJcggpevxodYgccpAb PublicKey=pcBOMIh9EaslHXShtEEezRz1db6B6WGHMVymUkr2d2nkuBr/nqXS0ZUwMVCpNDfd StakedAmount=100000000000 UnclaimedStakedReward=245205  DelegationFeeRate=0.100000 DelegatedAmount=0 UnclaimedDelegatedReward=0
+validator 1: NodeID=NodeID-LSvpQLK7t8XzMhcNr3TK687cKquG1AtUG PublicKey=t0Jq/YIqsoXx75qpQ6BOhWx2rzhsB93MQjKLlQGDQGe/J+tHrh4WdU2xvahf1RRZ StakedAmount=100000000000 UnclaimedStakedReward=53817  DelegationFeeRate=0.900000 DelegatedAmount=0 UnclaimedDelegatedReward=0
 ```
 
 ### Delegate stake to a validator
@@ -177,20 +192,35 @@ If successful, the output should be something like:
 
 ```
 database: .nuklai-cli
-address: nuklai1q2w6mhxzvttqkkunrd25swy4n5crcld8e5v99cr2fy6h8vzxl739qcqnxqv
-chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
-validators: 5
-0: NodeID=NodeID-8toEuCFZ9E3jqee6X6ynWagzEXdYy6XZU NodePublicKey=pz2sY5ChOJljXCPcB2MJSTKGjJ7aipJ7N4TUon/k5kWTA+pCoxqAPpWiGNpM6VHK
-1: NodeID=NodeID-PZofQ3NucKr43wxZN9vWzxiMnvW4k2Ygp NodePublicKey=q0EvKTkjfDjY4YzE7AX4hldyhe2HjXf6JsZMkmtcES99qaiZu5J4VPaZ5U4BWFPT
-2: NodeID=NodeID-Lz8FCjSXyLwF8WUKAPWwFgmLYhwhEQzXe NodePublicKey=rxgK6sl8wgKLTNidfKrXgPRuwTDC8SqRy25ZXl8Sy20U6nEXv0nrVj0XYKbGynMd
-3: NodeID=NodeID-AySfsjEAiDZUZwW8XN8gFmvRU4PAbdPTQ NodePublicKey=t7et4jcSplg6okXPLyWVaWmEMajENU82RREoqCZUNtzatC9AVIdfUkbrtPKyPDd3
-4: NodeID=NodeID-F4fToB3WiUVZbBqTMEyNz7rZQ9h4Vp9YC NodePublicKey=s8KHv77JjvPkVi0xdLYnqA5XCgH2dKXzI2leBBSvbDaOcH0cCNQbCoEXz1oNmHes
-✔ validator to delegate to: 3
-balance: 897.999913400 NAI
-Staked amount: 25
+address: nuklai1qr0x7dw7vryvnt43vf7astvetv77y79lczh5zlv9wsv8q9wtqalqxw66h8d
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+validators: 2
+0: NodeID=NodeID-67n4HUguYgerqGoVJcggpevxodYgccpAb
+1: NodeID=NodeID-LSvpQLK7t8XzMhcNr3TK687cKquG1AtUG
+validator to delegate to: 1
+balance: 100000.000000000 NAI
+Staked amount: 40000
 continue (y/n): y
-Delegate User Stake Info - stakeStartTime: 2024-02-18 22:39:25 stakeEndTime: 2024-02-18 22:40:25 rewardAddress: nuklai1q2w6mhxzvttqkkunrd25swy4n5crcl✔ continue (y/n): y█
-✅ txID: A1UZezFUnSK9zryupueQsBBMwRU6tULwLMnwi7W3FnThYdhbB
+Delegate User Stake Info - stakeStartTime: 2024-03-07 16:10:44 stakeEndTime: 2024-03-07 16:11:44 rewardAddress: nuklai1qr0x7dw7vryvnt43vf7astvetv77y79lczh5zlv9wsv8q9wtqalqxw66h8d
+✅ txID: 51puQx5uSHocJjwFXvLtnX5cDY2feSddF9KWsdHxPbCmgMRSX
+```
+
+Let's delegate to another validator as well:
+
+```
+database: .nuklai-cli
+address: nuklai1qr0x7dw7vryvnt43vf7astvetv77y79lczh5zlv9wsv8q9wtqalqxw66h8d
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+validators: 2
+0: NodeID=NodeID-67n4HUguYgerqGoVJcggpevxodYgccpAb
+1: NodeID=NodeID-LSvpQLK7t8XzMhcNr3TK687cKquG1AtUG
+validator to delegate to: 0
+balance: 59999.999968100 NAI
+✔ Staked amount
+: 40000█
+continue (y/n): y
+Delegate User Stake Info - stakeStartTime: 2024-03-07 16:10:57 stakeEndTime: 2024-03-07 16:11:57 rewardAddress: nuklai1qr0x7dw7vryvnt43vf7astvetv77y79lczh5zlv9wsv8q9wtqalqxw66h8d
+✅ txID: 2jYu8UB5Bwxgza1zdcecVTcpqJfNPFM3xax8myYhSnh1EmtNoU
 ```
 
 ### Get Delegated User stake info
@@ -205,45 +235,30 @@ If successful, the output should be something like:
 
 ```
 database: .nuklai-cli
-address: nuklai1q2w6mhxzvttqkkunrd25swy4n5crcld8e5v99cr2fy6h8vzxl739qcqnxqv
-chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
-chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
-validators: 5
-0: NodeID=NodeID-8toEuCFZ9E3jqee6X6ynWagzEXdYy6XZU NodePublicKey=pz2sY5ChOJljXCPcB2MJSTKGjJ7aipJ7N4TUon/k5kWTA+pCoxqAPpWiGNpM6VHK
-1: NodeID=NodeID-PZofQ3NucKr43wxZN9vWzxiMnvW4k2Ygp NodePublicKey=q0EvKTkjfDjY4YzE7AX4hldyhe2HjXf6JsZMkmtcES99qaiZu5J4VPaZ5U4BWFPT
-2: NodeID=NodeID-Lz8FCjSXyLwF8WUKAPWwFgmLYhwhEQzXe NodePublicKey=rxgK6sl8wgKLTNidfKrXgPRuwTDC8SqRy25ZXl8Sy20U6nEXv0nrVj0XYKbGynMd
-3: NodeID=NodeID-AySfsjEAiDZUZwW8XN8gFmvRU4PAbdPTQ NodePublicKey=t7et4jcSplg6okXPLyWVaWmEMajENU82RREoqCZUNtzatC9AVIdfUkbrtPKyPDd3
-4: NodeID=NodeID-F4fToB3WiUVZbBqTMEyNz7rZQ9h4Vp9YC NodePublicKey=s8KHv77JjvPkVi0xdLYnqA5XCgH2dKXzI2leBBSvbDaOcH0cCNQbCoEXz1oNmHes
-✔ validator to get staking info for: 3
+address: nuklai1qr0x7dw7vryvnt43vf7astvetv77y79lczh5zlv9wsv8q9wtqalqxw66h8d
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+validators: 2
+0: NodeID=NodeID-67n4HUguYgerqGoVJcggpevxodYgccpAb
+1: NodeID=NodeID-LSvpQLK7t8XzMhcNr3TK687cKquG1AtUG
+validator to get staking info for: 0
 validator stake:
-StakeStartTime=1708295965 StakeEndTime=1708296025 StakedAmount=25000000000 RewardAddress=nuklai1q2w6mhxzvttqkkunrd25swy4n5crcld8e5v99cr2fy6h8vzxl739qcqnxqv OwnerAddress=nuklai1q2w6mhxzvttqkkunrd25swy4n5crcld8e5v99cr2fy6h8vzxl739qcqnxqv
+StakeStartTime=2024-03-07 16:10:57 +0000 UTC StakedAmount=40000000000000 RewardAddress=nuklai1qr0x7dw7vryvnt43vf7astvetv77y79lczh5zlv9wsv8q9wtqalqxw66h8d OwnerAddress=nuklai1qr0x7dw7vryvnt43vf7astvetv77y79lczh5zlv9wsv8q9wtqalqxw66h8d
 ```
 
-### Undelegate user stake
-
-Once your delegated stake period has ended, perhaps you may want to undelegate your stake(i.e. you want to get back your NAI you have staked to a validator). When you undelegate,
-you will also receive the accumulated rewards automatically so you do not need to call the action to claim your rewards separately.
-
-```bash
-./build/nuklai-cli action undelegate-user-stake
-```
-
-If successful, the output should be something like:
+Let's check our stake info for another validator as well:
 
 ```
 database: .nuklai-cli
-address: nuklai1q2w6mhxzvttqkkunrd25swy4n5crcld8e5v99cr2fy6h8vzxl739qcqnxqv
-chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
-chainID: 2oRdajKFemnW1zg7QX5yRkHvAWkpJ1W9b5xHpCqJ5X43Qyih3H
-validators: 5
-0: NodeID=NodeID-8toEuCFZ9E3jqee6X6ynWagzEXdYy6XZU NodePublicKey=pz2sY5ChOJljXCPcB2MJSTKGjJ7aipJ7N4TUon/k5kWTA+pCoxqAPpWiGNpM6VHK
-1: NodeID=NodeID-PZofQ3NucKr43wxZN9vWzxiMnvW4k2Ygp NodePublicKey=q0EvKTkjfDjY4YzE7AX4hldyhe2HjXf6JsZMkmtcES99qaiZu5J4VPaZ5U4BWFPT
-2: NodeID=NodeID-Lz8FCjSXyLwF8WUKAPWwFgmLYhwhEQzXe NodePublicKey=rxgK6sl8wgKLTNidfKrXgPRuwTDC8SqRy25ZXl8Sy20U6nEXv0nrVj0XYKbGynMd
-3: NodeID=NodeID-AySfsjEAiDZUZwW8XN8gFmvRU4PAbdPTQ NodePublicKey=t7et4jcSplg6okXPLyWVaWmEMajENU82RREoqCZUNtzatC9AVIdfUkbrtPKyPDd3
-4: NodeID=NodeID-F4fToB3WiUVZbBqTMEyNz7rZQ9h4Vp9YC NodePublicKey=s8KHv77JjvPkVi0xdLYnqA5XCgH2dKXzI2leBBSvbDaOcH0cCNQbCoEXz1oNmHes
-✔ validator to unstake from: 3
-✔ continue (y/n): y█
-✅ txID: 21JdRhtLJ4ra5QPixgdZ184iQ4sRzPzJS81SZ1AkaHBniLvggJ
+address: nuklai1qr0x7dw7vryvnt43vf7astvetv77y79lczh5zlv9wsv8q9wtqalqxw66h8d
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+validators: 2
+0: NodeID=NodeID-67n4HUguYgerqGoVJcggpevxodYgccpAb
+1: NodeID=NodeID-LSvpQLK7t8XzMhcNr3TK687cKquG1AtUG
+validator to get staking info for: 1
+validator stake:
+StakeStartTime=2024-03-07 16:10:44 +0000 UTC StakedAmount=40000000000000 RewardAddress=nuklai1qr0x7dw7vryvnt43vf7astvetv77y79lczh5zlv9wsv8q9wtqalqxw66h8d OwnerAddress=nuklai1qr0x7dw7vryvnt43vf7astvetv77y79lczh5zlv9wsv8q9wtqalqxw66h8d
 ```
 
 ### Get Emission Info
@@ -258,9 +273,9 @@ If successful, the output should be something like:
 
 ```
 database: .nuklai-cli
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
 emission info:
-TotalSupply=853000594000000000 MaxSupply=10000000000000000000 RewardsPerBlock=2000000000 EmissionAddress=nuklai1qqmzlnnredketlj3cu20v56nt5ken6thchra7nylwcrmz77td654w2jmpt9 EmissionBalance=594000014850
+TotalSupply=853000000059555314 MaxSupply=10000000000000000000 RewardsPerBlock=1906038 EmissionAddress=nuklai1qqmzlnnredketlj3cu20v56nt5ken6thchra7nylwcrmz77td654w2jmpt9 EmissionUnclaimedBalance=147650
 ```
 
 ### Get Validators
@@ -268,76 +283,115 @@ TotalSupply=853000594000000000 MaxSupply=10000000000000000000 RewardsPerBlock=20
 We can check the validators that have been staked
 
 ```bash
-./build/nuklai-cli emission validators
+./build/nuklai-cli emission staked-validators
 ```
 
 If successful, the output should be something like:
 
 ```
 database: .nuklai-cli
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-validator 0: NodeID=NodeID-7NEx57dgetsQdmgAGw9VjxAmTDWgdqZkP NodePublicKey=st7C9uuKbCM71BkP97PKTn8Vzn+ToE3giO/2z2OyNsY+FwVvIS2qtm6jPChANOXk UserStake=map[] StakedAmount=0 StakedReward=0
-validator 1: NodeID=NodeID-4xW5x8ekVnhqJr5UnPQGRf8emeRiPDfRr NodePublicKey=o3INAYDajQSR2jWTQzq6K8ut0i5/gVXhfEbnDTQB1r2Fi07pU/r+v5rGiEEECp/C UserStake=map[] StakedAmount=0 StakedReward=0
-validator 2: NodeID=NodeID-BrkTkxtNzhxP8przzBUnzZTXST8qMKCMV NodePublicKey=jvv4m5Si1w0TJjzPAVHbk7bcJEOEsGoGu2mjXrsuiVj56PsvVORG843MYhTjE2uW UserStake=map[] StakedAmount=0 StakedReward=0
-validator 3: NodeID=NodeID-4h8Ud3qTEksLBCMNjkKBFhYRKJ5NfJZ2w NodePublicKey=hzGTs30HIPili1lgXjO5BfGJTZw9oAE6bOcoAuIQEMhNbI70d4aUm3B80GMyUyLu UserStake=map[] StakedAmount=0 StakedReward=0
-validator 4: NodeID=NodeID-B2BSzCnzhAM2WwKU5UbwZxpoMPmE9TnNf NodePublicKey=pXYMPMHBASy0Y5/PzNI1B4HGrqSkP1upFtuSiEI2HKAbc+8ZPdkhmCWearjYOWRE UserStake=map[] StakedAmount=0 StakedReward=0
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+validator 0: NodeID=NodeID-67n4HUguYgerqGoVJcggpevxodYgccpAb PublicKey=pcBOMIh9EaslHXShtEEezRz1db6B6WGHMVymUkr2d2nkuBr/nqXS0ZUwMVCpNDfd StakedAmount=100000000000 UnclaimedStakedReward=34694495  DelegationFeeRate=0.100000 DelegatedAmount=40000000000000 UnclaimedDelegatedReward=3812837
+validator 1: NodeID=NodeID-LSvpQLK7t8XzMhcNr3TK687cKquG1AtUG PublicKey=t0Jq/YIqsoXx75qpQ6BOhWx2rzhsB93MQjKLlQGDQGe/J+tHrh4WdU2xvahf1RRZ StakedAmount=100000000000 UnclaimedStakedReward=4559195  DelegationFeeRate=0.900000 DelegatedAmount=40000000000000 UnclaimedDelegatedReward=39476472
 ```
 
-### Stake to a validator
-
-We can stake to a validator of our choice
+We can also retrieve all the validators(both staked and unstaked):
 
 ```bash
-./build/nuklai-cli action stake-validator
+./build/nuklai-cli emission all-validators
 ```
 
-If successful, the output should be:
+If successful, the output should be something like:
 
 ```
 database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-validators: 5
-0: NodeID=NodeID-4h8Ud3qTEksLBCMNjkKBFhYRKJ5NfJZ2w NodePublicKey=hzGTs30HIPili1lgXjO5BfGJTZw9oAE6bOcoAuIQEMhNbI70d4aUm3B80GMyUyLu
-1: NodeID=NodeID-B2BSzCnzhAM2WwKU5UbwZxpoMPmE9TnNf NodePublicKey=pXYMPMHBASy0Y5/PzNI1B4HGrqSkP1upFtuSiEI2HKAbc+8ZPdkhmCWearjYOWRE
-2: NodeID=NodeID-7NEx57dgetsQdmgAGw9VjxAmTDWgdqZkP NodePublicKey=st7C9uuKbCM71BkP97PKTn8Vzn+ToE3giO/2z2OyNsY+FwVvIS2qtm6jPChANOXk
-3: NodeID=NodeID-4xW5x8ekVnhqJr5UnPQGRf8emeRiPDfRr NodePublicKey=o3INAYDajQSR2jWTQzq6K8ut0i5/gVXhfEbnDTQB1r2Fi07pU/r+v5rGiEEECp/C
-4: NodeID=NodeID-BrkTkxtNzhxP8przzBUnzZTXST8qMKCMV NodePublicKey=jvv4m5Si1w0TJjzPAVHbk7bcJEOEsGoGu2mjXrsuiVj56PsvVORG843MYhTjE2uW
-validator to stake to: 2
-balance: 852999899.999970317 NAI
-✔ Staked amount: 1000█
-✔ End LockUp Height: 930█
-✔ continue (y/n): y█
-
-✅ txID: xheUBZvoYNm2fWd8xEwvKKC2jwnr7FsrAAvNLTkcouM2LTwcD
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+validator 0: NodeID=NodeID-NdhCHAP4QcirWB8R2mhCeT9LbTK9tXUK8 PublicKey=k7uzsetalee3UtKpka7t0iD3EccEjmkLgcVwY7SY0O90Qyv1qnbS8Pjswsq27aaJ StakedAmount=0 UnclaimedStakedReward=0 DelegationFeeRate=0.000000 DelegatedAmount=0 UnclaimedDelegatedReward=0
+validator 1: NodeID=NodeID-k8S4xtBu7MkfR45ojmvceCvWeENBmtBK PublicKey=hRo1jpSkQTV0dWAoZPIFZk+j0wXqHgOKUSAoWA7tMSlFU4m1T/dklWKGMZZFluMt StakedAmount=0 UnclaimedStakedReward=0 DelegationFeeRate=0.000000 DelegatedAmount=0 UnclaimedDelegatedReward=0
+validator 2: NodeID=NodeID-LSvpQLK7t8XzMhcNr3TK687cKquG1AtUG PublicKey=t0Jq/YIqsoXx75qpQ6BOhWx2rzhsB93MQjKLlQGDQGe/J+tHrh4WdU2xvahf1RRZ StakedAmount=100000000000 UnclaimedStakedReward=5321611 DelegationFeeRate=0.900000 DelegatedAmount=40000000000000 UnclaimedDelegatedReward=46338208
+validator 3: NodeID=NodeID-67n4HUguYgerqGoVJcggpevxodYgccpAb PublicKey=pcBOMIh9EaslHXShtEEezRz1db6B6WGHMVymUkr2d2nkuBr/nqXS0ZUwMVCpNDfd StakedAmount=100000000000 UnclaimedStakedReward=41556239 DelegationFeeRate=0.100000 DelegatedAmount=40000000000000 UnclaimedDelegatedReward=4575245
+validator 4: NodeID=NodeID-ACR6jK4YA2xvrLebeYFK9uDbNTYHi25jv PublicKey=iDv+XIqgMxMZBZMVTGQTXG5EBSBeISOahGzM1It4QmSFJrWlMKV5HSjCGdI1s9PD StakedAmount=0 UnclaimedStakedReward=0 DelegationFeeRate=0.000000 DelegatedAmount=0 UnclaimedDelegatedReward=0
 ```
 
-### Get user staking info
+### Claim staking reward
 
-We can retrieve our staking info by passing in which validator we have staked to and the address to look up staking for using the new RPC API we defined as part of this exercise.
+On NuklaiVM, you are able to claim your staking rewards at any point in time without undelegating the stake from a validator. Also, as a validator, you're able to also claim your validator staking rewards at any point in time without unstaking your validator node.
+
+First, we need to make sure that we're on our account we used for delegating our stake.
+
+Let's first check the balance on our account:
 
 ```bash
-./build/nuklai-cli emission user-stake-info
+./build/nuklai-cli key balance
 ```
 
-If successful, the output should be:
+Which should produce a result like:
 
 ```
 database: .nuklai-cli
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-validators: 5
-0: NodeID=NodeID-B2BSzCnzhAM2WwKU5UbwZxpoMPmE9TnNf NodePublicKey=pXYMPMHBASy0Y5/PzNI1B4HGrqSkP1upFtuSiEI2HKAbc+8ZPdkhmCWearjYOWRE
-1: NodeID=NodeID-7NEx57dgetsQdmgAGw9VjxAmTDWgdqZkP NodePublicKey=st7C9uuKbCM71BkP97PKTn8Vzn+ToE3giO/2z2OyNsY+FwVvIS2qtm6jPChANOXk
-2: NodeID=NodeID-4xW5x8ekVnhqJr5UnPQGRf8emeRiPDfRr NodePublicKey=o3INAYDajQSR2jWTQzq6K8ut0i5/gVXhfEbnDTQB1r2Fi07pU/r+v5rGiEEECp/C
-3: NodeID=NodeID-BrkTkxtNzhxP8przzBUnzZTXST8qMKCMV NodePublicKey=jvv4m5Si1w0TJjzPAVHbk7bcJEOEsGoGu2mjXrsuiVj56PsvVORG843MYhTjE2uW
-4: NodeID=NodeID-4h8Ud3qTEksLBCMNjkKBFhYRKJ5NfJZ2w NodePublicKey=hzGTs30HIPili1lgXjO5BfGJTZw9oAE6bOcoAuIQEMhNbI70d4aUm3B80GMyUyLu
-choose validator whom you have staked to: 1
-address to get staking info for: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-user stake:  Owner=nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx StakedAmount=1000000000000
-stake #1: TxID=xheUBZvoYNm2fWd8xEwvKKC2jwnr7FsrAAvNLTkcouM2LTwcD Amount=1000000000000 StartLockUp=315
+address: nuklai1qr0x7dw7vryvnt43vf7astvetv77y79lczh5zlv9wsv8q9wtqalqxw66h8d
+chainID: UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+✔ assetID (use NAI for native token): NAI█
+uri: http://127.0.0.1:33759/ext/bc/UxCAR64aRBKENSJU5z2qXgkPXkz7fM1dVB3djL7wvmTCb8dU1
+balance: 19999.999936200 NAI
 ```
 
-### Unstake from a validator
+Next, let's check out how many NAI delegator rewards have been accumulated with our validator we staked to:
+
+```bash
+./build/nuklai-cli emission staked-validators
+```
+
+Which gives an output:
+
+```
+database: .nuklai-cli
+chainID: 2DXc2cEtPDGTy7JqaWLNV6Lmg8tD75KUnSSLaGyidEb2Gvi5ii
+validator 0: NodeID=NodeID-3GJnWPtDnvR4g7PbsJFqURNcpZj5UZVgb PublicKey=tt7BhocrKiDUYtI9NJNCwNxw9zSM9xjECMzqtnDEatj8OQ03/DdrlQKRtcuAmi+C StakedAmount=100000000000 UnclaimedStakedReward=103569348  DelegationFeeRate=0.100000 DelegatedAmount=100000000000 UnclaimedDelegatedReward=11467376
+```
+
+Now, when we wanna claim our accumulated rewards, we do:
+
+```bash
+./build/nuklai-cli action claim-user-stake-reward
+```
+
+Which should produce a result like:
+
+```
+database: .nuklai-cli
+address: nuklai1qr0x7dw7vryvnt43vf7astvetv77y79lczh5zlv9wsv8q9wtqalqxw66h8d
+chainID: 2DXc2cEtPDGTy7JqaWLNV6Lmg8tD75KUnSSLaGyidEb2Gvi5ii
+validators: 1
+0: NodeID=NodeID-3GJnWPtDnvR4g7PbsJFqURNcpZj5UZVgb
+validator to claim staking rewards from: 0 [auto-selected]
+continue (y/n): y
+✅ txID: 2Wm8vHBz2n2DiV2LM7j337PCizgWMjoSvJVAQPZm5GwoEHFLbq
+```
+
+Let's check out balance again:
+
+```bash
+./build/nuklai-cli key balance
+```
+
+Which should produce a result like:
+
+```
+database: .nuklai-cli
+address: nuklai1qr0x7dw7vryvnt43vf7astvetv77y79lczh5zlv9wsv8q9wtqalqxw66h8d
+chainID: 2DXc2cEtPDGTy7JqaWLNV6Lmg8tD75KUnSSLaGyidEb2Gvi5ii
+✔ assetID (use NAI for native token): NAI█
+uri: http://127.0.0.1:39231/ext/bc/2DXc2cEtPDGTy7JqaWLNV6Lmg8tD75KUnSSLaGyidEb2Gvi5ii
+balance: 1.006778113 NAI
+```
+
+NOTE: The longer you stake, the more rewards you will get for delegating. Also, note that as soon as you claim your reward, this timestamp is recorded and your staking duration will be reset. This incentivizes users from not claiming their rewards for as long as they want to and they get rewarded for it.
+
+### Undelegate user stake
+
+Once your delegated stake period has ended, perhaps you may want to undelegate your stake(i.e. you want to get back your NAI you have staked to a validator). When you undelegate,
+you will also receive the accumulated rewards automatically so you do not need to call the action to claim your rewards separately.
 
 Let's first check the balance on our account:
 
@@ -350,36 +404,29 @@ Which should produce a result like:
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+chainID: 2wBturxbiFoz1VdHx4WH17LFEgeScH2EVYUTwsJkqt4cVoH79M
 assetID (use NAI for native token): NAI
-✔ assetID (use NAI for native token): NAI█
-balance: 852998899.999943018 NAI
+uri: http://127.0.0.1:39289/ext/bc/2wBturxbiFoz1VdHx4WH17LFEgeScH2EVYUTwsJkqt4cVoH79M
+balance: 852998899.999938488 NAI
 ```
 
-We can unstake specific stake from a chosen validator.
+Now, let's undelegate our stake from the validator we stkaed to from before:
 
 ```bash
-./build/nuklai-cli action unstake-validator
+./build/nuklai-cli action undelegate-user-stake
 ```
 
-Which produces result:
+If successful, the output should be something like:
 
 ```
 database: .nuklai-cli
 address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-validators: 5
-0: NodeID=NodeID-4h8Ud3qTEksLBCMNjkKBFhYRKJ5NfJZ2w NodePublicKey=hzGTs30HIPili1lgXjO5BfGJTZw9oAE6bOcoAuIQEMhNbI70d4aUm3B80GMyUyLu
-1: NodeID=NodeID-B2BSzCnzhAM2WwKU5UbwZxpoMPmE9TnNf NodePublicKey=pXYMPMHBASy0Y5/PzNI1B4HGrqSkP1upFtuSiEI2HKAbc+8ZPdkhmCWearjYOWRE
-2: NodeID=NodeID-7NEx57dgetsQdmgAGw9VjxAmTDWgdqZkP NodePublicKey=st7C9uuKbCM71BkP97PKTn8Vzn+ToE3giO/2z2OyNsY+FwVvIS2qtm6jPChANOXk
-3: NodeID=NodeID-4xW5x8ekVnhqJr5UnPQGRf8emeRiPDfRr NodePublicKey=o3INAYDajQSR2jWTQzq6K8ut0i5/gVXhfEbnDTQB1r2Fi07pU/r+v5rGiEEECp/C
-4: NodeID=NodeID-BrkTkxtNzhxP8przzBUnzZTXST8qMKCMV NodePublicKey=jvv4m5Si1w0TJjzPAVHbk7bcJEOEsGoGu2mjXrsuiVj56PsvVORG843MYhTjE2uW
-✔ validator to unstake from: 2█
-stake info:
-0: TxID=xheUBZvoYNm2fWd8xEwvKKC2jwnr7FsrAAvNLTkcouM2LTwcD StakedAmount=1000000000000 StartLockUpHeight=315 CurrentHeight=403
-stake ID to unstake: 0 [auto-selected]
+chainID: 2wBturxbiFoz1VdHx4WH17LFEgeScH2EVYUTwsJkqt4cVoH79M
+validators: 1
+0: NodeID=NodeID-D2nVXseiQajtsKq8zdqX8vjCGV7Uz7HWZ
+validator to unstake from: 0 [auto-selected]
 continue (y/n): y
-✅ txID: 7zMSUymBJiEWFViMfGSGS2yWFyovDq1FJ5nPNthQmnoRc9G6w
+✅ txID: 2AEiT9L1h8o7yXoEq3kt6p4ezSVZ1SMvaeAYWVxqC2DyQDRPUb
 ```
 
 Now, if we check the balance again, we should have our 100 NAI back to our account:

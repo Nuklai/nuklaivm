@@ -162,15 +162,19 @@ func init() {
 
 		registerValidatorStakeCmd,
 		getValidatorStakeCmd,
+		claimValidatorStakeRewardCmd,
+
 		delegateUserStakeCmd,
 		undelegateUserStakeCmd,
 		getUserStakeCmd,
+		claimUserStakeRewardCmd,
 	)
 
 	// emission
 	emissionCmd.AddCommand(
 		emissionInfoCmd,
-		emissionValidatorsCmd,
+		emissionAllValidatorsCmd,
+		emissionStakedValidatorsCmd,
 	)
 
 	// spam
