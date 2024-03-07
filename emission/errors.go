@@ -15,6 +15,7 @@ var (
 	ErrDelegatorAlreadyStaked     = errors.New("delegator already staked")
 	ErrDelegatorNotFound          = errors.New("delegator not found")
 	ErrInvalidBlockHeight         = errors.New("invalid block height")
+	ErrValidatorNotActive         = errors.New("validator not active")
 
 	ErrInvalidNodeID      = errors.New("invalid node id")
 	ErrStakeNotFound      = errors.New("stake not found")

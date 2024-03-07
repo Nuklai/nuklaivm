@@ -29,7 +29,7 @@ var emissionInfoCmd = &cobra.Command{
 		ncli := nclients[0]
 
 		// Get emission info
-		_, _, _, _, _, _, _, _, err = handler.GetEmissionInfo(ctx, ncli)
+		_, _, _, _, _, _, _, err = handler.GetEmissionInfo(ctx, ncli)
 		if err != nil {
 			return err
 		}

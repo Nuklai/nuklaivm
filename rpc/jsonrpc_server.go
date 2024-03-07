@@ -246,7 +246,6 @@ func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply 
 	defer span.End()
 
 	exists, stakeStartTime, stakedAmount, rewardAddress, ownerAddress, err := j.c.GetDelegatedUserStakeFromState(ctx, args.Owner, args.NodeID)
-
 	if err != nil {
 		return err
 	}

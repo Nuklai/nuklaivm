@@ -32,18 +32,24 @@ audited.
 - ☑ Burn a token
 - ☑ Export both the native asset `NAI` and any other user tokens to another subnet that is also a `nuklaivm`
 - ☑ Import both the native asset `NAI` and any other user tokens from another subnet that is also a `nuklaivm`
-- ☑ Stake NAI to any currently running validator
-- ☑ Unstake NAI from a staked validator
+- ☑ Register validator for staking
+- ☑ Unregister validator from staking
+- ☑ Delegate NAI to any currently staked validator
+- ☑ Undelegate NAI from a staked validator
+- ☑ Claim Validator staking rewards
+- ☑ Claim User delegation rewards
 
 ### Emission Balancer
 
 - ☑ Tracks total supply of NAI, max supply of NAI, staking rewards per block and the emission address to direct 50% of all fees to
-- ☑ Stake `NAI` to a validator
-- ☑ Unstake `NAI` from a validator
+- ☑ Register validator for staking
+- ☑ Unregister validator from staking
+- ☑ Delegate `NAI` to a validator
+- ☑ Undelegate `NAI` from a validator
+- ☑ Claim the staking/delegation rewards
 - ☑ Track the staking information for each users and validators
 - ☑ Distribute 50% fees to emission balancer address and 50% to all the staked validators per block
 - ☑ Distribute NAI as staking rewards to the validators that have a minimum stake of at least 100 NAI per block
-- [ ] Claim the staking rewards
 
 ### Deep Dive on different features of `nuklaivm`
 

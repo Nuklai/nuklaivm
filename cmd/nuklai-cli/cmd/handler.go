@@ -183,30 +183,28 @@ func (h *Handler) DefaultNuklaiVMJSONRPCClient(checkAllChains bool) ([]*nrpc.JSO
 func (*Handler) GetEmissionInfo(
 	ctx context.Context,
 	cli *nrpc.JSONRPCClient,
-) (uint64, uint64, uint64, uint64, uint64, uint64, string, uint64, error) {
+) (uint64, uint64, uint64, uint64, uint64, string, uint64, error) {
 	totalSupply, maxSupply, totalStaked, rewardsPerEpoch, emissionAccount, epochTracker, err := cli.EmissionInfo(ctx)
 	if err != nil {
-		return 0, 0, 0, 0, 0, 0, "", 0, err
+		return 0, 0, 0, 0, 0, "", 0, err
 	}
 
 	emissionAddress, err := codec.AddressBech32(nconsts.HRP, emissionAccount.Address)
 	if err != nil {
-		return 0, 0, 0, 0, 0, 0, "", 0, err
+		return 0, 0, 0, 0, 0, "", 0, err
 	}
 
 	hutils.Outf(
-		"{{yellow}}emission info: {{/}}\nTotalSupply=%d MaxSupply=%d TotalStaked=%d RewardsPerEpoch=%d BlocksSinceLastReward=%d NumBlocksInEpoch=%d EmissionAddress=%s EmissionUnclaimedBalance=%d\n",
+		"{{yellow}}emission info: {{/}}\nTotalSupply=%d MaxSupply=%d TotalStaked=%d RewardsPerEpoch=%d NumBlocksInEpoch=%d EmissionAddress=%s EmissionUnclaimedBalance=%d\n",
 		totalSupply,
 		maxSupply,
 		totalStaked,
 		rewardsPerEpoch,
-		epochTracker.BlockCounter,
 		epochTracker.EpochLength,
 		emissionAddress,
 		emissionAccount.UnclaimedBalance,
 	)
-	return totalSupply, maxSupply, totalStaked, rewardsPerEpoch, epochTracker.BlockCounter,
-		epochTracker.EpochLength, emissionAddress, emissionAccount.UnclaimedBalance, err
+	return totalSupply, maxSupply, totalStaked, rewardsPerEpoch, epochTracker.EpochLength, emissionAddress, emissionAccount.UnclaimedBalance, err
 }
 
 func (*Handler) GetAllValidators(
