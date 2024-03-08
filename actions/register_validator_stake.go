@@ -145,7 +145,7 @@ func (r *RegisterValidatorStake) Execute(
 	}
 
 	// Register in Emission Balancer
-	err = emissionInstance.RegisterValidatorStake(nodeID, nodePublicKey, stakeInfo.StakeEndTime, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate)
+	err = emissionInstance.RegisterValidatorStake(nodeID, nodePublicKey, stakeInfo.StakeStartTime, stakeInfo.StakeEndTime, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate)
 	if err != nil {
 		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}

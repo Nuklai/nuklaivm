@@ -32,7 +32,8 @@ type Validator struct {
 
 	delegatorsLastClaim map[codec.Address]uint64 // Map of delegator addresses to their last claim block height
 	epochRewards        map[uint64]uint64        // Rewards per epoch
-	stakeEndTime        time.Time
+	stakeStartTime      time.Time                // Start time of the stake
+	stakeEndTime        time.Time                // End time of the stake
 }
 
 type EmissionAccount struct {
@@ -208,7 +209,7 @@ func (e *Emission) CalculateUserDelegationRewards(nodeID ids.NodeID, actor codec
 
 // RegisterValidatorStake adds a new validator to the heap with the specified staked amount
 // and updates the total staked amount.
-func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey *bls.PublicKey, stakeEndTime, stakedAmount, delegationFeeRate uint64) error {
+func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey *bls.PublicKey, stakeStartTime, stakeEndTime, stakedAmount, delegationFeeRate uint64) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -222,27 +223,25 @@ func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey *bls.
 
 	if exists {
 		// If validator exists, it's a re-registration, update necessary fields
-		validator.IsActive = true
 		validator.PublicKey = bls.PublicKeyToBytes(nodePublicKey)        // Update public key if needed
 		validator.StakedAmount += stakedAmount                           // Adjust the staked amount
 		validator.DelegationFeeRate = float64(delegationFeeRate) / 100.0 // Update delegation fee rate if needed
+		validator.stakeStartTime = time.Unix(int64(stakeStartTime), 0).UTC()
 		validator.stakeEndTime = time.Unix(int64(stakeEndTime), 0).UTC()
 		// Note: We might want to keep some attributes unchanged, such as delegatorsLastClaim, epochRewards, etc.
 	} else {
 		// If validator does not exist, create a new entry
 		e.validators[nodeID] = &Validator{
-			IsActive:            true,
 			NodeID:              nodeID,
 			PublicKey:           bls.PublicKeyToBytes(nodePublicKey),
 			StakedAmount:        stakedAmount,
 			DelegationFeeRate:   float64(delegationFeeRate) / 100.0, // Convert to decimal
 			delegatorsLastClaim: make(map[codec.Address]uint64),
 			epochRewards:        make(map[uint64]uint64),
+			stakeStartTime:      time.Unix(int64(stakeStartTime), 0).UTC(),
 			stakeEndTime:        time.Unix(int64(stakeEndTime), 0).UTC(),
 		}
 	}
-
-	e.TotalStaked += stakedAmount
 
 	return nil
 }
@@ -265,15 +264,18 @@ func (e *Emission) WithdrawValidatorStake(nodeID ids.NodeID) (uint64, error) {
 	rewardAmount := validator.UnclaimedStakedReward
 	validator.UnclaimedStakedReward = 0
 
+	if validator.IsActive {
+		e.TotalStaked -= validator.StakedAmount
+	}
+
 	// Mark the validator as inactive
 	validator.IsActive = false
-
-	e.TotalStaked -= (validator.StakedAmount + validator.DelegatedAmount)
 
 	// If there are no more delegators, get the rewards and remove the validator
 	if len(validator.delegatorsLastClaim) == 0 {
 		rewardAmount += validator.UnclaimedDelegatedReward
 		validator.UnclaimedDelegatedReward = 0
+		e.TotalStaked -= validator.DelegatedAmount
 		delete(e.validators, nodeID)
 	}
 
@@ -293,11 +295,6 @@ func (e *Emission) DelegateUserStake(nodeID ids.NodeID, delegatorAddress codec.A
 		return ErrValidatorNotFound
 	}
 
-	// Check if validator is active
-	if !validator.IsActive {
-		return ErrValidatorNotActive
-	}
-
 	// Check if the delegator was already staked
 	if _, exists := validator.delegatorsLastClaim[delegatorAddress]; exists {
 		return ErrDelegatorAlreadyStaked
@@ -305,7 +302,13 @@ func (e *Emission) DelegateUserStake(nodeID ids.NodeID, delegatorAddress codec.A
 
 	// Update the validator's stake
 	validator.DelegatedAmount += stakeAmount
-	e.TotalStaked += stakeAmount
+
+	// We only add to total staked amount if the validator is active
+	// If validator is inactive, we subtract from the total during distributeFees and mintNewNai functions
+	// This will prevent us from adding to the total staked amount twice
+	if validator.IsActive {
+		e.TotalStaked += stakeAmount
+	}
 
 	// Update the delegator's stake
 	validator.delegatorsLastClaim[delegatorAddress] = e.GetLastAcceptedBlockHeight()
@@ -342,7 +345,12 @@ func (e *Emission) UndelegateUserStake(nodeID ids.NodeID, actor codec.Address, s
 
 	// Update the validator's stake
 	validator.DelegatedAmount -= stakeAmount
-	e.TotalStaked -= stakeAmount
+	// We only subtract from total staked amount if the validator is active
+	// If validator is inactive, we subtract from the total during distributeFees and mintNewNai functions
+	// This will prevent us from adding to the total staked amount twice
+	if validator.IsActive {
+		e.TotalStaked -= stakeAmount
+	}
 
 	// Remove the delegator's entry
 	delete(validator.delegatorsLastClaim, actor)
@@ -414,11 +422,16 @@ func (e *Emission) MintNewNAI() uint64 {
 
 		// Distribute rewards based on stake proportion
 		for _, validator := range e.validators {
+			lastBlockTime := e.GetLastAcceptedBlockTimestamp()
+			// Mark validator active based on if stakeStartTime has started
+			if lastBlockTime.After(validator.stakeStartTime) {
+				validator.IsActive = true
+				e.TotalStaked += (validator.StakedAmount + validator.DelegatedAmount)
+			}
 			if !validator.IsActive {
 				continue
 			}
-			// Mark validator inactive/active based on if stakeEndTime has ended
-			lastBlockTime := e.GetLastAcceptedBlockTimestamp()
+			// Mark validator inactive based on if stakeEndTime has ended
 			if lastBlockTime.After(validator.stakeEndTime) {
 				validator.IsActive = false
 				e.TotalStaked -= (validator.StakedAmount + validator.DelegatedAmount)
@@ -480,11 +493,16 @@ func (e *Emission) DistributeFees(fee uint64) {
 
 	// Distribute fees based on stake proportion
 	for _, validator := range e.validators {
+		lastBlockTime := e.GetLastAcceptedBlockTimestamp()
+		// Mark validator active based on if stakeStartTime has started
+		if lastBlockTime.After(validator.stakeStartTime) {
+			validator.IsActive = true
+			e.TotalStaked += (validator.StakedAmount + validator.DelegatedAmount)
+		}
 		if !validator.IsActive {
 			continue
 		}
-		// Mark validator inactive/active based on if stakeEndTime has ended
-		lastBlockTime := e.GetLastAcceptedBlockTimestamp()
+		// Mark validator inactive based on if stakeEndTime has ended
 		if lastBlockTime.After(validator.stakeEndTime) {
 			validator.IsActive = false
 			e.TotalStaked -= (validator.StakedAmount + validator.DelegatedAmount)

@@ -607,8 +607,8 @@ var registerValidatorStakeCmd = &cobra.Command{
 		// Get current time
 		currentTime := time.Now().UTC()
 		stakeStartTime := currentTime.Add(2 * time.Minute)
-		stakeEndTime := currentTime.Add(3 * time.Minute)
-		delegationFeeRate := 10
+		stakeEndTime := currentTime.Add(5 * time.Minute)
+		delegationFeeRate := 50
 		rewardAddress := priv.Address
 
 		if !autoRegister {
