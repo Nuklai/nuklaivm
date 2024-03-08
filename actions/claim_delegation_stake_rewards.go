@@ -40,7 +40,7 @@ func (c *ClaimDelegationStakeRewards) StateKeys(actor codec.Address, _ ids.ID) [
 	}
 }
 
-func (c *ClaimDelegationStakeRewards) StateKeysMaxChunks() []uint16 {
+func (*ClaimDelegationStakeRewards) StateKeysMaxChunks() []uint16 {
 	return []uint16{storage.BalanceChunks, storage.DelegateUserStakeChunks}
 }
 

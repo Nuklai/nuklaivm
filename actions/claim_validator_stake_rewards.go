@@ -37,12 +37,10 @@ func (c *ClaimValidatorStakeRewards) StateKeys(actor codec.Address, _ ids.ID) []
 		string(storage.BalanceKey(actor, ids.Empty)),
 		string(storage.RegisterValidatorStakeKey(nodeID)),
 	}
-
 }
 
-func (c *ClaimValidatorStakeRewards) StateKeysMaxChunks() []uint16 {
+func (*ClaimValidatorStakeRewards) StateKeysMaxChunks() []uint16 {
 	return []uint16{storage.BalanceChunks, storage.RegisterValidatorStakeChunks}
-
 }
 
 func (*ClaimValidatorStakeRewards) OutputsWarpMessage() bool {
