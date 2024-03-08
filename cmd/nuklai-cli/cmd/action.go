@@ -607,7 +607,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 		// Get current time
 		currentTime := time.Now().UTC()
 		stakeStartTime := currentTime.Add(2 * time.Minute)
-		stakeEndTime := currentTime.Add(5 * time.Minute)
+		stakeEndTime := currentTime.Add(15 * time.Minute)
 		delegationFeeRate := 50
 		rewardAddress := priv.Address
 
@@ -928,7 +928,6 @@ var delegateUserStakeCmd = &cobra.Command{
 		// Get current time
 		currentTime := time.Now().UTC()
 		stakeStartTime := currentTime.Add(2 * time.Minute)
-		stakeEndTime := currentTime.Add(3 * time.Minute)
 		rewardAddress := priv.Address
 
 		if !autoRegister {
@@ -956,17 +955,12 @@ var delegateUserStakeCmd = &cobra.Command{
 		if stakeStartTime.Before(currentTime) {
 			return fmt.Errorf("staking start time must be after the current time (%s)", currentTime.Format(TimeLayout))
 		}
-		if stakeEndTime.Before(stakeStartTime) {
-			return fmt.Errorf("staking end time must be after the staking start time (%s)", stakeStartTime.Format(TimeLayout))
-		}
 
 		// Confirm action
 		cont, err := handler.Root().PromptContinue()
 		if !cont || err != nil {
 			return err
 		}
-
-		hutils.Outf("{{yellow}}Delegate User Stake Info - stakeStartTime: %s stakeEndTime: %s rewardAddress: %s\n", stakeStartTime.Format(TimeLayout), stakeEndTime.Format(TimeLayout), codec.MustAddressBech32(nconsts.HRP, rewardAddress))
 
 		// Generate transaction
 		_, _, err = sendAndWait(ctx, nil, &actions.DelegateUserStake{

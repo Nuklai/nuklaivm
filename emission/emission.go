@@ -416,7 +416,10 @@ func (e *Emission) MintNewNAI() uint64 {
 		totalEpochRewards := e.GetRewardsPerEpoch()
 
 		// Calculate rewards per unit staked to minimize iterations
-		rewardsPerStakeUnit := float64(totalEpochRewards) / float64(e.TotalStaked)
+		rewardsPerStakeUnit := float64(0)
+		if e.TotalStaked > 0 {
+			rewardsPerStakeUnit = float64(totalEpochRewards) / float64(e.TotalStaked)
+		}
 
 		actualRewards := uint64(0)
 
@@ -442,7 +445,10 @@ func (e *Emission) MintNewNAI() uint64 {
 			totalValidatorReward := uint64(float64(validatorStake) * rewardsPerStakeUnit)
 
 			// Calculate the rewards for the validator and for delegation
-			validatorReward, delegationReward := distributeValidatorRewards(totalValidatorReward, validator.DelegationFeeRate, validator.DelegatedAmount)
+			validatorReward, delegationReward := uint64(0), uint64(0)
+			if len(validator.delegatorsLastClaim) > 0 {
+				validatorReward, delegationReward = distributeValidatorRewards(totalValidatorReward, validator.DelegationFeeRate, validator.DelegatedAmount)
+			}
 
 			actualRewards += validatorReward + delegationReward
 
@@ -512,7 +518,10 @@ func (e *Emission) DistributeFees(fee uint64) {
 		validatorStake := validator.StakedAmount + validator.DelegatedAmount
 		totalValidatorFee := uint64(float64(validatorStake) * feesPerStakeUnit)
 
-		validatorFee, delegationFee := distributeValidatorRewards(totalValidatorFee, validator.DelegationFeeRate, validator.DelegatedAmount)
+		validatorFee, delegationFee := uint64(0), uint64(0)
+		if len(validator.delegatorsLastClaim) > 0 {
+			validatorFee, delegationFee = distributeValidatorRewards(totalValidatorFee, validator.DelegationFeeRate, validator.DelegatedAmount)
+		}
 		validator.UnclaimedStakedReward += validatorFee
 		validator.UnclaimedDelegatedReward += delegationFee
 	}
