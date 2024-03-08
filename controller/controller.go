@@ -208,9 +208,33 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				}
 				c.metrics.stakeAmount.Add(float64(stakeInfo.StakedAmount))
 				c.metrics.registerValidatorStake.Inc()
+			case *actions.ClaimValidatorStakeRewards:
+				rewardResult, err := actions.UnmarshalClaimRewardsResult(result.Output)
+				if err != nil {
+					// This should never happen
+					return err
+				}
+				c.metrics.mintedNAI.Add(float64(rewardResult.RewardAmount))
+				c.metrics.claimStakingRewards.Inc()
+			case *actions.WithdrawValidatorStake:
+				stakeResult, err := actions.UnmarshalRegisterValidatorStakeResult(result.Output)
+				if err != nil {
+					// This should never happen
+					return err
+				}
+				c.metrics.stakeAmount.Add(float64(stakeResult.StakedAmount))
+				c.metrics.withdrawValidatorStake.Inc()
 			case *actions.DelegateUserStake:
 				c.metrics.stakeAmount.Add(float64(action.StakedAmount))
 				c.metrics.delegateUserStake.Inc()
+			case *actions.ClaimDelegationStakeRewards:
+				rewardResult, err := actions.UnmarshalClaimRewardsResult(result.Output)
+				if err != nil {
+					// This should never happen
+					return err
+				}
+				c.metrics.mintedNAI.Add(float64(rewardResult.RewardAmount))
+				c.metrics.claimStakingRewards.Inc()
 			case *actions.UndelegateUserStake:
 				stakeResult, err := actions.UnmarshalDelegateUserStakeResult(result.Output)
 				if err != nil {
@@ -219,8 +243,6 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				}
 				c.metrics.stakeAmount.Sub(float64(stakeResult.StakedAmount))
 				c.metrics.undelegateUserStake.Inc()
-			case *actions.ClaimStakingRewards:
-				c.metrics.claimStakingRewards.Inc()
 			}
 		}
 	}
@@ -241,7 +263,6 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 	if mintNewNAI > 0 {
 		c.emission.AddToTotalSupply(mintNewNAI)
 		c.inner.Logger().Info("minted new NAI", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("newly minted NAI", mintNewNAI), zap.Uint64("total supply", c.emission.TotalSupply), zap.Uint64("max supply", c.emission.MaxSupply))
-		c.metrics.mintedNAI.Add(float64(mintNewNAI))
 	}
 
 	return batch.Write()

@@ -163,11 +163,12 @@ func init() {
 		registerValidatorStakeCmd,
 		getValidatorStakeCmd,
 		claimValidatorStakeRewardCmd,
+		withdrawValidatorStakeCmd,
 
 		delegateUserStakeCmd,
-		undelegateUserStakeCmd,
 		getUserStakeCmd,
 		claimUserStakeRewardCmd,
+		undelegateUserStakeCmd,
 	)
 
 	// emission

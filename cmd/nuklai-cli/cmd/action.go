@@ -803,7 +803,68 @@ var claimValidatorStakeRewardCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, nil, &actions.ClaimStakingRewards{
+		_, _, err = sendAndWait(ctx, nil, &actions.ClaimValidatorStakeRewards{
+			NodeID: nodeID.Bytes(),
+		}, hcli, hws, ncli, factory, true)
+		return err
+	},
+}
+
+var withdrawValidatorStakeCmd = &cobra.Command{
+	Use: "withdraw-validator-stake",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, _, factory, hcli, hws, ncli, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+
+		// Get current list of validators
+		validators, err := ncli.StakedValidators(ctx)
+		if err != nil {
+			return err
+		}
+		if len(validators) == 0 {
+			hutils.Outf("{{red}}no validators{{/}}\n")
+			return nil
+		}
+
+		// Show validators to the user
+		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
+		for i := 0; i < len(validators); i++ {
+			hutils.Outf(
+				"{{yellow}}%d:{{/}} NodeID=%s\n",
+				i,
+				validators[i].NodeID,
+			)
+		}
+		// Select validator
+		keyIndex, err := handler.Root().PromptChoice("validator to withdraw from staking", len(validators))
+		if err != nil {
+			return err
+		}
+		validatorChosen := validators[keyIndex]
+		nodeID := validatorChosen.NodeID
+
+		// Get stake info
+		_, _, stakedAmount, _, _, _, err := ncli.ValidatorStake(ctx, nodeID)
+		if err != nil {
+			return err
+		}
+
+		if stakedAmount == 0 {
+			hutils.Outf("{{red}}validator has not yet been staked{{/}}\n")
+			return nil
+		}
+
+		// Confirm action
+		cont, err := handler.Root().PromptContinue()
+		if !cont || err != nil {
+			return err
+		}
+
+		// Generate transaction
+		_, _, err = sendAndWait(ctx, nil, &actions.WithdrawValidatorStake{
 			NodeID: nodeID.Bytes(),
 		}, hcli, hws, ncli, factory, true)
 		return err
@@ -1035,7 +1096,7 @@ var claimUserStakeRewardCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, nil, &actions.ClaimStakingRewards{
+		_, _, err = sendAndWait(ctx, nil, &actions.ClaimDelegationStakeRewards{
 			NodeID:           nodeID.Bytes(),
 			UserStakeAddress: priv.Address,
 		}, hcli, hws, ncli, factory, true)

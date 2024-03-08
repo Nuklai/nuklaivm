@@ -145,9 +145,9 @@ func (r *RegisterValidatorStake) Execute(
 	}
 
 	// Register in Emission Balancer
-	err = emissionInstance.RegisterValidatorStake(nodeID, nodePublicKey, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate)
+	err = emissionInstance.RegisterValidatorStake(nodeID, nodePublicKey, stakeInfo.StakeEndTime, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate)
 	if err != nil {
-		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
+		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 
 	if err := storage.SubBalance(ctx, mu, actor, ids.Empty, stakeInfo.StakedAmount); err != nil {
@@ -184,13 +184,13 @@ func (*RegisterValidatorStake) ValidRange(chain.Rules) (int64, int64) {
 	return -1, -1
 }
 
-func VerifyAuthSignature(stakeInfo, authSignature []byte) (codec.Address, error) {
+func VerifyAuthSignature(content, authSignature []byte) (codec.Address, error) {
 	p := codec.NewReader(authSignature, len(authSignature))
 	sig, err := auth.UnmarshalBLS(p, nil)
 	if err != nil {
 		return codec.EmptyAddress, err
 	}
-	return sig.Actor(), sig.Verify(context.TODO(), stakeInfo)
+	return sig.Actor(), sig.Verify(context.TODO(), content)
 }
 
 type ValidatorStakeInfo struct {

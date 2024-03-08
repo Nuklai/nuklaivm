@@ -24,6 +24,7 @@ type metrics struct {
 
 	stakeAmount            prometheus.Gauge
 	registerValidatorStake prometheus.Counter
+	withdrawValidatorStake prometheus.Counter
 	delegateUserStake      prometheus.Counter
 	undelegateUserStake    prometheus.Counter
 	claimStakingRewards    prometheus.Counter
@@ -84,6 +85,11 @@ func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 			Name:      "register_validator_stake",
 			Help:      "number of register validator stake actions",
 		}),
+		withdrawValidatorStake: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "actions",
+			Name:      "withdraw_validator_stake",
+			Help:      "number of withdraw validator stake actions",
+		}),
 		delegateUserStake: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "actions",
 			Name:      "delegate_user_stake",
@@ -116,6 +122,7 @@ func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 
 		r.Register(m.stakeAmount),
 		r.Register(m.registerValidatorStake),
+		r.Register(m.withdrawValidatorStake),
 		r.Register(m.delegateUserStake),
 		r.Register(m.undelegateUserStake),
 		r.Register(m.claimStakingRewards),

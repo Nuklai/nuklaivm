@@ -249,10 +249,11 @@ func (*Handler) GetStakedValidators(
 			return nil, err
 		}
 		hutils.Outf(
-			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s StakedAmount=%d UnclaimedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d UnclaimedDelegatedReward=%d\n",
+			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s Active=%t StakedAmount=%d UnclaimedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d UnclaimedDelegatedReward=%d\n",
 			index,
 			validator.NodeID,
 			base64.StdEncoding.EncodeToString(publicKey.Compress()),
+			validator.IsActive,
 			validator.StakedAmount,
 			validator.UnclaimedStakedReward,
 			validator.DelegationFeeRate,

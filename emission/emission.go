@@ -32,6 +32,7 @@ type Validator struct {
 
 	delegatorsLastClaim map[codec.Address]uint64 // Map of delegator addresses to their last claim block height
 	epochRewards        map[uint64]uint64        // Rewards per epoch
+	stakeEndTime        time.Time
 }
 
 type EmissionAccount struct {
@@ -207,7 +208,7 @@ func (e *Emission) CalculateUserDelegationRewards(nodeID ids.NodeID, actor codec
 
 // RegisterValidatorStake adds a new validator to the heap with the specified staked amount
 // and updates the total staked amount.
-func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey *bls.PublicKey, stakedAmount, delegationFeeRate uint64) error {
+func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey *bls.PublicKey, stakeEndTime, stakedAmount, delegationFeeRate uint64) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -225,6 +226,7 @@ func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey *bls.
 		validator.PublicKey = bls.PublicKeyToBytes(nodePublicKey)        // Update public key if needed
 		validator.StakedAmount += stakedAmount                           // Adjust the staked amount
 		validator.DelegationFeeRate = float64(delegationFeeRate) / 100.0 // Update delegation fee rate if needed
+		validator.stakeEndTime = time.Unix(int64(stakeEndTime), 0).UTC()
 		// Note: We might want to keep some attributes unchanged, such as delegatorsLastClaim, epochRewards, etc.
 	} else {
 		// If validator does not exist, create a new entry
@@ -236,6 +238,7 @@ func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey *bls.
 			DelegationFeeRate:   float64(delegationFeeRate) / 100.0, // Convert to decimal
 			delegatorsLastClaim: make(map[codec.Address]uint64),
 			epochRewards:        make(map[uint64]uint64),
+			stakeEndTime:        time.Unix(int64(stakeEndTime), 0).UTC(),
 		}
 	}
 
@@ -244,9 +247,9 @@ func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey *bls.
 	return nil
 }
 
-// UnregisterValidatorStake removes a validator from the heap and updates the total
+// WithdrawValidatorStake removes a validator from the heap and updates the total
 // staked amount accordingly.
-func (e *Emission) UnregisterValidatorStake(nodeID ids.NodeID) error {
+func (e *Emission) WithdrawValidatorStake(nodeID ids.NodeID) (uint64, error) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -255,15 +258,26 @@ func (e *Emission) UnregisterValidatorStake(nodeID ids.NodeID) error {
 	// Find the validator
 	validator, exists := e.validators[nodeID]
 	if !exists {
-		return ErrValidatorNotFound
+		return 0, ErrValidatorNotFound
 	}
 
-	e.TotalStaked -= (validator.StakedAmount + validator.DelegatedAmount)
+	// Validator claiming their rewards and resetting unclaimed rewards
+	rewardAmount := validator.UnclaimedStakedReward
+	validator.UnclaimedStakedReward = 0
 
 	// Mark the validator as inactive
 	validator.IsActive = false
 
-	return nil
+	e.TotalStaked -= (validator.StakedAmount + validator.DelegatedAmount)
+
+	// If there are no more delegators, get the rewards and remove the validator
+	if len(validator.delegatorsLastClaim) == 0 {
+		rewardAmount += validator.UnclaimedDelegatedReward
+		validator.UnclaimedDelegatedReward = 0
+		delete(e.validators, nodeID)
+	}
+
+	return rewardAmount, nil
 }
 
 // DelegateUserStake increases the delegated stake for a validator and rebalances the heap.
@@ -318,21 +332,13 @@ func (e *Emission) UndelegateUserStake(nodeID ids.NodeID, actor codec.Address, s
 	}
 
 	// Claim rewards while undelegating
-	rewardAmount := uint64(0)
-	if actor == codec.EmptyAddress {
-		// Validator claiming their rewards and resetting unclaimed rewards
-		rewardAmount, validator.UnclaimedStakedReward = validator.UnclaimedStakedReward, 0
-	} else {
-		// Delegator claiming their rewards
-		currentBlockHeight := e.GetLastAcceptedBlockHeight()
-		reward, err := e.CalculateUserDelegationRewards(nodeID, actor, currentBlockHeight)
-		if err != nil {
-			return 0, err
-		}
-		validator.delegatorsLastClaim[actor] = currentBlockHeight
-		validator.UnclaimedDelegatedReward -= reward // Reset unclaimed rewards
-		rewardAmount = reward
+	currentBlockHeight := e.GetLastAcceptedBlockHeight()
+	rewardAmount, err := e.CalculateUserDelegationRewards(nodeID, actor, currentBlockHeight)
+	if err != nil {
+		return 0, err
 	}
+	validator.delegatorsLastClaim[actor] = currentBlockHeight
+	validator.UnclaimedDelegatedReward -= rewardAmount // Reset unclaimed rewards
 
 	// Update the validator's stake
 	validator.DelegatedAmount -= stakeAmount
@@ -367,6 +373,12 @@ func (e *Emission) ClaimStakingRewards(nodeID ids.NodeID, actor codec.Address) (
 		// Validator claiming their rewards
 		rewardAmount = validator.UnclaimedStakedReward
 		validator.UnclaimedStakedReward = 0 // Reset unclaimed rewards
+
+		// If there are no more delegators, get the rewards
+		if len(validator.delegatorsLastClaim) == 0 {
+			rewardAmount += validator.UnclaimedDelegatedReward
+			validator.UnclaimedDelegatedReward = 0
+		}
 	} else {
 		// Delegator claiming their rewards
 		currentBlockHeight := e.GetLastAcceptedBlockHeight()
@@ -405,6 +417,14 @@ func (e *Emission) MintNewNAI() uint64 {
 			if !validator.IsActive {
 				continue
 			}
+			// Mark validator inactive/active based on if stakeEndTime has ended
+			lastBlockTime := e.GetLastAcceptedBlockTimestamp()
+			if lastBlockTime.After(validator.stakeEndTime) {
+				validator.IsActive = false
+				e.TotalStaked -= (validator.StakedAmount + validator.DelegatedAmount)
+				continue
+			}
+
 			validatorStake := validator.StakedAmount + validator.DelegatedAmount
 			totalValidatorReward := uint64(float64(validatorStake) * rewardsPerStakeUnit)
 
@@ -463,11 +483,18 @@ func (e *Emission) DistributeFees(fee uint64) {
 		if !validator.IsActive {
 			continue
 		}
+		// Mark validator inactive/active based on if stakeEndTime has ended
+		lastBlockTime := e.GetLastAcceptedBlockTimestamp()
+		if lastBlockTime.After(validator.stakeEndTime) {
+			validator.IsActive = false
+			e.TotalStaked -= (validator.StakedAmount + validator.DelegatedAmount)
+			continue
+		}
+
 		validatorStake := validator.StakedAmount + validator.DelegatedAmount
 		totalValidatorFee := uint64(float64(validatorStake) * feesPerStakeUnit)
 
 		validatorFee, delegationFee := distributeValidatorRewards(totalValidatorFee, validator.DelegationFeeRate, validator.DelegatedAmount)
-		// TODO: Ensure that the validator's stakeEndTime has not passed before adding the rewards
 		validator.UnclaimedStakedReward += validatorFee
 		validator.UnclaimedDelegatedReward += delegationFee
 	}
