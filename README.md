@@ -111,7 +111,7 @@ On `nuklaivm`, the emission balancer handles the staking mechanism whereby it tr
 total supply of `NAI`, max supply of `NAI`, staking rewards per block and the emission address to direct 50% of all fees to.
 Furthermore, it also rewards all the validators that have a minimum stake and all the users who have a minimum delegated stake to a validator of their choice.
 
-Read more about [Emission Balancer](./docs/emission_balancer.md).
+Read more about [Emission Balancer](./docs/emission_balancer/README.md).
 
 ## Demo
 

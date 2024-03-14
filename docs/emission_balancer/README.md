@@ -98,6 +98,41 @@ To optimize performance, the Emission Balancer calculates rewards per unit stake
 - **Transparent Reward Distribution**: Ensures fairness in distributing rewards based on stake contributions.
 - **Scalability**: Designed to handle a growing number of validators and delegators efficiently.
 
+## Diagrams
+
+### Mindmap
+
+![Emission Balancer Mind Map](./eb_mindmap.png)
+
+The mind map covers the following aspects of the Emission Balancer:
+
+- **Initialization**: Setting up with total and maximum supply, along with a validators map.
+- **Staking and Delegation**: Recording stakes and updating delegations.
+- **Reward Calculation**: Based on APR and stake contributions.
+- **Reward Distribution**: Occurring at the end of each epoch and allowing claims of rewards.
+- **Fee Distribution**: Handling transaction fees and the emission account.
+- **Withdrawals and Claims**: Managing the withdrawal of staked tokens and claiming of unclaimed rewards.
+
+### Component diagram
+
+![Emission Balancer Component Diagram](./eb_component_diagram.png)
+
+The Component diagram includes the following classes and their relationships:
+
+- **EmissionBalancer**: The main class managing various operations such as initialization, reward calculations, stake management, and interactions with the blockchain VM.
+- **Validator**: Represents a validator in the system with attributes such as NodeID, PublicKey, StakedAmount, and related reward and delegation information.
+- **EmissionAccount**: Holds the unclaimed balance of NAI tokens to be distributed as rewards.
+- **EpochTracker**: Manages epochs for reward calculation and distribution.
+- **NuklaiVM**: Interacts with the underlying blockchain VM for state management, validator information, and block data.
+
+## Sequence diagram
+
+![Emission Balancer Sequence Diagram](./eb_sequence_diagram.png)
+
+## Architecture Diagram
+
+![Emission Balancer Architecture Diagram](./eb_architecture_diagram.png)
+
 ## Conclusion
 
 The Emission Balancer plays a pivotal role in the Nuklai network's staking ecosystem, ensuring fair reward distributions and incentivizing network participation. Its design considerations for scalability, efficiency, and fairness make it a foundational component for maintaining the network's health and sustainability.
