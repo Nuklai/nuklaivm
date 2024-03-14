@@ -114,7 +114,7 @@ func (r *RegisterValidatorStake) Execute(
 	stakingConfig := emission.GetStakingConfig()
 
 	// Check if the staked amount is a valid amount
-	if stakeInfo.StakedAmount < stakingConfig.MinValidatorStake && stakeInfo.StakedAmount > stakingConfig.MaxValidatorStake {
+	if stakeInfo.StakedAmount < stakingConfig.MinValidatorStake || stakeInfo.StakedAmount > stakingConfig.MaxValidatorStake {
 		return false, RegisterValidatorStakeComputeUnits, OutputValidatorStakedAmountInvalid, nil, nil
 	}
 	// Get current time
