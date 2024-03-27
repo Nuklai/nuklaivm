@@ -63,7 +63,8 @@ echo EMISSION_ADDRESS: ${EMISSION_ADDRESS}
 # https://github.com/ava-labs/avalanchego/releases
 GOARCH=$(go env GOARCH)
 GOOS=$(go env GOOS)
-TMPDIR=/data/github/tmp/nuklaivm
+# Set TMPDIR to the first command line argument if provided, otherwise default to /tmp/nuklaivm
+TMPDIR=${1:-/tmp/nuklaivm}
 
 echo "working directory: $TMPDIR"
 
