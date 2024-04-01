@@ -24,7 +24,7 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:     "Token Wallet",
+		Title:     "Nuklai Wallet",
 		Width:     1280,
 		MinWidth:  1280,
 		Height:    768,
@@ -51,7 +51,7 @@ func main() {
 			WebviewIsTransparent: false,
 			WindowIsTranslucent:  false,
 			About: &mac.AboutInfo{
-				Title: "Token Wallet",
+				Title: "Nuklai Wallet",
 				Icon:  icon,
 			},
 		},

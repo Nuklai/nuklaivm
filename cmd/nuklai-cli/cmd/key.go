@@ -7,12 +7,14 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/cli"
 	"github.com/ava-labs/hypersdk/codec"
+	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
 	"github.com/ava-labs/hypersdk/crypto/secp256r1"
@@ -20,6 +22,8 @@ import (
 	"github.com/btcsuite/btcd/btcutil/bech32"
 
 	"github.com/nuklai/nuklaivm/auth"
+	"github.com/nuklai/nuklaivm/challenge"
+	frpc "github.com/nuklai/nuklaivm/cmd/nuklai-faucet/rpc"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
@@ -290,6 +294,46 @@ var vanityAddressCmd = &cobra.Command{
 
 		hutils.Outf("{{yellow}}Address: %s{{/}}\n", bech32Addr)
 
+		return nil
+	},
+}
+
+var faucetKeyCmd = &cobra.Command{
+	Use: "faucet",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+
+		// Get private key
+		_, priv, _, _, _, _, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+
+		// Get faucet
+		faucetURI, err := handler.Root().PromptString("faucet URI", 0, consts.MaxInt)
+		if err != nil {
+			return err
+		}
+		fcli := frpc.NewJSONRPCClient(faucetURI)
+		faucet, err := fcli.FaucetAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		// Search for funds
+		salt, difficulty, err := fcli.Challenge(ctx)
+		if err != nil {
+			return err
+		}
+		hutils.Outf("{{yellow}}searching for faucet solutions (difficulty=%d, faucet=%s):{{/}} %x\n", difficulty, faucet, salt)
+		start := time.Now()
+		solution, attempts := challenge.Search(salt, difficulty, numCores)
+		hutils.Outf("{{cyan}}found solution (attempts=%d, t=%s):{{/}} %x\n", attempts, time.Since(start), solution)
+		txID, amount, err := fcli.SolveChallenge(ctx, codec.MustAddressBech32(nconsts.HRP, priv.Address), salt, solution)
+		if err != nil {
+			return err
+		}
+		hutils.Outf("{{green}}faucet funds incoming (%s %s):{{/}} %s\n", hutils.FormatBalance(amount, nconsts.Decimals), nconsts.Symbol, txID)
 		return nil
 	},
 }

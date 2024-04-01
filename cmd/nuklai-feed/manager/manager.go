@@ -18,8 +18,8 @@ import (
 	"github.com/ava-labs/hypersdk/utils"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/cmd/nuklai-feed/config"
-	"github.com/nuklai/nuklaivm/consts"
-	trpc "github.com/nuklai/nuklaivm/rpc"
+	nconsts "github.com/nuklai/nuklaivm/consts"
+	nrpc "github.com/nuklai/nuklaivm/rpc"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 )
@@ -42,7 +42,7 @@ type Manager struct {
 	log    logging.Logger
 	config *config.Config
 
-	tcli *trpc.JSONRPCClient
+	ncli *nrpc.JSONRPCClient
 
 	l             sync.RWMutex
 	t             *timer.Timer
@@ -57,18 +57,18 @@ type Manager struct {
 
 func New(logger logging.Logger, config *config.Config) (*Manager, error) {
 	ctx := context.TODO()
-	cli := rpc.NewJSONRPCClient(config.TokenRPC)
+	cli := rpc.NewJSONRPCClient(config.NuklaiRPC)
 	networkID, _, chainID, err := cli.Network(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tcli := trpc.NewJSONRPCClient(config.TokenRPC, networkID, chainID)
-	m := &Manager{log: logger, config: config, tcli: tcli, feed: []*FeedObject{}}
+	ncli := nrpc.NewJSONRPCClient(config.NuklaiRPC, networkID, chainID)
+	m := &Manager{log: logger, config: config, ncli: ncli, feed: []*FeedObject{}}
 	m.epochStart = time.Now().Unix()
 	m.feeAmount = m.config.MinFee
 	m.log.Info("feed initialized",
 		zap.String("address", m.config.Recipient),
-		zap.String("fee", utils.FormatBalance(m.feeAmount, consts.Decimals)),
+		zap.String("fee", utils.FormatBalance(m.feeAmount, nconsts.Decimals)),
 	)
 	m.t = timer.NewTimer(m.updateFee)
 	return m, nil
@@ -101,7 +101,7 @@ func (m *Manager) Run(ctx context.Context) error {
 	go m.t.Dispatch()
 	defer m.t.Stop()
 
-	parser, err := m.tcli.Parser(ctx)
+	parser, err := m.ncli.Parser(ctx)
 	if err != nil {
 		return err
 	}
@@ -110,14 +110,14 @@ func (m *Manager) Run(ctx context.Context) error {
 		return err
 	}
 	for ctx.Err() == nil { // handle WS client failure
-		scli, err := rpc.NewWebSocketClient(m.config.TokenRPC, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
+		scli, err := rpc.NewWebSocketClient(m.config.NuklaiRPC, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
 		if err != nil {
-			m.log.Warn("unable to connect to RPC", zap.String("uri", m.config.TokenRPC), zap.Error(err))
+			m.log.Warn("unable to connect to RPC", zap.String("uri", m.config.NuklaiRPC), zap.Error(err))
 			time.Sleep(10 * time.Second)
 			continue
 		}
 		if err := scli.RegisterBlocks(); err != nil {
-			m.log.Warn("unable to connect to register for blocks", zap.String("uri", m.config.TokenRPC), zap.Error(err))
+			m.log.Warn("unable to connect to register for blocks", zap.String("uri", m.config.NuklaiRPC), zap.Error(err))
 			time.Sleep(10 * time.Second)
 			continue
 		}
@@ -143,7 +143,7 @@ func (m *Manager) Run(ctx context.Context) error {
 				}
 				result := results[i]
 				from := tx.Auth.Actor()
-				fromStr := codec.MustAddressBech32(consts.HRP, from)
+				fromStr := codec.MustAddressBech32(nconsts.HRP, from)
 				if !result.Success {
 					m.log.Info("incoming message failed on-chain", zap.String("from", fromStr), zap.String("memo", string(action.Memo)), zap.Uint64("payment", action.Value), zap.Uint64("required", m.feeAmount))
 					continue

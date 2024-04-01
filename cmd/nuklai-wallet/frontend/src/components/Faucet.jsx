@@ -1,69 +1,64 @@
-import { useEffect, useState } from "react";
-import {
-  App,
-  Divider,
-  List,
-  Card,
-  Typography,
-  Button,
-  Spin,
-} from "antd";
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
+// See the file LICENSE for licensing terms.
+
+import { useEffect, useState } from 'react'
+import { App, Divider, List, Card, Typography, Button, Spin } from 'antd'
 import {
   CheckCircleTwoTone,
   CloseCircleTwoTone,
-  LoadingOutlined,
-} from "@ant-design/icons";
+  LoadingOutlined
+} from '@ant-design/icons'
 import {
   StartFaucetSearch,
-  GetFaucetSolutions,
-} from "../../wailsjs/go/main/App";
-const { Text } = Typography;
+  GetFaucetSolutions
+} from '../../wailsjs/go/main/App'
+const { Text } = Typography
 
-const antIcon = <LoadingOutlined style={{ fontSize: 36 }} spin />;
+const antIcon = <LoadingOutlined style={{ fontSize: 36 }} spin />
 
 const Faucet = () => {
-  const { message } = App.useApp();
-  const [loaded, setLoaded] = useState(false);
-  const [search, setSearch] = useState(null);
-  const [solutions, setSolutions] = useState([]);
+  const { message } = App.useApp()
+  const [loaded, setLoaded] = useState(false)
+  const [search, setSearch] = useState(null)
+  const [solutions, setSolutions] = useState([])
 
   const startSearch = async () => {
-    const newSearch = await StartFaucetSearch();
-    setSearch(newSearch);
-  };
+    const newSearch = await StartFaucetSearch()
+    setSearch(newSearch)
+  }
 
   useEffect(() => {
     const getFaucetSolutions = async () => {
-      const faucetSolutions = await GetFaucetSolutions();
+      const faucetSolutions = await GetFaucetSolutions()
       if (faucetSolutions.Alerts !== null) {
         for (var Alert of faucetSolutions.Alerts) {
           message.open({
             type: Alert.Type,
-            content: Alert.Content,
-          });
+            content: Alert.Content
+          })
         }
       }
-      setSearch(faucetSolutions.CurrentSearch);
-      setSolutions(faucetSolutions.PastSearches);
-      setLoaded(true);
-    };
+      setSearch(faucetSolutions.CurrentSearch)
+      setSolutions(faucetSolutions.PastSearches)
+      setLoaded(true)
+    }
 
-    getFaucetSolutions();
+    getFaucetSolutions()
     const interval = setInterval(() => {
-      getFaucetSolutions();
-    }, 500);
+      getFaucetSolutions()
+    }, 500)
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <>
-      <div style={{ width: "60%", margin: "auto" }}>
-        <Card bordered title={"Request Tokens"}>
+      <div style={{ width: '60%', margin: 'auto' }}>
+        <Card bordered title={'Request Tokens'}>
           {loaded && search === null && (
             <div>
               <Text>
-                To protect against bots, TokenNet requires anyone requesting
+                To protect against bots, NuklaiNet requires anyone requesting
                 funds to solve a Proof-of-Work puzzle. This takes most modern
                 computers 30-60 seconds.
               </Text>
@@ -71,27 +66,28 @@ const Faucet = () => {
               <br />
               <Text>
                 While your computer is working on this puzzle, you can browse
-                other parts of Token Wallet. You will receive a notifcation when
-                your computer solved a puzzle and received funds.
+                other parts of Nuklai Wallet. You will receive a notifcation
+                when your computer solved a puzzle and received funds.
               </Text>
               <br />
               <Button
-                type="primary"
-                style={{ margin: "8px 0%" }}
-                onClick={startSearch}>
+                type='primary'
+                style={{ margin: '8px 0%' }}
+                onClick={startSearch}
+              >
                 Request
               </Button>
             </div>
           )}
           {loaded && search !== null && (
             <div>
-              <div style={{ width: "50%", margin: "auto" }}>
+              <div style={{ width: '50%', margin: 'auto' }}>
                 <Spin
                   indicator={antIcon}
                   style={{
-                    display: "flex",
-                    "align-items": "center",
-                    "justify-content": "center",
+                    display: 'flex',
+                    'align-items': 'center',
+                    'justify-content': 'center'
                   }}
                 />
                 <br />
@@ -116,7 +112,7 @@ const Faucet = () => {
           )}
         </Card>
 
-        <Divider orientation="center">Previous Requests</Divider>
+        <Divider orientation='center'>Previous Requests</Divider>
         <List
           bordered
           dataSource={solutions}
@@ -126,7 +122,7 @@ const Faucet = () => {
                 <div>
                   <div>
                     <Text strong>{item.Solution} </Text>
-                    <CloseCircleTwoTone twoToneColor="#eb2f96" />
+                    <CloseCircleTwoTone twoToneColor='#eb2f96' />
                   </div>
                   <Text strong>Salt:</Text> {item.Salt}
                   <br />
@@ -143,7 +139,7 @@ const Faucet = () => {
                 <div>
                   <div>
                     <Text strong>{item.Solution} </Text>
-                    <CheckCircleTwoTone twoToneColor="#52c41a" />
+                    <CheckCircleTwoTone twoToneColor='#52c41a' />
                   </div>
                   <Text strong>Salt:</Text> {item.Salt}
                   <br />
@@ -163,6 +159,6 @@ const Faucet = () => {
         />
       </div>
     </>
-  );
-};
-export default Faucet;
+  )
+}
+export default Faucet

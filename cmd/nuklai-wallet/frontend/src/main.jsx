@@ -1,16 +1,19 @@
-import React from "react";
-import { createRoot } from "react-dom/client";
-import { createHashRouter, RouterProvider } from "react-router-dom";
-import routes from "./routes";
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
+// See the file LICENSE for licensing terms.
 
-const container = document.getElementById("root");
+import React from 'react'
+import { createRoot } from 'react-dom/client'
+import { createHashRouter, RouterProvider } from 'react-router-dom'
+import routes from './routes'
 
-const root = createRoot(container);
+const container = document.getElementById('root')
 
-const router = createHashRouter(routes, { basename: "/" });
+const root = createRoot(container)
+
+const router = createHashRouter(routes, { basename: '/' })
 
 root.render(
   <React.StrictMode>
     <RouterProvider router={router} />
   </React.StrictMode>
-);
+)
