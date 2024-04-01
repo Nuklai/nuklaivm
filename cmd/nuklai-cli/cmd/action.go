@@ -46,7 +46,7 @@ var fundFaucetCmd = &cobra.Command{
 		ctx := context.Background()
 
 		// Get faucet
-		faucetURI, err := handler.Root().PromptString("faucet URI", 0, consts.MaxInt)
+		faucetURI, err := handler.Root().PromptString("faucet URI", 0, hconsts.MaxInt)
 		if err != nil {
 			return err
 		}
