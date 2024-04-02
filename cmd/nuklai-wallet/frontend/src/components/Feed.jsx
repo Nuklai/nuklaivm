@@ -1,30 +1,28 @@
-// Copyright (C) 2024, AllianceBlock. All rights reserved.
-// See the file LICENSE for licensing terms.
-
-import { useEffect, useState } from 'react'
+import { InfoCircleOutlined } from '@ant-design/icons'
 import {
-  GetFeedInfo,
+  App,
+  Button,
+  Divider,
+  Drawer,
+  Form,
+  Input,
+  InputNumber,
+  List,
+  Popover,
+  Select,
+  Typography
+} from 'antd'
+import React, { useEffect, useState } from 'react'
+import {
+  GetBalance,
   GetFeed,
+  GetFeedInfo,
   Message,
   OpenLink,
-  GetBalance,
   Transfer as Send
 } from '../../wailsjs/go/main/App'
 import FundsCheck from './FundsCheck'
-import { LinkOutlined, InfoCircleOutlined } from '@ant-design/icons'
-import {
-  App,
-  Input,
-  Typography,
-  Divider,
-  List,
-  Button,
-  Drawer,
-  Form,
-  Popover,
-  Select,
-  InputNumber
-} from 'antd'
+
 const { Title, Text } = Typography
 
 const Feed = () => {
@@ -36,144 +34,85 @@ const Feed = () => {
   const [openTip, setOpenTip] = useState(false)
   const [tipFocus, setTipFocus] = useState({})
   const [tipForm] = Form.useForm()
-  const key = 'updatable'
-
-  {
-    /* Create Handlers */
-  }
-  const showCreateDrawer = () => {
-    setOpenCreate(true)
-  }
-
-  const onCloseCreate = () => {
-    createForm.resetFields()
-    setOpenCreate(false)
-  }
-
-  const onFinishCreate = (values) => {
-    console.log('Success:', values)
-    createForm.resetFields()
-    setOpenCreate(false)
-
-    message.open({
-      key,
-      type: 'loading',
-      content: 'Processing Transaction...',
-      duration: 0
-    })
-    ;(async () => {
-      try {
-        const start = new Date().getTime()
-        await Message(values.Message, values.URL)
-        const finish = new Date().getTime()
-        message.open({
-          key,
-          type: 'success',
-          content: `Transaction Finalized (${finish - start} ms)`
-        })
-      } catch (e) {
-        message.open({
-          key,
-          type: 'error',
-          content: e.toString()
-        })
-      }
-    })()
-  }
-
-  const onFinishCreateFailed = (errorInfo) => {
-    console.log('Failed:', errorInfo)
-  }
-
-  {
-    /* Tip Handlers */
-  }
   const [balance, setBalance] = useState([])
-  const getBalance = async () => {
-    const bals = await GetBalance()
-    const parsedBalances = []
-    for (let i = 0; i < bals.length; i++) {
-      parsedBalances.push({ value: bals[i].ID, label: bals[i].Bal })
-    }
-    setBalance(parsedBalances)
-  }
-  const showTipDrawer = (item) => {
-    setTipFocus(item)
-    setOpenTip(true)
+
+  // Helper function to convert timestamp
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp)
+    return date.toLocaleString()
   }
 
-  const onCloseTip = () => {
-    tipForm.resetFields()
-    setOpenTip(false)
-  }
-
-  const onFinishTip = (values) => {
-    console.log('Success:', values)
-    tipForm.resetFields()
-    setOpenTip(false)
-
-    message.open({
-      key,
-      type: 'loading',
-      content: 'Processing Transaction...',
-      duration: 0
-    })
-    ;(async () => {
-      try {
-        const start = new Date().getTime()
-        await Send(
-          values.Asset,
-          tipFocus.Address,
-          values.Amount,
-          `[${tipFocus.ID}]: ${values.Memo}`
-        )
-        const finish = new Date().getTime()
-        message.open({
-          key,
-          type: 'success',
-          content: `Transaction Finalized (${finish - start} ms)`
-        })
-        getBalance()
-      } catch (e) {
-        message.open({
-          key,
-          type: 'error',
-          content: e.toString()
-        })
-      }
-    })()
-  }
-
-  const onFinishTipFailed = (errorInfo) => {
-    console.log('Failed:', errorInfo)
-  }
-
-  const openLink = (url) => {
-    OpenLink(url)
-  }
-
+  // Fetch data for the feed and user's balance
   useEffect(() => {
-    getBalance()
-
-    const getFeed = async () => {
-      const feed = await GetFeed()
-      console.log(feed)
-      setFeed(feed)
+    const fetchData = async () => {
+      const [feedData, feedInfoData, balances] = await Promise.all([
+        GetFeed(),
+        GetFeedInfo(),
+        GetBalance()
+      ])
+      setFeed(feedData)
+      setFeedInfo(feedInfoData)
+      setBalance(
+        balances.map((bal) => ({
+          value: bal.ID,
+          label: `${bal.Bal} ${bal.Symbol}`
+        }))
+      )
     }
-    const getFeedInfo = async () => {
-      const feedInfo = await GetFeedInfo()
-      setFeedInfo(feedInfo)
-    }
 
-    getFeed()
-    getFeedInfo()
-    const interval = setInterval(() => {
-      getFeed()
-      getFeedInfo()
-    }, 500)
-
+    fetchData()
+    const interval = setInterval(fetchData, 30000) // Refresh every 30 seconds
     return () => clearInterval(interval)
   }, [])
+
+  // Handle creating a new post
+  const onFinishCreate = async (values) => {
+    setOpenCreate(false)
+    message.loading({ content: 'Processing Transaction...', key: 'updatable' })
+    try {
+      await Message(values.Message, values.URL)
+      message.success({
+        content: 'Transaction Successful!',
+        key: 'updatable',
+        duration: 2
+      })
+      // Refetch the feed after posting
+      setFeed(await GetFeed())
+    } catch (error) {
+      message.error({
+        content: error.toString(),
+        key: 'updatable',
+        duration: 2
+      })
+    }
+  }
+
+  // Handle sending a tip
+  const onFinishTip = async (values) => {
+    setOpenTip(false)
+    message.loading({ content: 'Processing Transaction...', key: 'updatable' })
+    try {
+      await Send(
+        values.Asset,
+        tipFocus.Address,
+        values.Amount,
+        `[${tipFocus.ID}]: ${values.Memo}`
+      )
+      message.success({
+        content: 'Tip Sent Successfully!',
+        key: 'updatable',
+        duration: 2
+      })
+      // Update the balance after tipping
+      setBalance(await GetBalance())
+    } catch (error) {
+      message.error({
+        content: error.toString(),
+        key: 'updatable',
+        duration: 2
+      })
+    }
+  }
 
   return (
     <>
@@ -184,244 +123,123 @@ const Feed = () => {
           <Popover
             content={
               <div>
-                Because the fees are low on NuklaiNet, it is great for
-                micropayments.
-                <br />
-                <br />
-                This example allows anyone to pay the feed operator to post
-                content for everyone else to see.
-                <br />
-                <br />
-                If the amount of posts goes above the target/5 minutes, the fee
-                to post will increase.
-                <br />
-                <br />
-                You can tip posters with any token you own!
+                <p>
+                  Because the fees are low on NuklaiNet, it is great for
+                  micropayments.
+                </p>
+                <p>
+                  This example allows anyone to pay the feed operator to post
+                  content for everyone else to see.
+                </p>
+                <p>
+                  If the amount of posts goes above the target/5 minutes, the
+                  fee to post will increase.
+                </p>
+                <p>You can tip posters with any token you own!</p>
               </div>
             }
           >
-            {' '}
             <InfoCircleOutlined />
           </Popover>
         </Divider>
-        <div style={{ display: 'flex', width: '100%' }}>
-          <Button
-            type='primary'
-            onClick={showCreateDrawer}
-            placement={'right'}
-            style={{ margin: '0 0 8px 0', 'margin-left': 'auto' }}
-            disabled={!window.HasBalance}
-          >
-            Create Post
-          </Button>
-        </div>
+        <Button
+          type='primary'
+          onClick={() => setOpenCreate(true)}
+          disabled={!window.HasBalance}
+        >
+          Create Post
+        </Button>
         <List
-          bordered
+          itemLayout='vertical'
+          size='large'
           dataSource={feed}
           renderItem={(item) => (
-            <List.Item>
-              {item.URL.length == 0 && (
-                <div>
-                  <Title level={3} style={{ display: 'inline' }}>
-                    {item.Message}
-                  </Title>
-                  <br />
-                </div>
-              )}
-              {item.URL.length > 0 && (
-                <div>
-                  {item.URLMeta != null && (
-                    <div>
-                      {item.URLMeta.Image.length > 0 && (
-                        <img
-                          src={item.URLMeta.Image}
-                          style={{
-                            width: '100%',
-                            height: '200px',
-                            'object-fit': 'cover'
-                          }}
-                        />
-                      )}
-                      <Title level={3} style={{ display: 'inline' }}>
-                        {item.URLMeta.Title}
-                      </Title>{' '}
-                      <Button
-                        onClick={() => {
-                          openLink(item.URLMeta.URL)
-                        }}
-                        style={{ margin: '0' }}
-                      >
-                        <LinkOutlined /> {item.URLMeta.Host}
-                      </Button>
-                      <br />
-                      {item.URLMeta.Description.length > 0 && (
-                        <div>
-                          <Text italic>{item.URLMeta.Description}</Text>
-                          <br />
-                          <br />
-                        </div>
-                      )}
-                      <Text strong>URL:</Text> {item.URL}
-                      <br />
-                      <Text strong>Message:</Text> {item.Message}
-                      <br />
-                    </div>
-                  )}
-                  {item.URLMeta == null && (
-                    <div>
-                      <Title level={3} style={{ display: 'inline' }}>
-                        {item.Message}
-                      </Title>
-                      <br />
-                      <Text strong>URL:</Text> {item.URL} (
-                      <Text italic>not reachable</Text>)
-                      <br />
-                    </div>
-                  )}
-                </div>
-              )}
-              <Text strong>TxID:</Text> {item.ID}
-              <br />
-              <Text strong>Timestamp:</Text> {item.Timestamp}
-              <br />
-              <Text strong>Fee:</Text> {item.Fee}
-              <br />
-              <Text strong>Actor:</Text> {item.Address}
-              <br />
-              <Button
-                type='primary'
-                style={{ margin: '8px 0 0 0' }}
-                disabled={!window.HasBalance}
-                onClick={() => showTipDrawer(item)}
-              >
-                Tip
-              </Button>
+            <List.Item
+              key={item.ID}
+              actions={[
+                <Button
+                  onClick={() => {
+                    setTipFocus(item)
+                    setOpenTip(true)
+                  }}
+                >
+                  Tip
+                </Button>
+              ]}
+              extra={
+                item.URLMeta?.Image && (
+                  <img width={272} alt='thumbnail' src={item.URLMeta.Image} />
+                )
+              }
+            >
+              <List.Item.Meta
+                title={
+                  item.URLMeta ? (
+                    <a onClick={() => OpenLink(item.URL)}>
+                      {item.URLMeta.Title}
+                    </a>
+                  ) : (
+                    <Text>{item.Message}</Text>
+                  )
+                }
+                description={item.URLMeta?.Description}
+              />
+              <div>
+                <Text strong>URL:</Text> {item.URL}
+                <br />
+                <Text strong>Message:</Text> {item.Message}
+                <br />
+                <Text strong>TxID:</Text> {item.ID}
+                <br />
+                <Text strong>Timestamp:</Text> {formatTimestamp(item.Timestamp)}
+                <br />
+                <Text strong>Fee:</Text> {item.Fee}
+                <br />
+                <Text strong>Actor:</Text> {item.Address}
+              </div>
             </List.Item>
           )}
         />
       </div>
+
       <Drawer
-        title={
-          <>
-            Create Post
-            <Popover
-              content={
-                <div>
-                  Posts can include both a "message" and a "URL".
-                  <br />
-                  <br />
-                  When posting content, you must pay the "feed fee" to the
-                  operator that hosts the feed (will be a HyperSDK Program in
-                  the future).
-                  <br />
-                  <br />
-                  The Nuklai Wallet will attempt to preview posted URLs on the
-                  feed.
-                  <br />
-                  <br />
-                  The Nuklai Wallet is not able to parse X or Reddit links yet.
-                  If you'd like to implement that, please reach out!
-                </div>
-              }
-            >
-              {' '}
-              <InfoCircleOutlined />
-            </Popover>
-          </>
-        }
-        placement={'right'}
-        onClose={onCloseCreate}
+        title='Create Post'
+        placement='right'
+        onClose={() => setOpenCreate(false)}
         open={openCreate}
       >
-        <Text strong>Feed Fee:</Text> ~{feedInfo.Fee}
-        <Form
-          name='basic'
-          form={createForm}
-          initialValues={{ remember: false }}
-          onFinish={onFinishCreate}
-          onFinishFailed={onFinishCreateFailed}
-          style={{ margin: '8px 0 0 0' }}
-          autoComplete='off'
-        >
-          <Form.Item
-            name='Message'
-            style={{ margin: '0 0 8px 0' }}
-            rules={[{ required: true }]}
-          >
-            <Input placeholder='Message' maxLength='256' />
+        <Form form={createForm} onFinish={onFinishCreate}>
+          <Form.Item name='Message' rules={[{ required: true }]}>
+            <Input placeholder='Enter your message' />
           </Form.Item>
-          <Form.Item name='URL' style={{ margin: '0 0 8px 0' }}>
-            <Input placeholder='URL' maxLength='256' />
+          <Form.Item name='URL'>
+            <Input placeholder='Add a link (optional)' />
           </Form.Item>
-          <Form.Item>
-            <Button
-              type='primary'
-              htmlType='submit'
-              style={{ margin: '0 0 8px 0' }}
-            >
-              Create
-            </Button>
-          </Form.Item>
+          <Button type='primary' htmlType='submit'>
+            Post
+          </Button>
         </Form>
       </Drawer>
+
       <Drawer
-        title={
-          <>
-            Send Tip
-            <Popover content={'TODO: explanation'}>
-              {' '}
-              <InfoCircleOutlined />
-            </Popover>
-          </>
-        }
-        placement={'right'}
-        onClose={onCloseTip}
+        title='Send Tip'
+        placement='right'
+        onClose={() => setOpenTip(false)}
         open={openTip}
       >
-        <Form
-          name='basic'
-          form={tipForm}
-          initialValues={{ remember: false }}
-          onFinish={onFinishTip}
-          onFinishFailed={onFinishTipFailed}
-          style={{ margin: '8px 0 0 0' }}
-          autoComplete='off'
-        >
-          <Form.Item
-            name='Asset'
-            rules={[{ required: true }]}
-            style={{ margin: '0 0 8px 0' }}
-          >
-            <Select placeholder='Token' options={balance} />
+        <Form form={tipForm} onFinish={onFinishTip}>
+          <Form.Item name='Asset' rules={[{ required: true }]}>
+            <Select options={balance} placeholder='Select token' />
           </Form.Item>
-          <Form.Item
-            name='Amount'
-            rules={[{ required: true }]}
-            style={{ margin: '0 0 8px 0' }}
-          >
-            <InputNumber
-              placeholder='Amount'
-              min={0}
-              stringMode='true'
-              style={{ width: '100%' }}
-            />
+          <Form.Item name='Amount' rules={[{ required: true }]}>
+            <InputNumber placeholder='Amount' style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item
-            name='Memo'
-            rules={[{ required: false }]}
-            style={{ margin: '0 0 8px 0' }}
-          >
-            <Input placeholder='Memo' maxLength='256' />
+          <Form.Item name='Memo'>
+            <Input placeholder='Add a message (optional)' />
           </Form.Item>
-          <Form.Item>
-            <Button
-              type='primary'
-              htmlType='submit'
-              style={{ margin: '0 0 8px 0' }}
-            >
-              Tip
-            </Button>
-          </Form.Item>
+          <Button type='primary' htmlType='submit'>
+            Tip
+          </Button>
         </Form>
       </Drawer>
     </>
