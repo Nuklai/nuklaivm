@@ -116,7 +116,7 @@ func (b *Backend) Start(ctx context.Context) error {
 	// Read environment variables or use default values
 	databasePath := os.Getenv("NUKLAI_WALLET_DB_PATH")
 	if databasePath == "" {
-		databaseFolder = filepath.Join(defaultDir, ".backend-db")
+		databaseFolder = filepath.Join(defaultDir, ".nuklai-wallet/db")
 	} else {
 		databaseFolder = databasePath
 	}
@@ -129,7 +129,7 @@ func (b *Backend) Start(ctx context.Context) error {
 
 	configFilePath := os.Getenv("NUKLAI_WALLET_CONFIG_PATH")
 	if configFilePath == "" {
-		configFile = filepath.Join(defaultDir, "config.json")
+		configFile = filepath.Join(defaultDir, ".nuklai-wallet/config.json")
 	} else {
 		configFile = configFilePath
 	}
