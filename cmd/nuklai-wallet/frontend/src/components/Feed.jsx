@@ -92,10 +92,12 @@ const Feed = () => {
     setOpenTip(false)
     message.loading({ content: 'Processing Transaction...', key: 'updatable' })
     try {
+      // Convert the Amount to a string
+      const amountAsString = values.Amount.toString()
       await Send(
         values.Asset,
         tipFocus.Address,
-        values.Amount,
+        amountAsString,
         `[${tipFocus.ID}]: ${values.Memo}`
       )
       message.success({
