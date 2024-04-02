@@ -54,12 +54,16 @@ export function GetFeedInfo() {
   return window['go']['main']['App']['GetFeedInfo']();
 }
 
-export function GetLatestBlocks() {
-  return window['go']['main']['App']['GetLatestBlocks']();
+export function GetLatestBlocks(arg1, arg2) {
+  return window['go']['main']['App']['GetLatestBlocks'](arg1, arg2);
 }
 
 export function GetMyAssets() {
   return window['go']['main']['App']['GetMyAssets']();
+}
+
+export function GetTotalBlocks() {
+  return window['go']['main']['App']['GetTotalBlocks']();
 }
 
 export function GetTransactionStats() {

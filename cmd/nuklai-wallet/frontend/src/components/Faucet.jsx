@@ -86,7 +86,7 @@ const Faucet = () => {
                   indicator={antIcon}
                   style={{
                     display: 'flex',
-                    'align-items': 'center',
+                    'alignItems': 'center',
                     'justify-content': 'center'
                   }}
                 />

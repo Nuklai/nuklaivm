@@ -461,11 +461,31 @@ func (b *Backend) Shutdown(context.Context) error {
 	return b.s.Close()
 }
 
-func (b *Backend) GetLatestBlocks() []*BlockInfo {
+func (b *Backend) GetTotalBlocks() int {
 	b.blockLock.Lock()
 	defer b.blockLock.Unlock()
 
-	return b.blocks
+	return len(b.blocks)
+}
+
+func (b *Backend) GetLatestBlocks(page int, count int) []*BlockInfo {
+	b.blockLock.Lock()
+	defer b.blockLock.Unlock()
+
+	// Calculate the starting index based on the current page and count per page
+	startIndex := (page - 1) * count
+	if startIndex >= len(b.blocks) {
+		return []*BlockInfo{} // Return an empty slice if the start index is beyond the available blocks
+	}
+
+	// Calculate the end index for slicing
+	endIndex := startIndex + count
+	if endIndex > len(b.blocks) {
+		endIndex = len(b.blocks) // Ensure the end index does not exceed the total number of blocks
+	}
+
+	// Return a slice of the blocks array based on the calculated start and end indexes
+	return b.blocks[startIndex:endIndex]
 }
 
 func (b *Backend) GetTransactionStats() []*GenericInfo {

@@ -1,17 +1,29 @@
 // Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-import { useEffect, useState } from 'react'
-import {
-  GetLatestBlocks,
-  GetTransactionStats,
-  GetAccountStats,
-  GetUnitPrices,
-  GetChainID
-} from '../../wailsjs/go/main/App'
-import { App, Typography, Divider, List, Card, Col, Row, Popover } from 'antd'
 import { InfoCircleOutlined } from '@ant-design/icons'
 import { Area, Line } from '@ant-design/plots'
+import {
+  App,
+  Card,
+  Col,
+  Divider,
+  List,
+  Pagination,
+  Popover,
+  Row,
+  Typography
+} from 'antd'
+import { useEffect, useState } from 'react'
+import {
+  GetAccountStats,
+  GetChainID,
+  GetLatestBlocks,
+  GetTotalBlocks,
+  GetTransactionStats,
+  GetUnitPrices
+} from '../../wailsjs/go/main/App'
+
 const { Title, Text } = Typography
 
 const Explorer = () => {
@@ -21,87 +33,50 @@ const Explorer = () => {
   const [accountStats, setAccountStats] = useState([])
   const [unitPrices, setUnitPrices] = useState([])
   const [chainID, setChainID] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const blocksPerPage = 10 // Adjust based on your preference
+  const [totalBlocks, setTotalBlocks] = useState(0) // This state will hold the total number of blocks
 
   useEffect(() => {
-    const getLatestBlocks = async () => {
-      GetLatestBlocks()
-        .then((blocks) => {
-          setBlocks(blocks)
-        })
-        .catch((error) => {
-          message.open({
-            type: 'error',
-            content: error
-          })
-        })
+    const fetchData = async () => {
+      try {
+        const chainId = await GetChainID()
+        setChainID(chainId)
+
+        const latestBlocks = await GetLatestBlocks(currentPage, blocksPerPage)
+        setBlocks(latestBlocks)
+
+        const total = await GetTotalBlocks()
+        setTotalBlocks(total)
+
+        const [transStats, accStats, prices] = await Promise.all([
+          GetTransactionStats(),
+          GetAccountStats(),
+          GetUnitPrices()
+        ])
+
+        setTransactionStats(transStats)
+        setAccountStats(accStats)
+        setUnitPrices(prices)
+      } catch (error) {
+        message.error(error.toString())
+      }
     }
 
-    const getChainID = async () => {
-      GetChainID()
-        .then((chainID) => {
-          setChainID(chainID)
-        })
-        .catch((error) => {
-          message.open({
-            type: 'error',
-            content: error
-          })
-        })
-    }
-    getChainID()
+    fetchData()
 
-    const getTransactionStats = async () => {
-      GetTransactionStats()
-        .then((stats) => {
-          setTransactionStats(stats)
-        })
-        .catch((error) => {
-          message.open({
-            type: 'error',
-            content: error
-          })
-        })
-    }
+    // Set up the interval to refetch data every 10 seconds
+    const intervalId = setInterval(() => {
+      fetchData()
+    }, 10000) // 10000 milliseconds = 10 seconds
 
-    const getAccountStats = async () => {
-      GetAccountStats()
-        .then((stats) => {
-          setAccountStats(stats)
-        })
-        .catch((error) => {
-          message.open({
-            type: 'error',
-            content: error
-          })
-        })
-    }
+    // Clear the interval when the component is unmounted
+    return () => clearInterval(intervalId)
+  }, [currentPage, message]) // The dependencies array ensures fetchData is called when currentPage changes or message is used
 
-    const getUnitPrices = async () => {
-      GetUnitPrices()
-        .then((prices) => {
-          setUnitPrices(prices)
-        })
-        .catch((error) => {
-          message.open({
-            type: 'error',
-            content: error
-          })
-        })
-    }
-
-    getLatestBlocks()
-    getTransactionStats()
-    getAccountStats()
-    getUnitPrices()
-    const interval = setInterval(() => {
-      getLatestBlocks()
-      getTransactionStats()
-      getAccountStats()
-      getUnitPrices()
-    }, 500)
-
-    return () => clearInterval(interval)
-  }, [])
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+  }
 
   return (
     <>
@@ -202,11 +177,12 @@ const Explorer = () => {
           Blocks <InfoCircleOutlined />
         </Popover>
       </Divider>
+
       <List
         bordered
         dataSource={blocks}
         renderItem={(item) => (
-          <List.Item>
+          <List.Item key={item.ID}>
             <div>
               <Title level={3} style={{ display: 'inline' }}>
                 {item.Height}
@@ -232,6 +208,13 @@ const Explorer = () => {
             <Text strong>Accept Latency:</Text> {item.Latency}ms
           </List.Item>
         )}
+      />
+      <Pagination
+        current={currentPage}
+        onChange={handlePageChange}
+        total={totalBlocks} // Use the state holding the total number of blocks for pagination
+        pageSize={blocksPerPage}
+        showSizeChanger={false}
       />
     </>
   )

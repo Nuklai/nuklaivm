@@ -47,8 +47,12 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 }
 
-func (a *App) GetLatestBlocks() []*backend.BlockInfo {
-	return a.b.GetLatestBlocks()
+func (a *App) GetTotalBlocks() int {
+	return a.b.GetTotalBlocks()
+}
+
+func (a *App) GetLatestBlocks(page int, count int) []*backend.BlockInfo {
+	return a.b.GetLatestBlocks(page, count)
 }
 
 func (a *App) GetTransactionStats() []*backend.GenericInfo {
