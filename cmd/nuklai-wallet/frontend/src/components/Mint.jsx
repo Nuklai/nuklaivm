@@ -1,30 +1,30 @@
 // Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-import { useEffect, useState } from 'react'
-import {
-  GetMyAssets,
-  CreateAsset,
-  MintAsset,
-  GetAddressBook,
-  AddAddressBook
-} from '../../wailsjs/go/main/App'
-import FundsCheck from './FundsCheck'
-import { PlusOutlined, InfoCircleOutlined } from '@ant-design/icons'
+import { InfoCircleOutlined, PlusOutlined } from '@ant-design/icons'
 import {
   App,
-  Select,
-  Input,
-  InputNumber,
-  Space,
-  Typography,
-  Divider,
-  List,
   Button,
+  Divider,
   Drawer,
   Form,
-  Popover
+  Input,
+  InputNumber,
+  List,
+  Popover,
+  Select,
+  Space,
+  Typography
 } from 'antd'
+import { useEffect, useState } from 'react'
+import {
+  AddAddressBook,
+  CreateAsset,
+  GetAddressBook,
+  GetMyAssets,
+  MintAsset
+} from '../../wailsjs/go/main/App'
+import FundsCheck from './FundsCheck'
 const { Title, Text } = Typography
 
 const Mint = () => {
@@ -220,7 +220,7 @@ const Mint = () => {
             type='primary'
             onClick={showCreateDrawer}
             placement={'right'}
-            style={{ margin: '0 0 8px 0', 'margin-left': 'auto' }}
+            style={{ margin: '0 0 8px 0', marginLeft: 'auto' }}
             disabled={!window.HasBalance}
           >
             Create Token
@@ -335,8 +335,8 @@ const Mint = () => {
             <Popover
               content={
                 <div>
-                  You can mint ${mintFocus.Symbol} to anyone on the NuklaiNet and
-                  it will show up in their account.
+                  You can mint ${mintFocus.Symbol} to anyone on the NuklaiNet
+                  and it will show up in their account.
                   <br />
                   <br />
                   You can send parts of a ${mintFocus.Symbol} by using decimals
@@ -395,7 +395,7 @@ const Mint = () => {
                 </>
               )}
               options={addresses.map((item) => ({
-                label: item.AddrStr,
+                label: `${item.Name}: ${item.Address}`,
                 value: item.Address
               }))}
             />

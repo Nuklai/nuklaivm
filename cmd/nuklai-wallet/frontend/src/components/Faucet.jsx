@@ -1,20 +1,30 @@
-// Copyright (C) 2024, AllianceBlock. All rights reserved.
-// See the file LICENSE for licensing terms.
-
-import { useEffect, useState } from 'react'
-import { App, Divider, List, Card, Typography, Button, Spin } from 'antd'
 import {
   CheckCircleTwoTone,
   CloseCircleTwoTone,
-  LoadingOutlined
+  FundOutlined,
+  LoadingOutlined,
+  RedoOutlined
 } from '@ant-design/icons'
 import {
-  StartFaucetSearch,
-  GetFaucetSolutions
+  Alert,
+  App,
+  Avatar,
+  Button,
+  Card,
+  Divider,
+  List,
+  Space,
+  Spin,
+  Typography
+} from 'antd'
+import { useCallback, useEffect, useState } from 'react'
+import {
+  GetFaucetSolutions,
+  StartFaucetSearch
 } from '../../wailsjs/go/main/App'
-const { Text } = Typography
 
-const antIcon = <LoadingOutlined style={{ fontSize: 36 }} spin />
+const { Text, Title, Paragraph } = Typography
+const antIcon = <LoadingOutlined style={{ fontSize: 24 }} spin />
 
 const Faucet = () => {
   const { message } = App.useApp()
@@ -23,142 +33,120 @@ const Faucet = () => {
   const [solutions, setSolutions] = useState([])
 
   const startSearch = async () => {
-    const newSearch = await StartFaucetSearch()
-    setSearch(newSearch)
+    try {
+      const newSearch = await StartFaucetSearch()
+      setSearch(newSearch)
+    } catch (error) {
+      message.error('Failed to start the search. Please try again.')
+    }
   }
 
-  useEffect(() => {
-    const getFaucetSolutions = async () => {
+  const getFaucetSolutions = useCallback(async () => {
+    try {
       const faucetSolutions = await GetFaucetSolutions()
-      if (faucetSolutions.Alerts !== null) {
-        for (var Alert of faucetSolutions.Alerts) {
-          message.open({
-            type: Alert.Type,
-            content: Alert.Content
-          })
-        }
-      }
+      faucetSolutions.Alerts?.forEach((alert) => {
+        message[alert.Type](alert.Content)
+      })
       setSearch(faucetSolutions.CurrentSearch)
       setSolutions(faucetSolutions.PastSearches)
       setLoaded(true)
+    } catch (error) {
+      message.error(
+        'Failed to fetch faucet solutions. Please refresh the page.'
+      )
     }
+  }, [message])
 
+  useEffect(() => {
     getFaucetSolutions()
-    const interval = setInterval(() => {
-      getFaucetSolutions()
-    }, 500)
+    const interval = setInterval(getFaucetSolutions, 10000) // Refresh every 10 seconds
 
     return () => clearInterval(interval)
-  }, [])
+  }, [getFaucetSolutions])
 
   return (
-    <>
-      <div style={{ width: '60%', margin: 'auto' }}>
-        <Card bordered title={'Request Tokens'}>
-          {loaded && search === null && (
-            <div>
-              <Text>
-                To protect against bots, NuklaiNet requires anyone requesting
-                funds to solve a Proof-of-Work puzzle. This takes most modern
-                computers 30-60 seconds.
-              </Text>
-              <br />
-              <br />
-              <Text>
-                While your computer is working on this puzzle, you can browse
-                other parts of Nuklai Wallet. You will receive a notifcation
-                when your computer solved a puzzle and received funds.
-              </Text>
-              <br />
+    <Space direction='vertical' size='large' style={{ width: '100%' }}>
+      <Card bordered={false}>
+        <Title level={3}>Token Faucet</Title>
+        <Paragraph>
+          This faucet provides test tokens for users on the Nuklai network. To
+          request tokens, solve a simple computational puzzle to demonstrate
+          your commitment and help prevent abuse.
+        </Paragraph>
+        {!loaded ? (
+          <Spin indicator={antIcon} />
+        ) : (
+          <>
+            {search ? (
+              <Space direction='vertical' size='middle'>
+                <Spin indicator={antIcon} />
+                <Text>Your request is being processed...</Text>
+                <Button type='default' icon={<RedoOutlined spin />} disabled>
+                  Request Pending
+                </Button>
+              </Space>
+            ) : (
               <Button
                 type='primary'
-                style={{ margin: '8px 0%' }}
+                icon={<FundOutlined />}
                 onClick={startSearch}
               >
-                Request
+                Request Tokens
               </Button>
-            </div>
-          )}
-          {loaded && search !== null && (
-            <div>
-              <div style={{ width: '50%', margin: 'auto' }}>
-                <Spin
-                  indicator={antIcon}
-                  style={{
-                    display: 'flex',
-                    'alignItems': 'center',
-                    'justify-content': 'center'
-                  }}
-                />
-                <br />
-                <Text>
-                  <center>Search Running...</center>
-                </Text>
-                <Text italic>
-                  <center>(You can leave this page and come back!)</center>
-                </Text>
-              </div>
-              <br />
-              <br />
-              <Text strong>Faucet Address:</Text>
-              {search.FaucetAddress}
-              <br />
-              <Text strong>Salt:</Text>
-              {search.Salt}
-              <br />
-              <Text strong>Difficulty:</Text>
-              {search.Difficulty}
-            </div>
-          )}
-        </Card>
+            )}
+          </>
+        )}
+      </Card>
 
-        <Divider orientation='center'>Previous Requests</Divider>
-        <List
-          bordered
-          dataSource={solutions}
-          renderItem={(item) => (
-            <List.Item>
-              {item.Err.length > 0 && (
-                <div>
-                  <div>
-                    <Text strong>{item.Solution} </Text>
-                    <CloseCircleTwoTone twoToneColor='#eb2f96' />
-                  </div>
-                  <Text strong>Salt:</Text> {item.Salt}
-                  <br />
-                  <Text strong>Difficulty:</Text> {item.Difficulty}
-                  <br />
-                  <Text strong>Attempts:</Text> {item.Attempts}
-                  <br />
-                  <Text strong>Elapsed:</Text> {item.Elapsed}
-                  <br />
-                  <Text strong>Error:</Text> {item.Err}
-                </div>
-              )}
-              {item.Err.length == 0 && (
-                <div>
-                  <div>
-                    <Text strong>{item.Solution} </Text>
-                    <CheckCircleTwoTone twoToneColor='#52c41a' />
-                  </div>
-                  <Text strong>Salt:</Text> {item.Salt}
-                  <br />
-                  <Text strong>Difficulty:</Text> {item.Difficulty}
-                  <br />
-                  <Text strong>Attempts:</Text> {item.Attempts}
-                  <br />
-                  <Text strong>Elapsed:</Text> {item.Elapsed}
-                  <br />
-                  <Text strong>Amount:</Text> {item.Amount}
-                  <br />
-                  <Text strong>TxID:</Text> {item.TxID}
-                </div>
-              )}
-            </List.Item>
-          )}
-        />
-      </div>
-    </>
+      {solutions.length > 0 && (
+        <>
+          <Divider>Past Requests</Divider>
+          <List
+            itemLayout='horizontal'
+            dataSource={solutions}
+            renderItem={(item) => (
+              <List.Item>
+                <List.Item.Meta
+                  avatar={
+                    item.Err ? (
+                      <Avatar
+                        icon={<CloseCircleTwoTone twoToneColor='#f5222d' />}
+                      />
+                    ) : (
+                      <Avatar
+                        icon={<CheckCircleTwoTone twoToneColor='#52c41a' />}
+                      />
+                    )
+                  }
+                  title={
+                    <Text>
+                      {item.Err ? 'Request Failed' : 'Tokens Received'}
+                    </Text>
+                  }
+                  description={
+                    <>
+                      <Text strong>Solution:</Text> {item.Solution} <br />
+                      <Text strong>Salt:</Text> {item.Salt} <br />
+                      <Text strong>Difficulty:</Text> {item.Difficulty} <br />
+                      <Text strong>Attempts:</Text> {item.Attempts} <br />
+                      {item.Err ? (
+                        <Alert message={item.Err} type='error' showIcon />
+                      ) : (
+                        <>
+                          <Text strong>Received:</Text> {item.Amount} <br />
+                          <Text strong>Transaction ID:</Text> {item.TxID}
+                        </>
+                      )}
+                    </>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        </>
+      )}
+    </Space>
   )
 }
+
 export default Faucet
