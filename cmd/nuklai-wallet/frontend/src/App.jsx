@@ -1,12 +1,12 @@
 // Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-import NavBar from './components/NavBar'
-import { GetCommitHash, OpenLink } from '../wailsjs/go/main/App'
 import { App as AApp, FloatButton, Layout, Row, Typography } from 'antd'
 import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
-import logo from './assets/images/hypersdk.png'
+import { GetCommitHash, OpenLink } from '../wailsjs/go/main/App'
+import logo from './assets/images/nuklai-footer.png'
+import NavBar from './components/NavBar'
 
 const { Text } = Typography
 const { Content } = Layout

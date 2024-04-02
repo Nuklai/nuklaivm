@@ -19,7 +19,7 @@ import {
   GetBalance,
   GetTransactions
 } from '../../wailsjs/go/main/App'
-import logo from '../assets/images/logo-universal.png'
+import logo from '../assets/images/nuklai-logo.png'
 const { Text, Link } = Typography
 
 const NavBar = () => {
