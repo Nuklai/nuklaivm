@@ -14,13 +14,18 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
+
 	"github.com/ava-labs/hypersdk/server"
 	"github.com/ava-labs/hypersdk/utils"
+	"go.uber.org/zap"
+
+	"github.com/nuklai/nuklaivm/auth"
 	"github.com/nuklai/nuklaivm/cmd/nuklai-faucet/config"
 	"github.com/nuklai/nuklaivm/cmd/nuklai-faucet/manager"
 	frpc "github.com/nuklai/nuklaivm/cmd/nuklai-faucet/rpc"
-	"go.uber.org/zap"
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 var (
@@ -83,9 +88,11 @@ func main() {
 		if err := os.WriteFile(configPath, b, fi.Mode().Perm()); err != nil {
 			fatal(log, "cannot write new config", zap.Error(err))
 		}
-		log.Info("created new faucet address", zap.String("address", c.AddressBech32()))
+		faucetAddress := codec.MustAddressBech32(nconsts.HRP, auth.NewED25519Address(priv.PublicKey()))
+		log.Info("created new faucet address", zap.String("address", faucetAddress))
 	} else {
-		log.Info("loaded faucet address", zap.String("address", c.AddressBech32()))
+		faucetAddress := codec.MustAddressBech32(nconsts.HRP, auth.NewED25519Address(c.PrivateKey().PublicKey()))
+		log.Info("loaded faucet address", zap.String("address", faucetAddress))
 	}
 
 	// Create server
@@ -117,7 +124,7 @@ func main() {
 		fatal(log, "cannot create handler", zap.Error(err))
 	}
 	if err := srv.AddRoute(handler, "faucet", ""); err != nil {
-		fatal(log, "cannot add facuet route", zap.Error(err))
+		fatal(log, "cannot add faucet route", zap.Error(err))
 	}
 
 	// Start server

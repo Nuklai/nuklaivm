@@ -61,3 +61,5 @@ deploys/
 *.coverage.html
 data/
 osxcross/
+
+cmd/nuklai-wallet/.backend-db

@@ -12,7 +12,7 @@ type Config struct {
 	HTTPHost string `json:"host"`
 	HTTPPort int    `json:"port"`
 
-	TokenRPC string `json:"tokenRPC"`
+	NuklaiRPC string `json:"nuklaiRPC"`
 
 	Recipient     string `json:"recipient"`
 	recipientAddr codec.Address

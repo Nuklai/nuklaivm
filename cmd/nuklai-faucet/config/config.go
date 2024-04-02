@@ -16,7 +16,7 @@ type Config struct {
 
 	PrivateKeyBytes []byte `json:"privateKeyBytes"`
 
-	TokenRPC              string `json:"tokenRPC"`
+	NuklaiRPC             string `json:"nuklaiRPC"`
 	Amount                uint64 `json:"amount"`
 	StartDifficulty       uint16 `json:"startDifficulty"`
 	SolutionsPerSalt      int    `json:"solutionsPerSalt"`
