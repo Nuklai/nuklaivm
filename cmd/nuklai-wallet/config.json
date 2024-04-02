@@ -1,5 +1,5 @@
 {
-  "nuklaiRPC": "http://127.0.0.1:42695/ext/bc/2usM84GHBwDXVT3Yc4UuGg6wFgb5yx48rGXQVPVA8AgMbhiYjy",
+  "nuklaiRPC": "http://127.0.0.1:36901/ext/bc/26oLn3Fva9x1H8iifoWMbEva9SzQ4mvY34mj2U4uuvBPyoMtnH",
   "faucetRPC": "http://127.0.0.1:9091",
   "searchCores": 4,
   "feedRPC": "http://127.0.0.1:9092"

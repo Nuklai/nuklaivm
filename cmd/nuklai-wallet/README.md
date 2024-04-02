@@ -1,4 +1,4 @@
-# Token Wallet
+# Nuklai Wallet
 
 ## Configuration
 

@@ -9,16 +9,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/joho/godotenv"
 
 	"github.com/ava-labs/avalanchego/cache"
 	"github.com/ava-labs/avalanchego/ids"
@@ -43,9 +46,9 @@ import (
 	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
 
-const (
-	databaseFolder = ".nuklai-wallet/db"
-	configFile     = ".nuklai-wallet/config.json"
+var (
+	databaseFolder string
+	configFile     string
 )
 
 type Backend struct {
@@ -99,15 +102,43 @@ func New(fatal func(error)) *Backend {
 }
 
 func (b *Backend) Start(ctx context.Context) error {
-	b.ctx = ctx
-	homeDir, err := os.UserHomeDir()
+	// Load .env file
+	err := godotenv.Load()
 	if err != nil {
-		return err
+		log.Println("Error loading .env file, using default paths")
+	}
+	// Set default values to the current directory
+	defaultDir, err := os.Getwd()
+	if err != nil {
+		panic("Failed to get current working directory: " + err.Error())
 	}
 
+	// Read environment variables or use default values
+	databasePath := os.Getenv("NUKLAI_WALLET_DB_PATH")
+	if databasePath == "" {
+		databaseFolder = filepath.Join(defaultDir, ".backend-db")
+	} else {
+		databaseFolder = databasePath
+	}
+
+	// Ensure the database directory exists
+	err = os.MkdirAll(databaseFolder, os.ModePerm) // os.ModePerm is 0777, allowing read, write & exec permissions for all
+	if err != nil {
+		log.Fatalf("Failed to create database directory '%s': %v", databaseFolder, err)
+	}
+
+	configFilePath := os.Getenv("NUKLAI_WALLET_CONFIG_PATH")
+	if configFilePath == "" {
+		configFile = filepath.Join(defaultDir, "config.json")
+	} else {
+		configFile = configFilePath
+	}
+
+	// Set context
+	b.ctx = ctx
+
 	// Open storage
-	databasePath := path.Join(homeDir, databaseFolder)
-	s, err := OpenStorage(databasePath)
+	s, err := OpenStorage(databaseFolder)
 	if err != nil {
 		return err
 	}
@@ -141,8 +172,7 @@ func (b *Backend) Start(ctx context.Context) error {
 	}
 
 	// Open config
-	configPath := path.Join(homeDir, configFile)
-	rawConifg, err := os.ReadFile(configPath)
+	rawConifg, err := os.ReadFile(configFile)
 	if err != nil {
 		// TODO: replace with DEVNET
 		b.c = &Config{
