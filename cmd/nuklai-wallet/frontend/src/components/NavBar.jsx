@@ -9,10 +9,21 @@ import {
   DashboardOutlined,
   GoldOutlined,
   SendOutlined,
+  WalletOutlined,
   WalletTwoTone
 } from '@ant-design/icons'
-import { App, Divider, Drawer, Layout, List, Menu, Typography } from 'antd'
-import { useEffect, useState } from 'react'
+import {
+  App,
+  Avatar,
+  Divider,
+  Drawer,
+  Layout,
+  List,
+  Menu,
+  Tooltip,
+  Typography
+} from 'antd'
+import { useCallback, useEffect, useState } from 'react'
 import { Link as RLink, useLocation } from 'react-router-dom'
 import {
   GetAddress,
@@ -25,58 +36,26 @@ const { Text, Link } = Typography
 const NavBar = () => {
   const location = useLocation()
   const { message } = App.useApp()
-  const [balance, setBalance] = useState([])
+  const [balances, setBalances] = useState([])
   const [nativeBalance, setNativeBalance] = useState({})
   const [transactions, setTransactions] = useState([])
   const [address, setAddress] = useState('')
-  const [open, setOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
 
-  const items = [
-    {
-      label: <RLink to={'explorer'}>Explorer</RLink>,
-      key: 'explorer',
-      icon: <DashboardOutlined />
-    },
-    {
-      label: <RLink to={'faucet'}>Faucet</RLink>,
-      key: 'faucet',
-      icon: <GoldOutlined />
-    },
-    {
-      label: <RLink to={'mint'}>Mint</RLink>,
-      key: 'mint',
-      icon: <BankOutlined />
-    },
-    {
-      label: <RLink to={'transfer'}>Transfer</RLink>,
-      key: 'transfer',
-      icon: <SendOutlined />
-    },
-    {
-      label: <RLink to={'feed'}>Feed</RLink>,
-      key: 'feed',
-      icon: <ContainerOutlined />
-    }
-  ]
+  // Define the function to fetch data as a useCallback to prevent redefinition on each render
+  const fetchData = useCallback(async () => {
+    try {
+      const [newAddress, newBalances, txs] = await Promise.all([
+        GetAddress(),
+        GetBalance(),
+        GetTransactions()
+      ])
 
-  const showDrawer = () => {
-    setOpen(true)
-  }
+      setAddress(newAddress)
+      setBalances(newBalances)
+      setTransactions(txs.TxInfos)
 
-  const onClose = () => {
-    setOpen(false)
-  }
-
-  useEffect(() => {
-    const getAddress = async () => {
-      const address = await GetAddress()
-      setAddress(address)
-    }
-    getAddress()
-
-    const getBalance = async () => {
-      const newBalance = await GetBalance()
-      for (var bal of newBalance) {
+      for (var bal of newBalances) {
         if (bal.ID == '11111111111111111111111111111111LpoYY') {
           setNativeBalance(bal)
           {
@@ -86,110 +65,151 @@ const NavBar = () => {
           break
         }
       }
-      setBalance(newBalance)
+
+      // Handle alerts
+      txs.Alerts?.forEach((alert) =>
+        message.open({
+          icon: <WalletTwoTone />,
+          type: alert.Type,
+          content: alert.Content
+        })
+      )
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      message.error('Failed to fetch data. Please try again later.')
     }
+  }, [message])
 
-    const getTransactions = async () => {
-      const txs = await GetTransactions()
-      if (txs.Alerts !== null) {
-        for (var Alert of txs.Alerts) {
-          message.open({
-            icon: <WalletTwoTone />,
-            type: Alert.Type,
-            content: Alert.Content
-          })
-        }
-      }
-      setTransactions(txs.TxInfos)
-    }
+  useEffect(() => {
+    fetchData()
+    const intervalId = setInterval(fetchData, 5000) // Update every 5 seconds
+    return () => clearInterval(intervalId)
+  }, [fetchData])
 
-    getBalance()
-    getTransactions()
-    const interval = setInterval(() => {
-      getBalance()
-      getTransactions()
-    }, 500)
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp)
+    return date.toLocaleString()
+  }
 
-    return () => clearInterval(interval)
-  }, [])
+  const shortenAddress = (address) =>
+    `${address.slice(0, 6)}...${address.slice(-6)}`
 
   return (
-    <>
-      <Layout.Header theme='light' style={{ background: 'white' }}>
-        <div className='logo' style={{ float: 'left', margin: '8px' }}>
-          <img src={logo} style={{ width: '50px' }} />
-        </div>
-        {balance.length > 0 && (
-          <div style={{ float: 'right' }}>
-            <Link strong onClick={showDrawer}>
+    <Layout.Header style={{ padding: '0 50px', background: '#fff' }}>
+      <div className='logo' style={{ float: 'left' }}>
+        <Avatar src={logo} size='large' />
+      </div>
+
+      <div
+        className='walletInfo'
+        style={{ float: 'right', display: 'flex', alignItems: 'center' }}
+      >
+        <Avatar
+          icon={<WalletOutlined />}
+          onClick={() => setDrawerOpen(true)}
+          style={{ cursor: 'pointer', marginRight: '10px' }}
+        />
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <Tooltip title={address}>
+            <Link
+              strong
+              onClick={() => setDrawerOpen(true)}
+              style={{ marginTop: '10px' }}
+            >
+              {shortenAddress(address)}
+            </Link>
+          </Tooltip>
+          {balances.length > 0 && (
+            <Link
+              strong
+              onClick={() => setDrawerOpen(true)}
+              style={{ marginTop: '5px' }}
+            >
               {nativeBalance.Str}
             </Link>
-          </div>
-        )}
-        <Menu
-          mode='horizontal'
-          items={items}
-          style={{
-            position: 'relative'
-          }}
-          selectedKeys={
-            location.pathname.length > 1
-              ? [location.pathname.slice(1)]
-              : ['explorer']
+          )}
+        </div>
+      </div>
+
+      <Menu
+        mode='horizontal'
+        selectedKeys={[location.pathname.slice(1) || 'explorer']}
+        items={[
+          {
+            label: <RLink to={'explorer'}>Explorer</RLink>,
+            key: 'explorer',
+            icon: <DashboardOutlined />
+          },
+          {
+            label: <RLink to={'faucet'}>Faucet</RLink>,
+            key: 'faucet',
+            icon: <GoldOutlined />
+          },
+          {
+            label: <RLink to={'mint'}>Mint</RLink>,
+            key: 'mint',
+            icon: <BankOutlined />
+          },
+          {
+            label: <RLink to={'transfer'}>Transfer</RLink>,
+            key: 'transfer',
+            icon: <SendOutlined />
+          },
+          {
+            label: <RLink to={'feed'}>Feed</RLink>,
+            key: 'feed',
+            icon: <ContainerOutlined />
           }
+        ]}
+      />
+
+      <Drawer
+        title={<Text copyable>{address}</Text>}
+        width={615}
+        placement='right'
+        onClose={() => setDrawerOpen(false)}
+        open={drawerOpen}
+      >
+        <Divider orientation='center'>Tokens</Divider>
+        <List
+          bordered
+          dataSource={balances}
+          renderItem={(balance) => (
+            <List.Item>
+              <Text>{balance.Str}</Text>
+            </List.Item>
+          )}
         />
-        <Drawer
-          title={<Text copyable>{address}</Text>}
-          size={'large'}
-          placement='right'
-          onClose={onClose}
-          open={open}
-        >
-          {/* use a real data source */}
-          <Divider orientation='center'>Tokens</Divider>
-          <List
-            bordered
-            dataSource={balance}
-            renderItem={(item) => (
-              <List.Item>
-                <Text>{item.Str}</Text>
-              </List.Item>
-            )}
-          />
-          <Divider orientation='center'>Transactions</Divider>
-          <List
-            bordered
-            dataSource={transactions}
-            renderItem={(item) => (
-              <List.Item>
-                <div>
-                  <Text strong>{item.ID} </Text>
-                  {!item.Success && (
-                    <CloseCircleTwoTone twoToneColor='#eb2f96' />
-                  )}
-                  {item.Success && (
-                    <CheckCircleTwoTone twoToneColor='#52c41a' />
-                  )}
-                </div>
-                <Text strong>Type:</Text> {item.Type}
-                <br />
-                <Text strong>Timestamp:</Text> {item.Timestamp}
-                <br />
-                <Text strong>Units:</Text> {item.Units}
-                <br />
-                <Text strong>Size:</Text> {item.Size}
-                <br />
-                <Text strong>Summary:</Text> {item.Summary}
-                <br />
-                <Text strong>Fee:</Text> {item.Fee}
-                <br />
-                <Text strong>Actor:</Text> <Text copyable>{item.Actor}</Text>
-              </List.Item>
-            )}
-          />
-        </Drawer>
-      </Layout.Header>
-    </>
+        <Divider orientation='center'>Transactions</Divider>
+        <List
+          bordered
+          dataSource={transactions}
+          renderItem={(item) => (
+            <List.Item>
+              <div>
+                <Text strong>{item.ID} </Text>
+                {!item.Success && <CloseCircleTwoTone twoToneColor='#eb2f96' />}
+                {item.Success && <CheckCircleTwoTone twoToneColor='#52c41a' />}
+              </div>
+              <Text strong>Type:</Text> {item.Type}
+              <br />
+              <Text strong>Timestamp:</Text> {formatTimestamp(item.Timestamp)}
+              <br />
+              <Text strong>Units:</Text> {item.Units}
+              <br />
+              <Text strong>Size:</Text> {item.Size}
+              <br />
+              <Text strong>Summary:</Text> {item.Summary}
+              <br />
+              <Text strong>Fee:</Text> {item.Fee}
+              <br />
+              <Text strong>Actor:</Text>{' '}
+              <Text copyable>{shortenAddress(item.Actor)}</Text>
+            </List.Item>
+          )}
+        />
+      </Drawer>
+    </Layout.Header>
   )
 }
 
