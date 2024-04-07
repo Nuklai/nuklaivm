@@ -18,6 +18,7 @@ import (
 
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/auth"
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 func init() {
@@ -36,16 +37,33 @@ func TestNewActions(t *testing.T) {
 	ginkgo.RunSpecs(t, "nuklaivm new actions integration tests")
 }
 
-var _ = ginkgo.Describe("nuklai staking mecanism", func() {
+var _ = ginkgo.Describe("nuklai staking mechanism", func() {
 	ginkgo.It("Auto register validator stake", func() {
 		currentTime := time.Now().UTC()
 		stakeStartTime := currentTime.Add(2 * time.Minute)
 		stakeEndTime := currentTime.Add(15 * time.Minute)
 		delegationFeeRate := 50
+
 		parser0, err := instances[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
 		parser1, err := instances[1].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
+
+		withdraw0Priv, err := ed25519.GeneratePrivateKey()
+		gomega.Ω(err).Should(gomega.BeNil())
+		rwithdraw0 := auth.NewED25519Address(withdraw0Priv.PublicKey())
+		withdraw0 := codec.MustAddressBech32(nconsts.HRP, rwithdraw0)
+
+		withdraw1Priv, err := ed25519.GeneratePrivateKey()
+		gomega.Ω(err).Should(gomega.BeNil())
+		// withdraw0Factory := auth.NewED25519Factory(priv1Withdraw)
+		withdraw1 := auth.NewED25519Address(withdraw1Priv.PublicKey())
+
+		delegatePriv, err := ed25519.GeneratePrivateKey()
+		gomega.Ω(err).Should(gomega.BeNil())
+		delegateFactory := auth.NewED25519Factory(delegatePriv)
+		rdelegate := auth.NewED25519Address(delegatePriv.PublicKey())
+		delegate := codec.MustAddressBech32(nconsts.HRP, rdelegate)
 
 		ginkgo.By("Register validator stake instances[0] with zero balance", func() {
 			stakeInfo := &actions.ValidatorStakeInfo{
@@ -54,7 +72,7 @@ var _ = ginkgo.Describe("nuklai staking mecanism", func() {
 				StakeEndTime:      uint64(stakeEndTime.Unix()),
 				StakedAmount:      100, // TO DO: SAME TEST WITH 50 TO THROUGH ERROR
 				DelegationFeeRate: uint64(delegationFeeRate),
-				RewardAddress:     rsender,
+				RewardAddress:     rwithdraw0,
 			}
 			stakeInfoBytes, err := stakeInfo.Marshal()
 			gomega.Ω(err).Should(gomega.BeNil())
@@ -90,7 +108,7 @@ var _ = ginkgo.Describe("nuklai staking mecanism", func() {
 				StakeEndTime:      uint64(stakeEndTime.Unix()),
 				StakedAmount:      100, // TO DO: SAME TEST WITH 50 TO THROUGH ERROR
 				DelegationFeeRate: uint64(delegationFeeRate),
-				RewardAddress:     rsender2,
+				RewardAddress:     withdraw1,
 			}
 			stakeInfoBytes, err := stakeInfo.Marshal()
 			gomega.Ω(err).Should(gomega.BeNil())
@@ -129,21 +147,13 @@ var _ = ginkgo.Describe("nuklai staking mecanism", func() {
 		})
 
 		ginkgo.By("Transfer NAI to user and delegate stake to instances[0]", func() {
-			priv, err := ed25519.GeneratePrivateKey()
-			gomega.Ω(err).Should(gomega.BeNil())
-			userFactory := auth.NewED25519Factory(priv)
-			userSender := auth.NewED25519Address(priv.PublicKey())
-			// uSender := codec.MustAddressBech32(nconsts.HRP, userSender)
-			// fund new account
-			// write another test with funding < 200
-			parser, err := instances[0].ncli.Parser(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
 			submit, _, _, err := instances[0].hcli.GenerateTransaction(
 				context.Background(),
-				parser,
+				parser0,
 				nil,
 				&actions.Transfer{
-					To:    userSender,
+					To:    rdelegate,
 					Asset: ids.Empty,
 					Value: 100,
 				},
@@ -156,15 +166,56 @@ var _ = ginkgo.Describe("nuklai staking mecanism", func() {
 			gomega.Ω(err).Should(gomega.BeNil())
 			submit, _, _, err = instances[0].hcli.GenerateTransaction(
 				context.Background(),
-				parser,
+				parser0,
 				nil,
 				&actions.DelegateUserStake{
 					NodeID:         instances[0].nodeID.Bytes(),
 					StakeStartTime: uint64(userStakeStartTime.Unix()),
 					StakedAmount:   50,
-					RewardAddress:  userSender,
+					RewardAddress:  rdelegate,
 				},
-				userFactory,
+				delegateFactory,
+			)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		})
+
+		ginkgo.By("Get user stake before claim", func() {
+			_, stakedAmount, _, _, err := instances[0].ncli.UserStake(context.Background(), rdelegate, instances[0].nodeID)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(stakedAmount).Should(gomega.BeNumerically("==", 50))
+		})
+
+		ginkgo.By("Claim delegation stake rewards from instances[0]", func() {
+			submit, _, _, err := instances[0].hcli.GenerateTransaction(
+				context.Background(),
+				parser0,
+				nil,
+				&actions.ClaimDelegationStakeRewards{
+					NodeID:           instances[0].nodeID.Bytes(),
+					UserStakeAddress: rdelegate,
+				},
+				delegateFactory,
+			)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		})
+
+		ginkgo.By("Get user stake after claim", func() {
+			_, stakedAmount, _, _, err := instances[0].ncli.UserStake(context.Background(), rdelegate, instances[0].nodeID)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(stakedAmount).Should(gomega.BeNumerically("==", 0))
+		})
+
+		ginkgo.By("Undelegate user stake from instances[0]", func() {
+			submit, _, _, err := instances[0].hcli.GenerateTransaction(
+				context.Background(),
+				parser0,
+				nil,
+				&actions.UndelegateUserStake{
+					NodeID: instances[0].nodeID.Bytes(),
+				},
+				delegateFactory,
 			)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
@@ -184,7 +235,7 @@ var _ = ginkgo.Describe("nuklai staking mecanism", func() {
 				factory,
 			)
 			gomega.Ω(err).Should(gomega.BeNil())
-			gomega.Ω(instances[0].ncli.Balance(context.Background(), sender, ids.Empty)).Should(gomega.BeNumerically(">", 0))
+			gomega.Ω(instances[0].ncli.Balance(context.Background(), withdraw0, ids.Empty)).Should(gomega.BeNumerically(">", 0))
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
 		})
 
