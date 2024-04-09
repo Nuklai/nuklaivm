@@ -365,6 +365,29 @@ Refer to [Emission Balancer Demo](./docs/demos/emission_balancer.md) to learn ho
 
 Refer to [Tokens Demo](./docs/demos/tokens.md) to learn how to mint an asset, transfer it within the same subnet or to another subnet with AWM, etc.
 
+## Nuklai Wallet
+
+We have a native wallet for Nuklai network. This wallet integrates the following:
+
+- Local Wallet
+- Blockchain Explorer
+- Faucet that you can use to request some test NAI to your local wallet
+- Mint page where you can create and mint tokens to any address
+- Feed page which is like a mini blog that lets you post a message and the url to the blockchain within a transaction memo
+
+To run the wallet, just do:
+
+```bash
+cd cmd/nuklai-wallet;
+./scripts/dev.sh
+```
+
+Note that when you run `dev.sh`, it does the following:
+
+- Start Nuklai Feed from cmd/nuklai-feed
+- Start Nuklai Faucet from cmd/nuklai-faucet
+- Run Nuklai Wallet app
+
 ## Tests
 
 ### Running an Integration Test

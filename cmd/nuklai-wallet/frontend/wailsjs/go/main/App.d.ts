@@ -28,9 +28,11 @@ export function GetFeed():Promise<Array<backend.FeedObject>>;
 
 export function GetFeedInfo():Promise<backend.FeedInfo>;
 
-export function GetLatestBlocks():Promise<Array<backend.BlockInfo>>;
+export function GetLatestBlocks(arg1:number,arg2:number):Promise<Array<backend.BlockInfo>>;
 
 export function GetMyAssets():Promise<Array<backend.AssetInfo>>;
+
+export function GetTotalBlocks():Promise<number>;
 
 export function GetTransactionStats():Promise<Array<backend.GenericInfo>>;
 

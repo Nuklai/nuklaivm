@@ -1,138 +1,123 @@
-import { useEffect, useState } from "react";
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
+// See the file LICENSE for licensing terms.
+
+import { InfoCircleOutlined } from '@ant-design/icons'
+import { Area, Line } from '@ant-design/plots'
 import {
-  GetLatestBlocks,
-  GetTransactionStats,
+  App,
+  Card,
+  Col,
+  Descriptions,
+  Divider,
+  List,
+  Pagination,
+  Popover,
+  Row,
+  Tag,
+  Typography
+} from 'antd'
+import { useCallback, useEffect, useState } from 'react'
+import {
   GetAccountStats,
-  GetUnitPrices,
   GetChainID,
-} from "../../wailsjs/go/main/App";
-import { App, Typography, Divider, List, Card, Col, Row, Popover } from "antd";
-import { InfoCircleOutlined } from "@ant-design/icons";
-import { Area, Line } from "@ant-design/plots";
-const { Title, Text } = Typography;
+  GetLatestBlocks,
+  GetTotalBlocks,
+  GetTransactionStats,
+  GetUnitPrices
+} from '../../wailsjs/go/main/App'
+
+const { Title, Text } = Typography
 
 const Explorer = () => {
-  const { message } = App.useApp();
-  const [blocks, setBlocks] = useState([]);
-  const [transactionStats, setTransactionStats] = useState([]);
-  const [accountStats, setAccountStats] = useState([]);
-  const [unitPrices, setUnitPrices] = useState([]);
-  const [chainID, setChainID] = useState("");
+  const { message } = App.useApp()
+  const [blocks, setBlocks] = useState([])
+  const [transactionStats, setTransactionStats] = useState([])
+  const [accountStats, setAccountStats] = useState([])
+  const [unitPrices, setUnitPrices] = useState([])
+  const [chainID, setChainID] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const blocksPerPage = 10
+  const [totalBlocks, setTotalBlocks] = useState(0)
+
+  // Using useCallback to memoize fetchData function to avoid infinite loop in useEffect
+  const fetchData = useCallback(async () => {
+    try {
+      const chainId = await GetChainID()
+      setChainID(chainId)
+
+      const latestBlocks = await GetLatestBlocks(currentPage, blocksPerPage)
+      if (latestBlocks && latestBlocks.length > 0) {
+        setBlocks(latestBlocks)
+      }
+
+      const total = await GetTotalBlocks()
+      setTotalBlocks(total)
+
+      const [transStats, accStats, prices] = await Promise.all([
+        GetTransactionStats(),
+        GetAccountStats(),
+        GetUnitPrices()
+      ])
+
+      setTransactionStats(transStats)
+      setAccountStats(accStats)
+      setUnitPrices(prices)
+    } catch (error) {
+      message.error(error.toString())
+    }
+  }, [currentPage, message]) // Added currentPage as a dependency
 
   useEffect(() => {
-    const getLatestBlocks = async () => {
-      GetLatestBlocks()
-        .then((blocks) => {
-          setBlocks(blocks);
-        })
-        .catch((error) => {
-          message.open({
-            type: "error",
-            content: error,
-          });
-        });
-    };
+    fetchData()
 
-    const getChainID = async () => {
-      GetChainID()
-        .then((chainID) => {
-          setChainID(chainID);
-        })
-        .catch((error) => {
-          message.open({
-            type: "error",
-            content: error,
-          });
-        });
-    };
-    getChainID();
+    // Set up the interval to refetch data every 10 seconds
+    const intervalId = setInterval(fetchData, 10000)
 
-    const getTransactionStats = async () => {
-      GetTransactionStats()
-        .then((stats) => {
-          setTransactionStats(stats);
-        })
-        .catch((error) => {
-          message.open({
-            type: "error",
-            content: error,
-          });
-        });
-    };
+    // Clear the interval when the component is unmounted
+    return () => clearInterval(intervalId)
+  }, [fetchData]) // Now depends on fetchData which includes currentPage
 
-    const getAccountStats = async () => {
-      GetAccountStats()
-        .then((stats) => {
-          setAccountStats(stats);
-        })
-        .catch((error) => {
-          message.open({
-            type: "error",
-            content: error,
-          });
-        });
-    };
-
-    const getUnitPrices = async () => {
-      GetUnitPrices()
-        .then((prices) => {
-          setUnitPrices(prices);
-        })
-        .catch((error) => {
-          message.open({
-            type: "error",
-            content: error,
-          });
-        });
-    };
-
-    getLatestBlocks();
-    getTransactionStats();
-    getAccountStats();
-    getUnitPrices();
-    const interval = setInterval(() => {
-      getLatestBlocks();
-      getTransactionStats();
-      getAccountStats();
-      getUnitPrices();
-    }, 500);
-
-    return () => clearInterval(interval);
-  }, []);
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+  }
 
   return (
     <>
-      <Divider orientation="center">
+      {/* Metrics and stats section */}
+      <Divider orientation='center'>
         <Popover
           content={
             <div>
               <Text italic>
-                Collection of TokenNet Telemetry Over the Last 2 Minutes
+                Collection of NuklaiNet Telemetry Over the Last 2 Minutes
               </Text>
               <br />
               <br />
               <Text strong>Transactions Per Second:</Text> # of transactions
               accepted per second
               <br />
-              <Text strong>Active Accounts:</Text> # of accounts issusing
+              <Text strong>Active Accounts:</Text> # of accounts issuing
               transactions
               <br />
               <Text strong>Unit Prices:</Text> Price of each HyperSDK fee
               dimension (Bandwidth, Compute, Storage[Read], Storage[Allocate],
               Storage[Write])
             </div>
-          }>
+          }
+        >
           Metrics <InfoCircleOutlined />
         </Popover>
       </Divider>
+
+      {/* Charts section */}
       <Row gutter={16}>
         <Col span={8}>
-          <Card title="Transactions Per Second" bordered={true}>
+          <Card title='Transactions Per Second' bordered>
             <Area
               data={transactionStats}
-              xField={"Timestamp"}
-              yField={"Count"}
-              autoFit={true}
+              xField='Timestamp'
+              yField='Count'
+              autoFit
               height={200}
               animation={false}
               xAxis={{ tickCount: 0 }}
@@ -140,12 +125,12 @@ const Explorer = () => {
           </Card>
         </Col>
         <Col span={8}>
-          <Card title="Active Accounts" bordered={true}>
+          <Card title='Active Accounts' bordered>
             <Area
               data={accountStats}
-              xField={"Timestamp"}
-              yField={"Count"}
-              autoFit={true}
+              xField='Timestamp'
+              yField='Count'
+              autoFit
               height={200}
               animation={false}
               xAxis={{ tickCount: 0 }}
@@ -153,13 +138,13 @@ const Explorer = () => {
           </Card>
         </Col>
         <Col span={8}>
-          <Card title="Unit Prices" bordered={true}>
+          <Card title='Unit Prices' bordered>
             <Line
               data={unitPrices}
-              xField={"Timestamp"}
-              yField={"Count"}
-              seriesField={"Category"}
-              autoFit={true}
+              xField='Timestamp'
+              yField='Count'
+              seriesField='Category'
+              autoFit
               height={200}
               animation={false}
               legend={false}
@@ -168,68 +153,60 @@ const Explorer = () => {
           </Card>
         </Col>
       </Row>
-      <Divider orientation="center">
-        <Popover
-          content={
-            <div>
-              <Text italic>
-                Recent activity for TokenNet (ChainID: {chainID})
-              </Text>
-              <br />
-              <br />
-              <Text strong>Timestamp:</Text> Time that block was created
-              <br />
-              <Text strong>Transactions:</Text> # of successful transactions in
-              block
-              <br />
-              <Text strong>Units Consumed:</Text> # of HyperSDK fee units
-              consumed
-              <br />
-              <Text strong>State Root:</Text> Merkle root of State at start of
-              block execution
-              <br />
-              <Text strong>Block Size:</Text> Size of block in bytes
-              <br />
-              <Text strong>Accept Latency:</Text> Difference between block
-              creation and block acceptance
-            </div>
-          }>
-          Blocks <InfoCircleOutlined />
-        </Popover>
+
+      {/* Blocks section */}
+      <Divider orientation='center'>
+        Recent activity for NuklaiNet (ChainID: {chainID})
       </Divider>
+
       <List
         bordered
         dataSource={blocks}
         renderItem={(item) => (
           <List.Item>
-            <div>
-              <Title level={3} style={{ display: "inline" }}>
-                {item.Height}
-              </Title>{" "}
-              <Text type="secondary">{item.ID}</Text>
-            </div>
-            <Text strong>Timestamp:</Text> {item.Timestamp}
-            <br />
-            <Text strong>Transactions:</Text> {item.Txs}
-            {item.Txs > 0 && (
-              <Text italic type="danger">
-                {" "}
-                (failed: {item.FailTxs})
-              </Text>
-            )}
-            <br />
-            <Text strong>Units Consumed:</Text> {item.Consumed}
-            <br />
-            <Text strong>State Root:</Text> {item.StateRoot}
-            <br />
-            <Text strong>Block Size:</Text> {item.Size}
-            <br />
-            <Text strong>Accept Latency:</Text> {item.Latency}ms
+            <Card>
+              <Descriptions title={`Block #${item.Height}`}>
+                <Descriptions.Item label='ID'>{item.ID}</Descriptions.Item>
+                <Descriptions.Item label='Timestamp'>
+                  {item.Timestamp}
+                </Descriptions.Item>
+                <Descriptions.Item label='Transactions'>
+                  {item.Txs}{' '}
+                  <Tag color={item.FailTxs > 0 ? 'volcano' : 'green'}>
+                    {item.FailTxs > 0
+                      ? `Failed: ${item.FailTxs}`
+                      : 'All Successful'}
+                  </Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label='Units Consumed'>
+                  {item.Consumed}
+                </Descriptions.Item>
+                <Descriptions.Item label='State Root'>
+                  {item.StateRoot}
+                </Descriptions.Item>
+                <Descriptions.Item label='Block Size'>
+                  {item.Size}
+                </Descriptions.Item>
+                <Descriptions.Item label='Accept Latency'>
+                  {item.Latency}ms
+                </Descriptions.Item>
+              </Descriptions>
+            </Card>
           </List.Item>
         )}
       />
-    </>
-  );
-};
 
-export default Explorer;
+      {/* Pagination */}
+      <Pagination
+        current={currentPage}
+        onChange={handlePageChange}
+        total={totalBlocks}
+        pageSize={blocksPerPage}
+        showSizeChanger={false}
+        style={{ marginTop: '20px', textAlign: 'center' }}
+      />
+    </>
+  )
+}
+
+export default Explorer

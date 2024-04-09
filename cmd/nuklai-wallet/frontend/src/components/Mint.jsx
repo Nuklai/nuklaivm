@@ -1,410 +1,210 @@
-import { useEffect, useState } from "react";
-import {
-  GetMyAssets,
-  CreateAsset,
-  MintAsset,
-  GetAddressBook,
-  AddAddressBook,
-} from "../../wailsjs/go/main/App";
-import FundsCheck from "./FundsCheck";
-import { PlusOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import {
   App,
-  Select,
+  Button,
+  Card,
+  Form,
   Input,
   InputNumber,
+  Modal,
+  Select,
   Space,
-  Typography,
-  Divider,
-  List,
-  Button,
-  Drawer,
-  Form,
-  Popover,
-} from "antd";
-const { Title, Text } = Typography;
+  Typography
+} from 'antd'
+import React, { useEffect, useState } from 'react'
+import {
+  CreateAsset,
+  GetAddressBook,
+  GetMyAssets,
+  MintAsset
+} from '../../wailsjs/go/main/App'
+import FundsCheck from './FundsCheck'
+
+const { Title } = Typography
 
 const Mint = () => {
-  const { message } = App.useApp();
-  const [assets, setAssets] = useState([]);
-  const [openCreate, setOpenCreate] = useState(false);
-  const [openMint, setOpenMint] = useState(false);
-  const [mintFocus, setMintFocus] = useState({});
-  const [createForm] = Form.useForm();
-  const [mintForm] = Form.useForm();
-  const key = "updatable";
+  const { message } = App.useApp()
+  const [assets, setAssets] = useState([])
+  const [addresses, setAddresses] = useState([])
+  const [modalType, setModalType] = useState('')
+  const [selectedAsset, setSelectedAsset] = useState(null)
+  const [createForm] = Form.useForm()
+  const [mintForm] = Form.useForm()
 
-  {
-    /* Create Handlers */
+  const fetchAssetsAndAddresses = async () => {
+    const [fetchedAssets, fetchedAddresses] = await Promise.all([
+      GetMyAssets(),
+      GetAddressBook()
+    ])
+    setAssets(fetchedAssets)
+    setAddresses(
+      fetchedAddresses.map((addr) => ({
+        label: `${addr.Name}: ${addr.Address}`,
+        value: addr.Address
+      }))
+    )
   }
-  const showCreateDrawer = () => {
-    setOpenCreate(true);
-  };
-
-  const onCloseCreate = () => {
-    createForm.resetFields();
-    setOpenCreate(false);
-  };
-
-  const onFinishCreate = (values) => {
-    console.log("Success:", values);
-    createForm.resetFields();
-    setOpenCreate(false);
-
-    message.open({
-      key,
-      type: "loading",
-      content: "Processing Transaction...",
-      duration: 0,
-    });
-    (async () => {
-      try {
-        const start = new Date().getTime();
-        await CreateAsset(values.Symbol, values.Decimals, values.Metadata);
-        const finish = new Date().getTime();
-        message.open({
-          key,
-          type: "success",
-          content: `Transaction Finalized (${finish - start} ms)`,
-        });
-      } catch (e) {
-        message.open({
-          key,
-          type: "error",
-          content: e.toString(),
-        });
-      }
-    })();
-  };
-
-  const onFinishCreateFailed = (errorInfo) => {
-    console.log("Failed:", errorInfo);
-  };
-
-  {
-    /* Address Book */
-  }
-  const [addresses, setAddresses] = useState([]);
-  const [newNickname, setNewNickname] = useState("");
-  const [newAddress, setNewAddress] = useState("");
-  const [addAllowed, setAddAllowed] = useState(false);
-
-  const onNicknameChange = (event) => {
-    setNewNickname(event.target.value);
-    if (event.target.value.length > 0 && newAddress.length > 10) {
-      setAddAllowed(true);
-    } else {
-      setAddAllowed(false);
-    }
-  };
-  const onAddressChange = (event) => {
-    setNewAddress(event.target.value);
-    if (newNickname.length > 0 && event.target.value.length > 10) {
-      setAddAllowed(true);
-    } else {
-      setAddAllowed(false);
-    }
-  };
-
-  const getAddresses = async () => {
-    const caddresses = await GetAddressBook();
-    setAddresses(caddresses);
-  };
-
-  const addAddress = (e) => {
-    e.preventDefault();
-    (async () => {
-      try {
-        await AddAddressBook(newNickname, newAddress);
-        setNewNickname("");
-        setNewAddress("");
-        await getAddresses();
-      } catch (e) {
-        message.open({
-          key,
-          type: "error",
-          content: e.toString(),
-        });
-      }
-    })();
-  };
-
-  {
-    /* Mint Handlers */
-  }
-  const showMintDrawer = (item) => {
-    setMintFocus(item);
-    setOpenMint(true);
-  };
-
-  const onCloseMint = () => {
-    mintForm.resetFields();
-    setOpenMint(false);
-  };
-
-  const onFinishMint = (values) => {
-    console.log("Success:", values);
-    mintForm.resetFields();
-    setOpenMint(false);
-
-    message.open({
-      key,
-      type: "loading",
-      content: "Processing Transaction...",
-      duration: 0,
-    });
-    (async () => {
-      try {
-        const start = new Date().getTime();
-        await MintAsset(mintFocus.ID, values.Address, values.Amount);
-        const finish = new Date().getTime();
-        message.open({
-          key,
-          type: "success",
-          content: `Transaction Finalized (${finish - start} ms)`,
-        });
-      } catch (e) {
-        message.open({
-          key,
-          type: "error",
-          content: e.toString(),
-        });
-      }
-    })();
-  };
-
-  const onFinishMintFailed = (errorInfo) => {
-    console.log("Failed:", errorInfo);
-  };
 
   useEffect(() => {
-    const getMyAssets = async () => {
-      const assets = await GetMyAssets();
-      setAssets(assets);
-    };
+    fetchAssetsAndAddresses()
+  }, [])
 
-    getAddresses();
-    getMyAssets();
-    const interval = setInterval(() => {
-      getMyAssets();
-    }, 500);
+  const handleCreateAsset = async (values) => {
+    setModalType('') // Close the modal immediately
+    message.loading({
+      content: 'Processing Transaction...',
+      key: 'createProcess',
+      duration: 0
+    })
+    try {
+      const start = new Date().getTime()
+      await CreateAsset(values.symbol, `${values.decimals}`, values.metadata)
+      const finish = new Date().getTime()
+      let timeTaken = (finish - start) / 1000 // Time taken in seconds
+      timeTaken =
+        timeTaken < 1 ? 'less than a second' : `${timeTaken.toFixed(1)} seconds`
+      message.success({
+        content: `Token created successfully in ${timeTaken}`,
+        key: 'createProcess',
+        duration: 5
+      })
+      fetchAssetsAndAddresses()
+      createForm.resetFields() // Reset form fields
+    } catch (error) {
+      message.error({
+        content: `Failed to create token: ${error}`,
+        key: 'createProcess',
+        duration: 5
+      })
+    }
+  }
 
-    return () => clearInterval(interval);
-  }, []);
+  const handleMintAsset = async (values) => {
+    setModalType('') // Close the mint modal immediately by resetting modalType
+    message.loading({
+      content: 'Processing Transaction...',
+      key: 'mintProcess',
+      duration: 0
+    })
+    try {
+      const start = new Date().getTime()
+      await MintAsset(
+        selectedAsset.ID,
+        values.address,
+        values.amount.toString()
+      )
+      const finish = new Date().getTime()
+      let timeTaken = (finish - start) / 1000 // Time taken in seconds
+      timeTaken =
+        timeTaken < 1 ? 'less than a second' : `${timeTaken.toFixed(1)} seconds`
+      message.success({
+        content: `Token minted successfully in ${timeTaken}`,
+        key: 'mintProcess',
+        duration: 5
+      })
+      fetchAssetsAndAddresses() // Refetch assets and addresses to update the UI
+      mintForm.resetFields() // Reset form fields after minting
+    } catch (error) {
+      message.error({
+        content: `Failed to mint token: ${error}`,
+        key: 'mintProcess',
+        duration: 5
+      })
+    }
+  }
 
   return (
-    <>
-      <div style={{ width: "60%", margin: "auto" }}>
-        <FundsCheck />
-        <Divider orientation="center">
-          Tokens
-          <Popover
-            content={
-              <div>
-                On TokenNet, anyone can mint their own token.
-                <br />
-                <br />
-                Once you create your own token, it will show up below!
-              </div>
-            }>
-            {" "}
-            <InfoCircleOutlined />
-          </Popover>
-        </Divider>
-        <div style={{ display: "flex", width: "100%" }}>
-          <Button
-            type="primary"
-            onClick={showCreateDrawer}
-            placement={"right"}
-            style={{ margin: "0 0 8px 0", "margin-left": "auto" }}
-            disabled={!window.HasBalance}>
-            Create Token
-          </Button>
-        </div>
-        <List
-          bordered
-          dataSource={assets}
-          renderItem={(item) => (
-            <List.Item>
-              <div>
-                <Title level={3} style={{ display: "inline" }}>
-                  {item.Symbol}
-                </Title>{" "}
-                <Text type="secondary">{item.ID}</Text>
-              </div>
-              <Text strong>Decimals:</Text> {item.Decimals}{" "}
-              <Text strong>Metadata:</Text> {item.Metadata}
-              <br />
-              <Text strong>Supply:</Text> {item.Supply}
-              <br />
+    <div style={{ maxWidth: '700px', margin: 'auto', padding: '20px' }}>
+      <FundsCheck />
+      <Card>
+        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Title level={4}>Your Tokens</Title>
+          <Button onClick={() => setModalType('create')}>Create Token</Button>
+        </Space>
+        {assets.map((asset) => (
+          <Card
+            type='inner'
+            key={asset.ID}
+            title={asset.Symbol}
+            extra={
               <Button
-                type="primary"
-                style={{ margin: "8px 0 0 0" }}
-                disabled={!window.HasBalance}
-                onClick={() => showMintDrawer(item)}>
+                onClick={() => {
+                  setSelectedAsset(asset)
+                  setModalType('mint')
+                }}
+              >
                 Mint
               </Button>
-            </List.Item>
-          )}
-        />
-      </div>
-      <Drawer
-        title={
-          <>
-            Create Token
-            <Popover
-              content={
-                <div>
-                  When creating your own token, you get to set the symbol,
-                  decimals, and metadata.
-                  <br />
-                  <br />
-                  Once your token is created, you can mint it to anyone you want
-                  (including yourself).
-                  <br />
-                  <br />
-                  Be careful! Once you set these values, they cannot be changed.
-                </div>
-              }>
-              {" "}
-              <InfoCircleOutlined />
-            </Popover>
-          </>
-        }
-        placement={"right"}
-        onClose={onCloseCreate}
-        open={openCreate}>
-        <Form
-          name="basic"
-          form={createForm}
-          initialValues={{ remember: false }}
-          onFinish={onFinishCreate}
-          onFinishFailed={onFinishCreateFailed}
-          autoComplete="off">
-          <Form.Item
-            name="Symbol"
-            rules={[{ required: true }]}
-            style={{ margin: "0 0 8px 0" }}>
-            <Input placeholder="Symbol" maxLength="8" />
+            }
+          >
+            <p>Decimals: {asset.Decimals}</p>
+            <p>Supply: {asset.Supply}</p>
+          </Card>
+        ))}
+      </Card>
+
+      <Modal
+        title='Create New Token'
+        open={modalType === 'create'}
+        onCancel={() => setModalType('')}
+        footer={null}
+      >
+        <Form form={createForm} layout='vertical' onFinish={handleCreateAsset}>
+          <Form.Item name='symbol' label='Symbol' rules={[{ required: true }]}>
+            <Input placeholder='e.g. ABC' />
           </Form.Item>
           <Form.Item
-            name="Decimals"
+            name='decimals'
+            label='Decimals'
             rules={[{ required: true }]}
-            style={{ margin: "0 0 8px 0" }}>
+          >
             <InputNumber
               min={0}
-              max={9}
-              placeholder="Decimals"
-              stringMode="true"
-              style={{ width: "100%" }}
+              max={18}
+              placeholder='e.g. 8'
+              style={{ width: '100%' }}
             />
           </Form.Item>
-          <Form.Item
-            name="Metadata"
-            rules={[{ required: true }]}
-            style={{ margin: "0 0 8px 0" }}>
-            <Input placeholder="Metadata" maxLength="256" />
+          <Form.Item name='metadata' label='Metadata (optional)'>
+            <Input.TextArea rows={4} />
           </Form.Item>
           <Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-              style={{ margin: "0 0 8px 0" }}>
+            <Button type='primary' htmlType='submit'>
               Create
             </Button>
           </Form.Item>
         </Form>
-      </Drawer>
-      <Drawer
-        title={
-          <>
-            Mint ${mintFocus.Symbol}
-            <Popover
-              content={
-                <div>
-                  You can mint ${mintFocus.Symbol} to anyone on the TokenNet and
-                  it will show up in their account.
-                  <br />
-                  <br />
-                  You can send parts of a ${mintFocus.Symbol} by using decimals
-                  in the "Amount" field below.
-                </div>
-              }>
-              {" "}
-              <InfoCircleOutlined />
-            </Popover>
-          </>
-        }
-        placement={"right"}
-        onClose={onCloseMint}
-        open={openMint}>
-        <Form
-          name="basic"
-          form={mintForm}
-          initialValues={{ remember: false }}
-          onFinish={onFinishMint}
-          onFinishFailed={onFinishMintFailed}
-          autoComplete="off">
+      </Modal>
+
+      <Modal
+        title={`Mint ${selectedAsset?.Symbol}`}
+        open={modalType === 'mint'}
+        onCancel={() => setModalType('')}
+        footer={null}
+      >
+        <Form layout='vertical' form={mintForm} onFinish={handleMintAsset}>
           <Form.Item
-            name="Address"
+            name='address'
+            label='Recipient Address'
             rules={[{ required: true }]}
-            style={{ margin: "0 0 8px 0" }}>
-            <Select
-              placeholder="Recipient"
-              dropdownRender={(menu) => (
-                <>
-                  {menu}
-                  <Divider style={{ margin: "8px 0" }} />
-                  <Space style={{ padding: "0 8px 4px" }}>
-                    <Input
-                      placeholder="Nickname"
-                      value={newNickname}
-                      onChange={onNicknameChange}
-                      allowClear
-                    />
-                    <Input
-                      placeholder="Address"
-                      value={newAddress}
-                      onChange={onAddressChange}
-                      allowClear
-                    />
-                    <Button
-                      type="text"
-                      icon={<PlusOutlined />}
-                      onClick={addAddress}
-                      disabled={!addAllowed}></Button>
-                  </Space>
-                </>
-              )}
-              options={addresses.map((item) => ({
-                label: item.AddrStr,
-                value: item.Address,
-              }))}
-            />
+          >
+            <Select options={addresses} placeholder='Select recipient' />
           </Form.Item>
-          <Form.Item
-            name="Amount"
-            rules={[{ required: true }]}
-            style={{ margin: "0 0 8px 0" }}>
+          <Form.Item name='amount' label='Amount' rules={[{ required: true }]}>
             <InputNumber
-              placeholder="Amount"
+              style={{ width: '100%' }}
               min={0}
-              stringMode="true"
-              style={{ width: "100%" }}
+              placeholder='e.g. 100'
             />
           </Form.Item>
           <Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-              style={{ margin: "0 0 8px 0" }}>
+            <Button type='primary' htmlType='submit'>
               Mint
             </Button>
           </Form.Item>
         </Form>
-      </Drawer>
-    </>
-  );
-};
+      </Modal>
+    </div>
+  )
+}
 
-export default Mint;
+export default Mint

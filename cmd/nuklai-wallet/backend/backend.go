@@ -9,16 +9,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/joho/godotenv"
 
 	"github.com/ava-labs/avalanchego/cache"
 	"github.com/ava-labs/avalanchego/ids"
@@ -39,13 +42,13 @@ import (
 	frpc "github.com/nuklai/nuklaivm/cmd/nuklai-faucet/rpc"
 	"github.com/nuklai/nuklaivm/cmd/nuklai-feed/manager"
 	ferpc "github.com/nuklai/nuklaivm/cmd/nuklai-feed/rpc"
-	tconsts "github.com/nuklai/nuklaivm/consts"
-	trpc "github.com/nuklai/nuklaivm/rpc"
+	nconsts "github.com/nuklai/nuklaivm/consts"
+	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
 
-const (
-	databaseFolder = ".token-wallet/db"
-	configFile     = ".token-wallet/config.json"
+var (
+	databaseFolder string
+	configFile     string
 )
 
 type Backend struct {
@@ -63,7 +66,7 @@ type Backend struct {
 	cli     *rpc.JSONRPCClient
 	chainID ids.ID
 	scli    *rpc.WebSocketClient
-	tcli    *trpc.JSONRPCClient
+	ncli    *nrpc.JSONRPCClient
 	parser  chain.Parser
 	fcli    *frpc.JSONRPCClient
 	fecli   *ferpc.JSONRPCClient
@@ -99,15 +102,43 @@ func New(fatal func(error)) *Backend {
 }
 
 func (b *Backend) Start(ctx context.Context) error {
-	b.ctx = ctx
-	homeDir, err := os.UserHomeDir()
+	// Load .env file
+	err := godotenv.Load()
 	if err != nil {
-		return err
+		log.Println("Error loading .env file, using default paths")
+	}
+	// Set default values to the current directory
+	defaultDir, err := os.Getwd()
+	if err != nil {
+		panic("Failed to get current working directory: " + err.Error())
 	}
 
+	// Read environment variables or use default values
+	databasePath := os.Getenv("NUKLAI_WALLET_DB_PATH")
+	if databasePath == "" {
+		databaseFolder = filepath.Join(defaultDir, ".nuklai-wallet/db")
+	} else {
+		databaseFolder = databasePath
+	}
+
+	// Ensure the database directory exists
+	err = os.MkdirAll(databaseFolder, os.ModePerm) // os.ModePerm is 0777, allowing read, write & exec permissions for all
+	if err != nil {
+		log.Fatalf("Failed to create database directory '%s': %v", databaseFolder, err)
+	}
+
+	configFilePath := os.Getenv("NUKLAI_WALLET_CONFIG_PATH")
+	if configFilePath == "" {
+		configFile = filepath.Join(defaultDir, ".nuklai-wallet/config.json")
+	} else {
+		configFile = configFilePath
+	}
+
+	// Set context
+	b.ctx = ctx
+
 	// Open storage
-	databasePath := path.Join(homeDir, databaseFolder)
-	s, err := OpenStorage(databasePath)
+	s, err := OpenStorage(databaseFolder)
 	if err != nil {
 		return err
 	}
@@ -132,7 +163,7 @@ func (b *Backend) Start(ctx context.Context) error {
 	b.priv = key
 	b.factory = auth.NewED25519Factory(b.priv)
 	b.addr = auth.NewED25519Address(b.priv.PublicKey())
-	b.addrStr = codec.MustAddressBech32(tconsts.HRP, b.addr)
+	b.addrStr = codec.MustAddressBech32(nconsts.HRP, b.addr)
 	if err := b.AddAddressBook("Me", b.addrStr); err != nil {
 		return err
 	}
@@ -141,12 +172,11 @@ func (b *Backend) Start(ctx context.Context) error {
 	}
 
 	// Open config
-	configPath := path.Join(homeDir, configFile)
-	rawConifg, err := os.ReadFile(configPath)
+	rawConifg, err := os.ReadFile(configFile)
 	if err != nil {
 		// TODO: replace with DEVNET
 		b.c = &Config{
-			TokenRPC:    "http://54.190.240.186:9090",
+			NuklaiRPC:   "http://54.190.240.186:9090",
 			FaucetRPC:   "http://54.190.240.186:9091",
 			SearchCores: 4,
 			FeedRPC:     "http://54.190.240.186:9092",
@@ -160,19 +190,19 @@ func (b *Backend) Start(ctx context.Context) error {
 	}
 
 	// Create clients
-	b.cli = rpc.NewJSONRPCClient(b.c.TokenRPC)
+	b.cli = rpc.NewJSONRPCClient(b.c.NuklaiRPC)
 	networkID, _, chainID, err := b.cli.Network(b.ctx)
 	if err != nil {
 		return err
 	}
 	b.chainID = chainID
-	scli, err := rpc.NewWebSocketClient(b.c.TokenRPC, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
+	scli, err := rpc.NewWebSocketClient(b.c.NuklaiRPC, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
 	if err != nil {
 		return err
 	}
 	b.scli = scli
-	b.tcli = trpc.NewJSONRPCClient(b.c.TokenRPC, networkID, chainID)
-	parser, err := b.tcli.Parser(b.ctx)
+	b.ncli = nrpc.NewJSONRPCClient(b.c.NuklaiRPC, networkID, chainID)
+	parser, err := b.ncli.Parser(b.ctx)
 	if err != nil {
 		return err
 	}
@@ -225,7 +255,7 @@ func (b *Backend) collectBlocks() {
 				if actor != b.addr && action.To != b.addr {
 					continue
 				}
-				_, symbol, decimals, _, _, owner, _, err := b.tcli.Asset(b.ctx, action.Asset, true)
+				_, symbol, decimals, _, _, owner, _, err := b.ncli.Asset(b.ctx, action.Asset, true)
 				if err != nil {
 					b.fatal(err)
 					return
@@ -235,13 +265,13 @@ func (b *Backend) collectBlocks() {
 					Size:      fmt.Sprintf("%.2fKB", float64(tx.Size())/units.KiB),
 					Success:   result.Success,
 					Timestamp: blk.Tmstmp,
-					Actor:     codec.MustAddressBech32(tconsts.HRP, actor),
+					Actor:     codec.MustAddressBech32(nconsts.HRP, actor),
 					Type:      "Transfer",
 					Units:     hcli.ParseDimensions(result.Consumed),
-					Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, tconsts.Decimals), tconsts.Symbol),
+					Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, nconsts.Decimals), nconsts.Symbol),
 				}
 				if result.Success {
-					txInfo.Summary = fmt.Sprintf("%s %s -> %s", hutils.FormatBalance(action.Value, decimals), symbol, codec.MustAddressBech32(tconsts.HRP, action.To))
+					txInfo.Summary = fmt.Sprintf("%s %s -> %s", hutils.FormatBalance(action.Value, decimals), symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
 					if len(action.Memo) > 0 {
 						txInfo.Summary += fmt.Sprintf(" (memo: %s)", action.Memo)
 					}
@@ -288,10 +318,10 @@ func (b *Backend) collectBlocks() {
 					Size:      fmt.Sprintf("%.2fKB", float64(tx.Size())/units.KiB),
 					Success:   result.Success,
 					Timestamp: blk.Tmstmp,
-					Actor:     codec.MustAddressBech32(tconsts.HRP, actor),
+					Actor:     codec.MustAddressBech32(nconsts.HRP, actor),
 					Type:      "CreateAsset",
 					Units:     hcli.ParseDimensions(result.Consumed),
-					Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, tconsts.Decimals), tconsts.Symbol),
+					Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, nconsts.Decimals), nconsts.Symbol),
 				}
 				if result.Success {
 					txInfo.Summary = fmt.Sprintf("assetID: %s symbol: %s decimals: %d metadata: %s", tx.ID(), action.Symbol, action.Decimals, action.Metadata)
@@ -306,7 +336,7 @@ func (b *Backend) collectBlocks() {
 				if actor != b.addr && action.To != b.addr {
 					continue
 				}
-				_, symbol, decimals, _, _, owner, _, err := b.tcli.Asset(b.ctx, action.Asset, true)
+				_, symbol, decimals, _, _, owner, _, err := b.ncli.Asset(b.ctx, action.Asset, true)
 				if err != nil {
 					b.fatal(err)
 					return
@@ -316,13 +346,13 @@ func (b *Backend) collectBlocks() {
 					Timestamp: blk.Tmstmp,
 					Size:      fmt.Sprintf("%.2fKB", float64(tx.Size())/units.KiB),
 					Success:   result.Success,
-					Actor:     codec.MustAddressBech32(tconsts.HRP, actor),
+					Actor:     codec.MustAddressBech32(nconsts.HRP, actor),
 					Type:      "Mint",
 					Units:     hcli.ParseDimensions(result.Consumed),
-					Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, tconsts.Decimals), tconsts.Symbol),
+					Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, nconsts.Decimals), nconsts.Symbol),
 				}
 				if result.Success {
-					txInfo.Summary = fmt.Sprintf("%s %s -> %s", hutils.FormatBalance(action.Value, decimals), symbol, codec.MustAddressBech32(tconsts.HRP, action.To))
+					txInfo.Summary = fmt.Sprintf("%s %s -> %s", hutils.FormatBalance(action.Value, decimals), symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
 				} else {
 					txInfo.Summary = string(result.Output)
 				}
@@ -408,7 +438,7 @@ func (b *Backend) collectBlocks() {
 		}
 		b.currentStat.Transactions += bi.Txs
 		for _, tx := range blk.Txs {
-			b.currentStat.Accounts.Add(codec.MustAddressBech32(tconsts.HRP, tx.Auth.Sponsor()))
+			b.currentStat.Accounts.Add(codec.MustAddressBech32(nconsts.HRP, tx.Auth.Sponsor()))
 		}
 		b.currentStat.Prices = prices
 		snow := time.Now().Unix()
@@ -431,11 +461,31 @@ func (b *Backend) Shutdown(context.Context) error {
 	return b.s.Close()
 }
 
-func (b *Backend) GetLatestBlocks() []*BlockInfo {
+func (b *Backend) GetTotalBlocks() int {
 	b.blockLock.Lock()
 	defer b.blockLock.Unlock()
 
-	return b.blocks
+	return len(b.blocks)
+}
+
+func (b *Backend) GetLatestBlocks(page int, count int) []*BlockInfo {
+	b.blockLock.Lock()
+	defer b.blockLock.Unlock()
+
+	// Calculate the starting index based on the current page and count per page
+	startIndex := (page - 1) * count
+	if startIndex >= len(b.blocks) {
+		return []*BlockInfo{} // Return an empty slice if the start index is beyond the available blocks
+	}
+
+	// Calculate the end index for slicing
+	endIndex := startIndex + count
+	if endIndex > len(b.blocks) {
+		endIndex = len(b.blocks) // Ensure the end index does not exceed the total number of blocks
+	}
+
+	// Return a slice of the blocks array based on the calculated start and end indexes
+	return b.blocks[startIndex:endIndex]
 }
 
 func (b *Backend) GetTransactionStats() []*GenericInfo {
@@ -490,7 +540,7 @@ func (b *Backend) GetMyAssets() []*AssetInfo {
 		if !owned[i] {
 			continue
 		}
-		_, symbol, decimals, metadata, supply, owner, _, err := b.tcli.Asset(b.ctx, asset, false)
+		_, symbol, decimals, metadata, supply, owner, _, err := b.ncli.Asset(b.ctx, asset, false)
 		if err != nil {
 			b.fatal(err)
 			return nil
@@ -511,7 +561,7 @@ func (b *Backend) GetMyAssets() []*AssetInfo {
 
 func (b *Backend) CreateAsset(symbol string, decimals string, metadata string) error {
 	// Ensure have sufficient balance
-	bal, err := b.tcli.Balance(b.ctx, b.addrStr, ids.Empty)
+	bal, err := b.ncli.Balance(b.ctx, b.addrStr, ids.Empty)
 	if err != nil {
 		return err
 	}
@@ -530,7 +580,7 @@ func (b *Backend) CreateAsset(symbol string, decimals string, metadata string) e
 		return fmt.Errorf("%w: unable to generate transaction", err)
 	}
 	if maxFee > bal {
-		return fmt.Errorf("insufficient balance (have: %s %s, want: %s %s)", hutils.FormatBalance(bal, tconsts.Decimals), tconsts.Symbol, hutils.FormatBalance(maxFee, tconsts.Decimals), tconsts.Symbol)
+		return fmt.Errorf("insufficient balance (have: %s %s, want: %s %s)", hutils.FormatBalance(bal, nconsts.Decimals), nconsts.Symbol, hutils.FormatBalance(maxFee, nconsts.Decimals), nconsts.Symbol)
 	}
 	if err := b.scli.RegisterTx(tx); err != nil {
 		return err
@@ -556,7 +606,7 @@ func (b *Backend) MintAsset(asset string, address string, amount string) error {
 	if err != nil {
 		return err
 	}
-	_, _, decimals, _, _, _, _, err := b.tcli.Asset(b.ctx, assetID, true)
+	_, _, decimals, _, _, _, _, err := b.ncli.Asset(b.ctx, assetID, true)
 	if err != nil {
 		return err
 	}
@@ -564,13 +614,13 @@ func (b *Backend) MintAsset(asset string, address string, amount string) error {
 	if err != nil {
 		return err
 	}
-	to, err := codec.ParseAddressBech32(tconsts.HRP, address)
+	to, err := codec.ParseAddressBech32(nconsts.HRP, address)
 	if err != nil {
 		return err
 	}
 
 	// Ensure have sufficient balance
-	bal, err := b.tcli.Balance(b.ctx, b.addrStr, ids.Empty)
+	bal, err := b.ncli.Balance(b.ctx, b.addrStr, ids.Empty)
 	if err != nil {
 		return err
 	}
@@ -585,7 +635,7 @@ func (b *Backend) MintAsset(asset string, address string, amount string) error {
 		return fmt.Errorf("%w: unable to generate transaction", err)
 	}
 	if maxFee > bal {
-		return fmt.Errorf("insufficient balance (have: %s %s, want: %s %s)", hutils.FormatBalance(bal, tconsts.Decimals), tconsts.Symbol, hutils.FormatBalance(maxFee, tconsts.Decimals), tconsts.Symbol)
+		return fmt.Errorf("insufficient balance (have: %s %s, want: %s %s)", hutils.FormatBalance(bal, nconsts.Decimals), nconsts.Symbol, hutils.FormatBalance(maxFee, nconsts.Decimals), nconsts.Symbol)
 	}
 	if err := b.scli.RegisterTx(tx); err != nil {
 		return err
@@ -611,7 +661,7 @@ func (b *Backend) Transfer(asset string, address string, amount string, memo str
 	if err != nil {
 		return err
 	}
-	_, symbol, decimals, _, _, _, _, err := b.tcli.Asset(b.ctx, assetID, true)
+	_, symbol, decimals, _, _, _, _, err := b.ncli.Asset(b.ctx, assetID, true)
 	if err != nil {
 		return err
 	}
@@ -619,13 +669,13 @@ func (b *Backend) Transfer(asset string, address string, amount string, memo str
 	if err != nil {
 		return err
 	}
-	to, err := codec.ParseAddressBech32(tconsts.HRP, address)
+	to, err := codec.ParseAddressBech32(nconsts.HRP, address)
 	if err != nil {
 		return err
 	}
 
 	// Ensure have sufficient balance for transfer
-	sendBal, err := b.tcli.Balance(b.ctx, b.addrStr, assetID)
+	sendBal, err := b.ncli.Balance(b.ctx, b.addrStr, assetID)
 	if err != nil {
 		return err
 	}
@@ -634,7 +684,7 @@ func (b *Backend) Transfer(asset string, address string, amount string, memo str
 	}
 
 	// Ensure have sufficient balance for fees
-	bal, err := b.tcli.Balance(b.ctx, b.addrStr, ids.Empty)
+	bal, err := b.ncli.Balance(b.ctx, b.addrStr, ids.Empty)
 	if err != nil {
 		return err
 	}
@@ -651,11 +701,11 @@ func (b *Backend) Transfer(asset string, address string, amount string, memo str
 	}
 	if assetID != ids.Empty {
 		if maxFee > bal {
-			return fmt.Errorf("insufficient balance (have: %s %s, want: %s %s)", hutils.FormatBalance(bal, tconsts.Decimals), tconsts.Symbol, hutils.FormatBalance(maxFee, tconsts.Decimals), tconsts.Symbol)
+			return fmt.Errorf("insufficient balance (have: %s %s, want: %s %s)", hutils.FormatBalance(bal, nconsts.Decimals), nconsts.Symbol, hutils.FormatBalance(maxFee, nconsts.Decimals), nconsts.Symbol)
 		}
 	} else {
 		if maxFee+value > bal {
-			return fmt.Errorf("insufficient balance (have: %s %s, want: %s %s)", hutils.FormatBalance(bal, tconsts.Decimals), tconsts.Symbol, hutils.FormatBalance(maxFee+value, tconsts.Decimals), tconsts.Symbol)
+			return fmt.Errorf("insufficient balance (have: %s %s, want: %s %s)", hutils.FormatBalance(bal, nconsts.Decimals), nconsts.Symbol, hutils.FormatBalance(maxFee+value, nconsts.Decimals), nconsts.Symbol)
 		}
 	}
 	if err := b.scli.RegisterTx(tx); err != nil {
@@ -687,11 +737,11 @@ func (b *Backend) GetBalance() ([]*BalanceInfo, error) {
 	}
 	balances := []*BalanceInfo{}
 	for _, asset := range assets {
-		_, symbol, decimals, _, _, _, _, err := b.tcli.Asset(b.ctx, asset, true)
+		_, symbol, decimals, _, _, _, _, err := b.ncli.Asset(b.ctx, asset, true)
 		if err != nil {
 			return nil, err
 		}
-		bal, err := b.tcli.Balance(b.ctx, b.addrStr, asset)
+		bal, err := b.ncli.Balance(b.ctx, b.addrStr, asset)
 		if err != nil {
 			return nil, err
 		}
@@ -760,7 +810,7 @@ func (b *Backend) StartFaucetSearch() (*FaucetSearchInfo, error) {
 		b.search.Elapsed = time.Since(start).String()
 		if err == nil {
 			b.search.TxID = txID.String()
-			b.search.Amount = fmt.Sprintf("%s %s", hutils.FormatBalance(amount, tconsts.Decimals), tconsts.Symbol)
+			b.search.Amount = fmt.Sprintf("%s %s", hutils.FormatBalance(amount, nconsts.Decimals), nconsts.Symbol)
 			b.searchAlerts = append(b.searchAlerts, &Alert{"success", fmt.Sprintf("Search Successful [Attempts: %d, Elapsed: %s]", attempts, b.search.Elapsed)})
 		} else {
 			b.search.Err = err.Error()
@@ -819,7 +869,7 @@ func (b *Backend) GetAllAssets() []*AssetInfo {
 	}
 	assets := []*AssetInfo{}
 	for _, asset := range arr {
-		_, symbol, decimals, metadata, supply, owner, _, err := b.tcli.Asset(b.ctx, asset, false)
+		_, symbol, decimals, metadata, supply, owner, _, err := b.ncli.Asset(b.ctx, asset, false)
 		if err != nil {
 			b.fatal(err)
 			return nil
@@ -850,7 +900,7 @@ func (b *Backend) AddAsset(asset string) error {
 	if hasAsset {
 		return nil
 	}
-	exists, _, _, _, _, owner, _, err := b.tcli.Asset(b.ctx, assetID, true)
+	exists, _, _, _, _, owner, _, err := b.ncli.Asset(b.ctx, assetID, true)
 	if err != nil {
 		return err
 	}
@@ -867,7 +917,7 @@ func (b *Backend) GetFeedInfo() (*FeedInfo, error) {
 	}
 	return &FeedInfo{
 		addr,
-		fmt.Sprintf("%s %s", hutils.FormatBalance(fee, tconsts.Decimals), tconsts.Symbol),
+		fmt.Sprintf("%s %s", hutils.FormatBalance(fee, nconsts.Decimals), nconsts.Symbol),
 	}, nil
 }
 
@@ -926,7 +976,7 @@ func (b *Backend) GetFeed() ([]*FeedObject, error) {
 			Address:   fo.Address,
 			ID:        fo.TxID.String(),
 			Timestamp: fo.Timestamp,
-			Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(fo.Fee, tconsts.Decimals), tconsts.Symbol),
+			Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(fo.Fee, nconsts.Decimals), nconsts.Symbol),
 
 			Message: fo.Content.Message,
 			URL:     fo.Content.URL,
@@ -950,7 +1000,7 @@ func (b *Backend) Message(message string, url string) error {
 	if err != nil {
 		return err
 	}
-	recipientAddr, err := codec.ParseAddressBech32(tconsts.HRP, recipient)
+	recipientAddr, err := codec.ParseAddressBech32(nconsts.HRP, recipient)
 	if err != nil {
 		return err
 	}
@@ -966,7 +1016,7 @@ func (b *Backend) Message(message string, url string) error {
 	}
 
 	// Ensure have sufficient balance
-	bal, err := b.tcli.Balance(b.ctx, b.addrStr, ids.Empty)
+	bal, err := b.ncli.Balance(b.ctx, b.addrStr, ids.Empty)
 	if err != nil {
 		return err
 	}
@@ -982,7 +1032,7 @@ func (b *Backend) Message(message string, url string) error {
 		return fmt.Errorf("%w: unable to generate transaction", err)
 	}
 	if maxFee+fee > bal {
-		return fmt.Errorf("insufficient balance (have: %s %s, want: %s %s)", hutils.FormatBalance(bal, tconsts.Decimals), tconsts.Symbol, hutils.FormatBalance(maxFee+fee, tconsts.Decimals), tconsts.Symbol)
+		return fmt.Errorf("insufficient balance (have: %s %s, want: %s %s)", hutils.FormatBalance(bal, nconsts.Decimals), nconsts.Symbol, hutils.FormatBalance(maxFee+fee, nconsts.Decimals), nconsts.Symbol)
 	}
 	if err := b.scli.RegisterTx(tx); err != nil {
 		return err

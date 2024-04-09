@@ -22,7 +22,7 @@ import (
 	"github.com/nuklai/nuklaivm/challenge"
 	"github.com/nuklai/nuklaivm/cmd/nuklai-faucet/config"
 	"github.com/nuklai/nuklaivm/consts"
-	trpc "github.com/nuklai/nuklaivm/rpc"
+	nrpc "github.com/nuklai/nuklaivm/rpc"
 	"go.uber.org/zap"
 )
 
@@ -31,7 +31,7 @@ type Manager struct {
 	config *config.Config
 
 	cli  *rpc.JSONRPCClient
-	tcli *trpc.JSONRPCClient
+	ncli *nrpc.JSONRPCClient
 
 	factory *auth.ED25519Factory
 
@@ -45,13 +45,13 @@ type Manager struct {
 
 func New(logger logging.Logger, config *config.Config) (*Manager, error) {
 	ctx := context.TODO()
-	cli := rpc.NewJSONRPCClient(config.TokenRPC)
+	cli := rpc.NewJSONRPCClient(config.NuklaiRPC)
 	networkID, _, chainID, err := cli.Network(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tcli := trpc.NewJSONRPCClient(config.TokenRPC, networkID, chainID)
-	m := &Manager{log: logger, config: config, cli: cli, tcli: tcli, factory: auth.NewED25519Factory(config.PrivateKey())}
+	ncli := nrpc.NewJSONRPCClient(config.NuklaiRPC, networkID, chainID)
+	m := &Manager{log: logger, config: config, cli: cli, ncli: ncli, factory: auth.NewED25519Factory(config.PrivateKey())}
 	m.lastRotation = time.Now().Unix()
 	m.difficulty = m.config.StartDifficulty
 	m.solutions = set.NewSet[ids.ID](m.config.SolutionsPerSalt)
@@ -59,7 +59,7 @@ func New(logger logging.Logger, config *config.Config) (*Manager, error) {
 	if err != nil {
 		return nil, err
 	}
-	bal, err := tcli.Balance(ctx, m.config.AddressBech32(), ids.Empty)
+	bal, err := ncli.Balance(ctx, m.config.AddressBech32(), ids.Empty)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (m *Manager) GetChallenge(_ context.Context) ([]byte, uint16, error) {
 }
 
 func (m *Manager) sendFunds(ctx context.Context, destination codec.Address, amount uint64) (ids.ID, uint64, error) {
-	parser, err := m.tcli.Parser(ctx)
+	parser, err := m.ncli.Parser(ctx)
 	if err != nil {
 		return ids.Empty, 0, err
 	}
@@ -134,7 +134,7 @@ func (m *Manager) sendFunds(ctx context.Context, destination codec.Address, amou
 		m.log.Warn("abandoning airdrop because network fee is greater than amount", zap.String("maxFee", utils.FormatBalance(maxFee, consts.Decimals)))
 		return ids.Empty, 0, errors.New("network fee too high")
 	}
-	bal, err := m.tcli.Balance(ctx, m.config.AddressBech32(), ids.Empty)
+	bal, err := m.ncli.Balance(ctx, m.config.AddressBech32(), ids.Empty)
 	if err != nil {
 		return ids.Empty, 0, err
 	}

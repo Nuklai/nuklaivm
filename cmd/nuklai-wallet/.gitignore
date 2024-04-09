@@ -1,5 +1,5 @@
 build/bin
 node_modules
 frontend/dist
-.token-wallet
-token-wallet.zip
+.nuklai-wallet
+nuklai-wallet.zip
