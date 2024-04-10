@@ -82,6 +82,5 @@ sudo pacman -Syu gtk3 webkit2gtk gobject-introspection
 Then, try running `./scripts/dev.sh` again
 
 
- If you run the command `./scripts/dev.sh` in a vscode terminal and encounter the error `symbol lookup error: /snap/core20/current/lib/x86_64-linux-gnu/libpthread.so.0: undefined symbol: __libc_pthread_init, version GLIBC_PRIVATE`, you should run it in a console.
+ If you run the command `./scripts/dev.sh` in a vscode terminal and encounter the error `symbol lookup error: /snap/core20/current/lib/x86_64-linux-gnu/libpthread.so.0: undefined symbol: __libc_pthread_init, version GLIBC_PRIVATE`, you should run the command in a console.
 
- 
