@@ -79,6 +79,12 @@ On Arch Linux:
 sudo pacman -Syu gtk3 webkit2gtk gobject-introspection
 ```
 
+On Mac:
+
+```
+sudo port install webkit2-gtk
+```
+
 Then, try running `./scripts/dev.sh` again
 
 
