@@ -1566,77 +1566,75 @@ var _ = ginkgo.AfterSuite(func() {
 var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 	// var err error
 	ginkgo.It("Setup and get initial staked validators", func() {
-		ginkgo.By("Set up", func() {
-			currentTime = time.Now().UTC()
-			stakeStartTime = currentTime.Add(2 * time.Minute)
-			stakeEndTime = currentTime.Add(15 * time.Minute)
-			delegationFeeRate = 50
+		currentTime = time.Now().UTC()
+		stakeStartTime = currentTime.Add(2 * time.Minute)
+		stakeEndTime = currentTime.Add(15 * time.Minute)
+		delegationFeeRate = 50
 
-			withdraw0Priv, err := ed25519.GeneratePrivateKey()
-			gomega.Ω(err).Should(gomega.BeNil())
-			rwithdraw0 = auth.NewED25519Address(withdraw0Priv.PublicKey())
-			withdraw0 = codec.MustAddressBech32(nconsts.HRP, rwithdraw0)
+		withdraw0Priv, err := ed25519.GeneratePrivateKey()
+		gomega.Ω(err).Should(gomega.BeNil())
+		rwithdraw0 = auth.NewED25519Address(withdraw0Priv.PublicKey())
+		withdraw0 = codec.MustAddressBech32(nconsts.HRP, rwithdraw0)
 
-			withdraw1Priv, err := ed25519.GeneratePrivateKey()
-			gomega.Ω(err).Should(gomega.BeNil())
-			rwithdraw1 = auth.NewED25519Address(withdraw1Priv.PublicKey())
-			withdraw1 = codec.MustAddressBech32(nconsts.HRP, rwithdraw1)
+		withdraw1Priv, err := ed25519.GeneratePrivateKey()
+		gomega.Ω(err).Should(gomega.BeNil())
+		rwithdraw1 = auth.NewED25519Address(withdraw1Priv.PublicKey())
+		withdraw1 = codec.MustAddressBech32(nconsts.HRP, rwithdraw1)
 
-			delegatePriv, err := ed25519.GeneratePrivateKey()
-			gomega.Ω(err).Should(gomega.BeNil())
-			rdelegate = auth.NewED25519Address(delegatePriv.PublicKey())
-			validators, err := instances[3].ncli.StakedValidators(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
-			gomega.Ω(len(validators)).Should(gomega.Equal(0))
-		})
+		delegatePriv, err := ed25519.GeneratePrivateKey()
+		gomega.Ω(err).Should(gomega.BeNil())
+		rdelegate = auth.NewED25519Address(delegatePriv.PublicKey())
+		validators, err := instances[3].ncli.StakedValidators(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(len(validators)).Should(gomega.Equal(0))
+	})
 
-		ginkgo.By("Register validator stake node 3", func() {
-			parser, err := instances[3].ncli.Parser(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
-			stakeInfo := &actions.ValidatorStakeInfo{
-				NodeID:            instances[3].nodeID.Bytes(),
-				StakeStartTime:    uint64(stakeStartTime.Unix()),
-				StakeEndTime:      uint64(stakeEndTime.Unix()),
-				StakedAmount:      1000,
-				DelegationFeeRate: uint64(delegationFeeRate),
-				RewardAddress:     rwithdraw0,
-			}
+	ginkgo.It("Register validator stake node 3", func() {
+		parser, err := instances[3].ncli.Parser(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		stakeInfo := &actions.ValidatorStakeInfo{
+			NodeID:            instances[3].nodeID.Bytes(),
+			StakeStartTime:    uint64(stakeStartTime.Unix()),
+			StakeEndTime:      uint64(stakeEndTime.Unix()),
+			StakedAmount:      1000,
+			DelegationFeeRate: uint64(delegationFeeRate),
+			RewardAddress:     rwithdraw0,
+		}
 
-			stakeInfoBytes, err := stakeInfo.Marshal()
-			gomega.Ω(err).Should(gomega.BeNil())
-			signature, err := factory.Sign(stakeInfoBytes)
-			gomega.Ω(err).Should(gomega.BeNil())
-			signaturePacker := codec.NewWriter(signature.Size(), signature.Size())
-			signature.Marshal(signaturePacker)
-			authSignature := signaturePacker.Bytes()
-			submit, _, _, err := instances[3].hcli.GenerateTransaction(
-				context.Background(),
-				parser,
-				nil,
-				&actions.RegisterValidatorStake{
-					StakeInfo:     stakeInfoBytes,
-					AuthSignature: authSignature,
-				},
-				factory,
-			)
-			gomega.Ω(err).Should(gomega.BeNil())
-			genesis, err := instances[3].ncli.Genesis(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
-			alloc := genesis.CustomAllocation
-			fmt.Printf("ALLOC LEN %d", len(alloc))
-			balance, err := instances[3].ncli.Balance(context.Background(), alloc[0].Address, ids.Empty)
-			gomega.Ω(err).Should(gomega.BeNil())
-			fmt.Printf("BALANCE INSTANCES[3] %d", balance)
-			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
-			time.Sleep(10000 * time.Millisecond)
-		})
+		stakeInfoBytes, err := stakeInfo.Marshal()
+		gomega.Ω(err).Should(gomega.BeNil())
+		signature, err := factory.Sign(stakeInfoBytes)
+		gomega.Ω(err).Should(gomega.BeNil())
+		signaturePacker := codec.NewWriter(signature.Size(), signature.Size())
+		signature.Marshal(signaturePacker)
+		authSignature := signaturePacker.Bytes()
+		submit, _, _, err := instances[3].hcli.GenerateTransaction(
+			context.Background(),
+			parser,
+			nil,
+			&actions.RegisterValidatorStake{
+				StakeInfo:     stakeInfoBytes,
+				AuthSignature: authSignature,
+			},
+			factory,
+		)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		// genesis, err := instances[3].ncli.Genesis(context.Background())
+		// gomega.Ω(err).Should(gomega.BeNil())
+		// alloc := genesis.CustomAllocation
+		// fmt.Printf("ALLOC LEN %d", len(alloc))
+		// balance, err := instances[3].ncli.Balance(context.Background(), alloc[0].Address, ids.Empty)
+		// gomega.Ω(err).Should(gomega.BeNil())
+		// fmt.Printf("BALANCE INSTANCES[3] %d", balance)
+		time.Sleep(5000 * time.Millisecond)
+	})
 
-		ginkgo.By("Get validator staked amount after node 3 validator staking", func() {
-			_, _, stakedAmount, _, _, _, err := instances[3].ncli.ValidatorStake(context.Background(), instances[3].nodeID)
-			fmt.Printf("NODE 3 STAKED AMOUNT %d", stakedAmount)
-			gomega.Ω(err).Should(gomega.BeNil())
-			gomega.Ω(stakedAmount).Should(gomega.Equal(1000)) // multiply by the decimals
-		})
+	ginkgo.It("Get validator staked amount after node 3 validator staking", func() {
+		_, _, stakedAmount, _, _, _, err := instances[3].ncli.ValidatorStake(context.Background(), instances[3].nodeID)
+		fmt.Printf("NODE 3 STAKED AMOUNT %d", stakedAmount)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(stakedAmount).Should(gomega.Equal(1000)) // multiply by the decimals
 	})
 })
 
