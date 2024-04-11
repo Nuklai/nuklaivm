@@ -13,4 +13,5 @@ import (
 type Manager interface {
 	GetFeedInfo(context.Context) (codec.Address, uint64, error)
 	GetFeed(context.Context) ([]*manager.FeedObject, error)
+	UpdateNuklaiRPC(context.Context, string) error
 }

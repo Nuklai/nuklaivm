@@ -15,8 +15,10 @@ import {
 import {
   App,
   Avatar,
+  Button,
   Divider,
   Drawer,
+  Input,
   Layout,
   List,
   Menu,
@@ -29,9 +31,13 @@ import {
   GetAddress,
   GetBalance,
   GetChainID,
+  GetConfig,
   GetPrivateKey,
   GetPublicKey,
-  GetTransactions
+  GetTransactions,
+  UpdateFaucetRPC,
+  UpdateFeedRPC,
+  UpdateNuklaiRPC
 } from '../../wailsjs/go/main/App'
 import logo from '../assets/images/nuklai-logo.png'
 const { Text, Link } = Typography
@@ -39,6 +45,9 @@ const { Text, Link } = Typography
 const NavBar = () => {
   const location = useLocation()
   const { message } = App.useApp()
+  const [nuklaiRPC, setNuklaiRPC] = useState('')
+  const [faucetRPC, setFaucetRPC] = useState('')
+  const [feedRPC, setFeedRPC] = useState('')
   const [balances, setBalances] = useState([])
   const [nativeBalance, setNativeBalance] = useState({})
   const [transactions, setTransactions] = useState([])
@@ -119,6 +128,32 @@ const NavBar = () => {
 
     fetchWalletInfo()
   }, [])
+
+  const fetchConfig = async () => {
+    const currentConfig = await GetConfig()
+    setNuklaiRPC(currentConfig.nuklaiRPC)
+    setFaucetRPC(currentConfig.faucetRPC)
+    setFeedRPC(currentConfig.feedRPC)
+  }
+
+  useEffect(() => {
+    fetchConfig()
+  }, [])
+
+  const updateNuklaiRPC = async () => {
+    await UpdateNuklaiRPC(nuklaiRPC)
+    message.success('NuklaiRPC updated successfully')
+  }
+
+  const updateFaucetRPC = async () => {
+    await UpdateFaucetRPC(faucetRPC)
+    message.success('FaucetRPC updated successfully')
+  }
+
+  const updateFeedRPC = async () => {
+    await UpdateFeedRPC(feedRPC)
+    message.success('FeedRPC updated successfully')
+  }
 
   return (
     <Layout.Header style={{ padding: '0 50px', background: '#fff' }}>
@@ -235,6 +270,38 @@ const NavBar = () => {
               </List.Item>
             )}
           />
+        </div>
+
+        <Divider orientation='center'>RPC Configuration</Divider>
+        <div>
+          <Input
+            addonBefore='NuklaiRPC'
+            value={nuklaiRPC}
+            onChange={(e) => setNuklaiRPC(e.target.value)}
+          />
+          <Button onClick={updateNuklaiRPC} style={{ margin: '10px 0' }}>
+            Update NuklaiRPC
+          </Button>
+        </div>
+        <div>
+          <Input
+            addonBefore='FaucetRPC'
+            value={faucetRPC}
+            onChange={(e) => setFaucetRPC(e.target.value)}
+          />
+          <Button onClick={updateFaucetRPC} style={{ margin: '10px 0' }}>
+            Update FaucetRPC
+          </Button>
+        </div>
+        <div>
+          <Input
+            addonBefore='FeedRPC'
+            value={feedRPC}
+            onChange={(e) => setFeedRPC(e.target.value)}
+          />
+          <Button onClick={updateFeedRPC} style={{ margin: '10px 0' }}>
+            Update FeedRPC
+          </Button>
         </div>
 
         <Divider orientation='center'>Tokens</Divider>

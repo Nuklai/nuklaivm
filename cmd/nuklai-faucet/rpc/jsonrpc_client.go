@@ -66,3 +66,17 @@ func (cli *JSONRPCClient) SolveChallenge(ctx context.Context, addr string, salt 
 	)
 	return resp.TxID, resp.Amount, err
 }
+
+// UpdateNuklaiRPC updates the RPC url for Nuklai
+func (cli *JSONRPCClient) UpdateNuklaiRPC(ctx context.Context, newNuklaiRPCUrl string) error {
+	err := cli.requester.SendRequest(
+		ctx,
+		"updateNuklaiRPC",
+		&UpdateNuklaiRPCArgs{
+			NuklaiRPCUrl: newNuklaiRPCUrl,
+		},
+		nil,
+	)
+
+	return err
+}

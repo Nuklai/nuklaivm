@@ -191,3 +191,11 @@ func (m *Manager) SolveChallenge(ctx context.Context, solver codec.Address, salt
 	}
 	return txID, m.config.Amount, nil
 }
+
+func (m *Manager) UpdateNuklaiRPC(_ context.Context, newNuklaiRPCUrl string) error {
+	m.l.RLock()
+	defer m.l.RUnlock()
+
+	m.config.NuklaiRPC = newNuklaiRPCUrl
+	return nil
+}

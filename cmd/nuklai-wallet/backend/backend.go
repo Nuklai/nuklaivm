@@ -1060,3 +1060,32 @@ func (b *Backend) Message(message string, url string) error {
 	}
 	return nil
 }
+
+// UpdateNuklaiRPC updates the RPC url for Nuklai
+func (b *Backend) UpdateNuklaiRPC(newNuklaiRPCUrl string) error {
+	b.c.NuklaiRPC = newNuklaiRPCUrl
+
+	// Update clients as well
+	err := b.fcli.UpdateNuklaiRPC(b.ctx, newNuklaiRPCUrl)
+	if err != nil {
+		return err
+	}
+	err = b.fecli.UpdateNuklaiRPC(b.ctx, newNuklaiRPCUrl)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b *Backend) UpdateFaucetRPC(newFaucetRPCUrl string) {
+	b.c.FaucetRPC = newFaucetRPCUrl
+}
+
+func (b *Backend) UpdateFeedRPC(newFeedRPCUrl string) {
+	b.c.FeedRPC = newFeedRPCUrl
+}
+
+func (b *Backend) GetConfig() *Config {
+	return b.c
+}

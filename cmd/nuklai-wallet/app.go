@@ -158,3 +158,19 @@ func (*App) GetCommitHash() string {
 	}
 	return ""
 }
+
+func (a *App) UpdateNuklaiRPC(newNuklaiRPCUrl string) error {
+	return a.b.UpdateNuklaiRPC(newNuklaiRPCUrl)
+}
+
+func (a *App) UpdateFaucetRPC(newFaucetRPCUrl string) {
+	a.b.UpdateFaucetRPC(newFaucetRPCUrl)
+}
+
+func (a *App) UpdateFeedRPC(newFeedRPCUrl string) {
+	a.b.UpdateFeedRPC(newFeedRPCUrl)
+}
+
+func (a *App) GetConfig() *backend.Config {
+	return a.b.GetConfig()
+}

@@ -22,6 +22,8 @@ export function GetChainID():Promise<string>;
 
 export function GetCommitHash():Promise<string>;
 
+export function GetConfig():Promise<backend.Config>;
+
 export function GetFaucetSolutions():Promise<backend.FaucetSolutions>;
 
 export function GetFeed():Promise<Array<backend.FeedObject>>;
@@ -53,3 +55,9 @@ export function OpenLink(arg1:string):Promise<void>;
 export function StartFaucetSearch():Promise<backend.FaucetSearchInfo>;
 
 export function Transfer(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
+
+export function UpdateFaucetRPC(arg1:string):Promise<void>;
+
+export function UpdateFeedRPC(arg1:string):Promise<void>;
+
+export function UpdateNuklaiRPC(arg1:string):Promise<void>;

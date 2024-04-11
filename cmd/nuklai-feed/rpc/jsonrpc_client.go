@@ -50,3 +50,17 @@ func (cli *JSONRPCClient) Feed(ctx context.Context) ([]*manager.FeedObject, erro
 	)
 	return resp.Feed, err
 }
+
+// UpdateNuklaiRPC updates the RPC url for Nuklai
+func (cli *JSONRPCClient) UpdateNuklaiRPC(ctx context.Context, newNuklaiRPCUrl string) error {
+	err := cli.requester.SendRequest(
+		ctx,
+		"updateNuklaiRPC",
+		&UpdateNuklaiRPCArgs{
+			NuklaiRPCUrl: newNuklaiRPCUrl,
+		},
+		nil,
+	)
+
+	return err
+}

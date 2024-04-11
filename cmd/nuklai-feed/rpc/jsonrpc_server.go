@@ -46,3 +46,11 @@ func (j *JSONRPCServer) Feed(req *http.Request, _ *struct{}, reply *FeedReply) (
 	reply.Feed = feed
 	return nil
 }
+
+type UpdateNuklaiRPCArgs struct {
+	NuklaiRPCUrl string `json:"nuklaiRPCUrl"`
+}
+
+func (j *JSONRPCServer) UpdateNuklaiRPC(req *http.Request, args *UpdateNuklaiRPCArgs, _ *struct{}) error {
+	return j.m.UpdateNuklaiRPC(req.Context(), args.NuklaiRPCUrl)
+}
