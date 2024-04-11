@@ -246,7 +246,7 @@ var _ = ginkgo.BeforeSuite(func() {
 			genesisBytes,
 			nil,
 			[]byte(
-				`{"parallelism":5, "testMode":true, "logLevel":"debug", "trackedPairs":["*"]}`,
+				`{"parallelism":3, "testMode":true, "logLevel":"debug", "trackedPairs":["*"]}`,
 			),
 			toEngine,
 			nil,
@@ -1615,7 +1615,9 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			// gomega.Ω(results).Should(gomega.HaveLen(1))
 			// gomega.Ω(results[0].Success).Should(gomega.BeTrue())
 			balance, err := instances[4].ncli.Balance(context.TODO(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[3]), ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
 			fmt.Printf("node 3 %s balance %d", codec.MustAddressBech32(nconsts.HRP, nodesAddresses[3]), balance)
+			balance, err = instances[4].ncli.Balance(context.TODO(), sender, ids.Empty)
 			fmt.Printf("balance factory %s %d", sender, balance)
 			gomega.Ω(err).Should(gomega.BeNil())
 		})
