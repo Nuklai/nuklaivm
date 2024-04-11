@@ -730,6 +730,15 @@ func (b *Backend) GetAddress() string {
 	return b.addrStr
 }
 
+func (b *Backend) GetPrivateKey() string {
+	return hex.EncodeToString(b.priv[:])
+}
+
+func (b *Backend) GetPublicKey() string {
+	pubKey := b.priv.PublicKey()
+	return hex.EncodeToString(pubKey[:])
+}
+
 func (b *Backend) GetBalance() ([]*BalanceInfo, error) {
 	assets, _, err := b.s.GetAssets()
 	if err != nil {

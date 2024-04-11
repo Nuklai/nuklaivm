@@ -62,6 +62,14 @@ export function GetMyAssets() {
   return window['go']['main']['App']['GetMyAssets']();
 }
 
+export function GetPrivateKey() {
+  return window['go']['main']['App']['GetPrivateKey']();
+}
+
+export function GetPublicKey() {
+  return window['go']['main']['App']['GetPublicKey']();
+}
+
 export function GetTotalBlocks() {
   return window['go']['main']['App']['GetTotalBlocks']();
 }

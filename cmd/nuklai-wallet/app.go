@@ -95,6 +95,15 @@ func (a *App) GetAddress() string {
 	return a.b.GetAddress()
 }
 
+// TODO: Maybe find a different way to do this?
+func (a *App) GetPrivateKey() string {
+	return a.b.GetPrivateKey()
+}
+
+func (a *App) GetPublicKey() string {
+	return a.b.GetPublicKey()
+}
+
 func (a *App) GetTransactions() *backend.Transactions {
 	return a.b.GetTransactions()
 }

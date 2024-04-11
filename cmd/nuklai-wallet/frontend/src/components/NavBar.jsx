@@ -28,6 +28,9 @@ import { Link as RLink, useLocation } from 'react-router-dom'
 import {
   GetAddress,
   GetBalance,
+  GetChainID,
+  GetPrivateKey,
+  GetPublicKey,
   GetTransactions
 } from '../../wailsjs/go/main/App'
 import logo from '../assets/images/nuklai-logo.png'
@@ -40,6 +43,9 @@ const NavBar = () => {
   const [nativeBalance, setNativeBalance] = useState({})
   const [transactions, setTransactions] = useState([])
   const [address, setAddress] = useState('')
+  const [privateKey, setPrivateKey] = useState('')
+  const [publicKey, setPublicKey] = useState('')
+  const [chainID, setChainID] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   // Define the function to fetch data as a useCallback to prevent redefinition on each render
@@ -91,8 +97,28 @@ const NavBar = () => {
     return date.toLocaleString()
   }
 
-  const shortenAddress = (address) =>
-    `${address.slice(0, 6)}...${address.slice(-6)}`
+  const shortenText = (text, cutoffIndex) =>
+    `${text.slice(0, cutoffIndex)}...${text.slice(-cutoffIndex)}`
+
+  // Fetch privateKey and chainID (this is a simplified example, adjust according to your actual API)
+  useEffect(() => {
+    // Fetch private key and chainID securely
+    const fetchWalletInfo = async () => {
+      try {
+        const fetchedPrivateKey = await GetPrivateKey()
+        const fetchedPublicKey = await GetPublicKey()
+        const fetchedChainID = await GetChainID()
+
+        setPrivateKey(fetchedPrivateKey)
+        setPublicKey(fetchedPublicKey)
+        setChainID(fetchedChainID)
+      } catch (error) {
+        console.error('Error fetching wallet info:', error)
+      }
+    }
+
+    fetchWalletInfo()
+  }, [])
 
   return (
     <Layout.Header style={{ padding: '0 50px', background: '#fff' }}>
@@ -116,7 +142,7 @@ const NavBar = () => {
               onClick={() => setDrawerOpen(true)}
               style={{ marginTop: '10px' }}
             >
-              {shortenAddress(address)}
+              {shortenText(address, 7)}
             </Link>
           </Tooltip>
           {balances.length > 0 && (
@@ -170,6 +196,47 @@ const NavBar = () => {
         onClose={() => setDrawerOpen(false)}
         open={drawerOpen}
       >
+        <Divider orientation='center'>Wallet Info</Divider>
+        <div style={{ marginBottom: '20px' }}>
+          <List
+            itemLayout='horizontal'
+            dataSource={[
+              { label: 'Private Key', value: privateKey, key: 'privateKey' },
+              { label: 'Public Key', value: publicKey, key: 'publicKey' },
+              { label: 'Chain ID', value: chainID, key: 'chainID' }
+            ]}
+            renderItem={(item) => (
+              <List.Item>
+                <List.Item.Meta
+                  title={item.label}
+                  description={
+                    <Tooltip title={item.value}>
+                      <Text
+                        code
+                        copyable={{ text: item.value }}
+                        style={{
+                          background: '#f5f5f5',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          maxWidth: '100%',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {item.key !== 'chainID'
+                          ? shortenText(item.value, 35)
+                          : item.value}
+                      </Text>
+                    </Tooltip>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        </div>
+
         <Divider orientation='center'>Tokens</Divider>
         <List
           bordered
@@ -180,6 +247,7 @@ const NavBar = () => {
             </List.Item>
           )}
         />
+
         <Divider orientation='center'>Transactions</Divider>
         <List
           bordered
@@ -204,7 +272,7 @@ const NavBar = () => {
               <Text strong>Fee:</Text> {item.Fee}
               <br />
               <Text strong>Actor:</Text>{' '}
-              <Text copyable>{shortenAddress(item.Actor)}</Text>
+              <Text copyable>{shortenText(item.Actor, 20)}</Text>
             </List.Item>
           )}
         />

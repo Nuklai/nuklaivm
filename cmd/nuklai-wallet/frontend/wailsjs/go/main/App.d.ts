@@ -32,6 +32,10 @@ export function GetLatestBlocks(arg1:number,arg2:number):Promise<Array<backend.B
 
 export function GetMyAssets():Promise<Array<backend.AssetInfo>>;
 
+export function GetPrivateKey():Promise<string>;
+
+export function GetPublicKey():Promise<string>;
+
 export function GetTotalBlocks():Promise<number>;
 
 export function GetTransactionStats():Promise<Array<backend.GenericInfo>>;
