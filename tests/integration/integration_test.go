@@ -313,9 +313,6 @@ var _ = ginkgo.AfterSuite(func() {
 
 // var _ = ginkgo.Describe("[Ping]", func() {
 // 	ginkgo.It("can ping", func() {
-// 		if skip {
-// 			ginkgo.Skip("skip can ping")
-// 		}
 // 		for _, inst := range instances {
 // 			hcli := inst.hcli
 // 			ok, err := hcli.Ping(context.Background())
@@ -339,13 +336,13 @@ var _ = ginkgo.AfterSuite(func() {
 // })
 
 var _ = ginkgo.Describe("[Tx Processing]", func() {
-	// 	ginkgo.It("get currently accepted block ID", func() {
-	// 		for _, inst := range instances {
-	// 			hcli := inst.hcli
-	// 			_, _, _, err := hcli.Accepted(context.Background())
-	// 			gomega.Ω(err).Should(gomega.BeNil())
-	// 		}
-	// 	})
+	ginkgo.It("get currently accepted block ID", func() {
+		for _, inst := range instances {
+			hcli := inst.hcli
+			_, _, _, err := hcli.Accepted(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+		}
+	})
 
 	// 	var transferTxRoot *chain.Transaction
 	// 	ginkgo.It("Gossip TransferTx to a different node", func() {
@@ -1627,7 +1624,7 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			// balance, err := instances[3].ncli.Balance(context.Background(), alloc[0].Address, ids.Empty)
 			// gomega.Ω(err).Should(gomega.BeNil())
 			// fmt.Printf("BALANCE INSTANCES[3] %d", balance)
-			time.Sleep(5000 * time.Millisecond)
+			// time.Sleep(5000 * time.Millisecond)
 		})
 
 		ginkgo.By("Get validator staked amount after node 3 validator staking", func() {
