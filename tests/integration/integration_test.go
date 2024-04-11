@@ -1592,22 +1592,32 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		gomega.Ω(len(validators)).Should(gomega.Equal(0))
 
 		ginkgo.By("Fund node 3", func() {
-			parser, err := instances[3].ncli.Parser(context.Background())
+			parser, err := instances[4].ncli.Parser(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
-			submit, _, _, err := instances[3].hcli.GenerateTransaction(
+			submit, _, _, err := instances[4].hcli.GenerateTransaction(
 				context.Background(),
 				parser,
 				nil,
 				&actions.Transfer{
 					To:    nodesAddresses[3],
 					Asset: ids.Empty,
-					Value: 100,
+					// Value: uint64(200 * math.Pow10(nconsts.Decimals)),
+					Value: 100_000,
 				},
 				factory,
 			)
 			fmt.Println(err)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+			time.Sleep(2 * time.Second)
+			// accept := expectBlk(instances[1])
+			// results := accept(true)
+			// gomega.Ω(results).Should(gomega.HaveLen(1))
+			// gomega.Ω(results[0].Success).Should(gomega.BeTrue())
+			balance, err := instances[4].ncli.Balance(context.TODO(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[3]), ids.Empty)
+			fmt.Printf("node 3 %s balance %d", codec.MustAddressBech32(nconsts.HRP, nodesAddresses[3]), balance)
+			fmt.Printf("balance factory %s %d", sender, balance)
+			gomega.Ω(err).Should(gomega.BeNil())
 		})
 
 		ginkgo.By("Register validator stake node 3", func() {
