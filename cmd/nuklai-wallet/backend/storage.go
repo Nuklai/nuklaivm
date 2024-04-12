@@ -41,7 +41,7 @@ func OpenStorage(databasePath string) (*Storage, error) {
 }
 
 // generateKey generates a key for storage with prefixes for chain and type.
-func (s *Storage) generateKey(prefix byte, subnetID, chainID ids.ID, keyData []byte) []byte {
+func (*Storage) generateKey(prefix byte, subnetID, chainID ids.ID, keyData []byte) []byte {
 	subnetPrefix := subnetID[:]
 	chainPrefix := chainID[:]
 	k := make([]byte, 1+len(subnetPrefix)+len(chainPrefix)+len(keyData))
