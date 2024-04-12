@@ -40,6 +40,18 @@ func OpenStorage(databasePath string) (*Storage, error) {
 	return &Storage{db}, nil
 }
 
+// generateKey generates a key for storage with prefixes for chain and type.
+func (s *Storage) generateKey(prefix byte, subnetID, chainID ids.ID, keyData []byte) []byte {
+	subnetPrefix := subnetID[:]
+	chainPrefix := chainID[:]
+	k := make([]byte, 1+len(subnetPrefix)+len(chainPrefix)+len(keyData))
+	k[0] = prefix
+	copy(k[1:], subnetPrefix)
+	copy(k[1+len(subnetPrefix):], chainPrefix)
+	copy(k[1+len(subnetPrefix)+len(chainPrefix):], keyData)
+	return k
+}
+
 func (s *Storage) StoreKey(privateKey ed25519.PrivateKey) error {
 	has, err := s.db.Has([]byte{keyPrefix})
 	if err != nil {
@@ -93,16 +105,14 @@ func (s *Storage) GetAssets() ([]ids.ID, []bool, error) {
 	return assets, owned, iter.Error()
 }
 
-func (s *Storage) StoreTransaction(tx *TransactionInfo) error {
+func (s *Storage) StoreTransaction(subnetID, chainID ids.ID, tx *TransactionInfo) error {
 	txID, err := ids.FromString(tx.ID)
 	if err != nil {
 		return err
 	}
 	inverseTime := consts.MaxUint64 - uint64(time.Now().UnixMilli())
-	k := make([]byte, 1+consts.Uint64Len+ids.IDLen)
-	k[0] = transactionPrefix
-	binary.BigEndian.PutUint64(k[1:], inverseTime)
-	copy(k[1+consts.Uint64Len:], txID[:])
+	txKey := append(binary.BigEndian.AppendUint64(nil, inverseTime), txID[:]...)
+	k := s.generateKey(transactionPrefix, subnetID, chainID, txKey)
 	b, err := json.Marshal(tx)
 	if err != nil {
 		return err
@@ -110,8 +120,9 @@ func (s *Storage) StoreTransaction(tx *TransactionInfo) error {
 	return s.db.Put(k, b)
 }
 
-func (s *Storage) GetTransactions() ([]*TransactionInfo, error) {
-	iter := s.db.NewIteratorWithPrefix([]byte{transactionPrefix})
+func (s *Storage) GetTransactions(subnetID, chainID ids.ID) ([]*TransactionInfo, error) {
+	prefix := s.generateKey(transactionPrefix, subnetID, chainID, nil)
+	iter := s.db.NewIteratorWithPrefix(prefix)
 	defer iter.Release()
 
 	txs := []*TransactionInfo{}
@@ -125,37 +136,34 @@ func (s *Storage) GetTransactions() ([]*TransactionInfo, error) {
 	return txs, iter.Error()
 }
 
-func (s *Storage) StoreAddress(address string, nickname string) error {
+func (s *Storage) StoreAddress(subnetID, chainID ids.ID, address string, nickname string) error {
 	addr, err := codec.ParseAddressBech32(tconsts.HRP, address)
 	if err != nil {
 		return err
 	}
-	k := make([]byte, 1+codec.AddressLen)
-	k[0] = addressPrefix
-	copy(k[1:], addr[:])
+	k := s.generateKey(addressPrefix, subnetID, chainID, addr[:])
 	return s.db.Put(k, []byte(nickname))
 }
 
-func (s *Storage) GetAddresses() ([]*AddressInfo, error) {
-	iter := s.db.NewIteratorWithPrefix([]byte{addressPrefix})
+func (s *Storage) GetAddresses(subnetID, chainID ids.ID) ([]*AddressInfo, error) {
+	prefix := s.generateKey(addressPrefix, subnetID, chainID, nil)
+	iter := s.db.NewIteratorWithPrefix(prefix)
 	defer iter.Release()
 
 	addresses := []*AddressInfo{}
 	for iter.Next() {
-		address := codec.Address(iter.Key()[1:])
+		address := codec.Address(iter.Key()[len(prefix):])
 		nickname := string(iter.Value())
 		addresses = append(addresses, &AddressInfo{nickname, codec.MustAddressBech32(tconsts.HRP, address), fmt.Sprintf("%s [%s..%s]", nickname, address[:len(tconsts.HRP)+3], address[len(address)-3:])})
 	}
 	return addresses, iter.Error()
 }
 
-func (s *Storage) StoreSolution(solution *FaucetSearchInfo) error {
+func (s *Storage) StoreSolution(subnetID, chainID ids.ID, solution *FaucetSearchInfo) error {
 	solutionID := hutils.ToID([]byte(solution.Solution))
 	inverseTime := consts.MaxUint64 - uint64(time.Now().UnixMilli())
-	k := make([]byte, 1+consts.Uint64Len+ids.IDLen)
-	k[0] = searchPrefix
-	binary.BigEndian.PutUint64(k[1:], inverseTime)
-	copy(k[1+consts.Uint64Len:], solutionID[:])
+	solutionKey := append(binary.BigEndian.AppendUint64(nil, inverseTime), solutionID[:]...)
+	k := s.generateKey(searchPrefix, subnetID, chainID, solutionKey)
 	b, err := json.Marshal(solution)
 	if err != nil {
 		return err
@@ -163,22 +171,25 @@ func (s *Storage) StoreSolution(solution *FaucetSearchInfo) error {
 	return s.db.Put(k, b)
 }
 
-func (s *Storage) GetSolutions() ([]*FaucetSearchInfo, error) {
-	iter := s.db.NewIteratorWithPrefix([]byte{searchPrefix})
+func (s *Storage) GetSolutions(subnetID, chainID ids.ID) ([]*FaucetSearchInfo, error) {
+	prefix := s.generateKey(searchPrefix, subnetID, chainID, nil)
+	iter := s.db.NewIteratorWithPrefix(prefix)
 	defer iter.Release()
 
-	fs := []*FaucetSearchInfo{}
+	solutions := []*FaucetSearchInfo{}
 	for iter.Next() {
-		var f FaucetSearchInfo
-		if err := json.Unmarshal(iter.Value(), &f); err != nil {
+		var solution FaucetSearchInfo
+		if err := json.Unmarshal(iter.Value(), &solution); err != nil {
 			return nil, err
 		}
-		fs = append(fs, &f)
+		solutions = append(solutions, &solution)
 	}
-	return fs, iter.Error()
+	return solutions, iter.Error()
 }
 
-func (s *Storage) DeleteDBKey(k []byte) error {
+func (s *Storage) DeleteDBKey(subnetID, chainID ids.ID, keyData []byte) error {
+	// Determine the full key using the known structure of the stored data
+	k := s.generateKey(keyData[0], subnetID, chainID, keyData[1:])
 	return s.db.Delete(k)
 }
 

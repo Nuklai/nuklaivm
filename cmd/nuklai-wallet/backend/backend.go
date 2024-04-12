@@ -318,12 +318,12 @@ func (b *Backend) collectBlocks() {
 									return
 								}
 							}
-							if err := b.s.StoreTransaction(txInfo); err != nil {
+							if err := b.s.StoreTransaction(b.subnetID, b.chainID, txInfo); err != nil {
 								b.fatal(err)
 								return
 							}
 						} else if actor == b.addr {
-							if err := b.s.StoreTransaction(txInfo); err != nil {
+							if err := b.s.StoreTransaction(b.subnetID, b.chainID, txInfo); err != nil {
 								b.fatal(err)
 								return
 							}
@@ -351,7 +351,7 @@ func (b *Backend) collectBlocks() {
 						} else {
 							txInfo.Summary = string(result.Output)
 						}
-						if err := b.s.StoreTransaction(txInfo); err != nil {
+						if err := b.s.StoreTransaction(b.subnetID, b.chainID, txInfo); err != nil {
 							b.fatal(err)
 							return
 						}
@@ -396,12 +396,12 @@ func (b *Backend) collectBlocks() {
 									return
 								}
 							}
-							if err := b.s.StoreTransaction(txInfo); err != nil {
+							if err := b.s.StoreTransaction(b.subnetID, b.chainID, txInfo); err != nil {
 								b.fatal(err)
 								return
 							}
 						} else if actor == b.addr {
-							if err := b.s.StoreTransaction(txInfo); err != nil {
+							if err := b.s.StoreTransaction(b.subnetID, b.chainID, txInfo); err != nil {
 								b.fatal(err)
 								return
 							}
@@ -802,7 +802,7 @@ func (b *Backend) GetTransactions() *Transactions {
 		alerts = b.transactionAlerts
 		b.transactionAlerts = []*Alert{}
 	}
-	txs, err := b.s.GetTransactions()
+	txs, err := b.s.GetTransactions(b.subnetID, b.chainID)
 	if err != nil {
 		b.fatal(err)
 		return nil
@@ -857,7 +857,7 @@ func (b *Backend) StartFaucetSearch() (*FaucetSearchInfo, error) {
 		search := b.search
 		b.search = nil
 		b.searchLock.Unlock()
-		if err := b.s.StoreSolution(search); err != nil {
+		if err := b.s.StoreSolution(b.subnetID, b.chainID, search); err != nil {
 			b.fatal(err)
 		}
 	}()
@@ -865,7 +865,7 @@ func (b *Backend) StartFaucetSearch() (*FaucetSearchInfo, error) {
 }
 
 func (b *Backend) GetFaucetSolutions() *FaucetSolutions {
-	solutions, err := b.s.GetSolutions()
+	solutions, err := b.s.GetSolutions(b.subnetID, b.chainID)
 	if err != nil {
 		b.fatal(err)
 		return nil
@@ -884,7 +884,7 @@ func (b *Backend) GetFaucetSolutions() *FaucetSolutions {
 }
 
 func (b *Backend) GetAddressBook() []*AddressInfo {
-	addresses, err := b.s.GetAddresses()
+	addresses, err := b.s.GetAddresses(b.subnetID, b.chainID)
 	if err != nil {
 		b.fatal(err)
 		return nil
@@ -896,7 +896,7 @@ func (b *Backend) GetAddressBook() []*AddressInfo {
 func (b *Backend) AddAddressBook(name string, address string) error {
 	name = strings.TrimSpace(name)
 	address = strings.TrimSpace(address)
-	return b.s.StoreAddress(address, name)
+	return b.s.StoreAddress(b.subnetID, b.chainID, address, name)
 }
 
 func (b *Backend) GetAllAssets() []*AssetInfo {

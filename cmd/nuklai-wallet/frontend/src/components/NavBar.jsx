@@ -68,8 +68,6 @@ const NavBar = () => {
         GetTransactions()
       ])
 
-      console.log('txs: ', txs.TxInfos)
-
       setAddress(newAddress)
       setBalances(newBalances)
       setTransactions(txs.TxInfos)
