@@ -56,7 +56,10 @@ type UpdateNuklaiRPCReply struct {
 }
 
 func (j *JSONRPCServer) UpdateNuklaiRPC(req *http.Request, args *UpdateNuklaiRPCArgs, reply *UpdateNuklaiRPCReply) error {
-	j.m.UpdateNuklaiRPC(req.Context(), args.NuklaiRPCUrl)
+	err := j.m.UpdateNuklaiRPC(req.Context(), args.NuklaiRPCUrl)
+	if err != nil {
+		return err
+	}
 	reply.Success = true
 	return nil
 }
