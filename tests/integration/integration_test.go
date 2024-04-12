@@ -43,6 +43,7 @@ import (
 	"github.com/nuklai/nuklaivm/auth"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/controller"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
@@ -1669,6 +1670,13 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			balance, err = instances[3].ncli.Balance(context.TODO(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[3]), ids.Empty)
 			gomega.Ω(err).Should(gomega.BeNil())
 			fmt.Printf("node 3 %s balance after staking %d\n", codec.MustAddressBech32(nconsts.HRP, nodesAddresses[3]), balance)
+
+			emissionInstance := emission.GetEmission()
+			currentValidators := emissionInstance.GetAllValidators(context.TODO())
+			fmt.Println(currentValidators)
+			stakedValidator := emissionInstance.GetStakedValidator(instances[3].nodeID)
+			fmt.Println(stakedValidator)
+
 		})
 
 		ginkgo.By("Get validator staked amount after node 3 validator staking", func() {
