@@ -1675,7 +1675,7 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			_, _, stakedAmount, _, _, _, err := instances[3].ncli.ValidatorStake(context.Background(), instances[3].nodeID)
 			fmt.Printf("NODE 3 STAKED AMOUNT %d", stakedAmount)
 			gomega.Ω(err).Should(gomega.BeNil())
-			gomega.Ω(stakedAmount).Should(gomega.Equal(1000)) // multiply by the decimals
+			gomega.Ω(stakedAmount).Should(gomega.Equal(100_000_000_000)) // multiply by the decimals
 		})
 	})
 
