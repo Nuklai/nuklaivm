@@ -51,6 +51,12 @@ type UpdateNuklaiRPCArgs struct {
 	NuklaiRPCUrl string `json:"nuklaiRPCUrl"`
 }
 
-func (j *JSONRPCServer) UpdateNuklaiRPC(req *http.Request, args *UpdateNuklaiRPCArgs, _ *struct{}) error {
-	return j.m.UpdateNuklaiRPC(req.Context(), args.NuklaiRPCUrl)
+type UpdateNuklaiRPCReply struct {
+	Success bool `json:"success"`
+}
+
+func (j *JSONRPCServer) UpdateNuklaiRPC(req *http.Request, args *UpdateNuklaiRPCArgs, reply *UpdateNuklaiRPCReply) error {
+	j.m.UpdateNuklaiRPC(req.Context(), args.NuklaiRPCUrl)
+	reply.Success = true
+	return nil
 }

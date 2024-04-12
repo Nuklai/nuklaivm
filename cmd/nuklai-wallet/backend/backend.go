@@ -63,13 +63,14 @@ type Backend struct {
 	addr    codec.Address
 	addrStr string
 
-	cli     *rpc.JSONRPCClient
-	chainID ids.ID
-	scli    *rpc.WebSocketClient
-	ncli    *nrpc.JSONRPCClient
-	parser  chain.Parser
-	fcli    *frpc.JSONRPCClient
-	fecli   *ferpc.JSONRPCClient
+	cli      *rpc.JSONRPCClient
+	subnetID ids.ID
+	chainID  ids.ID
+	scli     *rpc.WebSocketClient
+	ncli     *nrpc.JSONRPCClient
+	parser   chain.Parser
+	fcli     *frpc.JSONRPCClient
+	fecli    *ferpc.JSONRPCClient
 
 	blockLock   sync.Mutex
 	blocks      []*BlockInfo
@@ -85,6 +86,7 @@ type Backend struct {
 
 	htmlCache *cache.LRU[string, *HTMLMeta]
 	urlQueue  chan string
+	stopChans map[string]chan bool // Map to hold channels that control the stopping of goroutines
 }
 
 // NewApp creates a new App application struct
@@ -191,10 +193,11 @@ func (b *Backend) Start(ctx context.Context) error {
 
 	// Create clients
 	b.cli = rpc.NewJSONRPCClient(b.c.NuklaiRPC)
-	networkID, _, chainID, err := b.cli.Network(b.ctx)
+	networkID, subnetID, chainID, err := b.cli.Network(b.ctx)
 	if err != nil {
 		return err
 	}
+	b.subnetID = subnetID
 	b.chainID = chainID
 	scli, err := rpc.NewWebSocketClient(b.c.NuklaiRPC, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
 	if err != nil {
@@ -210,249 +213,271 @@ func (b *Backend) Start(ctx context.Context) error {
 	b.fcli = frpc.NewJSONRPCClient(b.c.FaucetRPC)
 	b.fecli = ferpc.NewJSONRPCClient(b.c.FeedRPC)
 
+	b.stopChans = make(map[string]chan bool)
+	b.stopChans["collectBlocks"] = make(chan bool)
+	b.stopChans["parseURLs"] = make(chan bool)
+
 	// Start fetching blocks
 	go b.collectBlocks()
 	go b.parseURLs()
 	return nil
 }
 
-func (b *Backend) collectBlocks() {
-	if err := b.scli.RegisterBlocks(); err != nil {
-		b.fatal(err)
-		return
+func (b *Backend) restartCollectBlocks() {
+	select {
+	case b.stopChans["collectBlocks"] <- true:
+		// Signal to stop the existing goroutine
+	default:
+		// No need to block if it's already stopped
 	}
 
-	var (
-		start     time.Time
-		lastBlock int64
-		tpsWindow = window.Window{}
-	)
-	for b.ctx.Err() == nil {
-		blk, results, prices, err := b.scli.ListenBlock(b.ctx, b.parser)
-		if err != nil {
-			b.fatal(err)
-			return
-		}
-		consumed := chain.Dimensions{}
-		failTxs := 0
-		for i, result := range results {
-			nconsumed, err := chain.Add(consumed, result.Consumed)
-			if err != nil {
+	go b.collectBlocks()
+}
+
+func (b *Backend) collectBlocks() {
+	for {
+		select {
+		case <-b.stopChans["collectBlocks"]:
+			return // Stop the goroutine
+		default:
+			if err := b.scli.RegisterBlocks(); err != nil {
 				b.fatal(err)
 				return
 			}
-			consumed = nconsumed
 
-			tx := blk.Txs[i]
-			actor := tx.Auth.Actor()
-			if !result.Success {
-				failTxs++
-			}
-
-			// We should exit action parsing as soon as possible
-			switch action := tx.Action.(type) {
-			case *actions.Transfer:
-				if actor != b.addr && action.To != b.addr {
-					continue
-				}
-				_, symbol, decimals, _, _, owner, _, err := b.ncli.Asset(b.ctx, action.Asset, true)
+			var (
+				start     time.Time
+				lastBlock int64
+				tpsWindow = window.Window{}
+			)
+			for b.ctx.Err() == nil {
+				blk, results, prices, err := b.scli.ListenBlock(b.ctx, b.parser)
 				if err != nil {
 					b.fatal(err)
 					return
 				}
-				txInfo := &TransactionInfo{
-					ID:        tx.ID().String(),
-					Size:      fmt.Sprintf("%.2fKB", float64(tx.Size())/units.KiB),
-					Success:   result.Success,
-					Timestamp: blk.Tmstmp,
-					Actor:     codec.MustAddressBech32(nconsts.HRP, actor),
-					Type:      "Transfer",
-					Units:     hcli.ParseDimensions(result.Consumed),
-					Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, nconsts.Decimals), nconsts.Symbol),
-				}
-				if result.Success {
-					txInfo.Summary = fmt.Sprintf("%s %s -> %s", hutils.FormatBalance(action.Value, decimals), symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
-					if len(action.Memo) > 0 {
-						txInfo.Summary += fmt.Sprintf(" (memo: %s)", action.Memo)
-					}
-				} else {
-					txInfo.Summary = string(result.Output)
-				}
-				if action.To == b.addr {
-					if actor != b.addr && result.Success {
-						b.txAlertLock.Lock()
-						b.transactionAlerts = append(b.transactionAlerts, &Alert{"info", fmt.Sprintf("Received %s %s from Transfer", hutils.FormatBalance(action.Value, decimals), symbol)})
-						b.txAlertLock.Unlock()
-					}
-					hasAsset, err := b.s.HasAsset(action.Asset)
+				consumed := chain.Dimensions{}
+				failTxs := 0
+				for i, result := range results {
+					nconsumed, err := chain.Add(consumed, result.Consumed)
 					if err != nil {
 						b.fatal(err)
 						return
 					}
-					if !hasAsset {
-						if err := b.s.StoreAsset(action.Asset, b.addrStr == owner); err != nil {
+					consumed = nconsumed
+
+					tx := blk.Txs[i]
+					actor := tx.Auth.Actor()
+					if !result.Success {
+						failTxs++
+					}
+
+					// We should exit action parsing as soon as possible
+					switch action := tx.Action.(type) {
+					case *actions.Transfer:
+						if actor != b.addr && action.To != b.addr {
+							continue
+						}
+						_, symbol, decimals, _, _, owner, _, err := b.ncli.Asset(b.ctx, action.Asset, true)
+						if err != nil {
 							b.fatal(err)
 							return
 						}
+						txInfo := &TransactionInfo{
+							ID:        tx.ID().String(),
+							Size:      fmt.Sprintf("%.2fKB", float64(tx.Size())/units.KiB),
+							Success:   result.Success,
+							Timestamp: blk.Tmstmp,
+							Actor:     codec.MustAddressBech32(nconsts.HRP, actor),
+							Type:      "Transfer",
+							Units:     hcli.ParseDimensions(result.Consumed),
+							Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, nconsts.Decimals), nconsts.Symbol),
+						}
+						if result.Success {
+							txInfo.Summary = fmt.Sprintf("%s %s -> %s", hutils.FormatBalance(action.Value, decimals), symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
+							if len(action.Memo) > 0 {
+								txInfo.Summary += fmt.Sprintf(" (memo: %s)", action.Memo)
+							}
+						} else {
+							txInfo.Summary = string(result.Output)
+						}
+						if action.To == b.addr {
+							if actor != b.addr && result.Success {
+								b.txAlertLock.Lock()
+								b.transactionAlerts = append(b.transactionAlerts, &Alert{"info", fmt.Sprintf("Received %s %s from Transfer", hutils.FormatBalance(action.Value, decimals), symbol)})
+								b.txAlertLock.Unlock()
+							}
+							hasAsset, err := b.s.HasAsset(action.Asset)
+							if err != nil {
+								b.fatal(err)
+								return
+							}
+							if !hasAsset {
+								if err := b.s.StoreAsset(action.Asset, b.addrStr == owner); err != nil {
+									b.fatal(err)
+									return
+								}
+							}
+							if err := b.s.StoreTransaction(txInfo); err != nil {
+								b.fatal(err)
+								return
+							}
+						} else if actor == b.addr {
+							if err := b.s.StoreTransaction(txInfo); err != nil {
+								b.fatal(err)
+								return
+							}
+						}
+					case *actions.CreateAsset:
+						if actor != b.addr {
+							continue
+						}
+						if err := b.s.StoreAsset(tx.ID(), true); err != nil {
+							b.fatal(err)
+							return
+						}
+						txInfo := &TransactionInfo{
+							ID:        tx.ID().String(),
+							Size:      fmt.Sprintf("%.2fKB", float64(tx.Size())/units.KiB),
+							Success:   result.Success,
+							Timestamp: blk.Tmstmp,
+							Actor:     codec.MustAddressBech32(nconsts.HRP, actor),
+							Type:      "CreateAsset",
+							Units:     hcli.ParseDimensions(result.Consumed),
+							Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, nconsts.Decimals), nconsts.Symbol),
+						}
+						if result.Success {
+							txInfo.Summary = fmt.Sprintf("assetID: %s symbol: %s decimals: %d metadata: %s", tx.ID(), action.Symbol, action.Decimals, action.Metadata)
+						} else {
+							txInfo.Summary = string(result.Output)
+						}
+						if err := b.s.StoreTransaction(txInfo); err != nil {
+							b.fatal(err)
+							return
+						}
+					case *actions.MintAsset:
+						if actor != b.addr && action.To != b.addr {
+							continue
+						}
+						_, symbol, decimals, _, _, owner, _, err := b.ncli.Asset(b.ctx, action.Asset, true)
+						if err != nil {
+							b.fatal(err)
+							return
+						}
+						txInfo := &TransactionInfo{
+							ID:        tx.ID().String(),
+							Timestamp: blk.Tmstmp,
+							Size:      fmt.Sprintf("%.2fKB", float64(tx.Size())/units.KiB),
+							Success:   result.Success,
+							Actor:     codec.MustAddressBech32(nconsts.HRP, actor),
+							Type:      "Mint",
+							Units:     hcli.ParseDimensions(result.Consumed),
+							Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, nconsts.Decimals), nconsts.Symbol),
+						}
+						if result.Success {
+							txInfo.Summary = fmt.Sprintf("%s %s -> %s", hutils.FormatBalance(action.Value, decimals), symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
+						} else {
+							txInfo.Summary = string(result.Output)
+						}
+						if action.To == b.addr {
+							if actor != b.addr && result.Success {
+								b.txAlertLock.Lock()
+								b.transactionAlerts = append(b.transactionAlerts, &Alert{"info", fmt.Sprintf("Received %s %s from Mint", hutils.FormatBalance(action.Value, decimals), symbol)})
+								b.txAlertLock.Unlock()
+							}
+							hasAsset, err := b.s.HasAsset(action.Asset)
+							if err != nil {
+								b.fatal(err)
+								return
+							}
+							if !hasAsset {
+								if err := b.s.StoreAsset(action.Asset, b.addrStr == owner); err != nil {
+									b.fatal(err)
+									return
+								}
+							}
+							if err := b.s.StoreTransaction(txInfo); err != nil {
+								b.fatal(err)
+								return
+							}
+						} else if actor == b.addr {
+							if err := b.s.StoreTransaction(txInfo); err != nil {
+								b.fatal(err)
+								return
+							}
+						}
 					}
-					if err := b.s.StoreTransaction(txInfo); err != nil {
+				}
+				now := time.Now()
+				if start.IsZero() {
+					start = now
+				}
+				bi := &BlockInfo{}
+				if lastBlock != 0 {
+					since := now.Unix() - lastBlock
+					newWindow, err := window.Roll(tpsWindow, int(since))
+					if err != nil {
 						b.fatal(err)
 						return
 					}
-				} else if actor == b.addr {
-					if err := b.s.StoreTransaction(txInfo); err != nil {
-						b.fatal(err)
-						return
-					}
-				}
-			case *actions.CreateAsset:
-				if actor != b.addr {
-					continue
-				}
-				if err := b.s.StoreAsset(tx.ID(), true); err != nil {
-					b.fatal(err)
-					return
-				}
-				txInfo := &TransactionInfo{
-					ID:        tx.ID().String(),
-					Size:      fmt.Sprintf("%.2fKB", float64(tx.Size())/units.KiB),
-					Success:   result.Success,
-					Timestamp: blk.Tmstmp,
-					Actor:     codec.MustAddressBech32(nconsts.HRP, actor),
-					Type:      "CreateAsset",
-					Units:     hcli.ParseDimensions(result.Consumed),
-					Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, nconsts.Decimals), nconsts.Symbol),
-				}
-				if result.Success {
-					txInfo.Summary = fmt.Sprintf("assetID: %s symbol: %s decimals: %d metadata: %s", tx.ID(), action.Symbol, action.Decimals, action.Metadata)
+					tpsWindow = newWindow
+					window.Update(&tpsWindow, window.WindowSliceSize-consts.Uint64Len, uint64(len(blk.Txs)))
+					runningDuration := time.Since(start)
+					tpsDivisor := math.Min(window.WindowSize, runningDuration.Seconds())
+					bi.TPS = fmt.Sprintf("%.2f", float64(window.Sum(tpsWindow))/tpsDivisor)
+					bi.Latency = time.Now().UnixMilli() - blk.Tmstmp
 				} else {
-					txInfo.Summary = string(result.Output)
+					window.Update(&tpsWindow, window.WindowSliceSize-consts.Uint64Len, uint64(len(blk.Txs)))
+					bi.TPS = "0.0"
 				}
-				if err := b.s.StoreTransaction(txInfo); err != nil {
-					b.fatal(err)
-					return
-				}
-			case *actions.MintAsset:
-				if actor != b.addr && action.To != b.addr {
-					continue
-				}
-				_, symbol, decimals, _, _, owner, _, err := b.ncli.Asset(b.ctx, action.Asset, true)
+				blkID, err := blk.ID()
 				if err != nil {
 					b.fatal(err)
 					return
 				}
-				txInfo := &TransactionInfo{
-					ID:        tx.ID().String(),
-					Timestamp: blk.Tmstmp,
-					Size:      fmt.Sprintf("%.2fKB", float64(tx.Size())/units.KiB),
-					Success:   result.Success,
-					Actor:     codec.MustAddressBech32(nconsts.HRP, actor),
-					Type:      "Mint",
-					Units:     hcli.ParseDimensions(result.Consumed),
-					Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, nconsts.Decimals), nconsts.Symbol),
-				}
-				if result.Success {
-					txInfo.Summary = fmt.Sprintf("%s %s -> %s", hutils.FormatBalance(action.Value, decimals), symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
-				} else {
-					txInfo.Summary = string(result.Output)
-				}
-				if action.To == b.addr {
-					if actor != b.addr && result.Success {
-						b.txAlertLock.Lock()
-						b.transactionAlerts = append(b.transactionAlerts, &Alert{"info", fmt.Sprintf("Received %s %s from Mint", hutils.FormatBalance(action.Value, decimals), symbol)})
-						b.txAlertLock.Unlock()
-					}
-					hasAsset, err := b.s.HasAsset(action.Asset)
-					if err != nil {
-						b.fatal(err)
-						return
-					}
-					if !hasAsset {
-						if err := b.s.StoreAsset(action.Asset, b.addrStr == owner); err != nil {
-							b.fatal(err)
-							return
-						}
-					}
-					if err := b.s.StoreTransaction(txInfo); err != nil {
-						b.fatal(err)
-						return
-					}
-				} else if actor == b.addr {
-					if err := b.s.StoreTransaction(txInfo); err != nil {
-						b.fatal(err)
-						return
-					}
-				}
-			}
-		}
-		now := time.Now()
-		if start.IsZero() {
-			start = now
-		}
-		bi := &BlockInfo{}
-		if lastBlock != 0 {
-			since := now.Unix() - lastBlock
-			newWindow, err := window.Roll(tpsWindow, int(since))
-			if err != nil {
-				b.fatal(err)
-				return
-			}
-			tpsWindow = newWindow
-			window.Update(&tpsWindow, window.WindowSliceSize-consts.Uint64Len, uint64(len(blk.Txs)))
-			runningDuration := time.Since(start)
-			tpsDivisor := math.Min(window.WindowSize, runningDuration.Seconds())
-			bi.TPS = fmt.Sprintf("%.2f", float64(window.Sum(tpsWindow))/tpsDivisor)
-			bi.Latency = time.Now().UnixMilli() - blk.Tmstmp
-		} else {
-			window.Update(&tpsWindow, window.WindowSliceSize-consts.Uint64Len, uint64(len(blk.Txs)))
-			bi.TPS = "0.0"
-		}
-		blkID, err := blk.ID()
-		if err != nil {
-			b.fatal(err)
-			return
-		}
-		bi.Timestamp = blk.Tmstmp
-		bi.ID = blkID.String()
-		bi.Height = blk.Hght
-		bi.Size = fmt.Sprintf("%.2fKB", float64(blk.Size())/units.KiB)
-		bi.Consumed = hcli.ParseDimensions(consumed)
-		bi.Prices = hcli.ParseDimensions(prices)
-		bi.StateRoot = blk.StateRoot.String()
-		bi.FailTxs = failTxs
-		bi.Txs = len(blk.Txs)
+				bi.Timestamp = blk.Tmstmp
+				bi.ID = blkID.String()
+				bi.Height = blk.Hght
+				bi.Size = fmt.Sprintf("%.2fKB", float64(blk.Size())/units.KiB)
+				bi.Consumed = hcli.ParseDimensions(consumed)
+				bi.Prices = hcli.ParseDimensions(prices)
+				bi.StateRoot = blk.StateRoot.String()
+				bi.FailTxs = failTxs
+				bi.Txs = len(blk.Txs)
 
-		// TODO: find a more efficient way to support this
-		b.blockLock.Lock()
-		b.blocks = append([]*BlockInfo{bi}, b.blocks...)
-		if len(b.blocks) > 100 {
-			b.blocks = b.blocks[:100]
-		}
-		sTime := blk.Tmstmp / consts.MillisecondsPerSecond
-		if b.currentStat != nil && b.currentStat.Timestamp != sTime {
-			b.stats = append(b.stats, b.currentStat)
-			b.currentStat = nil
-		}
-		if b.currentStat == nil {
-			b.currentStat = &TimeStat{Timestamp: sTime, Accounts: set.Set[string]{}}
-		}
-		b.currentStat.Transactions += bi.Txs
-		for _, tx := range blk.Txs {
-			b.currentStat.Accounts.Add(codec.MustAddressBech32(nconsts.HRP, tx.Auth.Sponsor()))
-		}
-		b.currentStat.Prices = prices
-		snow := time.Now().Unix()
-		newStart := 0
-		for i, item := range b.stats {
-			newStart = i
-			if snow-item.Timestamp < 120 {
-				break
+				// TODO: find a more efficient way to support this
+				b.blockLock.Lock()
+				b.blocks = append([]*BlockInfo{bi}, b.blocks...)
+				if len(b.blocks) > 100 {
+					b.blocks = b.blocks[:100]
+				}
+				sTime := blk.Tmstmp / consts.MillisecondsPerSecond
+				if b.currentStat != nil && b.currentStat.Timestamp != sTime {
+					b.stats = append(b.stats, b.currentStat)
+					b.currentStat = nil
+				}
+				if b.currentStat == nil {
+					b.currentStat = &TimeStat{Timestamp: sTime, Accounts: set.Set[string]{}}
+				}
+				b.currentStat.Transactions += bi.Txs
+				for _, tx := range blk.Txs {
+					b.currentStat.Accounts.Add(codec.MustAddressBech32(nconsts.HRP, tx.Auth.Sponsor()))
+				}
+				b.currentStat.Prices = prices
+				snow := time.Now().Unix()
+				newStart := 0
+				for i, item := range b.stats {
+					newStart = i
+					if snow-item.Timestamp < 120 {
+						break
+					}
+				}
+				b.stats = b.stats[newStart:]
+				b.blockLock.Unlock()
+
+				lastBlock = now.Unix()
 			}
 		}
-		b.stats = b.stats[newStart:]
-		b.blockLock.Unlock()
-
-		lastBlock = now.Unix()
 	}
 }
 
@@ -523,6 +548,10 @@ func (b *Backend) GetUnitPrices() []*GenericInfo {
 		info = append(info, &GenericInfo{b.stats[i].Timestamp, b.stats[i].Prices[4], "Storage [Write]"})
 	}
 	return info
+}
+
+func (b *Backend) GetSubnetID() string {
+	return b.subnetID.String()
 }
 
 func (b *Backend) GetChainID() string {
@@ -930,46 +959,64 @@ func (b *Backend) GetFeedInfo() (*FeedInfo, error) {
 	}, nil
 }
 
+func (b *Backend) restartParseURLs() {
+	select {
+	case b.stopChans["parseURLs"] <- true:
+		// Signal to stop the existing goroutine
+	default:
+		// No need to block if it's already stopped
+	}
+
+	go b.parseURLs()
+}
+
 func (b *Backend) parseURLs() {
-	client := http.DefaultClient
 	for {
 		select {
-		case u := <-b.urlQueue:
-			// Protect against maliciously crafted URLs
-			parsedURL, err := url.Parse(u)
-			if err != nil {
-				continue
-			}
-			if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-				continue
-			}
-			ip := net.ParseIP(parsedURL.Host)
-			if ip != nil {
-				if ip.IsPrivate() || ip.IsLoopback() {
-					continue
+		case <-b.stopChans["parseURLs"]:
+			return // Stop the goroutine
+		default:
+			client := http.DefaultClient
+			for {
+				select {
+				case u := <-b.urlQueue:
+					// Protect against maliciously crafted URLs
+					parsedURL, err := url.Parse(u)
+					if err != nil {
+						continue
+					}
+					if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+						continue
+					}
+					ip := net.ParseIP(parsedURL.Host)
+					if ip != nil {
+						if ip.IsPrivate() || ip.IsLoopback() {
+							continue
+						}
+					}
+
+					// Attempt to fetch URL contents
+					ctx, cancel := context.WithTimeout(b.ctx, 30*time.Second)
+					req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
+					if err != nil {
+						cancel()
+						continue
+					}
+					resp, err := client.Do(req)
+					if err != nil {
+						fmt.Println("unable to fetch URL", err)
+						// We already put the URL in as nil in
+						// our cache, so we won't refetch it.
+						cancel()
+						continue
+					}
+					b.htmlCache.Put(u, ParseHTML(u, parsedURL.Host, resp.Body))
+					_ = resp.Body.Close()
+					cancel()
+				case <-b.ctx.Done():
+					return
 				}
 			}
-
-			// Attempt to fetch URL contents
-			ctx, cancel := context.WithTimeout(b.ctx, 30*time.Second)
-			req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
-			if err != nil {
-				cancel()
-				continue
-			}
-			resp, err := client.Do(req)
-			if err != nil {
-				fmt.Println("unable to fetch URL", err)
-				// We already put the URL in as nil in
-				// our cache, so we won't refetch it.
-				cancel()
-				continue
-			}
-			b.htmlCache.Put(u, ParseHTML(u, parsedURL.Host, resp.Body))
-			_ = resp.Body.Close()
-			cancel()
-		case <-b.ctx.Done():
-			return
 		}
 	}
 }
@@ -1065,25 +1112,55 @@ func (b *Backend) Message(message string, url string) error {
 func (b *Backend) UpdateNuklaiRPC(newNuklaiRPCUrl string) error {
 	b.c.NuklaiRPC = newNuklaiRPCUrl
 
+	// Reinitialize the JSONRPCClient with the new URL
+	b.cli = rpc.NewJSONRPCClient(b.c.NuklaiRPC)
+
+	// Refresh the network information
+	networkID, subnetID, chainID, err := b.cli.Network(b.ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get network info: %w", err)
+	}
+	b.subnetID = subnetID
+	b.chainID = chainID
+
+	// Also update for websocket client if needed
+	b.scli, err = rpc.NewWebSocketClient(b.c.NuklaiRPC, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
+	if err != nil {
+		return fmt.Errorf("failed to reinitialize WebSocketClient: %w", err)
+	}
+
+	b.ncli = nrpc.NewJSONRPCClient(b.c.NuklaiRPC, networkID, chainID)
+	parser, err := b.ncli.Parser(b.ctx)
+	if err != nil {
+		return err
+	}
+	b.parser = parser
+
 	// Update clients as well
-	err := b.fcli.UpdateNuklaiRPC(b.ctx, newNuklaiRPCUrl)
+	_, err = b.fcli.UpdateNuklaiRPC(b.ctx, newNuklaiRPCUrl)
 	if err != nil {
 		return err
 	}
-	err = b.fecli.UpdateNuklaiRPC(b.ctx, newNuklaiRPCUrl)
+	_, err = b.fecli.UpdateNuklaiRPC(b.ctx, newNuklaiRPCUrl)
 	if err != nil {
 		return err
 	}
+
+	// Restart the goroutines
+	b.restartCollectBlocks()
+	b.restartParseURLs()
 
 	return nil
 }
 
 func (b *Backend) UpdateFaucetRPC(newFaucetRPCUrl string) {
 	b.c.FaucetRPC = newFaucetRPCUrl
+	b.fcli = frpc.NewJSONRPCClient(b.c.FaucetRPC)
 }
 
 func (b *Backend) UpdateFeedRPC(newFeedRPCUrl string) {
 	b.c.FeedRPC = newFeedRPCUrl
+	b.fecli = ferpc.NewJSONRPCClient(b.c.FeedRPC)
 }
 
 func (b *Backend) GetConfig() *Config {

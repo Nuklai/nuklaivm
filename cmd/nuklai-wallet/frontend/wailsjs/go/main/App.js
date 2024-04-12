@@ -74,6 +74,10 @@ export function GetPublicKey() {
   return window['go']['main']['App']['GetPublicKey']();
 }
 
+export function GetSubnetID() {
+  return window['go']['main']['App']['GetSubnetID']();
+}
+
 export function GetTotalBlocks() {
   return window['go']['main']['App']['GetTotalBlocks']();
 }

@@ -192,10 +192,19 @@ func (m *Manager) SolveChallenge(ctx context.Context, solver codec.Address, salt
 	return txID, m.config.Amount, nil
 }
 
-func (m *Manager) UpdateNuklaiRPC(_ context.Context, newNuklaiRPCUrl string) error {
-	m.l.RLock()
-	defer m.l.RUnlock()
+func (m *Manager) UpdateNuklaiRPC(ctx context.Context, newNuklaiRPCUrl string) error {
+	m.l.Lock()
+	defer m.l.Unlock()
 
+	// Updating the configuration
 	m.config.NuklaiRPC = newNuklaiRPCUrl
+
+	// Re-initializing the RPC client
+	networkID, _, chainID, err := m.cli.Network(ctx)
+	if err != nil {
+		return err
+	}
+	m.cli = rpc.NewJSONRPCClient(newNuklaiRPCUrl)
+	m.ncli = nrpc.NewJSONRPCClient(newNuklaiRPCUrl, networkID, chainID)
 	return nil
 }

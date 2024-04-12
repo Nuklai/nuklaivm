@@ -38,6 +38,8 @@ export function GetPrivateKey():Promise<string>;
 
 export function GetPublicKey():Promise<string>;
 
+export function GetSubnetID():Promise<string>;
+
 export function GetTotalBlocks():Promise<number>;
 
 export function GetTransactionStats():Promise<Array<backend.GenericInfo>>;

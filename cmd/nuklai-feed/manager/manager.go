@@ -1,6 +1,3 @@
-// Copyright (C) 2024, AllianceBlock. All rights reserved.
-// See the file LICENSE for licensing terms.
-
 package manager
 
 import (
@@ -74,6 +71,7 @@ func New(logger logging.Logger, config *config.Config) (*Manager, error) {
 	return m, nil
 }
 
+// updateFee adjusts the fee based on the message frequency during an epoch
 func (m *Manager) updateFee() {
 	m.l.Lock()
 	defer m.l.Unlock()
@@ -95,12 +93,14 @@ func (m *Manager) updateFee() {
 	m.t.SetTimeoutIn(time.Duration(m.config.TargetDurationPerEpoch) * time.Second)
 }
 
+// Run processes blocks and messages, updating the internal feed
 func (m *Manager) Run(ctx context.Context) error {
 	// Start update timer
 	m.t.SetTimeoutIn(time.Duration(m.config.TargetDurationPerEpoch) * time.Second)
 	go m.t.Dispatch()
 	defer m.t.Stop()
 
+	// Continuously listen for new blocks and process transactions directed to the recipient
 	parser, err := m.ncli.Parser(ctx)
 	if err != nil {
 		return err
@@ -109,7 +109,9 @@ func (m *Manager) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	for ctx.Err() == nil { // handle WS client failure
+
+	// Connection loop for robustness
+	for ctx.Err() == nil {
 		scli, err := rpc.NewWebSocketClient(m.config.NuklaiRPC, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
 		if err != nil {
 			m.log.Warn("unable to connect to RPC", zap.String("uri", m.config.NuklaiRPC), zap.Error(err))
@@ -132,15 +134,10 @@ func (m *Manager) Run(ctx context.Context) error {
 			// Look for transactions to recipient
 			for i, tx := range blk.Txs {
 				action, ok := tx.Action.(*actions.Transfer)
-				if !ok {
+				if !ok || action.To != recipientAddr || len(action.Memo) == 0 {
 					continue
 				}
-				if action.To != recipientAddr {
-					continue
-				}
-				if len(action.Memo) == 0 {
-					continue
-				}
+
 				result := results[i]
 				from := tx.Auth.Actor()
 				fromStr := codec.MustAddressBech32(nconsts.HRP, from)
@@ -162,7 +159,8 @@ func (m *Manager) Run(ctx context.Context) error {
 					m.log.Info("incoming message was empty", zap.String("from", fromStr), zap.String("memo", string(action.Memo)), zap.Uint64("payment", action.Value))
 					continue
 				}
-				// TODO: pre-verify URLs
+
+				// Add to feed
 				m.l.Lock()
 				m.f.Lock()
 				m.feed = append([]*FeedObject{{
@@ -173,7 +171,7 @@ func (m *Manager) Run(ctx context.Context) error {
 					Content:   &c,
 				}}, m.feed...)
 				if len(m.feed) > m.config.FeedSize {
-					// TODO: do this more efficiently using a rolling window
+					// Trim the feed to prevent unbounded growth
 					m.feed[m.config.FeedSize] = nil // prevent memory leak
 					m.feed = m.feed[:m.config.FeedSize]
 				}
@@ -201,6 +199,7 @@ func (m *Manager) Run(ctx context.Context) error {
 	return ctx.Err()
 }
 
+// GetFeedInfo provides details about the feed and the current fee
 func (m *Manager) GetFeedInfo(_ context.Context) (codec.Address, uint64, error) {
 	m.l.RLock()
 	defer m.l.RUnlock()
@@ -209,7 +208,7 @@ func (m *Manager) GetFeedInfo(_ context.Context) (codec.Address, uint64, error) 
 	return addr, m.feeAmount, err
 }
 
-// TODO: allow for multiple feeds
+// GetFeed returns a copy of the current feed
 func (m *Manager) GetFeed(context.Context) ([]*FeedObject, error) {
 	m.f.RLock()
 	defer m.f.RUnlock()
@@ -217,10 +216,21 @@ func (m *Manager) GetFeed(context.Context) ([]*FeedObject, error) {
 	return slices.Clone(m.feed), nil
 }
 
-func (m *Manager) UpdateNuklaiRPC(_ context.Context, newNuklaiRPCUrl string) error {
-	m.l.RLock()
-	defer m.l.RUnlock()
+// UpdateNuklaiRPC updates the RPC URL and reconnects clients
+func (m *Manager) UpdateNuklaiRPC(ctx context.Context, newNuklaiRPCUrl string) error {
+	m.l.Lock()
+	defer m.l.Unlock()
 
+	// Updating the configuration
 	m.config.NuklaiRPC = newNuklaiRPCUrl
+
+	// Re-initializing the RPC clients
+	cli := rpc.NewJSONRPCClient(newNuklaiRPCUrl)
+	networkID, _, chainID, err := cli.Network(ctx)
+	if err != nil {
+		return err
+	}
+	m.ncli = nrpc.NewJSONRPCClient(newNuklaiRPCUrl, networkID, chainID)
+
 	return nil
 }

@@ -67,6 +67,10 @@ func (a *App) GetUnitPrices() []*backend.GenericInfo {
 	return a.b.GetUnitPrices()
 }
 
+func (a *App) GetSubnetID() string {
+	return a.b.GetSubnetID()
+}
+
 func (a *App) GetChainID() string {
 	return a.b.GetChainID()
 }

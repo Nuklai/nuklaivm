@@ -34,6 +34,7 @@ import {
   GetConfig,
   GetPrivateKey,
   GetPublicKey,
+  GetSubnetID,
   GetTransactions,
   UpdateFaucetRPC,
   UpdateFeedRPC,
@@ -54,6 +55,7 @@ const NavBar = () => {
   const [address, setAddress] = useState('')
   const [privateKey, setPrivateKey] = useState('')
   const [publicKey, setPublicKey] = useState('')
+  const [subnetID, setSubnetID] = useState('')
   const [chainID, setChainID] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -65,6 +67,8 @@ const NavBar = () => {
         GetBalance(),
         GetTransactions()
       ])
+
+      console.log('txs: ', txs.TxInfos)
 
       setAddress(newAddress)
       setBalances(newBalances)
@@ -97,6 +101,7 @@ const NavBar = () => {
 
   useEffect(() => {
     fetchData()
+    fetchWalletInfo()
     const intervalId = setInterval(fetchData, 5000) // Update every 5 seconds
     return () => clearInterval(intervalId)
   }, [fetchData])
@@ -109,40 +114,38 @@ const NavBar = () => {
   const shortenText = (text, cutoffIndex) =>
     `${text.slice(0, cutoffIndex)}...${text.slice(-cutoffIndex)}`
 
-  // Fetch privateKey and chainID (this is a simplified example, adjust according to your actual API)
-  useEffect(() => {
-    // Fetch private key and chainID securely
-    const fetchWalletInfo = async () => {
-      try {
-        const fetchedPrivateKey = await GetPrivateKey()
-        const fetchedPublicKey = await GetPublicKey()
-        const fetchedChainID = await GetChainID()
+  // Fetch wallet info
+  const fetchWalletInfo = async () => {
+    try {
+      const currentConfig = await GetConfig()
+      const fetchedPrivateKey = await GetPrivateKey()
+      const fetchedPublicKey = await GetPublicKey()
+      const fetchedSubnetID = await GetSubnetID()
+      const fetchedChainID = await GetChainID()
 
-        setPrivateKey(fetchedPrivateKey)
-        setPublicKey(fetchedPublicKey)
-        setChainID(fetchedChainID)
-      } catch (error) {
-        console.error('Error fetching wallet info:', error)
-      }
+      setNuklaiRPC(currentConfig.nuklaiRPC)
+      setFaucetRPC(currentConfig.faucetRPC)
+      setFeedRPC(currentConfig.feedRPC)
+      setPrivateKey(fetchedPrivateKey)
+      setPublicKey(fetchedPublicKey)
+      setSubnetID(fetchedSubnetID)
+      setChainID(fetchedChainID)
+    } catch (error) {
+      console.error('Error fetching wallet info:', error)
     }
-
-    fetchWalletInfo()
-  }, [])
-
-  const fetchConfig = async () => {
-    const currentConfig = await GetConfig()
-    setNuklaiRPC(currentConfig.nuklaiRPC)
-    setFaucetRPC(currentConfig.faucetRPC)
-    setFeedRPC(currentConfig.feedRPC)
   }
 
-  useEffect(() => {
-    fetchConfig()
-  }, [])
-
   const updateNuklaiRPC = async () => {
-    await UpdateNuklaiRPC(nuklaiRPC)
-    message.success('NuklaiRPC updated successfully')
+    try {
+      await UpdateNuklaiRPC(nuklaiRPC)
+      // Re-fetch necessary data
+      fetchData()
+      fetchWalletInfo()
+      message.success('NuklaiRPC updated successfully')
+    } catch (error) {
+      console.error('Failed to update NuklaiRPC:', error)
+      message.error('Failed to update NuklaiRPC. Please try again.')
+    }
   }
 
   const updateFaucetRPC = async () => {
@@ -238,6 +241,7 @@ const NavBar = () => {
             dataSource={[
               { label: 'Private Key', value: privateKey, key: 'privateKey' },
               { label: 'Public Key', value: publicKey, key: 'publicKey' },
+              { label: 'Subnet ID', value: subnetID, key: 'subnetID' },
               { label: 'Chain ID', value: chainID, key: 'chainID' }
             ]}
             renderItem={(item) => (
@@ -260,7 +264,7 @@ const NavBar = () => {
                           cursor: 'pointer'
                         }}
                       >
-                        {item.key !== 'chainID'
+                        {item.key !== 'chainID' && item.key !== 'subnetID'
                           ? shortenText(item.value, 35)
                           : item.value}
                       </Text>
