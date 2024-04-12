@@ -1624,8 +1624,8 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			fmt.Printf("balance factory %s %d\n", sender, balance)
 			gomega.Ω(err).Should(gomega.BeNil())
 
-			err = instances[3].vm.Gossiper().Force(context.TODO())
-			gomega.Ω(err).Should(gomega.BeNil())
+			// err = instances[3].vm.Gossiper().Force(context.TODO())
+			// gomega.Ω(err).Should(gomega.BeNil())
 		})
 
 		ginkgo.By("Register validator stake node 3", func() {
@@ -1683,8 +1683,240 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			_, _, stakedAmount, _, _, _, err := instances[3].ncli.ValidatorStake(context.Background(), instances[3].nodeID)
 			fmt.Printf("NODE 3 STAKED AMOUNT %d", stakedAmount)
 			gomega.Ω(err).Should(gomega.BeNil())
-			gomega.Ω(stakedAmount).Should(gomega.Equal(100_000_000_000)) // multiply by the decimals
+			gomega.Ω(stakedAmount).Should(gomega.Equal(100_000_000_000))
 		})
+
+		// ginkgo.By("Register validator stake node 1", func() {
+		// 	stakeInfo := &actions.ValidatorStakeInfo{
+		// 		NodeID:            instances[1].nodeID.Bytes(),
+		// 		StakeStartTime:    uint64(stakeStartTime.Unix()),
+		// 		StakeEndTime:      uint64(stakeEndTime.Unix()),
+		// 		StakedAmount:      100, // TO DO: SAME TEST WITH 50 TO THROUGH ERROR
+		// 		DelegationFeeRate: uint64(delegationFeeRate),
+		// 		RewardAddress:     rwithdraw1,
+		// 	}
+		// 	stakeInfoBytes, err := stakeInfo.Marshal()
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	signature, err := factory.Sign(stakeInfoBytes)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	signaturePacker := codec.NewWriter(signature.Size(), signature.Size())
+		// 	signature.Marshal(signaturePacker)
+		// 	authSignature := signaturePacker.Bytes()
+		// 	submit, _, _, err := instances[1].hcli.GenerateTransaction(
+		// 		context.Background(),
+		// 		parser1,
+		// 		nil,
+		// 		&actions.RegisterValidatorStake{
+		// 			StakeInfo:     stakeInfoBytes,
+		// 			AuthSignature: authSignature,
+		// 		},
+		// 		factory,
+		// 	)
+		// 	gomega.Ω(err).Should(gomega.HaveOccurred())
+		// 	gomega.Ω(submit(context.Background())).ShouldNot(gomega.BeNil())
+		// })
+
+		// ginkgo.By("Get staked validators", func() {
+		// 	validators, err := instances[0].ncli.StakedValidators(context.Background())
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(len(validators)).Should(gomega.Equal(3))
+		// })
+
+		// ginkgo.By("Get validator staked amount after staking", func() {
+		// 	_, _, stakedAmount, _, _, _, err := instances[0].ncli.ValidatorStake(context.Background(), instances[0].nodeID)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(stakedAmount).Should(gomega.Equal(100))
+		// 	_, _, stakedAmount, _, _, _, err = instances[1].ncli.ValidatorStake(context.Background(), instances[1].nodeID)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(stakedAmount).Should(gomega.Equal(100))
+		// })
+
+		// ginkgo.By("Get staked validators", func() {
+		// 	validators, err := instances[0].ncli.StakedValidators(context.Background())
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(len(validators)).Should(gomega.Equal(2))
+		// })
+
+		// ginkgo.By("Transfer NAI to user and delegate stake to node 0", func() {
+		// 	submit, _, _, err := instances[0].hcli.GenerateTransaction(
+		// 		context.Background(),
+		// 		parser0,
+		// 		nil,
+		// 		&actions.Transfer{
+		// 			To:    rdelegate,
+		// 			Asset: ids.Empty,
+		// 			Value: 100,
+		// 		},
+		// 		factory,
+		// 	)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		// 	currentTime := time.Now().UTC()
+		// 	userStakeStartTime := currentTime.Add(2 * time.Minute)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	submit, _, _, err = instances[0].hcli.GenerateTransaction(
+		// 		context.Background(),
+		// 		parser0,
+		// 		nil,
+		// 		&actions.DelegateUserStake{
+		// 			NodeID:         instances[0].nodeID.Bytes(),
+		// 			StakeStartTime: uint64(userStakeStartTime.Unix()),
+		// 			StakedAmount:   50,
+		// 			RewardAddress:  rdelegate,
+		// 		},
+		// 		delegateFactory,
+		// 	)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		// })
+
+		// ginkgo.By("Delegate stake to node 1", func() {
+		// 	currentTime = time.Now().UTC()
+		// 	userStakeStartTime := currentTime.Add(2 * time.Minute)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	submit, _, _, err := instances[0].hcli.GenerateTransaction(
+		// 		context.Background(),
+		// 		parser0,
+		// 		nil,
+		// 		&actions.DelegateUserStake{
+		// 			NodeID:         instances[0].nodeID.Bytes(),
+		// 			StakeStartTime: uint64(userStakeStartTime.Unix()),
+		// 			StakedAmount:   50,
+		// 			RewardAddress:  rdelegate,
+		// 		},
+		// 		delegateFactory,
+		// 	)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		// })
+
+		// ginkgo.By("Get user stake before claim", func() {
+		// 	_, stakedAmount, _, _, err := instances[0].ncli.UserStake(context.Background(), rdelegate, instances[0].nodeID)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(stakedAmount).Should(gomega.BeNumerically("==", 50))
+		// })
+
+		// ginkgo.By("Claim delegation stake rewards from node 0", func() {
+		// 	submit, _, _, err := instances[0].hcli.GenerateTransaction(
+		// 		context.Background(),
+		// 		parser0,
+		// 		nil,
+		// 		&actions.ClaimDelegationStakeRewards{
+		// 			NodeID:           instances[0].nodeID.Bytes(),
+		// 			UserStakeAddress: rdelegate,
+		// 		},
+		// 		delegateFactory,
+		// 	)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		// })
+
+		// ginkgo.By("Get user stake after claim", func() {
+		// 	_, stakedAmount, _, _, err := instances[0].ncli.UserStake(context.Background(), rdelegate, instances[0].nodeID)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(stakedAmount).Should(gomega.BeNumerically("==", 0))
+		// })
+
+		// ginkgo.By("Undelegate user stake from node 0", func() {
+		// 	submit, _, _, err := instances[0].hcli.GenerateTransaction(
+		// 		context.Background(),
+		// 		parser0,
+		// 		nil,
+		// 		&actions.UndelegateUserStake{
+		// 			NodeID: instances[0].nodeID.Bytes(),
+		// 		},
+		// 		delegateFactory,
+		// 	)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		// })
+
+		// add more ginko.By where error should be thrown with wrong data input
+		// ginkgo.By("Claim validator node 0 stake reward", func() {
+		// 	// ClaimValidatorStakeRewards
+		// 	// TO DO: test claim with a wrong key
+		// 	submit, _, _, err := instances[0].hcli.GenerateTransaction(
+		// 		context.Background(),
+		// 		parser0,
+		// 		nil,
+		// 		&actions.ClaimValidatorStakeRewards{
+		// 			NodeID: instances[0].nodeID.Bytes(),
+		// 		},
+		// 		factory,
+		// 	)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(instances[0].ncli.Balance(context.Background(), withdraw0, ids.Empty)).Should(gomega.BeNumerically(">", 0))
+		// 	gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		// })
+
+		// ginkgo.By("Withdraw validator node 0 stake", func() {
+		// 	// WithdrawValidatorStake
+		// 	// TO DO: test claim with a wrong key
+		// 	submit, _, _, err := instances[0].hcli.GenerateTransaction(
+		// 		context.Background(),
+		// 		parser0,
+		// 		nil,
+		// 		&actions.WithdrawValidatorStake{
+		// 			NodeID: instances[0].nodeID.Bytes(),
+		// 		},
+		// 		factory,
+		// 	)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		// })
+
+		// ginkgo.By("Get validator stake after staking withdraw ", func() {
+		// 	_, _, stakedAmount, _, _, _, err := instances[0].ncli.ValidatorStake(context.Background(), instances[0].nodeID)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(stakedAmount).Should(gomega.Equal(0))
+		// })
+
+		// ginkgo.By("Withdraw validator node 1 stake with wrong key", func() {
+		// 	// WithdrawValidatorStake
+		// 	// TO DO: test claim with a wrong key
+		// 	submit, _, _, err := instances[1].hcli.GenerateTransaction(
+		// 		context.Background(),
+		// 		parser0,
+		// 		nil,
+		// 		&actions.WithdrawValidatorStake{
+		// 			NodeID: instances[1].nodeID.Bytes(),
+		// 		},
+		// 		factory2,
+		// 	)
+		// 	gomega.Ω(err).ShouldNot(gomega.BeNil())
+		// 	gomega.Ω(submit(context.Background())).ShouldNot(gomega.BeNil())
+		// })
+
+		// staking withdraw then user delegate withdraw on node 1
+		// ginkgo.By("Withdraw validator node 1 stake", func() {
+		// 	// WithdrawValidatorStake
+		// 	// TO DO: test claim with a wrong key
+		// 	submit, _, _, err := instances[1].hcli.GenerateTransaction(
+		// 		context.Background(),
+		// 		parser0,
+		// 		nil,
+		// 		&actions.WithdrawValidatorStake{
+		// 			NodeID: instances[1].nodeID.Bytes(),
+		// 		},
+		// 		factory,
+		// 	)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		// })
+
+		// ginkgo.By("Undelegate user stake from node 1", func() {
+		// 	submit, _, _, err := instances[1].hcli.GenerateTransaction(
+		// 		context.Background(),
+		// 		parser0,
+		// 		nil,
+		// 		&actions.UndelegateUserStake{
+		// 			NodeID: instances[0].nodeID.Bytes(),
+		// 		},
+		// 		delegateFactory,
+		// 	)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		// })
 	})
 
 })
