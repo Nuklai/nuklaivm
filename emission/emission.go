@@ -591,3 +591,8 @@ func (e *Emission) GetLastAcceptedBlockHeight() uint64 {
 	e.c.Logger().Info("fetching last accepted block height")
 	return e.nuklaivm.LastAcceptedBlock().Height()
 }
+
+func (e *Emission) GetEmissionValidators() map[ids.NodeID]*Validator {
+	e.c.Logger().Info("fetching emission validators")
+	return e.validators
+}
