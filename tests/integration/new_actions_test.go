@@ -369,54 +369,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 
 			// app.SendAppGossip(context.Background(), tx.Bytes())
 
-			// txID, err := instances[3].hcli.SubmitTx(context.Background(), tx.Bytes())
-			// fmt.Println(txID)
-			// gomega.Ω(err).Should(gomega.BeNil())
-
-			// gomega.Ω(instances[3].vm.Mempool().Len(context.Background())).Should(gomega.Equal(1))
-			// err = instances[3].vm.Gossiper().Force(context.TODO())
-			// gomega.Ω(err).Should(gomega.BeNil())
-
-			// gomega.Ω(instances[3].vm.Builder().Force(context.TODO())).To(gomega.BeNil())
-			// <-instances[3].toEngine
-
-			// blk, err := instances[3].vm.BuildBlock(context.TODO())
-			// gomega.Ω(err).To(gomega.BeNil())
-
-			// gomega.Ω(blk.Verify(context.TODO())).To(gomega.BeNil())
-			// gomega.Ω(blk.Status()).To(gomega.Equal(choices.Processing))
-
-			// err = instances[3].vm.SetPreference(context.TODO(), blk.ID())
-			// gomega.Ω(err).To(gomega.BeNil())
-
-			// fmt.Println(len(blocks))
-			// gomega.Ω(blk.Accept(context.TODO())).To(gomega.BeNil())
-			// gomega.Ω(blk.Status()).To(gomega.Equal(choices.Accepted))
-			// blocks = append(blocks, blk)
-			// fmt.Println(len(blocks))
-
-			// lastAccepted, err := instances[3].vm.LastAccepted(context.TODO())
-			// gomega.Ω(err).To(gomega.BeNil())
-			// gomega.Ω(lastAccepted).To(gomega.Equal(blk.ID()))
-
-			// results := blk.(*chain.StatelessBlock).Results()
-			// fmt.Println(results[0].Output)
-			// gomega.Ω(results).Should(gomega.HaveLen(1))
-			// gomega.Ω(results[0].Success).Should(gomega.BeTrue())
-			// gomega.Ω(results[0].Output).Should(gomega.BeNil())
-
-			// lastAccepted, err = instances[4].vm.LastAccepted(context.TODO())
-			// gomega.Ω(err).To(gomega.BeNil())
-			// gomega.Ω(lastAccepted).To(gomega.Equal(blk.ID()))
-
-			// sps := state.NewSimpleMutable(instances[3])
-			// instances[3].vm.Gossiper().Force(context.TODO())
-			// instances[3].vm.Builder().Force(context.TODO())
-			// instances[3].vm.ForceReady()
-			// instances[3].vm.PutDiskIsSyncing(true)
-
-			// time.Sleep(5 * time.Second)
-
 			accept := expectBlk(instances[0])
 			results := accept(true)
 			gomega.Ω(results).Should(gomega.HaveLen(1))
@@ -424,33 +376,42 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 
 			gomega.Ω(len(blocks)).Should(gomega.Equal(1))
 
-			blk1, err := instances[3].vm.ParseBlock(context.Background(), blocks[0].Bytes())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk1.Verify(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk1.Accept(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
+			// blk1, err := instances[3].vm.ParseBlock(context.Background(), blocks[0].Bytes())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk1.Verify(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk1.Accept(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
 
-			blk1, err = instances[4].vm.ParseBlock(context.Background(), blocks[0].Bytes())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk1.Verify(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk1.Accept(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
+			blk := blocks[0]
+			ImportBlockToInstance(instances[3].vm, blk)
 
-			blk1, err = instances[2].vm.ParseBlock(context.Background(), blocks[0].Bytes())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk1.Verify(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk1.Accept(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
+			// blk1, err = instances[4].vm.ParseBlock(context.Background(), blocks[0].Bytes())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk1.Verify(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk1.Accept(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
 
-			blk1, err = instances[1].vm.ParseBlock(context.Background(), blocks[0].Bytes())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk1.Verify(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk1.Accept(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
+			ImportBlockToInstance(instances[4].vm, blk)
+
+			// blk1, err = instances[2].vm.ParseBlock(context.Background(), blocks[0].Bytes())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk1.Verify(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk1.Accept(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
+
+			ImportBlockToInstance(instances[2].vm, blk)
+
+			// blk1, err = instances[1].vm.ParseBlock(context.Background(), blocks[0].Bytes())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk1.Verify(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk1.Accept(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
+
+			ImportBlockToInstance(instances[1].vm, blk)
 
 			balance, err := instances[3].ncli.Balance(context.TODO(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[3]), ids.Empty)
 			gomega.Ω(err).Should(gomega.BeNil())
@@ -543,33 +504,33 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 
 			// gomega.Ω(len(blocks)).Should(gomega.Equal(2))
 
-			blk2, err := instances[0].vm.ParseBlock(context.Background(), blocks[1].Bytes())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk2.Verify(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk2.Accept(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
+			// blk2, err := instances[0].vm.ParseBlock(context.Background(), blocks[1].Bytes())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk2.Verify(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk2.Accept(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
 
-			blk2, err = instances[1].vm.ParseBlock(context.Background(), blocks[1].Bytes())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk2.Verify(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk2.Accept(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
+			// blk2, err = instances[1].vm.ParseBlock(context.Background(), blocks[1].Bytes())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk2.Verify(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk2.Accept(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
 
-			blk2, err = instances[2].vm.ParseBlock(context.Background(), blocks[1].Bytes())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk2.Verify(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk2.Accept(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
+			// blk2, err = instances[2].vm.ParseBlock(context.Background(), blocks[1].Bytes())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk2.Verify(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk2.Accept(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
 
-			blk2, err = instances[4].vm.ParseBlock(context.Background(), blocks[1].Bytes())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk2.Verify(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
-			err = blk2.Accept(context.Background())
-			gomega.Ω(err).Should(gomega.BeNil())
+			// blk2, err = instances[4].vm.ParseBlock(context.Background(), blocks[1].Bytes())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk2.Verify(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
+			// err = blk2.Accept(context.Background())
+			// gomega.Ω(err).Should(gomega.BeNil())
 
 			balance, err = instances[3].ncli.Balance(context.TODO(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[3]), ids.Empty)
 			gomega.Ω(err).Should(gomega.BeNil())
@@ -897,4 +858,13 @@ func (*appSender) SendCrossChainAppRequest(context.Context, ids.ID, uint32, []by
 
 func (*appSender) SendCrossChainAppResponse(context.Context, ids.ID, uint32, []byte) error {
 	return nil
+}
+
+func ImportBlockToInstance(vm *vm.VM, block snowman.Block) {
+	blk, err := vm.ParseBlock(context.Background(), block.Bytes())
+	gomega.Ω(err).Should(gomega.BeNil())
+	err = blk.Verify(context.Background())
+	gomega.Ω(err).Should(gomega.BeNil())
+	err = blk.Accept(context.Background())
+	gomega.Ω(err).Should(gomega.BeNil())
 }
