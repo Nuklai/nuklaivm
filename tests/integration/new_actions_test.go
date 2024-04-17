@@ -427,35 +427,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			gomega.Ω(err).Should(gomega.BeNil())
 		})
 
-		// ginkgo.By("Register validator stake node 3", func() {
-		// 	stakeInfo := &actions.ValidatorStakeInfo{
-		// 		NodeID:            instances[3].nodeID.Bytes(),
-		// 		StakeStartTime:    uint64(stakeStartTime.Unix()),
-		// 		StakeEndTime:      uint64(stakeEndTime.Unix()),
-		// 		StakedAmount:      100_000_000_000,
-		// 		DelegationFeeRate: uint64(delegationFeeRate),
-		// 		RewardAddress:     rwithdraw0,
-		// 	}
-
-		// 	emissionInstance := emissions[3]
-		// 	stakedValidator := emissionInstance.GetStakedValidator(instances[3].nodeID)
-		// 	gomega.Ω(len(stakedValidator)).To(gomega.Equal(0))
-		// 	err = emissionInstance.RegisterValidatorStake(instances[3].nodeID, nodesPubKeys[3], stakeInfo.StakeStartTime, stakeInfo.StakeEndTime, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate)
-		// 	_, exists := emissionInstance.GetEmissionValidators()[instances[3].nodeID]
-		// 	gomega.Ω(exists).To(gomega.Equal(true))
-		// 	stakedValidator = emissionInstance.GetStakedValidator(instances[3].nodeID)
-		// 	gomega.Ω(len(stakedValidator)).To(gomega.Equal(1))
-		// 	validator := stakedValidator[0]
-		// 	gomega.Ω(validator.IsActive).To(gomega.Equal(true))
-		// 	gomega.Ω(validator.StakedAmount).To(gomega.Equal(100_000_000_000))
-		// 	err := storage.SubBalance(context.Background(), &state.MockMutable{}, nodesAddresses[3], ids.Empty, stakeInfo.StakedAmount)
-		// 	gomega.Ω(err).Should(gomega.BeNil())
-		// 	err = storage.SetRegisterValidatorStake(context.Background(), &state.MockMutable{}, instances[3].nodeID, stakeInfo.StakeStartTime, stakeInfo.StakeEndTime, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate, stakeInfo.RewardAddress, nodesAddresses[3])
-		// 	gomega.Ω(err).Should(gomega.BeNil())
-		// })
-
-		// OLD ONES
-
 		ginkgo.By("Register validator stake node 3", func() {
 			parser, err := instances[3].ncli.Parser(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
