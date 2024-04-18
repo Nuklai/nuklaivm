@@ -201,7 +201,7 @@ func (m *Manager) RestartRun(ctx context.Context) {
 		m.wg.Wait()    // wait for it to finish
 	}
 
-	newCtx, cancel := context.WithCancel(context.Background())
+	newCtx, cancel := context.WithCancel(ctx)
 	m.cancelFunc = cancel // update with new cancel func
 
 	m.wg.Add(1)
