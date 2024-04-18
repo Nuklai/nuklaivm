@@ -59,7 +59,22 @@ type Manager struct {
 }
 
 func New(logger logging.Logger, config *config.Config) (*Manager, error) {
+	// Create a cancellable context at the start of the function.
 	ctx, cancel := context.WithCancel(context.Background())
+
+	// Declare err early to make it accessible inside the defer function
+	var err error
+
+	// Ensure that the cancel function is called if this function exits
+	// after the context is created, but before it is stored in the Manager struct.
+	defer func() {
+		// Only call cancel if returning with an error,
+		// because otherwise, the cancel function will be stored in the Manager struct.
+		if err != nil {
+			cancel()
+		}
+	}()
+
 	cli := rpc.NewJSONRPCClient(config.NuklaiRPC)
 	networkID, _, chainID, err := cli.Network(ctx)
 	if err != nil {
