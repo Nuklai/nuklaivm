@@ -136,7 +136,7 @@ var (
 	// err error
 	nodesFactories []*auth.BLSFactory
 	nodesAddresses []codec.Address
-	emissions      []*emission.Emission
+	emissions      []emission.Tracker
 	nodesPubKeys   []*bls.PublicKey
 )
 
@@ -193,7 +193,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	instances = make([]instance, vms)
 	nodesFactories = make([]*auth.BLSFactory, vms)
 	nodesAddresses = make([]codec.Address, vms)
-	emissions = make([]*emission.Emission, vms)
+	emissions = make([]emission.Tracker, vms)
 	nodesPubKeys = make([]*bls.PublicKey, vms)
 
 	gen = genesis.Default()
@@ -310,6 +310,8 @@ var _ = ginkgo.BeforeSuite(func() {
 		gomega.Ω(warp).Should(gomega.BeFalse())
 	}
 	blocks = []snowman.Block{}
+
+	setEmissionValidators()
 
 	app.instances = instances
 	color.Blue("created %d VMs", vms)
@@ -838,4 +840,20 @@ func ImportBlockToInstance(vm *vm.VM, block snowman.Block) {
 	gomega.Ω(err).Should(gomega.BeNil())
 	err = blk.Accept(context.Background())
 	gomega.Ω(err).Should(gomega.BeNil())
+}
+
+func setEmissionValidators() {
+	currentValidators := make([]*emission.Validator, 0, len(instances))
+	for i, inst := range instances {
+		val := emission.Validator{
+			NodeID:    inst.nodeID,
+			PublicKey: bls.PublicKeyToBytes(nodesPubKeys[i]),
+		}
+		currentValidators = append(currentValidators, &val)
+	}
+	fmt.Println(len(currentValidators))
+	for i := range instances {
+		fmt.Println(emissions[i])
+		emissions[i].(*emission.Manual).CurrentValidators = currentValidators
+	}
 }
