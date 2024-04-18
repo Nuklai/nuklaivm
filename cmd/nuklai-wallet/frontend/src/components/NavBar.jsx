@@ -6,6 +6,7 @@ import {
   CheckCircleTwoTone,
   CloseCircleTwoTone,
   ContainerOutlined,
+  CopyOutlined,
   DashboardOutlined,
   GoldOutlined,
   SendOutlined,
@@ -154,6 +155,18 @@ const NavBar = () => {
   const updateFeedRPC = async () => {
     await UpdateFeedRPC(feedRPC)
     message.success('FeedRPC updated successfully')
+  }
+
+  // Function to handle the copying and showing the notification
+  const handleCopyTokenId = (tokenId) => {
+    navigator.clipboard.writeText(tokenId).then(
+      () => {
+        message.success('Token ID copied to clipboard')
+      },
+      (err) => {
+        message.error('Failed to copy Token ID')
+      }
+    )
   }
 
   return (
@@ -310,11 +323,50 @@ const NavBar = () => {
         <List
           bordered
           dataSource={balances}
-          renderItem={(balance) => (
-            <List.Item>
-              <Text>{balance.Str}</Text>
-            </List.Item>
-          )}
+          renderItem={(balance) => {
+            // Extract token information and optional token ID
+            const tokenRegex = /^(.+)\s\[(.+)\]$/ // Regex to extract token details and ID
+            const match = balance.Str.match(tokenRegex)
+            let tokenDisplay, tokenId
+
+            if (match) {
+              tokenDisplay = match[1]
+              tokenId = match[2]
+            } else {
+              tokenDisplay = balance.Str
+              tokenId = ''
+            }
+
+            return (
+              <List.Item
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '10px'
+                }}
+              >
+                <Text strong>{tokenDisplay}</Text>
+                {tokenId ? (
+                  <Button
+                    type='text'
+                    icon={<CopyOutlined />}
+                    onClick={() => handleCopyTokenId(tokenId)}
+                    style={{ color: '#1890ff' }} // Color used to indicate interactivity
+                  >
+                    [{tokenId}]
+                  </Button>
+                ) : (
+                  <Text type='secondary'>No Token ID</Text>
+                )}
+              </List.Item>
+            )
+          }}
+          style={{
+            background: '#f0f2f5',
+            borderRadius: '4px',
+            overflow: 'hidden'
+          }}
         />
 
         <Divider orientation='center'>Transactions</Divider>
@@ -341,7 +393,9 @@ const NavBar = () => {
               <Text strong>Fee:</Text> {item.Fee}
               <br />
               <Text strong>Actor:</Text>{' '}
-              <Text copyable>{shortenText(item.Actor, 20)}</Text>
+              <Text copyable={{ text: item.Actor }}>
+                {shortenText(item.Actor, 20)}
+              </Text>
             </List.Item>
           )}
         />
