@@ -466,7 +466,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			fmt.Printf("node 3 %s balance before staking %d\n", codec.MustAddressBech32(nconsts.HRP, nodesAddresses[3]), balance)
 
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
-			time.Sleep(5 * time.Second)
 
 			fmt.Println(len(blocks))
 
@@ -527,7 +526,7 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			_, _, stakedAmount, _, _, _, err := instances[3].ncli.ValidatorStake(context.Background(), instances[3].nodeID)
 			fmt.Printf("NODE 3 STAKED AMOUNT %d", stakedAmount)
 			gomega.Ω(err).Should(gomega.BeNil())
-			gomega.Ω(stakedAmount).Should(gomega.Equal(100_000_000_000))
+			gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(100_000_000_000)))
 		})
 
 		// ginkgo.By("Get validator staked amount after staking", func() {
