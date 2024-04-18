@@ -50,6 +50,7 @@ const Feed = () => {
         GetFeedInfo(),
         GetBalance()
       ])
+      console.log('feedData: ', JSON.stringify(feedData, null, 4))
       setFeed(feedData)
       setFeedInfo(feedInfoData)
       setBalance(

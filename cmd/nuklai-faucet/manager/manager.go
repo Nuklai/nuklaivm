@@ -43,6 +43,7 @@ type Manager struct {
 	difficulty   uint16
 	solutions    set.Set[ids.ID]
 	cancelFunc   context.CancelFunc
+	wg           sync.WaitGroup // to control the Run method execution
 }
 
 func New(logger logging.Logger, config *config.Config) (*Manager, error) {
@@ -194,39 +195,22 @@ func (m *Manager) SolveChallenge(ctx context.Context, solver codec.Address, salt
 	return txID, m.config.Amount, nil
 }
 
-func (m *Manager) RestartManager(ctx context.Context) error {
-	m.l.Lock()
-	defer m.l.Unlock()
-
-	// Signal to stop the run if it's listening on ctx.Done()
-	m.cancelFunc()
-
-	// Create a new manager instance with the updated configuration or state
-	newManager, err := New(m.log, m.config)
-	if err != nil {
-		return fmt.Errorf("failed to reinitialize the manager: %w", err)
+func (m *Manager) RestartRun(ctx context.Context) {
+	if m.cancelFunc != nil {
+		m.cancelFunc() // request stopping the current Run
+		m.wg.Wait()    // wait for it to finish
 	}
 
-	// Manually update fields, excluding the mutex and cancelFunc
-	m.cli = newManager.cli
-	m.ncli = newManager.ncli
-	m.factory = newManager.factory
-	m.lastRotation = newManager.lastRotation
-	m.salt = newManager.salt
-	m.difficulty = newManager.difficulty
-	m.solutions = newManager.solutions
-	m.t = newManager.t
+	newCtx, cancel := context.WithCancel(context.Background())
+	m.cancelFunc = cancel // update with new cancel func
 
-	// Restart the run function in a new goroutine with a new context
-	newCtx, newCancel := context.WithCancel(context.Background())
-	m.cancelFunc = newCancel // Set the new cancel function
+	m.wg.Add(1)
 	go func() {
+		defer m.wg.Done()
 		if err := m.Run(newCtx); err != nil {
-			m.log.Error("manager run error after reinitialization", zap.Error(err))
+			m.log.Error("Error running manager after restart", zap.Error(err))
 		}
 	}()
-
-	return nil
 }
 
 func (m *Manager) UpdateNuklaiRPC(ctx context.Context, newNuklaiRPCUrl string) error {
@@ -246,11 +230,10 @@ func (m *Manager) UpdateNuklaiRPC(ctx context.Context, newNuklaiRPCUrl string) e
 		m.log.Error("Failed to fetch network details", zap.Error(err))
 		return fmt.Errorf("failed to fetch network details: %w", err)
 	}
-	ncli := nrpc.NewJSONRPCClient(newNuklaiRPCUrl, networkID, chainID)
 
 	// Reassign the newly created clients
 	m.cli = cli
-	m.ncli = ncli
+	m.ncli = nrpc.NewJSONRPCClient(newNuklaiRPCUrl, networkID, chainID)
 
 	// Reinitialize dependent properties
 	m.salt, err = challenge.New()
@@ -262,11 +245,23 @@ func (m *Manager) UpdateNuklaiRPC(ctx context.Context, newNuklaiRPCUrl string) e
 	m.difficulty = m.config.StartDifficulty
 	m.lastRotation = time.Now().Unix()
 
+	bal, err := m.ncli.Balance(ctx, m.config.AddressBech32(), ids.Empty)
+	if err != nil {
+		return err
+	}
+	m.t = timer.NewTimer(m.updateDifficulty)
+
 	m.log.Info("RPC client has been updated and manager reinitialized",
 		zap.String("new RPC URL", newNuklaiRPCUrl),
 		zap.Uint32("network ID", networkID),
 		zap.String("chain ID", chainID.String()),
+		zap.String("address", m.config.AddressBech32()),
+		zap.Uint16("difficulty", m.difficulty),
+		zap.String("balance", utils.FormatBalance(bal, consts.Decimals)),
 	)
+
+	// Restart the Run function safely
+	m.RestartRun(ctx)
 
 	return nil
 }

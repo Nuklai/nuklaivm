@@ -81,16 +81,17 @@ func main() {
 		fatal(log, "cannot create server", zap.Error(err))
 	}
 
-	// Start manager
+	// Start manager with context handling
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	manager, err := manager.New(log, &c)
 	if err != nil {
 		fatal(log, "cannot create manager", zap.Error(err))
 	}
-	go func() {
-		if err := manager.Run(context.Background()); err != nil {
-			log.Error("manager error", zap.Error(err))
-		}
-	}()
+
+	// Start the manager's Run function
+	go manager.RestartRun(ctx) // Use RestartRun to handle the initial run
 
 	// Add feed handler
 	feedServer := frpc.NewJSONRPCServer(manager)
@@ -108,6 +109,7 @@ func main() {
 	go func() {
 		sig := <-sigs
 		log.Info("triggering server shutdown", zap.Any("signal", sig))
+		cancel() // Ensure context cancellation cascades down
 		_ = srv.Shutdown()
 	}()
 	log.Info("server exited", zap.Error(srv.Dispatch()))

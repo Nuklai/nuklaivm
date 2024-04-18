@@ -6,6 +6,7 @@ package manager
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -52,18 +53,20 @@ type Manager struct {
 
 	f sync.RWMutex
 	// TODO: persist this
-	feed []*FeedObject
+	feed       []*FeedObject
+	cancelFunc context.CancelFunc
+	wg         sync.WaitGroup // to control the Run method execution
 }
 
 func New(logger logging.Logger, config *config.Config) (*Manager, error) {
-	ctx := context.TODO()
+	ctx, cancel := context.WithCancel(context.Background())
 	cli := rpc.NewJSONRPCClient(config.NuklaiRPC)
 	networkID, _, chainID, err := cli.Network(ctx)
 	if err != nil {
 		return nil, err
 	}
 	ncli := nrpc.NewJSONRPCClient(config.NuklaiRPC, networkID, chainID)
-	m := &Manager{log: logger, config: config, ncli: ncli, feed: []*FeedObject{}}
+	m := &Manager{log: logger, config: config, ncli: ncli, feed: []*FeedObject{}, cancelFunc: cancel}
 	m.epochStart = time.Now().Unix()
 	m.feeAmount = m.config.MinFee
 	m.log.Info("feed initialized",
@@ -127,11 +130,12 @@ func (m *Manager) Run(ctx context.Context) error {
 			continue
 		}
 		for ctx.Err() == nil {
+			m.log.Info("Listening for blocks...")
 			// Listen for blocks
 			blk, results, _, err := scli.ListenBlock(ctx, parser)
 			if err != nil {
 				m.log.Warn("unable to listen for blocks", zap.Error(err))
-				break
+				continue // Ensure the loop continues or handle reconnection logic here
 			}
 
 			// Look for transactions to recipient
@@ -219,21 +223,59 @@ func (m *Manager) GetFeed(context.Context) ([]*FeedObject, error) {
 	return slices.Clone(m.feed), nil
 }
 
+func (m *Manager) RestartRun(ctx context.Context) {
+	if m.cancelFunc != nil {
+		m.cancelFunc() // request stopping the current Run
+		m.wg.Wait()    // wait for it to finish
+	}
+
+	newCtx, cancel := context.WithCancel(context.Background())
+	m.cancelFunc = cancel // update with new cancel func
+
+	m.wg.Add(1)
+	go func() {
+		defer m.wg.Done()
+		if err := m.Run(newCtx); err != nil {
+			m.log.Error("Error running manager after restart", zap.Error(err))
+		}
+	}()
+}
+
 // UpdateNuklaiRPC updates the RPC URL and reconnects clients
 func (m *Manager) UpdateNuklaiRPC(ctx context.Context, newNuklaiRPCUrl string) error {
 	m.l.Lock()
 	defer m.l.Unlock()
 
+	m.log.Info("Updating Nuklai RPC URL", zap.String("oldURL", m.config.NuklaiRPC), zap.String("newURL", newNuklaiRPCUrl))
+
 	// Updating the configuration
 	m.config.NuklaiRPC = newNuklaiRPCUrl
 
-	// Re-initializing the RPC clients
+	// Re-initialize RPC clients
 	cli := rpc.NewJSONRPCClient(newNuklaiRPCUrl)
 	networkID, _, chainID, err := cli.Network(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to fetch network details: %w", err)
 	}
+
+	// Reassign the newly created clients
 	m.ncli = nrpc.NewJSONRPCClient(newNuklaiRPCUrl, networkID, chainID)
+
+	// Reinitialize dependent properties
+	m.epochStart = time.Now().Unix()
+	m.feeAmount = m.config.MinFee
+	m.t = timer.NewTimer(m.updateFee)
+
+	m.log.Info("RPC client has been updated and manager reinitialized",
+		zap.String("new RPC URL", newNuklaiRPCUrl),
+		zap.Uint32("network ID", networkID),
+		zap.String("chain ID", chainID.String()),
+		zap.String("address", m.config.Recipient),
+		zap.String("fee", utils.FormatBalance(m.feeAmount, nconsts.Decimals)),
+	)
+
+	// Restart the Run function safely
+	m.RestartRun(ctx)
 
 	return nil
 }
