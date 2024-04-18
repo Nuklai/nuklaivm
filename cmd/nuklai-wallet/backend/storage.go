@@ -74,10 +74,8 @@ func (s *Storage) GetKey() (ed25519.PrivateKey, error) {
 	return ed25519.PrivateKey(v), nil
 }
 
-func (s *Storage) StoreAsset(assetID ids.ID, owned bool) error {
-	k := make([]byte, 1+ids.IDLen)
-	k[0] = assetsPrefix
-	copy(k[1:], assetID[:])
+func (s *Storage) StoreAsset(subnetID, chainID ids.ID, assetID ids.ID, owned bool) error {
+	k := s.generateKey(assetsPrefix, subnetID, chainID, assetID[:])
 	v := []byte{0x0}
 	if owned {
 		v = []byte{0x1}
@@ -85,21 +83,21 @@ func (s *Storage) StoreAsset(assetID ids.ID, owned bool) error {
 	return s.db.Put(k, v)
 }
 
-func (s *Storage) HasAsset(assetID ids.ID) (bool, error) {
-	k := make([]byte, 1+ids.IDLen)
-	k[0] = assetsPrefix
-	copy(k[1:], assetID[:])
+func (s *Storage) HasAsset(subnetID, chainID ids.ID, assetID ids.ID) (bool, error) {
+	k := s.generateKey(assetsPrefix, subnetID, chainID, assetID[:])
 	return s.db.Has(k)
 }
 
-func (s *Storage) GetAssets() ([]ids.ID, []bool, error) {
-	iter := s.db.NewIteratorWithPrefix([]byte{assetsPrefix})
+func (s *Storage) GetAssets(subnetID, chainID ids.ID) ([]ids.ID, []bool, error) {
+	prefix := s.generateKey(assetsPrefix, subnetID, chainID, nil)
+	iter := s.db.NewIteratorWithPrefix(prefix)
 	defer iter.Release()
 
 	assets := []ids.ID{}
 	owned := []bool{}
 	for iter.Next() {
-		assets = append(assets, ids.ID(iter.Key()[1:]))
+		id, _ := ids.ToID(iter.Key()[len(prefix):])
+		assets = append(assets, id)
 		owned = append(owned, iter.Value()[0] == 0x1)
 	}
 	return assets, owned, iter.Error()

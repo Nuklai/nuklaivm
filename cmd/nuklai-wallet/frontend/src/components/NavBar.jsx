@@ -17,8 +17,10 @@ import {
   App,
   Avatar,
   Button,
+  Card,
   Divider,
   Drawer,
+  Form,
   Input,
   Layout,
   List,
@@ -58,6 +60,7 @@ const NavBar = () => {
   const [publicKey, setPublicKey] = useState('')
   const [subnetID, setSubnetID] = useState('')
   const [chainID, setChainID] = useState('')
+  const [form] = Form.useForm() // Form layout for better alignment and submission handling
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   // Define the function to fetch data as a useCallback to prevent redefinition on each render
@@ -129,32 +132,46 @@ const NavBar = () => {
       setPublicKey(fetchedPublicKey)
       setSubnetID(fetchedSubnetID)
       setChainID(fetchedChainID)
+
+      // Update form values
+      form.setFieldsValue({
+        nuklaiRPC: currentConfig.nuklaiRPC,
+        faucetRPC: currentConfig.faucetRPC,
+        feedRPC: currentConfig.feedRPC
+      })
     } catch (error) {
       console.error('Error fetching wallet info:', error)
     }
   }
 
-  const updateNuklaiRPC = async () => {
+  const handleUpdateRPC = async (field) => {
+    const value = form.getFieldValue(field)
     try {
-      await UpdateNuklaiRPC(nuklaiRPC)
-      // Re-fetch necessary data
+      switch (field) {
+        case 'nuklaiRPC':
+          await UpdateNuklaiRPC(value)
+          message.success('NuklaiRPC updated successfully')
+          break
+        case 'faucetRPC':
+          await UpdateFaucetRPC(value)
+          message.success('FaucetRPC updated successfully')
+          break
+        case 'feedRPC':
+          await UpdateFeedRPC(value)
+          message.success('FeedRPC updated successfully')
+          break
+        default:
+          break
+      }
       fetchData()
       fetchWalletInfo()
-      message.success('NuklaiRPC updated successfully')
+
+      // Update form values to ensure UI consistency
+      form.setFieldsValue({ [field]: value })
     } catch (error) {
-      console.error('Failed to update NuklaiRPC:', error)
-      message.error('Failed to update NuklaiRPC. Please try again.')
+      console.error(`Failed to update ${field}:`, error)
+      message.error(`Failed to update ${field}. Please try again.`)
     }
-  }
-
-  const updateFaucetRPC = async () => {
-    await UpdateFaucetRPC(faucetRPC)
-    message.success('FaucetRPC updated successfully')
-  }
-
-  const updateFeedRPC = async () => {
-    await UpdateFeedRPC(feedRPC)
-    message.success('FeedRPC updated successfully')
   }
 
   // Function to handle the copying and showing the notification
@@ -287,37 +304,49 @@ const NavBar = () => {
           />
         </div>
 
-        <Divider orientation='center'>RPC Configuration</Divider>
-        <div>
-          <Input
-            addonBefore='NuklaiRPC'
-            value={nuklaiRPC}
-            onChange={(e) => setNuklaiRPC(e.target.value)}
-          />
-          <Button onClick={updateNuklaiRPC} style={{ margin: '10px 0' }}>
-            Update NuklaiRPC
-          </Button>
-        </div>
-        <div>
-          <Input
-            addonBefore='FaucetRPC'
-            value={faucetRPC}
-            onChange={(e) => setFaucetRPC(e.target.value)}
-          />
-          <Button onClick={updateFaucetRPC} style={{ margin: '10px 0' }}>
-            Update FaucetRPC
-          </Button>
-        </div>
-        <div>
-          <Input
-            addonBefore='FeedRPC'
-            value={feedRPC}
-            onChange={(e) => setFeedRPC(e.target.value)}
-          />
-          <Button onClick={updateFeedRPC} style={{ margin: '10px 0' }}>
-            Update FeedRPC
-          </Button>
-        </div>
+        <Card
+          title='RPC Configuration'
+          bordered={false}
+          style={{ margin: '24px' }}
+        >
+          <Form
+            form={form}
+            layout='vertical'
+            initialValues={{
+              nuklaiRPC,
+              faucetRPC,
+              feedRPC
+            }}
+          >
+            <Form.Item label='NuklaiRPC URL' name='nuklaiRPC'>
+              <Input
+                addonAfter={
+                  <Button onClick={() => handleUpdateRPC('nuklaiRPC')}>
+                    Apply
+                  </Button>
+                }
+              />
+            </Form.Item>
+            <Form.Item label='FaucetRPC URL' name='faucetRPC'>
+              <Input
+                addonAfter={
+                  <Button onClick={() => handleUpdateRPC('faucetRPC')}>
+                    Apply
+                  </Button>
+                }
+              />
+            </Form.Item>
+            <Form.Item label='FeedRPC URL' name='feedRPC'>
+              <Input
+                addonAfter={
+                  <Button onClick={() => handleUpdateRPC('feedRPC')}>
+                    Apply
+                  </Button>
+                }
+              />
+            </Form.Item>
+          </Form>
+        </Card>
 
         <Divider orientation='center'>Tokens</Divider>
         <List
@@ -357,7 +386,7 @@ const NavBar = () => {
                     [{tokenId}]
                   </Button>
                 ) : (
-                  <Text type='secondary'>No Token ID</Text>
+                  <Text type='secondary'>Native Asset</Text>
                 )}
               </List.Item>
             )

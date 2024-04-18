@@ -169,7 +169,7 @@ func (b *Backend) Start(ctx context.Context) error {
 	if err := b.AddAddressBook("Me", b.addrStr); err != nil {
 		return err
 	}
-	if err := b.s.StoreAsset(ids.Empty, false); err != nil {
+	if err := b.s.StoreAsset(b.subnetID, b.chainID, ids.Empty, false); err != nil {
 		return err
 	}
 
@@ -307,13 +307,13 @@ func (b *Backend) collectBlocks() {
 								b.transactionAlerts = append(b.transactionAlerts, &Alert{"info", fmt.Sprintf("Received %s %s from Transfer", hutils.FormatBalance(action.Value, decimals), symbol)})
 								b.txAlertLock.Unlock()
 							}
-							hasAsset, err := b.s.HasAsset(action.Asset)
+							hasAsset, err := b.s.HasAsset(b.subnetID, b.chainID, action.Asset)
 							if err != nil {
 								b.fatal(err)
 								return
 							}
 							if !hasAsset {
-								if err := b.s.StoreAsset(action.Asset, b.addrStr == owner); err != nil {
+								if err := b.s.StoreAsset(b.subnetID, b.chainID, action.Asset, b.addrStr == owner); err != nil {
 									b.fatal(err)
 									return
 								}
@@ -332,7 +332,7 @@ func (b *Backend) collectBlocks() {
 						if actor != b.addr {
 							continue
 						}
-						if err := b.s.StoreAsset(tx.ID(), true); err != nil {
+						if err := b.s.StoreAsset(b.subnetID, b.chainID, tx.ID(), true); err != nil {
 							b.fatal(err)
 							return
 						}
@@ -385,13 +385,13 @@ func (b *Backend) collectBlocks() {
 								b.transactionAlerts = append(b.transactionAlerts, &Alert{"info", fmt.Sprintf("Received %s %s from Mint", hutils.FormatBalance(action.Value, decimals), symbol)})
 								b.txAlertLock.Unlock()
 							}
-							hasAsset, err := b.s.HasAsset(action.Asset)
+							hasAsset, err := b.s.HasAsset(b.subnetID, b.chainID, action.Asset)
 							if err != nil {
 								b.fatal(err)
 								return
 							}
 							if !hasAsset {
-								if err := b.s.StoreAsset(action.Asset, b.addrStr == owner); err != nil {
+								if err := b.s.StoreAsset(b.subnetID, b.chainID, action.Asset, b.addrStr == owner); err != nil {
 									b.fatal(err)
 									return
 								}
@@ -560,7 +560,7 @@ func (b *Backend) GetChainID() string {
 
 func (b *Backend) GetMyAssets() []*AssetInfo {
 	assets := []*AssetInfo{}
-	assetIDs, owned, err := b.s.GetAssets()
+	assetIDs, owned, err := b.s.GetAssets(b.subnetID, b.chainID)
 	if err != nil {
 		b.fatal(err)
 		return nil
@@ -769,7 +769,7 @@ func (b *Backend) GetPublicKey() string {
 }
 
 func (b *Backend) GetBalance() ([]*BalanceInfo, error) {
-	assets, _, err := b.s.GetAssets()
+	assets, _, err := b.s.GetAssets(b.subnetID, b.chainID)
 	if err != nil {
 		return nil, err
 	}
@@ -900,7 +900,7 @@ func (b *Backend) AddAddressBook(name string, address string) error {
 }
 
 func (b *Backend) GetAllAssets() []*AssetInfo {
-	arr, _, err := b.s.GetAssets()
+	arr, _, err := b.s.GetAssets(b.subnetID, b.chainID)
 	if err != nil {
 		b.fatal(err)
 		return nil
@@ -931,7 +931,7 @@ func (b *Backend) AddAsset(asset string) error {
 	if err != nil {
 		return err
 	}
-	hasAsset, err := b.s.HasAsset(assetID)
+	hasAsset, err := b.s.HasAsset(b.subnetID, b.chainID, assetID)
 	if err != nil {
 		return err
 	}
@@ -945,7 +945,7 @@ func (b *Backend) AddAsset(asset string) error {
 	if !exists {
 		return ErrAssetMissing
 	}
-	return b.s.StoreAsset(assetID, owner == b.addrStr)
+	return b.s.StoreAsset(b.subnetID, b.chainID, assetID, owner == b.addrStr)
 }
 
 func (b *Backend) GetFeedInfo() (*FeedInfo, error) {
