@@ -28,7 +28,7 @@ import {
   Tooltip,
   Typography
 } from 'antd'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link as RLink, useLocation } from 'react-router-dom'
 import {
   GetAddress,
@@ -62,6 +62,14 @@ const NavBar = () => {
   const [chainID, setChainID] = useState('')
   const [form] = Form.useForm() // Form layout for better alignment and submission handling
   const [drawerOpen, setDrawerOpen] = useState(false)
+
+  const isMounted = useRef(true) // Track if component is mounted
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false // Set to false when component unmounts
+    }
+  }, [])
 
   // Define the function to fetch data as a useCallback to prevent redefinition on each render
   const fetchData = useCallback(async () => {
@@ -134,11 +142,13 @@ const NavBar = () => {
       setChainID(fetchedChainID)
 
       // Update form values
-      form.setFieldsValue({
-        nuklaiRPC: currentConfig.nuklaiRPC,
-        faucetRPC: currentConfig.faucetRPC,
-        feedRPC: currentConfig.feedRPC
-      })
+      if (isMounted.current) {
+        form.setFieldsValue({
+          nuklaiRPC: currentConfig.nuklaiRPC,
+          faucetRPC: currentConfig.faucetRPC,
+          feedRPC: currentConfig.feedRPC
+        })
+      }
     } catch (error) {
       console.error('Error fetching wallet info:', error)
     }
@@ -310,12 +320,12 @@ const NavBar = () => {
           style={{ margin: '24px' }}
         >
           <Form
-            form={form}
+            form={form} // Make sure this is correctly passed
             layout='vertical'
             initialValues={{
-              nuklaiRPC,
-              faucetRPC,
-              feedRPC
+              nuklaiRPC: nuklaiRPC,
+              faucetRPC: faucetRPC,
+              feedRPC: feedRPC
             }}
           >
             <Form.Item label='NuklaiRPC URL' name='nuklaiRPC'>

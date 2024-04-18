@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -41,17 +42,18 @@ type Manager struct {
 	salt         []byte
 	difficulty   uint16
 	solutions    set.Set[ids.ID]
+	cancelFunc   context.CancelFunc
 }
 
 func New(logger logging.Logger, config *config.Config) (*Manager, error) {
-	ctx := context.TODO()
+	ctx, cancel := context.WithCancel(context.Background())
 	cli := rpc.NewJSONRPCClient(config.NuklaiRPC)
 	networkID, _, chainID, err := cli.Network(ctx)
 	if err != nil {
 		return nil, err
 	}
 	ncli := nrpc.NewJSONRPCClient(config.NuklaiRPC, networkID, chainID)
-	m := &Manager{log: logger, config: config, cli: cli, ncli: ncli, factory: auth.NewED25519Factory(config.PrivateKey())}
+	m := &Manager{log: logger, config: config, cli: cli, ncli: ncli, factory: auth.NewED25519Factory(config.PrivateKey()), cancelFunc: cancel}
 	m.lastRotation = time.Now().Unix()
 	m.difficulty = m.config.StartDifficulty
 	m.solutions = set.NewSet[ids.ID](m.config.SolutionsPerSalt)
@@ -192,19 +194,79 @@ func (m *Manager) SolveChallenge(ctx context.Context, solver codec.Address, salt
 	return txID, m.config.Amount, nil
 }
 
+func (m *Manager) RestartManager(ctx context.Context) error {
+	m.l.Lock()
+	defer m.l.Unlock()
+
+	// Signal to stop the run if it's listening on ctx.Done()
+	m.cancelFunc()
+
+	// Create a new manager instance with the updated configuration or state
+	newManager, err := New(m.log, m.config)
+	if err != nil {
+		return fmt.Errorf("failed to reinitialize the manager: %w", err)
+	}
+
+	// Manually update fields, excluding the mutex and cancelFunc
+	m.cli = newManager.cli
+	m.ncli = newManager.ncli
+	m.factory = newManager.factory
+	m.lastRotation = newManager.lastRotation
+	m.salt = newManager.salt
+	m.difficulty = newManager.difficulty
+	m.solutions = newManager.solutions
+	m.t = newManager.t
+
+	// Restart the run function in a new goroutine with a new context
+	newCtx, newCancel := context.WithCancel(context.Background())
+	m.cancelFunc = newCancel // Set the new cancel function
+	go func() {
+		if err := m.Run(newCtx); err != nil {
+			m.log.Error("manager run error after reinitialization", zap.Error(err))
+		}
+	}()
+
+	return nil
+}
+
 func (m *Manager) UpdateNuklaiRPC(ctx context.Context, newNuklaiRPCUrl string) error {
 	m.l.Lock()
 	defer m.l.Unlock()
 
+	m.log.Info("Updating nuklaiRPC URL", zap.String("old URL", m.config.NuklaiRPC), zap.String("new URL", newNuklaiRPCUrl))
+
 	// Updating the configuration
 	m.config.NuklaiRPC = newNuklaiRPCUrl
 
-	// Re-initializing the RPC client
-	networkID, _, chainID, err := m.cli.Network(ctx)
+	// Re-initializing the RPC clients
+	cli := rpc.NewJSONRPCClient(newNuklaiRPCUrl)
+	networkID, _, chainID, err := cli.Network(ctx)
+	m.log.Info("Fetching network details", zap.Uint32("network ID", networkID), zap.String("chain ID", chainID.String()))
 	if err != nil {
-		return err
+		m.log.Error("Failed to fetch network details", zap.Error(err))
+		return fmt.Errorf("failed to fetch network details: %w", err)
 	}
-	m.cli = rpc.NewJSONRPCClient(newNuklaiRPCUrl)
-	m.ncli = nrpc.NewJSONRPCClient(newNuklaiRPCUrl, networkID, chainID)
+	ncli := nrpc.NewJSONRPCClient(newNuklaiRPCUrl, networkID, chainID)
+
+	// Reassign the newly created clients
+	m.cli = cli
+	m.ncli = ncli
+
+	// Reinitialize dependent properties
+	m.salt, err = challenge.New()
+	if err != nil {
+		m.log.Error("Failed to generate new salt", zap.Error(err))
+		return fmt.Errorf("failed to generate new salt: %w", err)
+	}
+	m.solutions = set.NewSet[ids.ID](m.config.SolutionsPerSalt)
+	m.difficulty = m.config.StartDifficulty
+	m.lastRotation = time.Now().Unix()
+
+	m.log.Info("RPC client has been updated and manager reinitialized",
+		zap.String("new RPC URL", newNuklaiRPCUrl),
+		zap.Uint32("network ID", networkID),
+		zap.String("chain ID", chainID.String()),
+	)
+
 	return nil
 }

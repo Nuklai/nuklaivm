@@ -1113,23 +1113,25 @@ func (b *Backend) UpdateNuklaiRPC(newNuklaiRPCUrl string) error {
 	b.c.NuklaiRPC = newNuklaiRPCUrl
 
 	// Reinitialize the JSONRPCClient with the new URL
-	b.cli = rpc.NewJSONRPCClient(b.c.NuklaiRPC)
+	newClient := rpc.NewJSONRPCClient(b.c.NuklaiRPC)
 
 	// Refresh the network information
-	networkID, subnetID, chainID, err := b.cli.Network(b.ctx)
+	networkID, subnetID, chainID, err := newClient.Network(b.ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get network info: %w", err)
+		return fmt.Errorf("failed to make network call with new client: %w", err)
 	}
+	// If successful, replace the old client
+	b.cli = newClient
 	b.subnetID = subnetID
 	b.chainID = chainID
 
 	// Also update for websocket client if needed
-	b.scli, err = rpc.NewWebSocketClient(b.c.NuklaiRPC, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
+	b.scli, err = rpc.NewWebSocketClient(newNuklaiRPCUrl, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
 	if err != nil {
 		return fmt.Errorf("failed to reinitialize WebSocketClient: %w", err)
 	}
 
-	b.ncli = nrpc.NewJSONRPCClient(b.c.NuklaiRPC, networkID, chainID)
+	b.ncli = nrpc.NewJSONRPCClient(newNuklaiRPCUrl, networkID, chainID)
 	parser, err := b.ncli.Parser(b.ctx)
 	if err != nil {
 		return err

@@ -1,6 +1,8 @@
 // Copyright (C) 2024, AllianceBlock. All rights reserved.
 // See the file LICENSE for licensing terms.
 
+// main.go
+
 package main
 
 import (
@@ -111,8 +113,9 @@ func main() {
 	if err != nil {
 		fatal(log, "cannot create manager", zap.Error(err))
 	}
+	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		if err := manager.Run(context.Background()); err != nil {
+		if err := manager.Run(ctx); err != nil {
 			log.Error("manager error", zap.Error(err))
 		}
 	}()
@@ -133,6 +136,7 @@ func main() {
 	go func() {
 		sig := <-sigs
 		log.Info("triggering server shutdown", zap.Any("signal", sig))
+		cancel() // this will signal the manager's run function to stop
 		_ = srv.Shutdown()
 	}()
 	log.Info("server exited", zap.Error(srv.Dispatch()))
