@@ -70,8 +70,8 @@ const Explorer = () => {
   useEffect(() => {
     fetchData()
 
-    // Set up the interval to refetch data every 10 seconds
-    const intervalId = setInterval(fetchData, 10000)
+    // Set up the interval to refetch data every 5 seconds
+    const intervalId = setInterval(fetchData, 5000)
 
     // Clear the interval when the component is unmounted
     return () => clearInterval(intervalId)
