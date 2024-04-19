@@ -1021,14 +1021,16 @@ func (b *Backend) parseURLs() {
 	}
 }
 
-func (b *Backend) GetFeed() ([]*FeedObject, error) {
-	feed, err := b.fecli.Feed(context.TODO())
+func (b *Backend) GetFeed(subnetID, chainID string) ([]*FeedObject, error) {
+	feed, err := b.fecli.Feed(context.TODO(), subnetID, chainID)
 	if err != nil {
 		return nil, err
 	}
 	nfeed := make([]*FeedObject, 0, len(feed))
 	for _, fo := range feed {
 		tfo := &FeedObject{
+			SubnetID:  fo.SubnetID,
+			ChainID:   fo.ChainID,
 			Address:   fo.Address,
 			ID:        fo.TxID.String(),
 			Timestamp: fo.Timestamp,

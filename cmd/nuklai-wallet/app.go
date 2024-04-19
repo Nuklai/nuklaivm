@@ -141,7 +141,7 @@ func (a *App) GetFeedInfo() (*backend.FeedInfo, error) {
 }
 
 func (a *App) GetFeed() ([]*backend.FeedObject, error) {
-	return a.b.GetFeed()
+	return a.b.GetFeed(a.GetSubnetID(), a.GetChainID())
 }
 
 func (a *App) Message(message string, url string) error {

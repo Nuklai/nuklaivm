@@ -27,9 +27,9 @@ var (
 	allowedHosts    = []string{"*"}
 	shutdownTimeout = 30 * time.Second
 	httpConfig      = server.HTTPConfig{
-		ReadTimeout:       30 * time.Second,
-		ReadHeaderTimeout: 30 * time.Second,
-		WriteTimeout:      30 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		ReadHeaderTimeout: 60 * time.Second,
+		WriteTimeout:      60 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
 )
@@ -82,16 +82,17 @@ func main() {
 	}
 
 	// Start manager with context handling
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	manager, err := manager.New(log, &c)
 	if err != nil {
 		fatal(log, "cannot create manager", zap.Error(err))
 	}
+	ctx, cancel := context.WithCancel(context.Background())
 
-	// Start the manager's Run function
-	go manager.RestartRun(ctx) // Use RestartRun to handle the initial run
+	go func() {
+		if err := manager.Run(ctx); err != nil {
+			log.Error("manager error", zap.Error(err))
+		}
+	}()
 
 	// Add feed handler
 	feedServer := frpc.NewJSONRPCServer(manager)

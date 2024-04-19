@@ -127,11 +127,19 @@ const NavBar = () => {
   // Fetch wallet info
   const fetchWalletInfo = async () => {
     try {
-      const currentConfig = await GetConfig()
-      const fetchedPrivateKey = await GetPrivateKey()
-      const fetchedPublicKey = await GetPublicKey()
-      const fetchedSubnetID = await GetSubnetID()
-      const fetchedChainID = await GetChainID()
+      const [
+        currentConfig,
+        fetchedPrivateKey,
+        fetchedPublicKey,
+        fetchedSubnetID,
+        fetchedChainID
+      ] = await Promise.all([
+        GetConfig(),
+        GetPrivateKey(),
+        GetPublicKey(),
+        GetSubnetID(),
+        GetChainID()
+      ])
 
       setNuklaiRPC(currentConfig.nuklaiRPC)
       setFaucetRPC(currentConfig.faucetRPC)

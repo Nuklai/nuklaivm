@@ -43,29 +43,14 @@ type Manager struct {
 	difficulty   uint16
 	solutions    set.Set[ids.ID]
 	cancelFunc   context.CancelFunc
-	wg           sync.WaitGroup // to control the Run method execution
 }
 
 func New(logger logging.Logger, config *config.Config) (*Manager, error) {
-	// Create a cancellable context at the start of the function.
 	ctx, cancel := context.WithCancel(context.Background())
-
-	// Declare err early to make it accessible inside the defer function
-	var err error
-
-	// Ensure that the cancel function is called if this function exits
-	// after the context is created, but before it is stored in the Manager struct.
-	defer func() {
-		// Only call cancel if returning with an error,
-		// because otherwise, the cancel function will be stored in the Manager struct.
-		if err != nil {
-			cancel()
-		}
-	}()
-
 	cli := rpc.NewJSONRPCClient(config.NuklaiRPC)
 	networkID, _, chainID, err := cli.Network(ctx)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	ncli := nrpc.NewJSONRPCClient(config.NuklaiRPC, networkID, chainID)
@@ -210,24 +195,6 @@ func (m *Manager) SolveChallenge(ctx context.Context, solver codec.Address, salt
 	return txID, m.config.Amount, nil
 }
 
-func (m *Manager) RestartRun(ctx context.Context) {
-	if m.cancelFunc != nil {
-		m.cancelFunc() // request stopping the current Run
-		m.wg.Wait()    // wait for it to finish
-	}
-
-	newCtx, cancel := context.WithCancel(ctx)
-	m.cancelFunc = cancel // update with new cancel func
-
-	m.wg.Add(1)
-	go func() {
-		defer m.wg.Done()
-		if err := m.Run(newCtx); err != nil {
-			m.log.Error("Error running manager after restart", zap.Error(err))
-		}
-	}()
-}
-
 func (m *Manager) UpdateNuklaiRPC(ctx context.Context, newNuklaiRPCUrl string) error {
 	m.l.Lock()
 	defer m.l.Unlock()
@@ -274,9 +241,6 @@ func (m *Manager) UpdateNuklaiRPC(ctx context.Context, newNuklaiRPCUrl string) e
 		zap.Uint16("difficulty", m.difficulty),
 		zap.String("balance", utils.FormatBalance(bal, consts.Decimals)),
 	)
-
-	// Restart the Run function safely
-	m.RestartRun(ctx)
 
 	return nil
 }

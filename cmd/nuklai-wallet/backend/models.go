@@ -112,6 +112,9 @@ type FeedInfo struct {
 }
 
 type FeedObject struct {
+	SubnetID string
+	ChainID  string
+
 	Address   string
 	ID        string
 	Timestamp int64

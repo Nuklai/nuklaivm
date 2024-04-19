@@ -109,16 +109,17 @@ func main() {
 	}
 
 	// Start manager with context handling
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	manager, err := manager.New(log, &c)
 	if err != nil {
 		fatal(log, "cannot create manager", zap.Error(err))
 	}
+	ctx, cancel := context.WithCancel(context.Background())
 
-	// Start the manager's Run function
-	go manager.RestartRun(ctx) // Use RestartRun to handle the initial run
+	go func() {
+		if err := manager.Run(ctx); err != nil {
+			log.Error("manager error", zap.Error(err))
+		}
+	}()
 
 	// Add faucet handler
 	faucetServer := frpc.NewJSONRPCServer(manager)

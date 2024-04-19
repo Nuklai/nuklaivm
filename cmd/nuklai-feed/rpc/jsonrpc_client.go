@@ -40,12 +40,15 @@ func (cli *JSONRPCClient) FeedInfo(ctx context.Context) (string, uint64, error) 
 	return resp.Address, resp.Fee, err
 }
 
-func (cli *JSONRPCClient) Feed(ctx context.Context) ([]*manager.FeedObject, error) {
+func (cli *JSONRPCClient) Feed(ctx context.Context, subnetID, chainID string) ([]*manager.FeedObject, error) {
 	resp := new(FeedReply)
 	err := cli.requester.SendRequest(
 		ctx,
 		"feed",
-		nil,
+		&FeedArgs{
+			SubnetID: subnetID,
+			ChainID:  chainID,
+		},
 		resp,
 	)
 	return resp.Feed, err
