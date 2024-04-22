@@ -4,6 +4,7 @@
 package backend
 
 import (
+	"container/list"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -76,7 +77,8 @@ type Backend struct {
 	fecli    *ferpc.JSONRPCClient
 
 	blockLock   sync.Mutex
-	blocks      []*BlockInfo
+	blocks      *list.List               // Change slice to a linked list for deque operations
+	blockMap    map[uint64]*list.Element // Map block heights to elements in the list
 	stats       []*TimeStat
 	currentStat *TimeStat
 
@@ -96,7 +98,8 @@ type Backend struct {
 func New(fatal func(error)) *Backend {
 	return &Backend{
 		fatal:             fatal,
-		blocks:            []*BlockInfo{},
+		blocks:            list.New(),
+		blockMap:          make(map[uint64]*list.Element),
 		stats:             []*TimeStat{},
 		transactionAlerts: []*Alert{},
 		searchAlerts:      []*Alert{},
@@ -492,27 +495,31 @@ func (b *Backend) GetTotalBlocks() int {
 	b.blockLock.Lock()
 	defer b.blockLock.Unlock()
 
-	return len(b.blocks)
+	return b.blocks.Len()
 }
 
 func (b *Backend) GetLatestBlocks(page int, count int) []*BlockInfo {
 	b.blockLock.Lock()
 	defer b.blockLock.Unlock()
 
-	// Calculate the starting index based on the current page and count per page
 	startIndex := (page - 1) * count
-	if startIndex >= len(b.blocks) {
-		return []*BlockInfo{} // Return an empty slice if the start index is beyond the available blocks
-	}
-
-	// Calculate the end index for slicing
 	endIndex := startIndex + count
-	if endIndex > len(b.blocks) {
-		endIndex = len(b.blocks) // Ensure the end index does not exceed the total number of blocks
+
+	// Collect blocks for the page
+	var blocks []*BlockInfo
+	current := b.blocks.Front()
+	for i := 0; current != nil && len(blocks) < endIndex; i++ {
+		if i >= startIndex {
+			blocks = append(blocks, current.Value.(*BlockInfo))
+		}
+		current = current.Next()
 	}
 
-	// Return a slice of the blocks array based on the calculated start and end indexes
-	return b.blocks[startIndex:endIndex]
+	// Return only the slice of blocks for the current page
+	if len(blocks) > count {
+		blocks = blocks[:count]
+	}
+	return blocks
 }
 
 // Method to add a new block to the store, ensuring the store size is managed
@@ -520,12 +527,15 @@ func (b *Backend) AddBlock(newBlock *BlockInfo) {
 	b.blockLock.Lock()
 	defer b.blockLock.Unlock()
 
-	// Prepend the new block to the beginning of the slice
-	b.blocks = append([]*BlockInfo{newBlock}, b.blocks...)
+	// Prepend new block to the deque (front of the list)
+	element := b.blocks.PushFront(newBlock)
+	b.blockMap[newBlock.Height] = element
 
-	// If the slice exceeds the maximum size, trim the oldest block
-	if len(b.blocks) > maxBlocksStore {
-		b.blocks = b.blocks[:maxBlocksStore]
+	// Trim the oldest blocks if the deque size exceeds maxBlocksStore
+	if b.blocks.Len() > maxBlocksStore {
+		lastElement := b.blocks.Back()
+		b.blocks.Remove(lastElement)
+		delete(b.blockMap, lastElement.Value.(*BlockInfo).Height)
 	}
 }
 
