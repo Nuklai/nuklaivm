@@ -9,10 +9,6 @@ import (
 	"github.com/ava-labs/hypersdk/crypto/bls"
 )
 
-var (
-	emission Tracker
-)
-
 type Tracker interface {
 	GetStakedValidator(nodeID ids.NodeID) []*Validator
 	GetAllValidators(ctx context.Context) []*Validator
@@ -34,6 +30,7 @@ type Tracker interface {
 	GetInfo() (emissionAccount EmissionAccount, totalSupply uint64, maxSupply uint64, totalStaked uint64, epochTracker EpochTracker)
 }
 
+// GetEmission returns the singleton instance of Emission
 func GetEmission() Tracker {
 	return emission
 }

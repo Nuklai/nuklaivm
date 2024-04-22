@@ -481,16 +481,12 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			fmt.Println(stakedValidator)
 			gomega.Ω(len(stakedValidator)).To(gomega.Equal(1))
 
-			// test the state is changed
+			// test same block is accepted
 			lastAcceptedBlock3, err := instances[3].vm.LastAccepted(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
 			lastAcceptedBlock4, err := instances[4].vm.LastAccepted(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(lastAcceptedBlock3).To(gomega.Equal(lastAcceptedBlock4))
-
-			fmt.Println("LAST ACCEPTED BLOCK")
-			fmt.Println(instances[3].vm.LastAccepted(context.Background()))
-			fmt.Println(instances[4].vm.LastAccepted(context.Background()))
 
 		})
 
@@ -554,7 +550,7 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(balance).Should(gomega.Equal(uint64(100_000_000_000)))
 
-			// test the state is changed
+			// test same block is accepted
 			lastAcceptedBlock3, err := instances[3].vm.LastAccepted(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
 			lastAcceptedBlock4, err := instances[4].vm.LastAccepted(context.Background())
@@ -604,7 +600,7 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(30_000_000_000)))
 
-			// test the state is changed
+			// test same block is accepted
 			lastAcceptedBlock3, err := instances[3].vm.LastAccepted(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
 			lastAcceptedBlock4, err := instances[4].vm.LastAccepted(context.Background())
@@ -651,7 +647,7 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			ImportBlockToInstance(instances[1].vm, blk)
 			height++
 
-			// test the state is changed
+			// test same block is accepted
 			lastAcceptedBlock3, err := instances[3].vm.LastAccepted(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
 			lastAcceptedBlock4, err := instances[4].vm.LastAccepted(context.Background())

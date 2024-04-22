@@ -9,7 +9,8 @@ import (
 )
 
 var (
-	once sync.Once
+	once     sync.Once
+	emission Tracker
 )
 
 type Validator struct {
