@@ -46,6 +46,9 @@ import (
 	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
 
+// Constant for max blocks to store
+const maxBlocksStore = 250 // Adjust as needed
+
 var (
 	databaseFolder string
 	configFile     string
@@ -92,8 +95,7 @@ type Backend struct {
 // NewApp creates a new App application struct
 func New(fatal func(error)) *Backend {
 	return &Backend{
-		fatal: fatal,
-
+		fatal:             fatal,
 		blocks:            []*BlockInfo{},
 		stats:             []*TimeStat{},
 		transactionAlerts: []*Alert{},
@@ -116,24 +118,11 @@ func (b *Backend) Start(ctx context.Context) error {
 	}
 
 	// Read environment variables or use default values
-	databasePath := os.Getenv("NUKLAI_WALLET_DB_PATH")
-	if databasePath == "" {
-		databaseFolder = filepath.Join(defaultDir, ".nuklai-wallet/db")
-	} else {
-		databaseFolder = databasePath
-	}
+	databaseFolder = getEnv("NUKLAI_WALLET_DB_PATH", filepath.Join(defaultDir, ".nuklai-wallet/db"))
+	configFile = getEnv("NUKLAI_WALLET_CONFIG_PATH", filepath.Join(defaultDir, ".nuklai-wallet/config.json"))
 
-	// Ensure the database directory exists
-	err = os.MkdirAll(databaseFolder, os.ModePerm) // os.ModePerm is 0777, allowing read, write & exec permissions for all
-	if err != nil {
-		log.Fatalf("Failed to create database directory '%s': %v", databaseFolder, err)
-	}
-
-	configFilePath := os.Getenv("NUKLAI_WALLET_CONFIG_PATH")
-	if configFilePath == "" {
-		configFile = filepath.Join(defaultDir, ".nuklai-wallet/config.json")
-	} else {
-		configFile = configFilePath
+	if err := os.MkdirAll(databaseFolder, os.ModePerm); err != nil {
+		return fmt.Errorf("Failed to create database directory '%s': %v", databaseFolder, err)
 	}
 
 	// Set context
@@ -166,6 +155,7 @@ func (b *Backend) Start(ctx context.Context) error {
 	b.factory = auth.NewED25519Factory(b.priv)
 	b.addr = auth.NewED25519Address(b.priv.PublicKey())
 	b.addrStr = codec.MustAddressBech32(nconsts.HRP, b.addr)
+
 	if err := b.AddAddressBook("Me", b.addrStr); err != nil {
 		return err
 	}
@@ -173,45 +163,9 @@ func (b *Backend) Start(ctx context.Context) error {
 		return err
 	}
 
-	// Open config
-	rawConifg, err := os.ReadFile(configFile)
-	if err != nil {
-		// TODO: replace with DEVNET
-		b.c = &Config{
-			NuklaiRPC:   "http://54.190.240.186:9090",
-			FaucetRPC:   "http://54.190.240.186:9091",
-			SearchCores: 4,
-			FeedRPC:     "http://54.190.240.186:9092",
-		}
-	} else {
-		var config Config
-		if err := json.Unmarshal(rawConifg, &config); err != nil {
-			return err
-		}
-		b.c = &config
-	}
-
-	// Create clients
-	b.cli = rpc.NewJSONRPCClient(b.c.NuklaiRPC)
-	networkID, subnetID, chainID, err := b.cli.Network(b.ctx)
-	if err != nil {
+	if err := b.initClients(); err != nil {
 		return err
 	}
-	b.subnetID = subnetID
-	b.chainID = chainID
-	scli, err := rpc.NewWebSocketClient(b.c.NuklaiRPC, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
-	if err != nil {
-		return err
-	}
-	b.scli = scli
-	b.ncli = nrpc.NewJSONRPCClient(b.c.NuklaiRPC, networkID, chainID)
-	parser, err := b.ncli.Parser(b.ctx)
-	if err != nil {
-		return err
-	}
-	b.parser = parser
-	b.fcli = frpc.NewJSONRPCClient(b.c.FaucetRPC)
-	b.fecli = ferpc.NewJSONRPCClient(b.c.FeedRPC)
 
 	b.stopChans = make(map[string]chan bool)
 	b.stopChans["collectBlocks"] = make(chan bool)
@@ -221,6 +175,55 @@ func (b *Backend) Start(ctx context.Context) error {
 	go b.collectBlocks()
 	go b.parseURLs()
 	return nil
+}
+
+func (b *Backend) initClients() error {
+	// Open config
+	rawConfig, err := os.ReadFile(configFile)
+	if err != nil {
+		log.Printf("Failed to read config file '%s', using default configuration: %v", configFile, err)
+		// TODO: replace with DEVNET
+		b.c = &Config{ // Default configuration, should be configurable
+			NuklaiRPC:   "http://localhost:9090",
+			FaucetRPC:   "http://localhost:9091",
+			SearchCores: 4,
+			FeedRPC:     "http://localhost:9092",
+		}
+	} else {
+		if err := json.Unmarshal(rawConfig, &b.c); err != nil {
+			return fmt.Errorf("failed to unmarshal config: %v", err)
+		}
+	}
+
+	// Create clients
+	b.cli = rpc.NewJSONRPCClient(b.c.NuklaiRPC)
+	networkID, subnetID, chainID, err := b.cli.Network(b.ctx)
+	if err != nil {
+		return fmt.Errorf("failed to fetch network info: %v", err)
+	}
+	b.subnetID = subnetID
+	b.chainID = chainID
+
+	b.scli, err = rpc.NewWebSocketClient(b.c.NuklaiRPC, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
+	if err != nil {
+		return fmt.Errorf("failed to initialize WebSocket client: %v", err)
+	}
+
+	b.ncli = nrpc.NewJSONRPCClient(b.c.NuklaiRPC, networkID, chainID)
+	if b.parser, err = b.ncli.Parser(b.ctx); err != nil {
+		return fmt.Errorf("failed to initialize parser: %v", err)
+	}
+
+	b.fcli = frpc.NewJSONRPCClient(b.c.FaucetRPC)
+	b.fecli = ferpc.NewJSONRPCClient(b.c.FeedRPC)
+	return nil
+}
+
+func getEnv(key, fallback string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return fallback
 }
 
 func (b *Backend) restartCollectBlocks() {
@@ -408,6 +411,7 @@ func (b *Backend) collectBlocks() {
 						}
 					}
 				}
+
 				now := time.Now()
 				if start.IsZero() {
 					start = now
@@ -445,12 +449,10 @@ func (b *Backend) collectBlocks() {
 				bi.FailTxs = failTxs
 				bi.Txs = len(blk.Txs)
 
-				// TODO: find a more efficient way to support this
+				b.AddBlock(bi) // Manage block storage with AddBlock
+
+				// Statistical updates
 				b.blockLock.Lock()
-				b.blocks = append([]*BlockInfo{bi}, b.blocks...)
-				if len(b.blocks) > 100 {
-					b.blocks = b.blocks[:100]
-				}
 				sTime := blk.Tmstmp / consts.MillisecondsPerSecond
 				if b.currentStat != nil && b.currentStat.Timestamp != sTime {
 					b.stats = append(b.stats, b.currentStat)
@@ -511,6 +513,20 @@ func (b *Backend) GetLatestBlocks(page int, count int) []*BlockInfo {
 
 	// Return a slice of the blocks array based on the calculated start and end indexes
 	return b.blocks[startIndex:endIndex]
+}
+
+// Method to add a new block to the store, ensuring the store size is managed
+func (b *Backend) AddBlock(newBlock *BlockInfo) {
+	b.blockLock.Lock()
+	defer b.blockLock.Unlock()
+
+	// Prepend the new block to the beginning of the slice
+	b.blocks = append([]*BlockInfo{newBlock}, b.blocks...)
+
+	// If the slice exceeds the maximum size, trim the oldest block
+	if len(b.blocks) > maxBlocksStore {
+		b.blocks = b.blocks[:maxBlocksStore]
+	}
 }
 
 func (b *Backend) GetTransactionStats() []*GenericInfo {
