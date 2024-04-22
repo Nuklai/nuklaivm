@@ -481,6 +481,13 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			fmt.Println(stakedValidator)
 			gomega.Ω(len(stakedValidator)).To(gomega.Equal(1))
 
+			// test the state is changed
+			lastAcceptedBlock3, err := instances[3].vm.LastAccepted(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			lastAcceptedBlock4, err := instances[4].vm.LastAccepted(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(lastAcceptedBlock3).To(gomega.Equal(lastAcceptedBlock4))
+
 			fmt.Println("LAST ACCEPTED BLOCK")
 			fmt.Println(instances[3].vm.LastAccepted(context.Background()))
 			fmt.Println(instances[4].vm.LastAccepted(context.Background()))
@@ -547,12 +554,15 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(balance).Should(gomega.Equal(uint64(100_000_000_000)))
 
-			fmt.Println("LAST ACCEPTED BLOCK")
-			fmt.Println(instances[3].vm.LastAccepted(context.Background()))
-			fmt.Println(instances[4].vm.LastAccepted(context.Background()))
+			// test the state is changed
+			lastAcceptedBlock3, err := instances[3].vm.LastAccepted(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			lastAcceptedBlock4, err := instances[4].vm.LastAccepted(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(lastAcceptedBlock3).To(gomega.Equal(lastAcceptedBlock4))
 		})
 
-		ginkgo.By("delegate stake to node 3", func() {
+		ginkgo.By("delegate user stake to node 3", func() {
 			parser, err := instances[3].ncli.Parser(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
 			currentTime := time.Now().UTC()
@@ -574,6 +584,8 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 
 			accept := expectBlk(instances[3])
 			results := accept(true)
+			fmt.Println("-----------delegate user stake to node 3")
+			fmt.Println(results[0].Success)
 			gomega.Ω(results).Should(gomega.HaveLen(1))
 			gomega.Ω(results[0].Success).Should(gomega.BeTrue())
 
@@ -582,24 +594,27 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			fmt.Printf("delegate stake to node 3 %d", height)
 
 			blk := blocks[height]
-			ImportBlockToInstance(instances[0].vm, blk)
 			ImportBlockToInstance(instances[4].vm, blk)
 			ImportBlockToInstance(instances[2].vm, blk)
 			ImportBlockToInstance(instances[1].vm, blk)
+			ImportBlockToInstance(instances[0].vm, blk)
 			height++
 
 			_, stakedAmount, _, _, err := instances[3].ncli.UserStake(context.Background(), rdelegate, instances[3].nodeID)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(30_000_000_000)))
 
-			fmt.Println("LAST ACCEPTED BLOCK DELEGATE STAKE")
-			fmt.Println(instances[3].vm.LastAccepted(context.Background()))
-			fmt.Println(instances[4].vm.LastAccepted(context.Background()))
+			// test the state is changed
+			lastAcceptedBlock3, err := instances[3].vm.LastAccepted(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			lastAcceptedBlock4, err := instances[4].vm.LastAccepted(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(lastAcceptedBlock3).To(gomega.Equal(lastAcceptedBlock4))
 
 		})
 
 		ginkgo.By("Get user stake before claim", func() {
-			_, stakedAmount, _, _, err := instances[3].ncli.UserStake(context.Background(), rdelegate, instances[3].nodeID)
+			_, stakedAmount, _, _, err := instances[4].ncli.UserStake(context.Background(), rdelegate, instances[3].nodeID)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(30_000_000_000)))
 		})
@@ -635,6 +650,13 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			ImportBlockToInstance(instances[2].vm, blk)
 			ImportBlockToInstance(instances[1].vm, blk)
 			height++
+
+			// test the state is changed
+			lastAcceptedBlock3, err := instances[3].vm.LastAccepted(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			lastAcceptedBlock4, err := instances[4].vm.LastAccepted(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(lastAcceptedBlock3).To(gomega.Equal(lastAcceptedBlock4))
 		})
 
 		ginkgo.By("Get user stake after claim", func() {
