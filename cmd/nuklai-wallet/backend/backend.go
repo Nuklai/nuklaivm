@@ -122,7 +122,7 @@ func (b *Backend) Start(ctx context.Context) error {
 	configFile = getEnv("NUKLAI_WALLET_CONFIG_PATH", filepath.Join(defaultDir, ".nuklai-wallet/config.json"))
 
 	if err := os.MkdirAll(databaseFolder, os.ModePerm); err != nil {
-		return fmt.Errorf("Failed to create database directory '%s': %v", databaseFolder, err)
+		return fmt.Errorf("failed to create database directory '%s': %w", databaseFolder, err)
 	}
 
 	// Set context
@@ -191,7 +191,7 @@ func (b *Backend) initClients() error {
 		}
 	} else {
 		if err := json.Unmarshal(rawConfig, &b.c); err != nil {
-			return fmt.Errorf("failed to unmarshal config: %v", err)
+			return fmt.Errorf("failed to unmarshal config: %w", err)
 		}
 	}
 
@@ -199,19 +199,19 @@ func (b *Backend) initClients() error {
 	b.cli = rpc.NewJSONRPCClient(b.c.NuklaiRPC)
 	networkID, subnetID, chainID, err := b.cli.Network(b.ctx)
 	if err != nil {
-		return fmt.Errorf("failed to fetch network info: %v", err)
+		return fmt.Errorf("failed to fetch network info: %w", err)
 	}
 	b.subnetID = subnetID
 	b.chainID = chainID
 
 	b.scli, err = rpc.NewWebSocketClient(b.c.NuklaiRPC, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
 	if err != nil {
-		return fmt.Errorf("failed to initialize WebSocket client: %v", err)
+		return fmt.Errorf("failed to initialize WebSocket client: %w", err)
 	}
 
 	b.ncli = nrpc.NewJSONRPCClient(b.c.NuklaiRPC, networkID, chainID)
 	if b.parser, err = b.ncli.Parser(b.ctx); err != nil {
-		return fmt.Errorf("failed to initialize parser: %v", err)
+		return fmt.Errorf("failed to initialize parser: %w", err)
 	}
 
 	b.fcli = frpc.NewJSONRPCClient(b.c.FaucetRPC)
