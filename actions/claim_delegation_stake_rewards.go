@@ -5,6 +5,7 @@ package actions
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -80,6 +81,12 @@ func (c *ClaimDelegationStakeRewards) Execute(
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
 	startTime := time.Unix(int64(stakeStartTime), 0).UTC()
 	// Check that currentTime and lastBlockTime are after stakeStartTime
+	fmt.Println("CLAIM DELEGATION STAKE REWARDS")
+	fmt.Println(currentTime.Before(startTime))
+	fmt.Println(lastBlockTime.Before(startTime))
+	fmt.Println(currentTime)
+	fmt.Println(startTime)
+	fmt.Println(lastBlockTime)
 	if currentTime.Before(startTime) || lastBlockTime.Before(startTime) {
 		return false, ClaimStakingRewardComputeUnits, OutputStakeNotStarted, nil, nil
 	}

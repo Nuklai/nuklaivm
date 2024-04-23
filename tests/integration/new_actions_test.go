@@ -122,22 +122,17 @@ var (
 	networkID uint32
 	gen       *genesis.Genesis
 
-	//to be reordered staking vars
-	currentTime       time.Time
-	stakeStartTime    time.Time
-	stakeEndTime      time.Time
-	delegationFeeRate int
-	withdraw0         string
-	withdraw1         string
-	delegate          string
-	rwithdraw0        codec.Address
-	rwithdraw1        codec.Address
-	rdelegate         codec.Address
-	delegateFactory   *auth.ED25519Factory
-	nodesFactories    []*auth.BLSFactory
-	nodesAddresses    []codec.Address
-	emissions         []emission.Tracker
-	nodesPubKeys      []*bls.PublicKey
+	withdraw0       string
+	withdraw1       string
+	delegate        string
+	rwithdraw0      codec.Address
+	rwithdraw1      codec.Address
+	rdelegate       codec.Address
+	delegateFactory *auth.ED25519Factory
+	nodesFactories  []*auth.BLSFactory
+	nodesAddresses  []codec.Address
+	emissions       []emission.Tracker
+	nodesPubKeys    []*bls.PublicKey
 )
 
 type instance struct {
@@ -330,10 +325,6 @@ var _ = ginkgo.AfterSuite(func() {
 var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 	ginkgo.FIt("Setup and get initial staked validators", func() {
 		height := 0
-		currentTime = time.Now().UTC()
-		stakeStartTime = currentTime.Add(2 * time.Second)
-		stakeEndTime = currentTime.Add(15 * time.Minute)
-		delegationFeeRate = 50
 
 		withdraw0Priv, err := ed25519.GeneratePrivateKey()
 		gomega.Ω(err).Should(gomega.BeNil())
@@ -415,6 +406,11 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		ginkgo.By("Register validator stake node 3", func() {
 			parser, err := instances[3].ncli.Parser(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
+			currentTime := time.Now().UTC()
+			stakeStartTime := currentTime.Add(1 * time.Second)
+			stakeEndTime := currentTime.Add(15 * time.Minute)
+			delegationFeeRate := 50
+
 			stakeInfo := &actions.ValidatorStakeInfo{
 				NodeID:            instances[3].nodeID.Bytes(),
 				StakeStartTime:    uint64(stakeStartTime.Unix()),
@@ -481,6 +477,12 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			fmt.Println(stakedValidator)
 			gomega.Ω(len(stakedValidator)).To(gomega.Equal(1))
 
+			validator, exists := emissions[3].GetEmissionValidators()[instances[3].nodeID]
+			gomega.Ω(exists).To(gomega.Equal(true))
+
+			// check when it becomes active ?
+			gomega.Ω(validator.IsActive).To(gomega.Equal(false))
+
 			// test same block is accepted
 			lastAcceptedBlock3, err := instances[3].vm.LastAccepted(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
@@ -510,9 +512,9 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		// 	fmt.Println(emissions[2].GetEmissionValidators())
 		// 	fmt.Println(emissions[3].GetEmissionValidators())
 		// 	fmt.Println(emissions[4].GetEmissionValidators())
-		// 	validators, err := instances[3].ncli.StakedValidators(context.Background())
+		// 	validators, err := instances[3].ncli.StakedValidators(context.TODO())
 		// 	gomega.Ω(err).Should(gomega.BeNil())
-		// 	gomega.Ω(len(validators)).Should(gomega.Equal(2))
+		// 	gomega.Ω(len(validators)).Should(gomega.Equal(1))
 		// })
 
 		ginkgo.By("Transfer NAI to delegate user", func() {
@@ -580,8 +582,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 
 			accept := expectBlk(instances[3])
 			results := accept(true)
-			fmt.Println("-----------delegate user stake to node 3")
-			fmt.Println(results[0].Success)
 			gomega.Ω(results).Should(gomega.HaveLen(1))
 			gomega.Ω(results[0].Success).Should(gomega.BeTrue())
 

@@ -5,6 +5,7 @@ package actions
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -60,6 +61,7 @@ func (s *DelegateUserStake) Execute(
 	_ ids.ID,
 	_ bool,
 ) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
+	fmt.Println("DELEGATE USER STAKE")
 	nodeID, err := ids.ToNodeID(s.NodeID)
 	if err != nil {
 		return false, DelegateUserStakeComputeUnits, OutputInvalidNodeID, nil, nil
@@ -87,27 +89,38 @@ func (s *DelegateUserStake) Execute(
 
 	// Get current time
 	currentTime := time.Now().UTC()
+	fmt.Println("CURRRENT TIME")
+	fmt.Println(currentTime)
 	// Get last accepted block time
 	lastBlockTime := emissionInstance.GetLastAcceptedBlockTimestamp()
 	// Convert Unix timestamps to Go's time.Time for easier manipulation
 	startTime := time.Unix(int64(s.StakeStartTime), 0).UTC()
 	// Check that stakeStartTime is after currentTime and lastBlockTime
+	fmt.Println(startTime.Before(currentTime))
+	fmt.Println(startTime.Before(lastBlockTime))
 	if startTime.Before(currentTime) || startTime.Before(lastBlockTime) {
 		return false, DelegateUserStakeComputeUnits, OutputInvalidStakeStartTime, nil, nil
 	}
-
+	fmt.Println("POST TIME CHECK-1")
 	// Delegate in Emission Balancer
 	err = emissionInstance.DelegateUserStake(nodeID, actor, s.StakedAmount)
 	if err != nil {
 		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
-
+	fmt.Println("POST TIME CHECK-2")
 	if err := storage.SubBalance(ctx, mu, actor, ids.Empty, s.StakedAmount); err != nil {
 		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 	if err := storage.SetDelegateUserStake(ctx, mu, actor, nodeID, s.StakeStartTime, s.StakedAmount, s.RewardAddress); err != nil {
 		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
+	fmt.Println("POST TIME CHECK-3")
+	exists, _, stakedAmount, _, _, err := storage.GetDelegateUserStake(context.TODO(), mu, actor, nodeID)
+	fmt.Println("GETDELEGATEUSERSTAKE AFTER SETDELEGATEUSERSTAKE")
+	fmt.Println(err)
+	fmt.Println(exists)
+	fmt.Println(stakedAmount)
+
 	return true, DelegateUserStakeComputeUnits, nil, nil, nil
 }
 

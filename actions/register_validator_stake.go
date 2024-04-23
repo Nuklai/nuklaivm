@@ -5,6 +5,7 @@ package actions
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -61,6 +62,9 @@ func (r *RegisterValidatorStake) Execute(
 	_ bool,
 ) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
 	// Check if it's a valid signature
+	fmt.Println("REGISTER VALIDATOR STAKE -1 ")
+	fmt.Println("ACTOR %s", codec.MustAddressBech32(nconsts.HRP, actor))
+	// panic("BREAK REGISTER VALIDATOR STAKE")
 	signer, err := VerifyAuthSignature(r.StakeInfo, r.AuthSignature)
 	if err != nil {
 		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
@@ -70,12 +74,15 @@ func (r *RegisterValidatorStake) Execute(
 	if actorAddress != codec.MustAddressBech32(nconsts.HRP, signer) {
 		return false, RegisterValidatorStakeComputeUnits, OutputDifferentSignerThanActor, nil, nil
 	}
-
 	// Check if the tx actor has signing permission for this NodeID
 	isValidatorOwner := false
 
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
+	fmt.Println("GET EMISSION")
+	fmt.Println(&emissionInstance)
+	fmt.Println(emissionInstance.GetEmissionValidators())
+
 	currentValidators := emissionInstance.GetAllValidators(ctx)
 	var nodePublicKey *bls.PublicKey
 	for _, validator := range currentValidators {
@@ -90,10 +97,11 @@ func (r *RegisterValidatorStake) Execute(
 			break
 		}
 	}
+	fmt.Println("REGISTER VALIDATOR STAKE -3")
 	if !isValidatorOwner {
 		return false, RegisterValidatorStakeComputeUnits, OutputUnauthorized, nil, nil
 	}
-
+	fmt.Println("REGISTER VALIDATOR STAKE -4")
 	// Unmarshal the stake info
 	stakeInfo, err := UnmarshalValidatorStakeInfo(r.StakeInfo)
 	if err != nil {
@@ -104,7 +112,7 @@ func (r *RegisterValidatorStake) Execute(
 	if err != nil {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidNodeID, nil, nil
 	}
-
+	fmt.Println("REGISTER VALIDATOR STAKE -5")
 	// Check if the validator was already registered
 	exists, _, _, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
 	if exists {
@@ -127,12 +135,13 @@ func (r *RegisterValidatorStake) Execute(
 	if startTime.Before(currentTime) || startTime.Before(lastBlockTime) {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeStartTime, nil, nil
 	}
+	fmt.Println("REGISTER VALIDATOR STAKE -6")
 	endTime := time.Unix(int64(stakeInfo.StakeEndTime), 0).UTC()
 	// Check that stakeEndTime is after stakeStartTime
 	if endTime.Before(startTime) {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeEndTime, nil, nil
 	}
-
+	fmt.Println("REGISTER VALIDATOR STAKE -7")
 	// Check that the total staking period is at least the minimum staking period
 	stakeDuration := endTime.Sub(startTime)
 	if stakeDuration < stakingConfig.MinValidatorStakeDuration || stakeDuration > stakingConfig.MaxValidatorStakeDuration {
