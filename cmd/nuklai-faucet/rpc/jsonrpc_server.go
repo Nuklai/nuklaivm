@@ -72,3 +72,20 @@ func (j *JSONRPCServer) SolveChallenge(req *http.Request, args *SolveChallengeAr
 	reply.Amount = amount
 	return nil
 }
+
+type UpdateNuklaiRPCArgs struct {
+	NuklaiRPCUrl string `json:"nuklaiRPCUrl"`
+}
+
+type UpdateNuklaiRPCReply struct {
+	Success bool `json:"success"`
+}
+
+func (j *JSONRPCServer) UpdateNuklaiRPC(req *http.Request, args *UpdateNuklaiRPCArgs, reply *UpdateNuklaiRPCReply) error {
+	err := j.m.UpdateNuklaiRPC(req.Context(), args.NuklaiRPCUrl)
+	if err != nil {
+		return err
+	}
+	reply.Success = true
+	return nil
+}

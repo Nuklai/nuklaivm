@@ -15,15 +15,17 @@ import {
 import React, { useEffect, useState } from 'react'
 import {
   GetBalance,
+  GetChainID,
   GetFeed,
   GetFeedInfo,
+  GetSubnetID,
   Message,
   OpenLink,
   Transfer as Send
 } from '../../wailsjs/go/main/App'
 import FundsCheck from './FundsCheck'
 
-const { Title, Text } = Typography
+const { Text, Paragraph } = Typography
 
 const Feed = () => {
   const { message } = App.useApp()
@@ -35,6 +37,8 @@ const Feed = () => {
   const [tipFocus, setTipFocus] = useState({})
   const [tipForm] = Form.useForm()
   const [balance, setBalance] = useState([])
+  const [subnetID, setSubnetID] = useState('')
+  const [chainID, setChainID] = useState('')
 
   // Helper function to convert timestamp
   const formatTimestamp = (timestamp) => {
@@ -45,8 +49,10 @@ const Feed = () => {
   // Fetch data for the feed and user's balance
   useEffect(() => {
     const fetchData = async () => {
+      const fetchedSubnetID = await GetSubnetID()
+      const fetchedChainID = await GetChainID()
       const [feedData, feedInfoData, balances] = await Promise.all([
-        GetFeed(),
+        GetFeed(fetchedSubnetID, fetchedChainID),
         GetFeedInfo(),
         GetBalance()
       ])
@@ -58,10 +64,12 @@ const Feed = () => {
           label: `${bal.Bal} ${bal.Symbol}`
         }))
       )
+      setSubnetID(fetchedSubnetID)
+      setChainID(fetchedChainID)
     }
 
     fetchData()
-    const interval = setInterval(fetchData, 30000) // Refresh every 30 seconds
+    const interval = setInterval(fetchData, 5000) // Refresh every 5 seconds
     return () => clearInterval(interval)
   }, [])
 
@@ -197,7 +205,11 @@ const Feed = () => {
                 <br />
                 <Text strong>Fee:</Text> {item.Fee}
                 <br />
-                <Text strong>Actor:</Text> {item.Address}
+                <Text strong>Actor:</Text> <Text copyable>{item.Address}</Text>
+                <br />
+                <Text strong>SubnetID:</Text> {item.SubnetID}
+                <br />
+                <Text strong>ChainID:</Text> {item.ChainID}
               </div>
             </List.Item>
           )}

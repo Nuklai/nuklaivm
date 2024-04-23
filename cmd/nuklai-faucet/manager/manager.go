@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -41,17 +42,19 @@ type Manager struct {
 	salt         []byte
 	difficulty   uint16
 	solutions    set.Set[ids.ID]
+	cancelFunc   context.CancelFunc
 }
 
 func New(logger logging.Logger, config *config.Config) (*Manager, error) {
-	ctx := context.TODO()
+	ctx, cancel := context.WithCancel(context.Background())
 	cli := rpc.NewJSONRPCClient(config.NuklaiRPC)
 	networkID, _, chainID, err := cli.Network(ctx)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	ncli := nrpc.NewJSONRPCClient(config.NuklaiRPC, networkID, chainID)
-	m := &Manager{log: logger, config: config, cli: cli, ncli: ncli, factory: auth.NewED25519Factory(config.PrivateKey())}
+	m := &Manager{log: logger, config: config, cli: cli, ncli: ncli, factory: auth.NewED25519Factory(config.PrivateKey()), cancelFunc: cancel}
 	m.lastRotation = time.Now().Unix()
 	m.difficulty = m.config.StartDifficulty
 	m.solutions = set.NewSet[ids.ID](m.config.SolutionsPerSalt)
@@ -190,4 +193,54 @@ func (m *Manager) SolveChallenge(ctx context.Context, solver codec.Address, salt
 		m.t.SetTimeoutIn(time.Duration(m.config.TargetDurationPerSalt) * time.Second)
 	}
 	return txID, m.config.Amount, nil
+}
+
+func (m *Manager) UpdateNuklaiRPC(ctx context.Context, newNuklaiRPCUrl string) error {
+	m.l.Lock()
+	defer m.l.Unlock()
+
+	m.log.Info("Updating nuklaiRPC URL", zap.String("old URL", m.config.NuklaiRPC), zap.String("new URL", newNuklaiRPCUrl))
+
+	// Updating the configuration
+	m.config.NuklaiRPC = newNuklaiRPCUrl
+
+	// Re-initializing the RPC clients
+	cli := rpc.NewJSONRPCClient(newNuklaiRPCUrl)
+	networkID, _, chainID, err := cli.Network(ctx)
+	m.log.Info("Fetching network details", zap.Uint32("network ID", networkID), zap.String("chain ID", chainID.String()))
+	if err != nil {
+		m.log.Error("Failed to fetch network details", zap.Error(err))
+		return fmt.Errorf("failed to fetch network details: %w", err)
+	}
+
+	// Reassign the newly created clients
+	m.cli = cli
+	m.ncli = nrpc.NewJSONRPCClient(newNuklaiRPCUrl, networkID, chainID)
+
+	// Reinitialize dependent properties
+	m.salt, err = challenge.New()
+	if err != nil {
+		m.log.Error("Failed to generate new salt", zap.Error(err))
+		return fmt.Errorf("failed to generate new salt: %w", err)
+	}
+	m.solutions = set.NewSet[ids.ID](m.config.SolutionsPerSalt)
+	m.difficulty = m.config.StartDifficulty
+	m.lastRotation = time.Now().Unix()
+
+	bal, err := m.ncli.Balance(ctx, m.config.AddressBech32(), ids.Empty)
+	if err != nil {
+		return err
+	}
+	m.t = timer.NewTimer(m.updateDifficulty)
+
+	m.log.Info("RPC client has been updated and manager reinitialized",
+		zap.String("new RPC URL", newNuklaiRPCUrl),
+		zap.Uint32("network ID", networkID),
+		zap.String("chain ID", chainID.String()),
+		zap.String("address", m.config.AddressBech32()),
+		zap.Uint16("difficulty", m.difficulty),
+		zap.String("balance", utils.FormatBalance(bal, consts.Decimals)),
+	)
+
+	return nil
 }

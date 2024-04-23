@@ -27,9 +27,9 @@ var (
 	allowedHosts    = []string{"*"}
 	shutdownTimeout = 30 * time.Second
 	httpConfig      = server.HTTPConfig{
-		ReadTimeout:       30 * time.Second,
-		ReadHeaderTimeout: 30 * time.Second,
-		WriteTimeout:      30 * time.Second,
+		ReadTimeout:       60 * time.Second,
+		ReadHeaderTimeout: 60 * time.Second,
+		WriteTimeout:      60 * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
 )
@@ -81,13 +81,15 @@ func main() {
 		fatal(log, "cannot create server", zap.Error(err))
 	}
 
-	// Start manager
+	// Start manager with context handling
 	manager, err := manager.New(log, &c)
 	if err != nil {
 		fatal(log, "cannot create manager", zap.Error(err))
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+
 	go func() {
-		if err := manager.Run(context.Background()); err != nil {
+		if err := manager.Run(ctx); err != nil {
 			log.Error("manager error", zap.Error(err))
 		}
 	}()
@@ -108,6 +110,7 @@ func main() {
 	go func() {
 		sig := <-sigs
 		log.Info("triggering server shutdown", zap.Any("signal", sig))
+		cancel() // Ensure context cancellation cascades down
 		_ = srv.Shutdown()
 	}()
 	log.Info("server exited", zap.Error(srv.Dispatch()))

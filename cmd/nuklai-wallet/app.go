@@ -67,6 +67,10 @@ func (a *App) GetUnitPrices() []*backend.GenericInfo {
 	return a.b.GetUnitPrices()
 }
 
+func (a *App) GetSubnetID() string {
+	return a.b.GetSubnetID()
+}
+
 func (a *App) GetChainID() string {
 	return a.b.GetChainID()
 }
@@ -93,6 +97,15 @@ func (a *App) Transfer(asset string, address string, amount string, memo string)
 
 func (a *App) GetAddress() string {
 	return a.b.GetAddress()
+}
+
+// TODO: Maybe find a different way to do this?
+func (a *App) GetPrivateKey() string {
+	return a.b.GetPrivateKey()
+}
+
+func (a *App) GetPublicKey() string {
+	return a.b.GetPublicKey()
 }
 
 func (a *App) GetTransactions() *backend.Transactions {
@@ -128,7 +141,7 @@ func (a *App) GetFeedInfo() (*backend.FeedInfo, error) {
 }
 
 func (a *App) GetFeed() ([]*backend.FeedObject, error) {
-	return a.b.GetFeed()
+	return a.b.GetFeed(a.GetSubnetID(), a.GetChainID())
 }
 
 func (a *App) Message(message string, url string) error {
@@ -148,4 +161,20 @@ func (*App) GetCommitHash() string {
 		}
 	}
 	return ""
+}
+
+func (a *App) UpdateNuklaiRPC(newNuklaiRPCUrl string) error {
+	return a.b.UpdateNuklaiRPC(newNuklaiRPCUrl)
+}
+
+func (a *App) UpdateFaucetRPC(newFaucetRPCUrl string) {
+	a.b.UpdateFaucetRPC(newFaucetRPCUrl)
+}
+
+func (a *App) UpdateFeedRPC(newFeedRPCUrl string) {
+	a.b.UpdateFeedRPC(newFeedRPCUrl)
+}
+
+func (a *App) GetConfig() *backend.Config {
+	return a.b.GetConfig()
 }

@@ -42,6 +42,10 @@ export function GetCommitHash() {
   return window['go']['main']['App']['GetCommitHash']();
 }
 
+export function GetConfig() {
+  return window['go']['main']['App']['GetConfig']();
+}
+
 export function GetFaucetSolutions() {
   return window['go']['main']['App']['GetFaucetSolutions']();
 }
@@ -60,6 +64,18 @@ export function GetLatestBlocks(arg1, arg2) {
 
 export function GetMyAssets() {
   return window['go']['main']['App']['GetMyAssets']();
+}
+
+export function GetPrivateKey() {
+  return window['go']['main']['App']['GetPrivateKey']();
+}
+
+export function GetPublicKey() {
+  return window['go']['main']['App']['GetPublicKey']();
+}
+
+export function GetSubnetID() {
+  return window['go']['main']['App']['GetSubnetID']();
 }
 
 export function GetTotalBlocks() {
@@ -96,4 +112,16 @@ export function StartFaucetSearch() {
 
 export function Transfer(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['Transfer'](arg1, arg2, arg3, arg4);
+}
+
+export function UpdateFaucetRPC(arg1) {
+  return window['go']['main']['App']['UpdateFaucetRPC'](arg1);
+}
+
+export function UpdateFeedRPC(arg1) {
+  return window['go']['main']['App']['UpdateFeedRPC'](arg1);
+}
+
+export function UpdateNuklaiRPC(arg1) {
+  return window['go']['main']['App']['UpdateNuklaiRPC'](arg1);
 }

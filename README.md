@@ -388,6 +388,8 @@ Note that when you run `dev.sh`, it does the following:
 - Start Nuklai Faucet from cmd/nuklai-faucet
 - Run Nuklai Wallet app
 
+Then open [http://localhost:34115/](http://localhost:34115/) in your browser to interact with the wallet.
+
 ## Tests
 
 ### Running an Integration Test

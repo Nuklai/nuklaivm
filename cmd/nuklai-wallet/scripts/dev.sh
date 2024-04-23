@@ -46,12 +46,18 @@ mkdir -p cmd/nuklai-wallet/.nuklai-wallet
 sed "s|\"nuklaiRPC\": \".*\"|\"nuklaiRPC\": \"$nuklai_rpc_uri\"|" cmd/nuklai-wallet/config.json > cmd/nuklai-wallet/.nuklai-wallet/config.json
 
 # Run nuklai-feed in the background and capture its PID
-./build/nuklai-feed ${nuklai_wallet_dir}/nuklai-feed-config.json &
+nuklai_feed_log=cmd/nuklai-wallet/.nuklai-wallet/nuklai-feed.log
+rm -f ${nuklai_feed_log}
+nohup ./build/nuklai-feed ${nuklai_wallet_dir}/nuklai-feed-config.json > ${nuklai_feed_log} 2>&1 &
 nuklai_feed_pid=$!
+echo "Nuklai Feed started with PID: $nuklai_feed_pid"
 
 # Run nuklai-faucet in the background and capture its PID
-./build/nuklai-faucet ${nuklai_wallet_dir}/nuklai-faucet-config.json &
+nuklai_faucet_log=cmd/nuklai-wallet/.nuklai-wallet/nuklai-faucet.log
+rm -f ${nuklai_faucet_log}
+nohup ./build/nuklai-faucet ${nuklai_wallet_dir}/nuklai-faucet-config.json > ${nuklai_faucet_log} 2>&1 &
 nuklai_faucet_pid=$!
+echo "Nuklai Faucet started with PID: $nuklai_faucet_pid"
 
 # Go back to the original directory
 popd

@@ -40,13 +40,31 @@ func (cli *JSONRPCClient) FeedInfo(ctx context.Context) (string, uint64, error) 
 	return resp.Address, resp.Fee, err
 }
 
-func (cli *JSONRPCClient) Feed(ctx context.Context) ([]*manager.FeedObject, error) {
+func (cli *JSONRPCClient) Feed(ctx context.Context, subnetID, chainID string) ([]*manager.FeedObject, error) {
 	resp := new(FeedReply)
 	err := cli.requester.SendRequest(
 		ctx,
 		"feed",
-		nil,
+		&FeedArgs{
+			SubnetID: subnetID,
+			ChainID:  chainID,
+		},
 		resp,
 	)
 	return resp.Feed, err
+}
+
+// UpdateNuklaiRPC updates the RPC url for Nuklai
+func (cli *JSONRPCClient) UpdateNuklaiRPC(ctx context.Context, newNuklaiRPCUrl string) (bool, error) {
+	resp := new(UpdateNuklaiRPCReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"updateNuklaiRPC",
+		&UpdateNuklaiRPCArgs{
+			NuklaiRPCUrl: newNuklaiRPCUrl,
+		},
+		resp,
+	)
+
+	return resp.Success, err
 }

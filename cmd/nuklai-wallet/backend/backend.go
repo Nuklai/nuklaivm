@@ -4,6 +4,7 @@
 package backend
 
 import (
+	"container/list"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -46,6 +47,9 @@ import (
 	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
 
+// Constant for max blocks to store
+const maxBlocksStore = 250 // Adjust as needed
+
 var (
 	databaseFolder string
 	configFile     string
@@ -63,16 +67,18 @@ type Backend struct {
 	addr    codec.Address
 	addrStr string
 
-	cli     *rpc.JSONRPCClient
-	chainID ids.ID
-	scli    *rpc.WebSocketClient
-	ncli    *nrpc.JSONRPCClient
-	parser  chain.Parser
-	fcli    *frpc.JSONRPCClient
-	fecli   *ferpc.JSONRPCClient
+	cli      *rpc.JSONRPCClient
+	subnetID ids.ID
+	chainID  ids.ID
+	scli     *rpc.WebSocketClient
+	ncli     *nrpc.JSONRPCClient
+	parser   chain.Parser
+	fcli     *frpc.JSONRPCClient
+	fecli    *ferpc.JSONRPCClient
 
 	blockLock   sync.Mutex
-	blocks      []*BlockInfo
+	blocks      *list.List               // Change slice to a linked list for deque operations
+	blockMap    map[uint64]*list.Element // Map block heights to elements in the list
 	stats       []*TimeStat
 	currentStat *TimeStat
 
@@ -85,14 +91,15 @@ type Backend struct {
 
 	htmlCache *cache.LRU[string, *HTMLMeta]
 	urlQueue  chan string
+	stopChans map[string]chan bool // Map to hold channels that control the stopping of goroutines
 }
 
 // NewApp creates a new App application struct
 func New(fatal func(error)) *Backend {
 	return &Backend{
-		fatal: fatal,
-
-		blocks:            []*BlockInfo{},
+		fatal:             fatal,
+		blocks:            list.New(),
+		blockMap:          make(map[uint64]*list.Element),
 		stats:             []*TimeStat{},
 		transactionAlerts: []*Alert{},
 		searchAlerts:      []*Alert{},
@@ -114,24 +121,11 @@ func (b *Backend) Start(ctx context.Context) error {
 	}
 
 	// Read environment variables or use default values
-	databasePath := os.Getenv("NUKLAI_WALLET_DB_PATH")
-	if databasePath == "" {
-		databaseFolder = filepath.Join(defaultDir, ".nuklai-wallet/db")
-	} else {
-		databaseFolder = databasePath
-	}
+	databaseFolder = getEnv("NUKLAI_WALLET_DB_PATH", filepath.Join(defaultDir, ".nuklai-wallet/db"))
+	configFile = getEnv("NUKLAI_WALLET_CONFIG_PATH", filepath.Join(defaultDir, ".nuklai-wallet/config.json"))
 
-	// Ensure the database directory exists
-	err = os.MkdirAll(databaseFolder, os.ModePerm) // os.ModePerm is 0777, allowing read, write & exec permissions for all
-	if err != nil {
-		log.Fatalf("Failed to create database directory '%s': %v", databaseFolder, err)
-	}
-
-	configFilePath := os.Getenv("NUKLAI_WALLET_CONFIG_PATH")
-	if configFilePath == "" {
-		configFile = filepath.Join(defaultDir, ".nuklai-wallet/config.json")
-	} else {
-		configFile = configFilePath
+	if err := os.MkdirAll(databaseFolder, os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create database directory '%s': %w", databaseFolder, err)
 	}
 
 	// Set context
@@ -164,51 +158,21 @@ func (b *Backend) Start(ctx context.Context) error {
 	b.factory = auth.NewED25519Factory(b.priv)
 	b.addr = auth.NewED25519Address(b.priv.PublicKey())
 	b.addrStr = codec.MustAddressBech32(nconsts.HRP, b.addr)
+
 	if err := b.AddAddressBook("Me", b.addrStr); err != nil {
 		return err
 	}
-	if err := b.s.StoreAsset(ids.Empty, false); err != nil {
+	if err := b.s.StoreAsset(b.subnetID, b.chainID, ids.Empty, false); err != nil {
 		return err
 	}
 
-	// Open config
-	rawConifg, err := os.ReadFile(configFile)
-	if err != nil {
-		// TODO: replace with DEVNET
-		b.c = &Config{
-			NuklaiRPC:   "http://54.190.240.186:9090",
-			FaucetRPC:   "http://54.190.240.186:9091",
-			SearchCores: 4,
-			FeedRPC:     "http://54.190.240.186:9092",
-		}
-	} else {
-		var config Config
-		if err := json.Unmarshal(rawConifg, &config); err != nil {
-			return err
-		}
-		b.c = &config
+	if err := b.initClients(); err != nil {
+		return err
 	}
 
-	// Create clients
-	b.cli = rpc.NewJSONRPCClient(b.c.NuklaiRPC)
-	networkID, _, chainID, err := b.cli.Network(b.ctx)
-	if err != nil {
-		return err
-	}
-	b.chainID = chainID
-	scli, err := rpc.NewWebSocketClient(b.c.NuklaiRPC, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
-	if err != nil {
-		return err
-	}
-	b.scli = scli
-	b.ncli = nrpc.NewJSONRPCClient(b.c.NuklaiRPC, networkID, chainID)
-	parser, err := b.ncli.Parser(b.ctx)
-	if err != nil {
-		return err
-	}
-	b.parser = parser
-	b.fcli = frpc.NewJSONRPCClient(b.c.FaucetRPC)
-	b.fecli = ferpc.NewJSONRPCClient(b.c.FeedRPC)
+	b.stopChans = make(map[string]chan bool)
+	b.stopChans["collectBlocks"] = make(chan bool)
+	b.stopChans["parseURLs"] = make(chan bool)
 
 	// Start fetching blocks
 	go b.collectBlocks()
@@ -216,243 +180,309 @@ func (b *Backend) Start(ctx context.Context) error {
 	return nil
 }
 
-func (b *Backend) collectBlocks() {
-	if err := b.scli.RegisterBlocks(); err != nil {
-		b.fatal(err)
-		return
+func (b *Backend) initClients() error {
+	// Open config
+	rawConfig, err := os.ReadFile(configFile)
+	if err != nil {
+		log.Printf("Failed to read config file '%s', using default configuration: %v", configFile, err)
+		// TODO: replace with DEVNET
+		b.c = &Config{ // Default configuration, should be configurable
+			NuklaiRPC:   "http://localhost:9090",
+			FaucetRPC:   "http://localhost:9091",
+			SearchCores: 4,
+			FeedRPC:     "http://localhost:9092",
+		}
+	} else {
+		if err := json.Unmarshal(rawConfig, &b.c); err != nil {
+			return fmt.Errorf("failed to unmarshal config: %w", err)
+		}
 	}
 
-	var (
-		start     time.Time
-		lastBlock int64
-		tpsWindow = window.Window{}
-	)
-	for b.ctx.Err() == nil {
-		blk, results, prices, err := b.scli.ListenBlock(b.ctx, b.parser)
-		if err != nil {
-			b.fatal(err)
-			return
-		}
-		consumed := chain.Dimensions{}
-		failTxs := 0
-		for i, result := range results {
-			nconsumed, err := chain.Add(consumed, result.Consumed)
-			if err != nil {
+	// Create clients
+	b.cli = rpc.NewJSONRPCClient(b.c.NuklaiRPC)
+	networkID, subnetID, chainID, err := b.cli.Network(b.ctx)
+	if err != nil {
+		return fmt.Errorf("failed to fetch network info: %w", err)
+	}
+	b.subnetID = subnetID
+	b.chainID = chainID
+
+	b.scli, err = rpc.NewWebSocketClient(b.c.NuklaiRPC, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
+	if err != nil {
+		return fmt.Errorf("failed to initialize WebSocket client: %w", err)
+	}
+
+	b.ncli = nrpc.NewJSONRPCClient(b.c.NuklaiRPC, networkID, chainID)
+	if b.parser, err = b.ncli.Parser(b.ctx); err != nil {
+		return fmt.Errorf("failed to initialize parser: %w", err)
+	}
+
+	b.fcli = frpc.NewJSONRPCClient(b.c.FaucetRPC)
+	b.fecli = ferpc.NewJSONRPCClient(b.c.FeedRPC)
+	return nil
+}
+
+func getEnv(key, fallback string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return fallback
+}
+
+func (b *Backend) restartCollectBlocks() {
+	select {
+	case b.stopChans["collectBlocks"] <- true:
+		// Signal to stop the existing goroutine
+	default:
+		// No need to block if it's already stopped
+	}
+
+	go b.collectBlocks()
+}
+
+func (b *Backend) collectBlocks() {
+	for {
+		select {
+		case <-b.stopChans["collectBlocks"]:
+			return // Stop the goroutine
+		default:
+			if err := b.scli.RegisterBlocks(); err != nil {
 				b.fatal(err)
 				return
 			}
-			consumed = nconsumed
 
-			tx := blk.Txs[i]
-			actor := tx.Auth.Actor()
-			if !result.Success {
-				failTxs++
-			}
-
-			// We should exit action parsing as soon as possible
-			switch action := tx.Action.(type) {
-			case *actions.Transfer:
-				if actor != b.addr && action.To != b.addr {
-					continue
-				}
-				_, symbol, decimals, _, _, owner, _, err := b.ncli.Asset(b.ctx, action.Asset, true)
+			var (
+				start     time.Time
+				lastBlock int64
+				tpsWindow = window.Window{}
+			)
+			for b.ctx.Err() == nil {
+				blk, results, prices, err := b.scli.ListenBlock(b.ctx, b.parser)
 				if err != nil {
 					b.fatal(err)
 					return
 				}
-				txInfo := &TransactionInfo{
-					ID:        tx.ID().String(),
-					Size:      fmt.Sprintf("%.2fKB", float64(tx.Size())/units.KiB),
-					Success:   result.Success,
-					Timestamp: blk.Tmstmp,
-					Actor:     codec.MustAddressBech32(nconsts.HRP, actor),
-					Type:      "Transfer",
-					Units:     hcli.ParseDimensions(result.Consumed),
-					Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, nconsts.Decimals), nconsts.Symbol),
-				}
-				if result.Success {
-					txInfo.Summary = fmt.Sprintf("%s %s -> %s", hutils.FormatBalance(action.Value, decimals), symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
-					if len(action.Memo) > 0 {
-						txInfo.Summary += fmt.Sprintf(" (memo: %s)", action.Memo)
-					}
-				} else {
-					txInfo.Summary = string(result.Output)
-				}
-				if action.To == b.addr {
-					if actor != b.addr && result.Success {
-						b.txAlertLock.Lock()
-						b.transactionAlerts = append(b.transactionAlerts, &Alert{"info", fmt.Sprintf("Received %s %s from Transfer", hutils.FormatBalance(action.Value, decimals), symbol)})
-						b.txAlertLock.Unlock()
-					}
-					hasAsset, err := b.s.HasAsset(action.Asset)
+				consumed := chain.Dimensions{}
+				failTxs := 0
+				for i, result := range results {
+					nconsumed, err := chain.Add(consumed, result.Consumed)
 					if err != nil {
 						b.fatal(err)
 						return
 					}
-					if !hasAsset {
-						if err := b.s.StoreAsset(action.Asset, b.addrStr == owner); err != nil {
+					consumed = nconsumed
+
+					tx := blk.Txs[i]
+					actor := tx.Auth.Actor()
+					if !result.Success {
+						failTxs++
+					}
+
+					// We should exit action parsing as soon as possible
+					switch action := tx.Action.(type) {
+					case *actions.Transfer:
+						if actor != b.addr && action.To != b.addr {
+							continue
+						}
+						_, symbol, decimals, _, _, owner, _, err := b.ncli.Asset(b.ctx, action.Asset, true)
+						if err != nil {
 							b.fatal(err)
 							return
 						}
+						txInfo := &TransactionInfo{
+							ID:        tx.ID().String(),
+							Size:      fmt.Sprintf("%.2fKB", float64(tx.Size())/units.KiB),
+							Success:   result.Success,
+							Timestamp: blk.Tmstmp,
+							Actor:     codec.MustAddressBech32(nconsts.HRP, actor),
+							Type:      "Transfer",
+							Units:     hcli.ParseDimensions(result.Consumed),
+							Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, nconsts.Decimals), nconsts.Symbol),
+						}
+						if result.Success {
+							txInfo.Summary = fmt.Sprintf("%s %s -> %s", hutils.FormatBalance(action.Value, decimals), symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
+							if len(action.Memo) > 0 {
+								txInfo.Summary += fmt.Sprintf(" (memo: %s)", action.Memo)
+							}
+						} else {
+							txInfo.Summary = string(result.Output)
+						}
+						if action.To == b.addr {
+							if actor != b.addr && result.Success {
+								b.txAlertLock.Lock()
+								b.transactionAlerts = append(b.transactionAlerts, &Alert{"info", fmt.Sprintf("Received %s %s from Transfer", hutils.FormatBalance(action.Value, decimals), symbol)})
+								b.txAlertLock.Unlock()
+							}
+							hasAsset, err := b.s.HasAsset(b.subnetID, b.chainID, action.Asset)
+							if err != nil {
+								b.fatal(err)
+								return
+							}
+							if !hasAsset {
+								if err := b.s.StoreAsset(b.subnetID, b.chainID, action.Asset, b.addrStr == owner); err != nil {
+									b.fatal(err)
+									return
+								}
+							}
+							if err := b.s.StoreTransaction(b.subnetID, b.chainID, txInfo); err != nil {
+								b.fatal(err)
+								return
+							}
+						} else if actor == b.addr {
+							if err := b.s.StoreTransaction(b.subnetID, b.chainID, txInfo); err != nil {
+								b.fatal(err)
+								return
+							}
+						}
+					case *actions.CreateAsset:
+						if actor != b.addr {
+							continue
+						}
+						if err := b.s.StoreAsset(b.subnetID, b.chainID, tx.ID(), true); err != nil {
+							b.fatal(err)
+							return
+						}
+						txInfo := &TransactionInfo{
+							ID:        tx.ID().String(),
+							Size:      fmt.Sprintf("%.2fKB", float64(tx.Size())/units.KiB),
+							Success:   result.Success,
+							Timestamp: blk.Tmstmp,
+							Actor:     codec.MustAddressBech32(nconsts.HRP, actor),
+							Type:      "CreateAsset",
+							Units:     hcli.ParseDimensions(result.Consumed),
+							Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, nconsts.Decimals), nconsts.Symbol),
+						}
+						if result.Success {
+							txInfo.Summary = fmt.Sprintf("assetID: %s symbol: %s decimals: %d metadata: %s", tx.ID(), action.Symbol, action.Decimals, action.Metadata)
+						} else {
+							txInfo.Summary = string(result.Output)
+						}
+						if err := b.s.StoreTransaction(b.subnetID, b.chainID, txInfo); err != nil {
+							b.fatal(err)
+							return
+						}
+					case *actions.MintAsset:
+						if actor != b.addr && action.To != b.addr {
+							continue
+						}
+						_, symbol, decimals, _, _, owner, _, err := b.ncli.Asset(b.ctx, action.Asset, true)
+						if err != nil {
+							b.fatal(err)
+							return
+						}
+						txInfo := &TransactionInfo{
+							ID:        tx.ID().String(),
+							Timestamp: blk.Tmstmp,
+							Size:      fmt.Sprintf("%.2fKB", float64(tx.Size())/units.KiB),
+							Success:   result.Success,
+							Actor:     codec.MustAddressBech32(nconsts.HRP, actor),
+							Type:      "Mint",
+							Units:     hcli.ParseDimensions(result.Consumed),
+							Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, nconsts.Decimals), nconsts.Symbol),
+						}
+						if result.Success {
+							txInfo.Summary = fmt.Sprintf("%s %s -> %s", hutils.FormatBalance(action.Value, decimals), symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
+						} else {
+							txInfo.Summary = string(result.Output)
+						}
+						if action.To == b.addr {
+							if actor != b.addr && result.Success {
+								b.txAlertLock.Lock()
+								b.transactionAlerts = append(b.transactionAlerts, &Alert{"info", fmt.Sprintf("Received %s %s from Mint", hutils.FormatBalance(action.Value, decimals), symbol)})
+								b.txAlertLock.Unlock()
+							}
+							hasAsset, err := b.s.HasAsset(b.subnetID, b.chainID, action.Asset)
+							if err != nil {
+								b.fatal(err)
+								return
+							}
+							if !hasAsset {
+								if err := b.s.StoreAsset(b.subnetID, b.chainID, action.Asset, b.addrStr == owner); err != nil {
+									b.fatal(err)
+									return
+								}
+							}
+							if err := b.s.StoreTransaction(b.subnetID, b.chainID, txInfo); err != nil {
+								b.fatal(err)
+								return
+							}
+						} else if actor == b.addr {
+							if err := b.s.StoreTransaction(b.subnetID, b.chainID, txInfo); err != nil {
+								b.fatal(err)
+								return
+							}
+						}
 					}
-					if err := b.s.StoreTransaction(txInfo); err != nil {
+				}
+
+				now := time.Now()
+				if start.IsZero() {
+					start = now
+				}
+				bi := &BlockInfo{}
+				if lastBlock != 0 {
+					since := now.Unix() - lastBlock
+					newWindow, err := window.Roll(tpsWindow, int(since))
+					if err != nil {
 						b.fatal(err)
 						return
 					}
-				} else if actor == b.addr {
-					if err := b.s.StoreTransaction(txInfo); err != nil {
-						b.fatal(err)
-						return
-					}
-				}
-			case *actions.CreateAsset:
-				if actor != b.addr {
-					continue
-				}
-				if err := b.s.StoreAsset(tx.ID(), true); err != nil {
-					b.fatal(err)
-					return
-				}
-				txInfo := &TransactionInfo{
-					ID:        tx.ID().String(),
-					Size:      fmt.Sprintf("%.2fKB", float64(tx.Size())/units.KiB),
-					Success:   result.Success,
-					Timestamp: blk.Tmstmp,
-					Actor:     codec.MustAddressBech32(nconsts.HRP, actor),
-					Type:      "CreateAsset",
-					Units:     hcli.ParseDimensions(result.Consumed),
-					Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, nconsts.Decimals), nconsts.Symbol),
-				}
-				if result.Success {
-					txInfo.Summary = fmt.Sprintf("assetID: %s symbol: %s decimals: %d metadata: %s", tx.ID(), action.Symbol, action.Decimals, action.Metadata)
+					tpsWindow = newWindow
+					window.Update(&tpsWindow, window.WindowSliceSize-consts.Uint64Len, uint64(len(blk.Txs)))
+					runningDuration := time.Since(start)
+					tpsDivisor := math.Min(window.WindowSize, runningDuration.Seconds())
+					bi.TPS = fmt.Sprintf("%.2f", float64(window.Sum(tpsWindow))/tpsDivisor)
+					bi.Latency = time.Now().UnixMilli() - blk.Tmstmp
 				} else {
-					txInfo.Summary = string(result.Output)
+					window.Update(&tpsWindow, window.WindowSliceSize-consts.Uint64Len, uint64(len(blk.Txs)))
+					bi.TPS = "0.0"
 				}
-				if err := b.s.StoreTransaction(txInfo); err != nil {
-					b.fatal(err)
-					return
-				}
-			case *actions.MintAsset:
-				if actor != b.addr && action.To != b.addr {
-					continue
-				}
-				_, symbol, decimals, _, _, owner, _, err := b.ncli.Asset(b.ctx, action.Asset, true)
+				blkID, err := blk.ID()
 				if err != nil {
 					b.fatal(err)
 					return
 				}
-				txInfo := &TransactionInfo{
-					ID:        tx.ID().String(),
-					Timestamp: blk.Tmstmp,
-					Size:      fmt.Sprintf("%.2fKB", float64(tx.Size())/units.KiB),
-					Success:   result.Success,
-					Actor:     codec.MustAddressBech32(nconsts.HRP, actor),
-					Type:      "Mint",
-					Units:     hcli.ParseDimensions(result.Consumed),
-					Fee:       fmt.Sprintf("%s %s", hutils.FormatBalance(result.Fee, nconsts.Decimals), nconsts.Symbol),
-				}
-				if result.Success {
-					txInfo.Summary = fmt.Sprintf("%s %s -> %s", hutils.FormatBalance(action.Value, decimals), symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
-				} else {
-					txInfo.Summary = string(result.Output)
-				}
-				if action.To == b.addr {
-					if actor != b.addr && result.Success {
-						b.txAlertLock.Lock()
-						b.transactionAlerts = append(b.transactionAlerts, &Alert{"info", fmt.Sprintf("Received %s %s from Mint", hutils.FormatBalance(action.Value, decimals), symbol)})
-						b.txAlertLock.Unlock()
-					}
-					hasAsset, err := b.s.HasAsset(action.Asset)
-					if err != nil {
-						b.fatal(err)
-						return
-					}
-					if !hasAsset {
-						if err := b.s.StoreAsset(action.Asset, b.addrStr == owner); err != nil {
-							b.fatal(err)
-							return
-						}
-					}
-					if err := b.s.StoreTransaction(txInfo); err != nil {
-						b.fatal(err)
-						return
-					}
-				} else if actor == b.addr {
-					if err := b.s.StoreTransaction(txInfo); err != nil {
-						b.fatal(err)
-						return
-					}
-				}
-			}
-		}
-		now := time.Now()
-		if start.IsZero() {
-			start = now
-		}
-		bi := &BlockInfo{}
-		if lastBlock != 0 {
-			since := now.Unix() - lastBlock
-			newWindow, err := window.Roll(tpsWindow, int(since))
-			if err != nil {
-				b.fatal(err)
-				return
-			}
-			tpsWindow = newWindow
-			window.Update(&tpsWindow, window.WindowSliceSize-consts.Uint64Len, uint64(len(blk.Txs)))
-			runningDuration := time.Since(start)
-			tpsDivisor := math.Min(window.WindowSize, runningDuration.Seconds())
-			bi.TPS = fmt.Sprintf("%.2f", float64(window.Sum(tpsWindow))/tpsDivisor)
-			bi.Latency = time.Now().UnixMilli() - blk.Tmstmp
-		} else {
-			window.Update(&tpsWindow, window.WindowSliceSize-consts.Uint64Len, uint64(len(blk.Txs)))
-			bi.TPS = "0.0"
-		}
-		blkID, err := blk.ID()
-		if err != nil {
-			b.fatal(err)
-			return
-		}
-		bi.Timestamp = blk.Tmstmp
-		bi.ID = blkID.String()
-		bi.Height = blk.Hght
-		bi.Size = fmt.Sprintf("%.2fKB", float64(blk.Size())/units.KiB)
-		bi.Consumed = hcli.ParseDimensions(consumed)
-		bi.Prices = hcli.ParseDimensions(prices)
-		bi.StateRoot = blk.StateRoot.String()
-		bi.FailTxs = failTxs
-		bi.Txs = len(blk.Txs)
+				bi.Timestamp = blk.Tmstmp
+				bi.ID = blkID.String()
+				bi.Height = blk.Hght
+				bi.Size = fmt.Sprintf("%.2fKB", float64(blk.Size())/units.KiB)
+				bi.Consumed = hcli.ParseDimensions(consumed)
+				bi.Prices = hcli.ParseDimensions(prices)
+				bi.StateRoot = blk.StateRoot.String()
+				bi.FailTxs = failTxs
+				bi.Txs = len(blk.Txs)
 
-		// TODO: find a more efficient way to support this
-		b.blockLock.Lock()
-		b.blocks = append([]*BlockInfo{bi}, b.blocks...)
-		if len(b.blocks) > 100 {
-			b.blocks = b.blocks[:100]
-		}
-		sTime := blk.Tmstmp / consts.MillisecondsPerSecond
-		if b.currentStat != nil && b.currentStat.Timestamp != sTime {
-			b.stats = append(b.stats, b.currentStat)
-			b.currentStat = nil
-		}
-		if b.currentStat == nil {
-			b.currentStat = &TimeStat{Timestamp: sTime, Accounts: set.Set[string]{}}
-		}
-		b.currentStat.Transactions += bi.Txs
-		for _, tx := range blk.Txs {
-			b.currentStat.Accounts.Add(codec.MustAddressBech32(nconsts.HRP, tx.Auth.Sponsor()))
-		}
-		b.currentStat.Prices = prices
-		snow := time.Now().Unix()
-		newStart := 0
-		for i, item := range b.stats {
-			newStart = i
-			if snow-item.Timestamp < 120 {
-				break
+				b.AddBlock(bi) // Manage block storage with AddBlock
+
+				// Statistical updates
+				b.blockLock.Lock()
+				sTime := blk.Tmstmp / consts.MillisecondsPerSecond
+				if b.currentStat != nil && b.currentStat.Timestamp != sTime {
+					b.stats = append(b.stats, b.currentStat)
+					b.currentStat = nil
+				}
+				if b.currentStat == nil {
+					b.currentStat = &TimeStat{Timestamp: sTime, Accounts: set.Set[string]{}}
+				}
+				b.currentStat.Transactions += bi.Txs
+				for _, tx := range blk.Txs {
+					b.currentStat.Accounts.Add(codec.MustAddressBech32(nconsts.HRP, tx.Auth.Sponsor()))
+				}
+				b.currentStat.Prices = prices
+				snow := time.Now().Unix()
+				newStart := 0
+				for i, item := range b.stats {
+					newStart = i
+					if snow-item.Timestamp < 120 {
+						break
+					}
+				}
+				b.stats = b.stats[newStart:]
+				b.blockLock.Unlock()
+
+				lastBlock = now.Unix()
 			}
 		}
-		b.stats = b.stats[newStart:]
-		b.blockLock.Unlock()
-
-		lastBlock = now.Unix()
 	}
 }
 
@@ -465,27 +495,48 @@ func (b *Backend) GetTotalBlocks() int {
 	b.blockLock.Lock()
 	defer b.blockLock.Unlock()
 
-	return len(b.blocks)
+	return b.blocks.Len()
 }
 
 func (b *Backend) GetLatestBlocks(page int, count int) []*BlockInfo {
 	b.blockLock.Lock()
 	defer b.blockLock.Unlock()
 
-	// Calculate the starting index based on the current page and count per page
 	startIndex := (page - 1) * count
-	if startIndex >= len(b.blocks) {
-		return []*BlockInfo{} // Return an empty slice if the start index is beyond the available blocks
-	}
-
-	// Calculate the end index for slicing
 	endIndex := startIndex + count
-	if endIndex > len(b.blocks) {
-		endIndex = len(b.blocks) // Ensure the end index does not exceed the total number of blocks
+
+	// Collect blocks for the page
+	var blocks []*BlockInfo
+	current := b.blocks.Front()
+	for i := 0; current != nil && len(blocks) < endIndex; i++ {
+		if i >= startIndex {
+			blocks = append(blocks, current.Value.(*BlockInfo))
+		}
+		current = current.Next()
 	}
 
-	// Return a slice of the blocks array based on the calculated start and end indexes
-	return b.blocks[startIndex:endIndex]
+	// Return only the slice of blocks for the current page
+	if len(blocks) > count {
+		blocks = blocks[:count]
+	}
+	return blocks
+}
+
+// Method to add a new block to the store, ensuring the store size is managed
+func (b *Backend) AddBlock(newBlock *BlockInfo) {
+	b.blockLock.Lock()
+	defer b.blockLock.Unlock()
+
+	// Prepend new block to the deque (front of the list)
+	element := b.blocks.PushFront(newBlock)
+	b.blockMap[newBlock.Height] = element
+
+	// Trim the oldest blocks if the deque size exceeds maxBlocksStore
+	if b.blocks.Len() > maxBlocksStore {
+		lastElement := b.blocks.Back()
+		b.blocks.Remove(lastElement)
+		delete(b.blockMap, lastElement.Value.(*BlockInfo).Height)
+	}
 }
 
 func (b *Backend) GetTransactionStats() []*GenericInfo {
@@ -525,13 +576,17 @@ func (b *Backend) GetUnitPrices() []*GenericInfo {
 	return info
 }
 
+func (b *Backend) GetSubnetID() string {
+	return b.subnetID.String()
+}
+
 func (b *Backend) GetChainID() string {
 	return b.chainID.String()
 }
 
 func (b *Backend) GetMyAssets() []*AssetInfo {
 	assets := []*AssetInfo{}
-	assetIDs, owned, err := b.s.GetAssets()
+	assetIDs, owned, err := b.s.GetAssets(b.subnetID, b.chainID)
 	if err != nil {
 		b.fatal(err)
 		return nil
@@ -730,8 +785,17 @@ func (b *Backend) GetAddress() string {
 	return b.addrStr
 }
 
+func (b *Backend) GetPrivateKey() string {
+	return hex.EncodeToString(b.priv[:])
+}
+
+func (b *Backend) GetPublicKey() string {
+	pubKey := b.priv.PublicKey()
+	return hex.EncodeToString(pubKey[:])
+}
+
 func (b *Backend) GetBalance() ([]*BalanceInfo, error) {
-	assets, _, err := b.s.GetAssets()
+	assets, _, err := b.s.GetAssets(b.subnetID, b.chainID)
 	if err != nil {
 		return nil, err
 	}
@@ -764,7 +828,7 @@ func (b *Backend) GetTransactions() *Transactions {
 		alerts = b.transactionAlerts
 		b.transactionAlerts = []*Alert{}
 	}
-	txs, err := b.s.GetTransactions()
+	txs, err := b.s.GetTransactions(b.subnetID, b.chainID)
 	if err != nil {
 		b.fatal(err)
 		return nil
@@ -819,7 +883,7 @@ func (b *Backend) StartFaucetSearch() (*FaucetSearchInfo, error) {
 		search := b.search
 		b.search = nil
 		b.searchLock.Unlock()
-		if err := b.s.StoreSolution(search); err != nil {
+		if err := b.s.StoreSolution(b.subnetID, b.chainID, search); err != nil {
 			b.fatal(err)
 		}
 	}()
@@ -827,7 +891,7 @@ func (b *Backend) StartFaucetSearch() (*FaucetSearchInfo, error) {
 }
 
 func (b *Backend) GetFaucetSolutions() *FaucetSolutions {
-	solutions, err := b.s.GetSolutions()
+	solutions, err := b.s.GetSolutions(b.subnetID, b.chainID)
 	if err != nil {
 		b.fatal(err)
 		return nil
@@ -846,7 +910,7 @@ func (b *Backend) GetFaucetSolutions() *FaucetSolutions {
 }
 
 func (b *Backend) GetAddressBook() []*AddressInfo {
-	addresses, err := b.s.GetAddresses()
+	addresses, err := b.s.GetAddresses(b.subnetID, b.chainID)
 	if err != nil {
 		b.fatal(err)
 		return nil
@@ -858,11 +922,11 @@ func (b *Backend) GetAddressBook() []*AddressInfo {
 func (b *Backend) AddAddressBook(name string, address string) error {
 	name = strings.TrimSpace(name)
 	address = strings.TrimSpace(address)
-	return b.s.StoreAddress(address, name)
+	return b.s.StoreAddress(b.subnetID, b.chainID, address, name)
 }
 
 func (b *Backend) GetAllAssets() []*AssetInfo {
-	arr, _, err := b.s.GetAssets()
+	arr, _, err := b.s.GetAssets(b.subnetID, b.chainID)
 	if err != nil {
 		b.fatal(err)
 		return nil
@@ -893,7 +957,7 @@ func (b *Backend) AddAsset(asset string) error {
 	if err != nil {
 		return err
 	}
-	hasAsset, err := b.s.HasAsset(assetID)
+	hasAsset, err := b.s.HasAsset(b.subnetID, b.chainID, assetID)
 	if err != nil {
 		return err
 	}
@@ -907,7 +971,7 @@ func (b *Backend) AddAsset(asset string) error {
 	if !exists {
 		return ErrAssetMissing
 	}
-	return b.s.StoreAsset(assetID, owner == b.addrStr)
+	return b.s.StoreAsset(b.subnetID, b.chainID, assetID, owner == b.addrStr)
 }
 
 func (b *Backend) GetFeedInfo() (*FeedInfo, error) {
@@ -921,58 +985,78 @@ func (b *Backend) GetFeedInfo() (*FeedInfo, error) {
 	}, nil
 }
 
+func (b *Backend) restartParseURLs() {
+	select {
+	case b.stopChans["parseURLs"] <- true:
+		// Signal to stop the existing goroutine
+	default:
+		// No need to block if it's already stopped
+	}
+
+	go b.parseURLs()
+}
+
 func (b *Backend) parseURLs() {
-	client := http.DefaultClient
 	for {
 		select {
-		case u := <-b.urlQueue:
-			// Protect against maliciously crafted URLs
-			parsedURL, err := url.Parse(u)
-			if err != nil {
-				continue
-			}
-			if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-				continue
-			}
-			ip := net.ParseIP(parsedURL.Host)
-			if ip != nil {
-				if ip.IsPrivate() || ip.IsLoopback() {
-					continue
+		case <-b.stopChans["parseURLs"]:
+			return // Stop the goroutine
+		default:
+			client := http.DefaultClient
+			for {
+				select {
+				case u := <-b.urlQueue:
+					// Protect against maliciously crafted URLs
+					parsedURL, err := url.Parse(u)
+					if err != nil {
+						continue
+					}
+					if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+						continue
+					}
+					ip := net.ParseIP(parsedURL.Host)
+					if ip != nil {
+						if ip.IsPrivate() || ip.IsLoopback() {
+							continue
+						}
+					}
+
+					// Attempt to fetch URL contents
+					ctx, cancel := context.WithTimeout(b.ctx, 30*time.Second)
+					req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
+					if err != nil {
+						cancel()
+						continue
+					}
+					resp, err := client.Do(req)
+					if err != nil {
+						fmt.Println("unable to fetch URL", err)
+						// We already put the URL in as nil in
+						// our cache, so we won't refetch it.
+						cancel()
+						continue
+					}
+					b.htmlCache.Put(u, ParseHTML(u, parsedURL.Host, resp.Body))
+					_ = resp.Body.Close()
+					cancel()
+				case <-b.ctx.Done():
+					return
 				}
 			}
-
-			// Attempt to fetch URL contents
-			ctx, cancel := context.WithTimeout(b.ctx, 30*time.Second)
-			req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
-			if err != nil {
-				cancel()
-				continue
-			}
-			resp, err := client.Do(req)
-			if err != nil {
-				fmt.Println("unable to fetch URL", err)
-				// We already put the URL in as nil in
-				// our cache, so we won't refetch it.
-				cancel()
-				continue
-			}
-			b.htmlCache.Put(u, ParseHTML(u, parsedURL.Host, resp.Body))
-			_ = resp.Body.Close()
-			cancel()
-		case <-b.ctx.Done():
-			return
 		}
 	}
 }
 
-func (b *Backend) GetFeed() ([]*FeedObject, error) {
-	feed, err := b.fecli.Feed(context.TODO())
+func (b *Backend) GetFeed(subnetID, chainID string) ([]*FeedObject, error) {
+	feed, err := b.fecli.Feed(context.TODO(), subnetID, chainID)
 	if err != nil {
 		return nil, err
 	}
 	nfeed := make([]*FeedObject, 0, len(feed))
 	for _, fo := range feed {
 		tfo := &FeedObject{
+			SubnetID:  fo.SubnetID,
+			ChainID:   fo.ChainID,
 			Address:   fo.Address,
 			ID:        fo.TxID.String(),
 			Timestamp: fo.Timestamp,
@@ -1050,4 +1134,65 @@ func (b *Backend) Message(message string, url string) error {
 		return fmt.Errorf("transaction failed on-chain: %s", result.Output)
 	}
 	return nil
+}
+
+// UpdateNuklaiRPC updates the RPC url for Nuklai
+func (b *Backend) UpdateNuklaiRPC(newNuklaiRPCUrl string) error {
+	b.c.NuklaiRPC = newNuklaiRPCUrl
+
+	// Reinitialize the JSONRPCClient with the new URL
+	newClient := rpc.NewJSONRPCClient(b.c.NuklaiRPC)
+
+	// Refresh the network information
+	networkID, subnetID, chainID, err := newClient.Network(b.ctx)
+	if err != nil {
+		return fmt.Errorf("failed to make network call with new client: %w", err)
+	}
+	// If successful, replace the old client
+	b.cli = newClient
+	b.subnetID = subnetID
+	b.chainID = chainID
+
+	// Also update for websocket client if needed
+	b.scli, err = rpc.NewWebSocketClient(newNuklaiRPCUrl, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
+	if err != nil {
+		return fmt.Errorf("failed to reinitialize WebSocketClient: %w", err)
+	}
+
+	b.ncli = nrpc.NewJSONRPCClient(newNuklaiRPCUrl, networkID, chainID)
+	parser, err := b.ncli.Parser(b.ctx)
+	if err != nil {
+		return err
+	}
+	b.parser = parser
+
+	// Update clients as well
+	_, err = b.fcli.UpdateNuklaiRPC(b.ctx, newNuklaiRPCUrl)
+	if err != nil {
+		return err
+	}
+	_, err = b.fecli.UpdateNuklaiRPC(b.ctx, newNuklaiRPCUrl)
+	if err != nil {
+		return err
+	}
+
+	// Restart the goroutines
+	b.restartCollectBlocks()
+	b.restartParseURLs()
+
+	return nil
+}
+
+func (b *Backend) UpdateFaucetRPC(newFaucetRPCUrl string) {
+	b.c.FaucetRPC = newFaucetRPCUrl
+	b.fcli = frpc.NewJSONRPCClient(b.c.FaucetRPC)
+}
+
+func (b *Backend) UpdateFeedRPC(newFeedRPCUrl string) {
+	b.c.FeedRPC = newFeedRPCUrl
+	b.fecli = ferpc.NewJSONRPCClient(b.c.FeedRPC)
+}
+
+func (b *Backend) GetConfig() *Config {
+	return b.c
 }

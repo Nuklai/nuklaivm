@@ -6,6 +6,7 @@ package manager
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -30,6 +31,8 @@ type FeedContent struct {
 }
 
 type FeedObject struct {
+	SubnetID  string `json:"subnetID"`
+	ChainID   string `json:"chainID"`
 	Address   string `json:"address"`
 	TxID      ids.ID `json:"txID"`
 	Timestamp int64  `json:"timestamp"`
@@ -42,7 +45,9 @@ type Manager struct {
 	log    logging.Logger
 	config *config.Config
 
-	ncli *nrpc.JSONRPCClient
+	ncli     *nrpc.JSONRPCClient
+	subnetID ids.ID
+	chainID  ids.ID
 
 	l             sync.RWMutex
 	t             *timer.Timer
@@ -52,28 +57,34 @@ type Manager struct {
 
 	f sync.RWMutex
 	// TODO: persist this
-	feed []*FeedObject
+	feed       []*FeedObject
+	cancelFunc context.CancelFunc
 }
 
 func New(logger logging.Logger, config *config.Config) (*Manager, error) {
-	ctx := context.TODO()
+	ctx, cancel := context.WithCancel(context.Background())
 	cli := rpc.NewJSONRPCClient(config.NuklaiRPC)
-	networkID, _, chainID, err := cli.Network(ctx)
+	networkID, subnetID, chainID, err := cli.Network(ctx)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	ncli := nrpc.NewJSONRPCClient(config.NuklaiRPC, networkID, chainID)
-	m := &Manager{log: logger, config: config, ncli: ncli, feed: []*FeedObject{}}
+	m := &Manager{log: logger, config: config, ncli: ncli, subnetID: subnetID, chainID: chainID, feed: []*FeedObject{}, cancelFunc: cancel}
 	m.epochStart = time.Now().Unix()
 	m.feeAmount = m.config.MinFee
+	m.t = timer.NewTimer(m.updateFee)
 	m.log.Info("feed initialized",
+		zap.Uint32("network ID", networkID),
+		zap.String("subnet ID", subnetID.String()),
+		zap.String("chain ID", chainID.String()),
 		zap.String("address", m.config.Recipient),
 		zap.String("fee", utils.FormatBalance(m.feeAmount, nconsts.Decimals)),
 	)
-	m.t = timer.NewTimer(m.updateFee)
 	return m, nil
 }
 
+// updateFee adjusts the fee based on the message frequency during an epoch
 func (m *Manager) updateFee() {
 	m.l.Lock()
 	defer m.l.Unlock()
@@ -101,106 +112,104 @@ func (m *Manager) Run(ctx context.Context) error {
 	go m.t.Dispatch()
 	defer m.t.Stop()
 
-	parser, err := m.ncli.Parser(ctx)
-	if err != nil {
-		return err
-	}
-	recipientAddr, err := m.config.RecipientAddress()
-	if err != nil {
-		return err
-	}
-	for ctx.Err() == nil { // handle WS client failure
-		scli, err := rpc.NewWebSocketClient(m.config.NuklaiRPC, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
+	var scli *rpc.WebSocketClient
+	currentRPCURL := m.config.NuklaiRPC
+
+	reconnect := func() error {
+		var err error
+		if scli != nil {
+			scli.Close()
+		}
+		scli, err = rpc.NewWebSocketClient(m.config.NuklaiRPC, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
 		if err != nil {
-			m.log.Warn("unable to connect to RPC", zap.String("uri", m.config.NuklaiRPC), zap.Error(err))
-			time.Sleep(10 * time.Second)
-			continue
+			m.log.Warn("Failed to connect to RPC", zap.String("uri", m.config.NuklaiRPC), zap.Error(err))
+			return fmt.Errorf("failed to connect to RPC: %w", err)
 		}
-		if err := scli.RegisterBlocks(); err != nil {
-			m.log.Warn("unable to connect to register for blocks", zap.String("uri", m.config.NuklaiRPC), zap.Error(err))
-			time.Sleep(10 * time.Second)
-			continue
+		if err = scli.RegisterBlocks(); err != nil {
+			m.log.Warn("failed to register for blocks", zap.String("uri", m.config.NuklaiRPC), zap.Error(err))
+			return fmt.Errorf("failed to register for blocks: %w", err)
 		}
-		for ctx.Err() == nil {
-			// Listen for blocks
-			blk, results, _, err := scli.ListenBlock(ctx, parser)
-			if err != nil {
-				m.log.Warn("unable to listen for blocks", zap.Error(err))
-				break
-			}
-
-			// Look for transactions to recipient
-			for i, tx := range blk.Txs {
-				action, ok := tx.Action.(*actions.Transfer)
-				if !ok {
-					continue
-				}
-				if action.To != recipientAddr {
-					continue
-				}
-				if len(action.Memo) == 0 {
-					continue
-				}
-				result := results[i]
-				from := tx.Auth.Actor()
-				fromStr := codec.MustAddressBech32(nconsts.HRP, from)
-				if !result.Success {
-					m.log.Info("incoming message failed on-chain", zap.String("from", fromStr), zap.String("memo", string(action.Memo)), zap.Uint64("payment", action.Value), zap.Uint64("required", m.feeAmount))
-					continue
-				}
-				if action.Value < m.feeAmount {
-					m.log.Info("incoming message did not pay enough", zap.String("from", fromStr), zap.String("memo", string(action.Memo)), zap.Uint64("payment", action.Value), zap.Uint64("required", m.feeAmount))
-					continue
-				}
-
-				var c FeedContent
-				if err := json.Unmarshal(action.Memo, &c); err != nil {
-					m.log.Info("incoming message could not be parsed", zap.String("from", fromStr), zap.String("memo", string(action.Memo)), zap.Uint64("payment", action.Value), zap.Error(err))
-					continue
-				}
-				if len(c.Message) == 0 {
-					m.log.Info("incoming message was empty", zap.String("from", fromStr), zap.String("memo", string(action.Memo)), zap.Uint64("payment", action.Value))
-					continue
-				}
-				// TODO: pre-verify URLs
-				m.l.Lock()
-				m.f.Lock()
-				m.feed = append([]*FeedObject{{
-					Address:   fromStr,
-					TxID:      tx.ID(),
-					Timestamp: blk.Tmstmp,
-					Fee:       action.Value,
-					Content:   &c,
-				}}, m.feed...)
-				if len(m.feed) > m.config.FeedSize {
-					// TODO: do this more efficiently using a rolling window
-					m.feed[m.config.FeedSize] = nil // prevent memory leak
-					m.feed = m.feed[:m.config.FeedSize]
-				}
-				m.epochMessages++
-				if m.epochMessages >= m.config.MessagesPerEpoch {
-					m.feeAmount += m.config.FeeDelta
-					m.log.Info("increasing message fee", zap.Uint64("fee", m.feeAmount))
-					m.epochMessages = 0
-					m.epochStart = time.Now().Unix()
-					m.t.Cancel()
-					m.t.SetTimeoutIn(time.Duration(m.config.TargetDurationPerEpoch) * time.Second)
-				}
-				m.log.Info("received incoming message", zap.String("from", fromStr), zap.String("memo", string(action.Memo)), zap.Uint64("payment", action.Value), zap.Uint64("new required", m.feeAmount))
-				m.f.Unlock()
-				m.l.Unlock()
-			}
-		}
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-
-		// Sleep before trying again
-		time.Sleep(10 * time.Second)
+		return nil
 	}
+
+	if err := reconnect(); err != nil {
+		m.log.Error("Initial RPC connection failed", zap.Error(err))
+		return err
+	}
+
+	for ctx.Err() == nil {
+		if m.config.NuklaiRPC != currentRPCURL {
+			m.log.Info("Detected RPC URL change, reconnecting", zap.String("newURL", m.config.NuklaiRPC))
+			if err := reconnect(); err != nil {
+				m.log.Error("Reconnection failed", zap.Error(err))
+				continue
+			}
+			currentRPCURL = m.config.NuklaiRPC
+		}
+
+		parser, err := m.ncli.Parser(ctx)
+		if err != nil {
+			m.log.Error("Failed to create parser", zap.Error(err))
+			return err
+		}
+
+		blk, results, _, err := scli.ListenBlock(ctx, parser)
+		if err != nil {
+			m.log.Warn("Unable to listen for blocks", zap.Error(err))
+			time.Sleep(10 * time.Second)
+			continue
+		}
+
+		// Look for transactions to recipient
+		for i, tx := range blk.Txs {
+			action, ok := tx.Action.(*actions.Transfer)
+			recipientAddr, err := m.config.RecipientAddress()
+			if err != nil {
+				return err
+			}
+			if !ok || action.To != recipientAddr {
+				continue
+			}
+
+			result := results[i]
+			fromStr := codec.MustAddressBech32(nconsts.HRP, tx.Auth.Actor())
+			if !result.Success || action.Value < m.feeAmount {
+				m.log.Info("Incoming message failed or did not pay enough", zap.String("from", fromStr), zap.String("memo", string(action.Memo)), zap.Uint64("payment", action.Value), zap.Uint64("required", m.feeAmount))
+				continue
+			}
+
+			var content FeedContent
+			if err := json.Unmarshal(action.Memo, &content); err != nil || len(content.Message) == 0 {
+				m.log.Info("Incoming message could not be parsed or was empty", zap.String("from", fromStr), zap.String("memo", string(action.Memo)), zap.Uint64("payment", action.Value), zap.Error(err))
+				continue
+			}
+
+			m.l.Lock()
+			m.f.Lock()
+			m.feed = append([]*FeedObject{{
+				SubnetID:  m.subnetID.String(),
+				ChainID:   m.chainID.String(),
+				Address:   fromStr,
+				TxID:      tx.ID(),
+				Timestamp: blk.Tmstmp,
+				Fee:       action.Value,
+				Content:   &content,
+			}}, m.feed...)
+			if len(m.feed) > m.config.FeedSize {
+				m.feed = m.feed[:m.config.FeedSize]
+			}
+			m.log.Info("Received incoming message", zap.String("from", fromStr), zap.String("memo", string(action.Memo)), zap.Uint64("payment", action.Value))
+			m.f.Unlock()
+			m.l.Unlock()
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
 	return ctx.Err()
 }
 
+// GetFeedInfo provides details about the feed and the current fee
 func (m *Manager) GetFeedInfo(_ context.Context) (codec.Address, uint64, error) {
 	m.l.RLock()
 	defer m.l.RUnlock()
@@ -209,10 +218,56 @@ func (m *Manager) GetFeedInfo(_ context.Context) (codec.Address, uint64, error) 
 	return addr, m.feeAmount, err
 }
 
-// TODO: allow for multiple feeds
-func (m *Manager) GetFeed(context.Context) ([]*FeedObject, error) {
+// GetFeed returns a copy of the current feed
+func (m *Manager) GetFeed(_ context.Context, subnetID, chainID string) ([]*FeedObject, error) {
 	m.f.RLock()
 	defer m.f.RUnlock()
 
-	return slices.Clone(m.feed), nil
+	var filteredFeed []*FeedObject
+	for _, item := range m.feed {
+		if item.SubnetID == subnetID && item.ChainID == chainID {
+			filteredFeed = append(filteredFeed, item)
+		}
+	}
+
+	return slices.Clone(filteredFeed), nil
+}
+
+// UpdateNuklaiRPC updates the RPC URL and reconnects clients
+func (m *Manager) UpdateNuklaiRPC(ctx context.Context, newNuklaiRPCUrl string) error {
+	m.l.Lock()
+	defer m.l.Unlock()
+
+	m.log.Info("Updating Nuklai RPC URL", zap.String("oldURL", m.config.NuklaiRPC), zap.String("newURL", newNuklaiRPCUrl))
+
+	// Updating the configuration
+	m.config.NuklaiRPC = newNuklaiRPCUrl
+
+	// Re-initialize RPC clients
+	cli := rpc.NewJSONRPCClient(newNuklaiRPCUrl)
+	networkID, subnetID, chainID, err := cli.Network(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to fetch network details: %w", err)
+	}
+
+	// Reassign the newly created clients
+	m.ncli = nrpc.NewJSONRPCClient(newNuklaiRPCUrl, networkID, chainID)
+
+	// Reinitialize dependent properties
+	m.subnetID = subnetID
+	m.chainID = chainID
+	m.epochStart = time.Now().Unix()
+	m.feeAmount = m.config.MinFee
+	m.t = timer.NewTimer(m.updateFee)
+
+	m.log.Info("RPC client has been updated and manager reinitialized",
+		zap.String("new RPC URL", newNuklaiRPCUrl),
+		zap.Uint32("network ID", networkID),
+		zap.String("subnet ID", subnetID.String()),
+		zap.String("chain ID", chainID.String()),
+		zap.String("address", m.config.Recipient),
+		zap.String("fee", utils.FormatBalance(m.feeAmount, nconsts.Decimals)),
+	)
+
+	return nil
 }
