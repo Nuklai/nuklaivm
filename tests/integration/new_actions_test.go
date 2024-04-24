@@ -365,8 +365,9 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			fmt.Println(err)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
-
-			// app.SendAppGossip(context.Background(), tx.Bytes())
+			gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
+			err = instances[3].vm.Gossiper().Force(context.TODO())
+			gomega.Ω(err).Should(gomega.BeNil())
 
 			accept := expectBlk(instances[3])
 			results := accept(true)
@@ -445,6 +446,9 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			fmt.Printf("node 3 %s balance before staking %d\n", codec.MustAddressBech32(nconsts.HRP, nodesAddresses[3]), balance)
 
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+			gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
+			err = instances[3].vm.Gossiper().Force(context.TODO())
+			gomega.Ω(err).Should(gomega.BeNil())
 
 			accept := expectBlk(instances[3])
 			results := accept(true)
@@ -533,6 +537,9 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+			gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
+			err = instances[3].vm.Gossiper().Force(context.TODO())
+			gomega.Ω(err).Should(gomega.BeNil())
 
 			accept := expectBlk(instances[3])
 			results := accept(true)
@@ -579,6 +586,9 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+			gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
+			err = instances[3].vm.Gossiper().Force(context.TODO())
+			gomega.Ω(err).Should(gomega.BeNil())
 
 			accept := expectBlk(instances[3])
 			results := accept(true)
@@ -631,6 +641,9 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+			gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
+			err = instances[3].vm.Gossiper().Force(context.TODO())
+			gomega.Ω(err).Should(gomega.BeNil())
 
 			accept := expectBlk(instances[3])
 			results := accept(true)
@@ -675,6 +688,9 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+			gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
+			err = instances[3].vm.Gossiper().Force(context.TODO())
+			gomega.Ω(err).Should(gomega.BeNil())
 
 			accept := expectBlk(instances[3])
 			results := accept(true)
@@ -891,6 +907,31 @@ func ImportBlockToInstance(vm *vm.VM, block snowman.Block) {
 	gomega.Ω(err).Should(gomega.BeNil())
 	err = blk.Verify(context.Background())
 	gomega.Ω(err).Should(gomega.BeNil())
+
+	gomega.Ω(blk.Status()).To(gomega.Equal(choices.Processing))
+	err = vm.SetPreference(context.Background(), blk.ID())
+	gomega.Ω(err).To(gomega.BeNil())
+
+	err = blk.Accept(context.Background())
+	gomega.Ω(err).Should(gomega.BeNil())
+}
+
+func ImportBlockToInstance2(vm *vm.VM, block snowman.Block) {
+	blk, err := vm.ParseBlock(context.Background(), block.Bytes())
+	gomega.Ω(err).Should(gomega.BeNil())
+	err = blk.Verify(context.Background())
+	gomega.Ω(err).Should(gomega.BeNil())
+
+	// gomega.Ω(blk.Status()).To(gomega.Equal(choices.Processing))
+	// err = vm.SetPreference(context.Background(), blk.ID())
+	// gomega.Ω(err).To(gomega.BeNil())
+
+	// sblk := blk.(*chain.StatelessBlock)
+	// sblkt := sblk.Timestamp().UnixMilli()
+	// tx := blk.(*chain.StatelessBlock).Txs[0]
+	// ok, err := sblk.IsRepeat(ctx, vm.Rules(sblkt).GetValidityWindow(), []*chain.Transaction{tx}, set.NewBits(), true)
+	// gomega.Ω(err).Should(gomega.BeNil())
+	// gomega.Ω(ok.Len()).Should(gomega.Equal(1))
 	err = blk.Accept(context.Background())
 	gomega.Ω(err).Should(gomega.BeNil())
 }
