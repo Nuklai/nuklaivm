@@ -509,17 +509,11 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(100_000_000_000)))
 		})
 
-		// ginkgo.By("Get staked validators", func() {
-		// 	fmt.Println("GET EMISSION 3 VALIDATORS")
-		// 	fmt.Println(emissions[0].GetEmissionValidators())
-		// 	fmt.Println(emissions[1].GetEmissionValidators())
-		// 	fmt.Println(emissions[2].GetEmissionValidators())
-		// 	fmt.Println(emissions[3].GetEmissionValidators())
-		// 	fmt.Println(emissions[4].GetEmissionValidators())
-		// 	validators, err := instances[3].ncli.StakedValidators(context.TODO())
-		// 	gomega.Ω(err).Should(gomega.BeNil())
-		// 	gomega.Ω(len(validators)).Should(gomega.Equal(1))
-		// })
+		ginkgo.By("Get staked validators", func() {
+			validators, err := instances[4].ncli.StakedValidators(context.TODO())
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(len(validators)).Should(gomega.Equal(1))
+		})
 
 		ginkgo.By("Transfer NAI to delegate user", func() {
 			parser, err := instances[3].ncli.Parser(context.Background())
