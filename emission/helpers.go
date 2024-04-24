@@ -23,7 +23,7 @@ type Validator struct {
 	DelegatedAmount          uint64     `json:"delegatedAmount"`   // Total amount delegated to the validator
 	UnclaimedDelegatedReward uint64     `json:"delegatedReward"`   // Total rewards accumulated by the delegators
 
-	DelegatorsLastClaim map[codec.Address]uint64 // Map of delegator addresses to their last claim block height
+	delegatorsLastClaim map[codec.Address]uint64 // Map of delegator addresses to their last claim block height
 	epochRewards        map[uint64]uint64        // Rewards per epoch
 	stakeStartTime      time.Time                // Start time of the stake
 	stakeEndTime        time.Time                // End time of the stake
