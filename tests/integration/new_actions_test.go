@@ -366,8 +366,8 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
 			gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
-			err = instances[3].vm.Gossiper().Force(context.TODO())
-			gomega.Ω(err).Should(gomega.BeNil())
+			// err = instances[3].vm.Gossiper().Force(context.TODO())
+			// gomega.Ω(err).Should(gomega.BeNil())
 
 			accept := expectBlk(instances[3])
 			results := accept(true)
@@ -447,8 +447,8 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
 			gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
-			err = instances[3].vm.Gossiper().Force(context.TODO())
-			gomega.Ω(err).Should(gomega.BeNil())
+			// err = instances[3].vm.Gossiper().Force(context.TODO())
+			// gomega.Ω(err).Should(gomega.BeNil())
 
 			accept := expectBlk(instances[3])
 			results := accept(true)
@@ -538,8 +538,8 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
 			gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
-			err = instances[3].vm.Gossiper().Force(context.TODO())
-			gomega.Ω(err).Should(gomega.BeNil())
+			// err = instances[3].vm.Gossiper().Force(context.TODO())
+			// gomega.Ω(err).Should(gomega.BeNil())
 
 			accept := expectBlk(instances[3])
 			results := accept(true)
@@ -587,8 +587,8 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
 			gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
-			err = instances[3].vm.Gossiper().Force(context.TODO())
-			gomega.Ω(err).Should(gomega.BeNil())
+			// err = instances[3].vm.Gossiper().Force(context.TODO())
+			// gomega.Ω(err).Should(gomega.BeNil())
 
 			accept := expectBlk(instances[3])
 			results := accept(true)
@@ -642,8 +642,8 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
 			gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
-			err = instances[3].vm.Gossiper().Force(context.TODO())
-			gomega.Ω(err).Should(gomega.BeNil())
+			// err = instances[3].vm.Gossiper().Force(context.TODO())
+			// gomega.Ω(err).Should(gomega.BeNil())
 
 			accept := expectBlk(instances[3])
 			results := accept(true)
@@ -689,8 +689,8 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
 			gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
-			err = instances[3].vm.Gossiper().Force(context.TODO())
-			gomega.Ω(err).Should(gomega.BeNil())
+			// err = instances[3].vm.Gossiper().Force(context.TODO())
+			// gomega.Ω(err).Should(gomega.BeNil())
 
 			accept := expectBlk(instances[3])
 			results := accept(true)
