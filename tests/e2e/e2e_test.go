@@ -26,6 +26,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/hypersdk/codec"
+	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
 	hrpc "github.com/ava-labs/hypersdk/rpc"
 	hutils "github.com/ava-labs/hypersdk/utils"
@@ -77,6 +78,7 @@ var (
 
 	numValidators  uint
 	nodesAddresses []codec.Address
+	nodesFactories []*auth.BLSFactory
 )
 
 func init() {
@@ -350,6 +352,7 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	instancesA = []instance{}
 	nodesAddresses = make([]codec.Address, len(subnetA))
+	nodesFactories = make([]*auth.BLSFactory, len(subnetA))
 	for i, nodeName := range subnetA {
 		info := nodeInfos[nodeName]
 		u := fmt.Sprintf("%s/ext/bc/%s", info.Uri, blockchainIDA)
@@ -389,6 +392,9 @@ var _ = ginkgo.BeforeSuite(func() {
 		fmt.Println(validatorSignerKey)
 		gomega.Expect(err).Should(gomega.BeNil())
 		nodesAddresses[i] = validatorSignerKey.Address
+		sk, err := bls.PrivateKeyFromBytes(validatorSignerKey.Bytes)
+		gomega.Expect(err).Should(gomega.BeNil())
+		nodesFactories[i] = auth.NewBLSFactory(sk)
 	}
 
 	if mode != modeRunSingle {
@@ -1566,6 +1572,70 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(balance).Should(gomega.Equal(uint64(852_999_799_999_970_300)))
 			hutils.Outf("{{yellow}}fetched balance{{/}}\n")
+		})
+
+		ginkgo.By("Register validator stake node 3", func() {
+			withdraw0Priv, err := ed25519.GeneratePrivateKey()
+			gomega.Ω(err).Should(gomega.BeNil())
+			rwithdraw0 := auth.NewED25519Address(withdraw0Priv.PublicKey())
+			parser, err := instancesA[0].ncli.Parser(context.TODO())
+			gomega.Ω(err).Should(gomega.BeNil())
+			currentTime := time.Now().UTC()
+			stakeStartTime := currentTime.Add(1 * time.Second)
+			stakeEndTime := currentTime.Add(15 * time.Minute)
+			delegationFeeRate := 50
+
+			stakeInfo := &actions.ValidatorStakeInfo{
+				NodeID:            instancesA[0].nodeID.Bytes(),
+				StakeStartTime:    uint64(stakeStartTime.Unix()),
+				StakeEndTime:      uint64(stakeEndTime.Unix()),
+				StakedAmount:      100_000_000_000,
+				DelegationFeeRate: uint64(delegationFeeRate),
+				RewardAddress:     rwithdraw0,
+			}
+
+			stakeInfoBytes, err := stakeInfo.Marshal()
+			gomega.Ω(err).Should(gomega.BeNil())
+			signature, err := nodesFactories[0].Sign(stakeInfoBytes)
+			gomega.Ω(err).Should(gomega.BeNil())
+			signaturePacker := codec.NewWriter(signature.Size(), signature.Size())
+			signature.Marshal(signaturePacker)
+			authSignature := signaturePacker.Bytes()
+			submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
+				context.Background(),
+				parser,
+				nil,
+				&actions.RegisterValidatorStake{
+					StakeInfo:     stakeInfoBytes,
+					AuthSignature: authSignature,
+				},
+				nodesFactories[0],
+			)
+			fmt.Println(err)
+			gomega.Ω(err).Should(gomega.BeNil())
+
+			balance, err := instancesA[0].ncli.Balance(context.Background(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
+			fmt.Printf("node 3 %s balance before staking %d\n", codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), balance)
+
+			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+			hutils.Outf("{{yellow}}submitted transaction{{/}}\n")
+			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+			success, _, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+			cancel()
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(success).Should(gomega.BeTrue())
+			hutils.Outf("{{yellow}}found transaction{{/}}\n")
+
+			balance, err = instancesA[0].ncli.Balance(context.Background(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
+			fmt.Printf("node 3 instances[3] %s balance after staking %d\n", codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), balance)
+
+			// check if gossip/ new state happens
+			balanceOther, err := instancesA[1].ncli.Balance(context.Background(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
+			fmt.Printf("node 3 instances[4] %s balance after staking %d\n", codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), balanceOther)
+
 		})
 
 	})
