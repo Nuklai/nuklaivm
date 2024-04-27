@@ -32,6 +32,7 @@ import (
 
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/auth"
+	"github.com/nuklai/nuklaivm/cmd/nuklai-cli/cmd"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
@@ -74,7 +75,8 @@ var (
 
 	trackSubnetsOpt runner_sdk.OpOption
 
-	numValidators uint
+	numValidators  uint
+	nodesAddresses []codec.Address
 )
 
 func init() {
@@ -347,7 +349,8 @@ var _ = ginkgo.BeforeSuite(func() {
 	nodeInfos := status.GetClusterInfo().GetNodeInfos()
 
 	instancesA = []instance{}
-	for _, nodeName := range subnetA {
+	nodesAddresses = make([]codec.Address, len(subnetA))
+	for i, nodeName := range subnetA {
 		info := nodeInfos[nodeName]
 		u := fmt.Sprintf("%s/ext/bc/%s", info.Uri, blockchainIDA)
 		bid, err := ids.FromString(blockchainIDA)
@@ -380,6 +383,12 @@ var _ = ginkgo.BeforeSuite(func() {
 		destDir := fmt.Sprintf("/tmp/nuklaivm/nodes/%s/", info.GetName())
 		err = copyNodeInfo(info.GetDbDir(), destDir)
 		gomega.Expect(err).Should(gomega.BeNil())
+
+		validatorSignerKey, err := cmd.LoadPrivateKey("bls", fmt.Sprintf("%s/signer.key", destDir))
+		fmt.Println("VALIDATOR SIGNER KEY")
+		fmt.Println(validatorSignerKey)
+		gomega.Expect(err).Should(gomega.BeNil())
+		nodesAddresses[i] = validatorSignerKey.Address
 	}
 
 	if mode != modeRunSingle {
@@ -1504,6 +1513,62 @@ var _ = ginkgo.Describe("[Test]", func() {
 	})
 
 	// TODO: restart all nodes (crisis simulation)
+})
+
+var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
+	ginkgo.FIt("Setup and get initial staked validators", func() {
+		ginkgo.By("Initial staked validators", func() {
+			validators, err := instancesA[3].ncli.StakedValidators(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(len(validators)).Should(gomega.Equal(0))
+		})
+
+		ginkgo.By("Funding node 0", func() {
+			fmt.Println("-----------NODES ADDRESSES------------")
+			fmt.Println(len(nodesAddresses))
+			parser, err := instancesA[0].ncli.Parser(context.TODO())
+			gomega.Ω(err).Should(gomega.BeNil())
+			submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
+				context.Background(),
+				parser,
+				nil,
+				&actions.Transfer{
+					To:    nodesAddresses[0],
+					Asset: ids.Empty,
+					Value: 200_000_000_000,
+				},
+				factory,
+			)
+			gomega.Ω(err).Should(gomega.BeNil())
+			hutils.Outf("{{yellow}}generated transaction{{/}}\n")
+
+			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+			hutils.Outf("{{yellow}}submitted transaction{{/}}\n")
+			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+			success, _, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+			cancel()
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(success).Should(gomega.BeTrue())
+			hutils.Outf("{{yellow}}found transaction %s on B{{/}}\n", tx.ID())
+
+			balance, err := instancesA[0].ncli.Balance(context.Background(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(balance).Should(gomega.Equal(uint64(200_000_000_000)))
+			hutils.Outf("{{yellow}}fetched balance{{/}}\n")
+
+			// check if gossip/ new state happens
+			balance, err = instancesA[1].ncli.Balance(context.TODO(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(balance).Should(gomega.Equal(uint64(200_000_000_000)))
+			hutils.Outf("{{yellow}}fetched balance{{/}}\n")
+
+			balance, err = instancesA[1].ncli.Balance(context.TODO(), sender, ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(balance).Should(gomega.Equal(uint64(852_999_799_999_970_300)))
+			hutils.Outf("{{yellow}}fetched balance{{/}}\n")
+		})
+
+	})
 })
 
 func awaitHealthy(cli runner_sdk.Client) {
