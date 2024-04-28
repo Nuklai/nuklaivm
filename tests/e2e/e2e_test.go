@@ -76,9 +76,11 @@ var (
 
 	trackSubnetsOpt runner_sdk.OpOption
 
-	numValidators  uint
-	nodesAddresses []codec.Address
-	nodesFactories []*auth.BLSFactory
+	numValidators   uint
+	nodesAddresses  []codec.Address
+	nodesFactories  []*auth.BLSFactory
+	rdelegate       codec.Address
+	delegateFactory *auth.ED25519Factory
 )
 
 func init() {
@@ -1635,6 +1637,87 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			balanceOther, err := instancesA[1].ncli.Balance(context.Background(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), ids.Empty)
 			gomega.Ω(err).Should(gomega.BeNil())
 			fmt.Printf("node 3 instances[4] %s balance after staking %d\n", codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), balanceOther)
+
+		})
+
+		ginkgo.By("Get validator staked amount after node 0 validator staking", func() {
+			_, _, stakedAmount, _, _, _, err := instancesA[1].ncli.ValidatorStake(context.Background(), instancesA[0].nodeID)
+			fmt.Printf("NODE 3 STAKED AMOUNT %d", stakedAmount)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(100_000_000_000)))
+		})
+
+		ginkgo.By("Get staked validators", func() {
+			validators, err := instancesA[1].ncli.StakedValidators(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(len(validators)).Should(gomega.Equal(1))
+		})
+
+		ginkgo.By("Transfer NAI to delegate user", func() {
+			delegatePriv, err := ed25519.GeneratePrivateKey()
+			gomega.Ω(err).Should(gomega.BeNil())
+			rdelegate = auth.NewED25519Address(delegatePriv.PublicKey())
+			delegate := codec.MustAddressBech32(nconsts.HRP, rdelegate)
+			delegateFactory = auth.NewED25519Factory(delegatePriv)
+			parser, err := instancesA[0].ncli.Parser(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
+				context.Background(),
+				parser,
+				nil,
+				&actions.Transfer{
+					To:    rdelegate,
+					Asset: ids.Empty,
+					Value: 100_000_000_000,
+				},
+				factory,
+			)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+			hutils.Outf("{{yellow}}submitted transaction{{/}}\n")
+			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+			success, _, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+			cancel()
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(success).Should(gomega.BeTrue())
+			hutils.Outf("{{yellow}}found transaction{{/}}\n")
+
+			balance, err := instancesA[0].ncli.Balance(context.Background(), delegate, ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(balance).Should(gomega.Equal(uint64(100_000_000_000)))
+			time.Sleep(5 * time.Second)
+		})
+
+		ginkgo.By("delegate user stake to node 0", func() {
+			parser, err := instancesA[0].ncli.Parser(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			currentTime := time.Now().UTC()
+			userStakeStartTime := currentTime.Add(1 * time.Second)
+			submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
+				context.Background(),
+				parser,
+				nil,
+				&actions.DelegateUserStake{
+					NodeID:         instancesA[0].nodeID.Bytes(),
+					StakeStartTime: uint64(userStakeStartTime.Unix()),
+					StakedAmount:   30_000_000_000,
+					RewardAddress:  rdelegate,
+				},
+				delegateFactory,
+			)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+			hutils.Outf("{{yellow}}submitted transaction{{/}}\n")
+			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+			success, _, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+			cancel()
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(success).Should(gomega.BeTrue())
+			hutils.Outf("{{yellow}}found transaction{{/}}\n")
+
+			_, stakedAmount, _, _, err := instancesA[0].ncli.UserStake(context.Background(), rdelegate, instancesA[0].nodeID)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(30_000_000_000)))
 
 		})
 
