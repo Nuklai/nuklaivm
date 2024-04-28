@@ -1682,17 +1682,31 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			gomega.Ω(success).Should(gomega.BeTrue())
 			hutils.Outf("{{yellow}}found transaction{{/}}\n")
 
-			balance, err := instancesA[0].ncli.Balance(context.Background(), delegate, ids.Empty)
-			gomega.Ω(err).Should(gomega.BeNil())
-			gomega.Ω(balance).Should(gomega.Equal(uint64(100_000_000_000)))
-			time.Sleep(5 * time.Second)
+			for _, inst := range instancesA {
+				color.Blue("checking %q", inst.uri)
+
+				// Ensure all blocks processed
+				for {
+					_, h, _, err := inst.hcli.Accepted(context.Background())
+					gomega.Ω(err).Should(gomega.BeNil())
+					if h > 0 {
+						break
+					}
+					time.Sleep(1 * time.Second)
+				}
+
+				balance, err := inst.ncli.Balance(context.Background(), delegate, ids.Empty)
+				gomega.Ω(err).Should(gomega.BeNil())
+				gomega.Ω(balance).Should(gomega.Equal(uint64(100_000_000_000)))
+
+			}
 		})
 
-		ginkgo.By("delegate user stake to node 0", func() {
+		ginkgo.By("Delegate user stake to node 0", func() {
 			parser, err := instancesA[0].ncli.Parser(context.Background())
 			gomega.Ω(err).Should(gomega.BeNil())
 			currentTime := time.Now().UTC()
-			userStakeStartTime := currentTime.Add(1 * time.Second)
+			userStakeStartTime := currentTime.Add(2 * time.Second)
 			submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
 				context.Background(),
 				parser,
@@ -1707,17 +1721,31 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
-			hutils.Outf("{{yellow}}submitted transaction{{/}}\n")
+			hutils.Outf("{{yellow}}submitted delegate user stake transaction{{/}}\n")
 			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 			success, _, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
 			cancel()
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(success).Should(gomega.BeTrue())
-			hutils.Outf("{{yellow}}found transaction{{/}}\n")
+			hutils.Outf("{{yellow}}found delegate user stake transaction{{/}}\n")
 
-			_, stakedAmount, _, _, err := instancesA[0].ncli.UserStake(context.Background(), rdelegate, instancesA[0].nodeID)
-			gomega.Ω(err).Should(gomega.BeNil())
-			gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(30_000_000_000)))
+			for _, inst := range instancesA {
+				color.Blue("checking %q", inst.uri)
+
+				// Ensure all blocks processed
+				for {
+					_, h, _, err := inst.hcli.Accepted(context.Background())
+					gomega.Ω(err).Should(gomega.BeNil())
+					if h > 0 {
+						break
+					}
+					time.Sleep(1 * time.Second)
+				}
+
+				_, stakedAmount, _, _, err := inst.ncli.UserStake(context.Background(), rdelegate, instancesA[0].nodeID)
+				gomega.Ω(err).Should(gomega.BeNil())
+				gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(30_000_000_000)))
+			}
 
 		})
 
