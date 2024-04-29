@@ -5,7 +5,6 @@ package actions
 
 import (
 	"context"
-	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -117,24 +116,20 @@ func (r *RegisterValidatorStake) Execute(
 	if stakeInfo.StakedAmount < stakingConfig.MinValidatorStake || stakeInfo.StakedAmount > stakingConfig.MaxValidatorStake {
 		return false, RegisterValidatorStakeComputeUnits, OutputValidatorStakedAmountInvalid, nil, nil
 	}
-	// Get current time
-	currentTime := time.Now().UTC()
-	// Get last accepted block time
-	lastBlockTime := emissionInstance.GetLastAcceptedBlockTimestamp()
-	// Convert Unix timestamps to Go's time.Time for easier manipulation
-	startTime := time.Unix(int64(stakeInfo.StakeStartTime), 0).UTC()
-	// Check that stakeStartTime is after currentTime and lastBlockTime
-	if startTime.Before(currentTime) || startTime.Before(lastBlockTime) {
-		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeStartTime, nil, nil
+
+	// Get last accepted block height
+	lastBlockHeight := emissionInstance.GetLastAcceptedBlockHeight()
+	// Check that stakeStartBlock is after lastBlockHeight
+	if stakeInfo.StakeStartBlock < lastBlockHeight {
+		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeStartBlock, nil, nil
 	}
-	endTime := time.Unix(int64(stakeInfo.StakeEndTime), 0).UTC()
-	// Check that stakeEndTime is after stakeStartTime
-	if endTime.Before(startTime) {
-		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeEndTime, nil, nil
+	// Check that stakeEndBlock is after stakeStartBlock
+	if stakeInfo.StakeEndBlock < stakeInfo.StakeStartBlock {
+		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeEndBlock, nil, nil
 	}
 
 	// Check that the total staking period is at least the minimum staking period
-	stakeDuration := endTime.Sub(startTime)
+	stakeDuration := stakeInfo.StakeEndBlock - stakeInfo.StakeStartBlock
 	if stakeDuration < stakingConfig.MinValidatorStakeDuration || stakeDuration > stakingConfig.MaxValidatorStakeDuration {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeDuration, nil, nil
 	}
@@ -145,7 +140,7 @@ func (r *RegisterValidatorStake) Execute(
 	}
 
 	// Register in Emission Balancer
-	err = emissionInstance.RegisterValidatorStake(nodeID, nodePublicKey, stakeInfo.StakeStartTime, stakeInfo.StakeEndTime, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate)
+	err = emissionInstance.RegisterValidatorStake(nodeID, nodePublicKey, stakeInfo.StakeStartBlock, stakeInfo.StakeEndBlock, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate)
 	if err != nil {
 		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
@@ -153,7 +148,7 @@ func (r *RegisterValidatorStake) Execute(
 	if err := storage.SubBalance(ctx, mu, actor, ids.Empty, stakeInfo.StakedAmount); err != nil {
 		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
-	if err := storage.SetRegisterValidatorStake(ctx, mu, nodeID, stakeInfo.StakeStartTime, stakeInfo.StakeEndTime, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate, stakeInfo.RewardAddress, actor); err != nil {
+	if err := storage.SetRegisterValidatorStake(ctx, mu, nodeID, stakeInfo.StakeStartBlock, stakeInfo.StakeEndBlock, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate, stakeInfo.RewardAddress, actor); err != nil {
 		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 	return true, RegisterValidatorStakeComputeUnits, nil, nil, nil
@@ -195,8 +190,8 @@ func VerifyAuthSignature(content, authSignature []byte) (codec.Address, error) {
 
 type ValidatorStakeInfo struct {
 	NodeID            []byte        `json:"nodeID"`            // NodeID of the validator
-	StakeStartTime    uint64        `json:"stakeStartTime"`    // Start date of the stake
-	StakeEndTime      uint64        `json:"stakeEndTime"`      // End date of the stake
+	StakeStartBlock   uint64        `json:"stakeStartBlock"`   // Start block of the stake
+	StakeEndBlock     uint64        `json:"stakeEndBlock"`     // End block of the stake
 	StakedAmount      uint64        `json:"stakedAmount"`      // Amount of NAI staked
 	DelegationFeeRate uint64        `json:"delegationFeeRate"` // Delegation fee rate
 	RewardAddress     codec.Address `json:"rewardAddress"`     // Address to receive rewards
@@ -207,8 +202,8 @@ func UnmarshalValidatorStakeInfo(stakeInfo []byte) (*ValidatorStakeInfo, error) 
 	var result ValidatorStakeInfo
 	result.NodeID = make([]byte, hconsts.NodeIDLen)
 	p.UnpackFixedBytes(hconsts.NodeIDLen, &result.NodeID)
-	result.StakeStartTime = p.UnpackUint64(true)
-	result.StakeEndTime = p.UnpackUint64(true)
+	result.StakeStartBlock = p.UnpackUint64(true)
+	result.StakeEndBlock = p.UnpackUint64(true)
 	result.StakedAmount = p.UnpackUint64(true)
 	result.DelegationFeeRate = p.UnpackUint64(true)
 	p.UnpackAddress(&result.RewardAddress)
@@ -218,8 +213,8 @@ func UnmarshalValidatorStakeInfo(stakeInfo []byte) (*ValidatorStakeInfo, error) 
 func (s *ValidatorStakeInfo) Marshal() ([]byte, error) {
 	p := codec.NewWriter(hconsts.NodeIDLen+4*hconsts.Uint64Len+codec.AddressLen, hconsts.NodeIDLen+4*hconsts.Uint64Len+codec.AddressLen)
 	p.PackFixedBytes(s.NodeID)
-	p.PackUint64(s.StakeStartTime)
-	p.PackUint64(s.StakeEndTime)
+	p.PackUint64(s.StakeStartBlock)
+	p.PackUint64(s.StakeEndBlock)
 	p.PackUint64(s.StakedAmount)
 	p.PackUint64(s.DelegationFeeRate)
 	p.PackAddress(s.RewardAddress)

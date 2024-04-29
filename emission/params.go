@@ -35,12 +35,12 @@ type StakingConfig struct {
 	// Minimum delegation fee, in the range [0, 100], that can be charged
 	// for delegation on the nuklai network.
 	MinDelegationFee uint64 `json:"minDelegationFee"`
-	// MinValidatorStakeDuration is the minimum amount of time a validator can validate
+	// MinValidatorStakeDuration is the minimum amount of blocks  a validator can validate
 	// for in a single period.
-	MinValidatorStakeDuration time.Duration `json:"minValidatorStakeDuration"`
-	// MaxStakeDuration is the maximum amount of time a validator can validate
+	MinValidatorStakeDuration uint64 `json:"minValidatorStakeDuration"`
+	// MaxStakeDuration is the maximum amount of blocks a validator can validate
 	// for in a single period.
-	MaxValidatorStakeDuration time.Duration `json:"maxValidatorStakeDuration"`
+	MaxValidatorStakeDuration uint64 `json:"maxValidatorStakeDuration"`
 	// RewardConfig is the config for the reward function.
 	RewardConfig RewardConfig `json:"rewardConfig"`
 }
@@ -56,10 +56,10 @@ func GetStakingConfig() StakingConfig {
 		MinValidatorStake:         minValidatorStake,
 		MaxValidatorStake:         maxValidatorStake,
 		MinDelegatorStake:         minDelegatorStake,
-		MinDelegationFee:          2,               // 2%
-		MinValidatorStakeDuration: 1 * time.Minute, // 1 minute
-		// MinValidatorStakeDuration:  6 * 4 * 7 * 24 * time.Hour, // 6 months TODO: Enable this in production
-		MaxValidatorStakeDuration: 365 * 24 * time.Hour, // 1 year,
+		MinDelegationFee:          2,  // 2%
+		MinValidatorStakeDuration: 20, // 20 blocks which is roughly 1 minute with 3 second block time
+		// MinValidatorStakeDuration:  20 * 60 * 24 * 183 // 6 months TODO: Enable this in production
+		MaxValidatorStakeDuration: 20 * 60 * 24 * 364, // 1 year,
 		RewardConfig: RewardConfig{
 			MintingPeriod:   365 * 24 * time.Hour,
 			SupplyCap:       supplyCap,

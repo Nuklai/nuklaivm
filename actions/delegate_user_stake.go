@@ -5,7 +5,6 @@ package actions
 
 import (
 	"context"
-	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -23,10 +22,9 @@ import (
 var _ chain.Action = (*DelegateUserStake)(nil)
 
 type DelegateUserStake struct {
-	NodeID         []byte        `json:"nodeID"`         // Node ID of the validator to stake to
-	StakeStartTime uint64        `json:"stakeStartTime"` // Start time of the stake
-	StakedAmount   uint64        `json:"stakedAmount"`   // Amount of NAI staked
-	RewardAddress  codec.Address `json:"rewardAddress"`  // Address to receive rewards
+	NodeID        []byte        `json:"nodeID"`        // Node ID of the validator to stake to
+	StakedAmount  uint64        `json:"stakedAmount"`  // Amount of NAI staked
+	RewardAddress codec.Address `json:"rewardAddress"` // Address to receive rewards
 }
 
 func (*DelegateUserStake) GetTypeID() uint8 {
@@ -85,19 +83,11 @@ func (s *DelegateUserStake) Execute(
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
 
-	// Get current time
-	currentTime := time.Now().UTC()
-	// Get last accepted block time
-	lastBlockTime := emissionInstance.GetLastAcceptedBlockTimestamp()
-	// Convert Unix timestamps to Go's time.Time for easier manipulation
-	startTime := time.Unix(int64(s.StakeStartTime), 0).UTC()
-	// Check that stakeStartTime is after currentTime and lastBlockTime
-	if startTime.Before(currentTime) || startTime.Before(lastBlockTime) {
-		return false, DelegateUserStakeComputeUnits, OutputInvalidStakeStartTime, nil, nil
-	}
+	// Get last accepted block height
+	lastBlockHeight := emissionInstance.GetLastAcceptedBlockHeight()
 
 	// Delegate in Emission Balancer
-	err = emissionInstance.DelegateUserStake(nodeID, actor, s.StakedAmount)
+	err = emissionInstance.DelegateUserStake(nodeID, actor, lastBlockHeight, s.StakedAmount)
 	if err != nil {
 		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
@@ -105,7 +95,7 @@ func (s *DelegateUserStake) Execute(
 	if err := storage.SubBalance(ctx, mu, actor, ids.Empty, s.StakedAmount); err != nil {
 		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
-	if err := storage.SetDelegateUserStake(ctx, mu, actor, nodeID, s.StakeStartTime, s.StakedAmount, s.RewardAddress); err != nil {
+	if err := storage.SetDelegateUserStake(ctx, mu, actor, nodeID, lastBlockHeight, s.StakedAmount, s.RewardAddress); err != nil {
 		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 	return true, DelegateUserStakeComputeUnits, nil, nil, nil
@@ -116,12 +106,11 @@ func (*DelegateUserStake) MaxComputeUnits(chain.Rules) uint64 {
 }
 
 func (*DelegateUserStake) Size() int {
-	return hconsts.NodeIDLen + 2*hconsts.Uint64Len + codec.AddressLen
+	return hconsts.NodeIDLen + hconsts.Uint64Len + codec.AddressLen
 }
 
 func (s *DelegateUserStake) Marshal(p *codec.Packer) {
 	p.PackBytes(s.NodeID)
-	p.PackUint64(s.StakeStartTime)
 	p.PackUint64(s.StakedAmount)
 	p.PackAddress(s.RewardAddress)
 }
@@ -129,7 +118,6 @@ func (s *DelegateUserStake) Marshal(p *codec.Packer) {
 func UnmarshalDelegateUserStake(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
 	var stake DelegateUserStake
 	p.UnpackBytes(hconsts.NodeIDLen, true, &stake.NodeID)
-	stake.StakeStartTime = p.UnpackUint64(true)
 	stake.StakedAmount = p.UnpackUint64(true)
 	p.UnpackAddress(&stake.RewardAddress)
 	return &stake, p.Err()

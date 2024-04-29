@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -662,38 +663,43 @@ var registerValidatorStakeCmd = &cobra.Command{
 			return err
 		}
 
-		// Get current time
-		currentTime := time.Now().UTC()
-		stakeStartTime := currentTime.Add(2 * time.Minute)
-		stakeEndTime := currentTime.Add(15 * time.Minute)
+		// Get current block
+		currentBlockHeight, _, _, _, _, _, _, err := ncli.EmissionInfo(ctx)
+		if err != nil {
+			return err
+		}
+
+		stakeStartBlock := currentBlockHeight + 20*2 // roughly 2 minutes from now
+		stakeEndBlock := currentBlockHeight + 20*15  // roughly 15 minutes from now
 		delegationFeeRate := 50
 		rewardAddress := priv.Address
 
 		if !autoRegister {
-			// Select stakeStartTime
-			stakeStartTimeString, err := handler.Root().PromptString(
-				fmt.Sprintf("Staking Start Time(must be after %s) [YYYY-MM-DD HH:MM:SS]", currentTime.Format(TimeLayout)),
+			// Select stakeStartBlock
+			stakeStartBlockString, err := handler.Root().PromptString(
+				fmt.Sprintf("Staking Start Block(must be after %s)", currentBlockHeight),
 				1,
 				32,
 			)
-			if err != nil {
-				return err
-			}
-			stakeStartTime, err = time.Parse(TimeLayout, stakeStartTimeString)
 			if err != nil {
 				return err
 			}
 
-			// Select stakeEndTime
-			stakeEndTimeString, err := handler.Root().PromptString(
-				fmt.Sprintf("Staking End Time(must be after %s) [YYYY-MM-DD HH:MM:SS]", stakeStartTimeString),
+			stakeStartBlock, err = strconv.ParseUint(stakeStartBlockString, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			// Select stakeEndBlock
+			stakeEndBlockString, err := handler.Root().PromptString(
+				fmt.Sprintf("Staking End Block(must be after %s)", stakeStartBlockString),
 				1,
 				32,
 			)
 			if err != nil {
 				return err
 			}
-			stakeEndTime, err = time.Parse(TimeLayout, stakeEndTimeString)
+			stakeEndBlock, err = strconv.ParseUint(stakeEndBlockString, 10, 64)
 			if err != nil {
 				return err
 			}
@@ -711,11 +717,11 @@ var registerValidatorStakeCmd = &cobra.Command{
 			}
 		}
 
-		if stakeStartTime.Before(currentTime) {
-			return fmt.Errorf("staking start time must be after the current time (%s)", currentTime.Format(TimeLayout))
+		if stakeStartBlock < currentBlockHeight {
+			return fmt.Errorf("staking start block must be after the current block height (%d)", currentBlockHeight)
 		}
-		if stakeEndTime.Before(stakeStartTime) {
-			return fmt.Errorf("staking end time must be after the staking start time (%s)", stakeStartTime.Format(TimeLayout))
+		if stakeEndBlock < stakeStartBlock {
+			return fmt.Errorf("staking end block must be after the staking start block height (%d)", stakeStartBlock)
 		}
 		if delegationFeeRate < 2 || delegationFeeRate > 100 {
 			return fmt.Errorf("delegation fee rate must be over 2 and under 100")
@@ -727,12 +733,12 @@ var registerValidatorStakeCmd = &cobra.Command{
 			return err
 		}
 
-		hutils.Outf("{{yellow}}Register Validator Stake Info - stakeStartTime: %s stakeEndTime: %s delegationFeeRate: %d rewardAddress: %s\n", stakeStartTime.Format(TimeLayout), stakeEndTime.Format(TimeLayout), delegationFeeRate, codec.MustAddressBech32(nconsts.HRP, rewardAddress))
+		hutils.Outf("{{yellow}}Register Validator Stake Info - stakeStartBlock: %d stakeEndBlock: %d delegationFeeRate: %d rewardAddress: %s\n", stakeStartBlock, stakeEndBlock, delegationFeeRate, codec.MustAddressBech32(nconsts.HRP, rewardAddress))
 
 		stakeInfo := &actions.ValidatorStakeInfo{
 			NodeID:            nodeID.Bytes(),
-			StakeStartTime:    uint64(stakeStartTime.Unix()),
-			StakeEndTime:      uint64(stakeEndTime.Unix()),
+			StakeStartBlock:   stakeStartBlock,
+			StakeEndBlock:     stakeEndBlock,
 			StakedAmount:      stakedAmount,
 			DelegationFeeRate: uint64(delegationFeeRate),
 			RewardAddress:     rewardAddress,
@@ -983,35 +989,14 @@ var delegateUserStakeCmd = &cobra.Command{
 			return err
 		}
 
-		// Get current time
-		currentTime := time.Now().UTC()
-		stakeStartTime := currentTime.Add(2 * time.Minute)
 		rewardAddress := priv.Address
 
 		if !autoRegister {
-			// Select stakeStartTime
-			stakeStartTimeString, err := handler.Root().PromptString(
-				fmt.Sprintf("Staking Start Time(must be after %s) [YYYY-MM-DD HH:MM:SS]", currentTime.Format(TimeLayout)),
-				1,
-				32,
-			)
-			if err != nil {
-				return err
-			}
-			stakeStartTime, err = time.Parse(TimeLayout, stakeStartTimeString)
-			if err != nil {
-				return err
-			}
-
 			// Select rewardAddress
 			rewardAddress, err = handler.Root().PromptAddress("Reward Address")
 			if err != nil {
 				return err
 			}
-		}
-
-		if stakeStartTime.Before(currentTime) {
-			return fmt.Errorf("staking start time must be after the current time (%s)", currentTime.Format(TimeLayout))
 		}
 
 		// Confirm action
@@ -1022,10 +1007,9 @@ var delegateUserStakeCmd = &cobra.Command{
 
 		// Generate transaction
 		_, _, err = sendAndWait(ctx, nil, &actions.DelegateUserStake{
-			NodeID:         nodeID.Bytes(),
-			StakeStartTime: uint64(stakeStartTime.Unix()),
-			StakedAmount:   stakedAmount,
-			RewardAddress:  rewardAddress,
+			NodeID:        nodeID.Bytes(),
+			StakedAmount:  stakedAmount,
+			RewardAddress: rewardAddress,
 		}, hcli, hws, ncli, factory, true)
 		return err
 	},
