@@ -58,8 +58,8 @@ func (c *Controller) GetLoanFromState(
 	return storage.GetLoanFromState(ctx, c.inner.ReadState, asset, destination)
 }
 
-func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, uint64, emission.EmissionAccount, emission.EpochTracker, error) {
-	return c.emission.TotalSupply, c.emission.MaxSupply, c.emission.TotalStaked, c.emission.GetRewardsPerEpoch(), c.emission.EmissionAccount, c.emission.EpochTracker, nil
+func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, uint64, uint64, emission.EmissionAccount, emission.EpochTracker, error) {
+	return c.emission.GetLastAcceptedBlockHeight(), c.emission.TotalSupply, c.emission.MaxSupply, c.emission.TotalStaked, c.emission.GetRewardsPerEpoch(), c.emission.EmissionAccount, c.emission.EpochTracker, nil
 }
 
 func (c *Controller) GetValidators(ctx context.Context, staked bool) ([]*emission.Validator, error) {
@@ -77,8 +77,8 @@ func (c *Controller) GetStakedValidatorInfo(nodeID ids.NodeID) (*emission.Valida
 
 func (c *Controller) GetValidatorStakeFromState(ctx context.Context, nodeID ids.NodeID) (
 	bool, // exists
-	uint64, // StakeStartTime
-	uint64, // StakeEndTime
+	uint64, // StakeStartBlock
+	uint64, // StakeEndBlock
 	uint64, // StakedAmount
 	uint64, // DelegationFeeRate
 	codec.Address, // RewardAddress
@@ -90,7 +90,7 @@ func (c *Controller) GetValidatorStakeFromState(ctx context.Context, nodeID ids.
 
 func (c *Controller) GetDelegatedUserStakeFromState(ctx context.Context, owner codec.Address, nodeID ids.NodeID) (
 	bool, // exists
-	uint64, // StakeStartTime
+	uint64, // StakeStartBlock
 	uint64, // StakedAmount
 	codec.Address, // RewardAddress
 	codec.Address, // OwnerAddress

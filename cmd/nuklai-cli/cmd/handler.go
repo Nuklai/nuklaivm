@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/chain"
@@ -183,19 +182,20 @@ func (h *Handler) DefaultNuklaiVMJSONRPCClient(checkAllChains bool) ([]*nrpc.JSO
 func (*Handler) GetEmissionInfo(
 	ctx context.Context,
 	cli *nrpc.JSONRPCClient,
-) (uint64, uint64, uint64, uint64, uint64, string, uint64, error) {
-	totalSupply, maxSupply, totalStaked, rewardsPerEpoch, emissionAccount, epochTracker, err := cli.EmissionInfo(ctx)
+) (uint64, uint64, uint64, uint64, uint64, uint64, string, uint64, error) {
+	currentBlockHeight, totalSupply, maxSupply, totalStaked, rewardsPerEpoch, emissionAccount, epochTracker, err := cli.EmissionInfo(ctx)
 	if err != nil {
-		return 0, 0, 0, 0, 0, "", 0, err
+		return 0, 0, 0, 0, 0, 0, "", 0, err
 	}
 
 	emissionAddress, err := codec.AddressBech32(nconsts.HRP, emissionAccount.Address)
 	if err != nil {
-		return 0, 0, 0, 0, 0, "", 0, err
+		return 0, 0, 0, 0, 0, 0, "", 0, err
 	}
 
 	hutils.Outf(
-		"{{yellow}}emission info: {{/}}\nTotalSupply=%d MaxSupply=%d TotalStaked=%d RewardsPerEpoch=%d NumBlocksInEpoch=%d EmissionAddress=%s EmissionUnclaimedBalance=%d\n",
+		"{{yellow}}emission info: {{/}}\nCurrentBlockHeight=%d TotalSupply=%d MaxSupply=%d TotalStaked=%d RewardsPerEpoch=%d NumBlocksInEpoch=%d EmissionAddress=%s EmissionUnclaimedBalance=%d\n",
+		currentBlockHeight,
 		totalSupply,
 		maxSupply,
 		totalStaked,
@@ -204,7 +204,7 @@ func (*Handler) GetEmissionInfo(
 		emissionAddress,
 		emissionAccount.UnclaimedBalance,
 	)
-	return totalSupply, maxSupply, totalStaked, rewardsPerEpoch, epochTracker.EpochLength, emissionAddress, emissionAccount.UnclaimedBalance, err
+	return currentBlockHeight, totalSupply, maxSupply, totalStaked, rewardsPerEpoch, epochTracker.EpochLength, emissionAddress, emissionAccount.UnclaimedBalance, err
 }
 
 func (*Handler) GetAllValidators(
@@ -269,7 +269,7 @@ func (*Handler) GetValidatorStake(
 	cli *nrpc.JSONRPCClient,
 	nodeID ids.NodeID,
 ) (uint64, uint64, uint64, uint64, string, string, error) {
-	stakeStartTime, stakeEndTime, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, err := cli.ValidatorStake(ctx, nodeID)
+	stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, err := cli.ValidatorStake(ctx, nodeID)
 	if err != nil {
 		return 0, 0, 0, 0, "", "", err
 	}
@@ -284,16 +284,16 @@ func (*Handler) GetValidatorStake(
 	}
 
 	hutils.Outf(
-		"{{yellow}}validator stake: {{/}}\nStakeStartTime=%v StakeEndTime=%v StakedAmount=%d DelegationFeeRate=%d RewardAddress=%s OwnerAddress=%s\n",
-		time.Unix(int64(stakeStartTime), 0).UTC(),
-		time.Unix(int64(stakeEndTime), 0).UTC(),
+		"{{yellow}}validator stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d DelegationFeeRate=%d RewardAddress=%s OwnerAddress=%s\n",
+		stakeStartBlock,
+		stakeEndBlock,
 		stakedAmount,
 		delegationFeeRate,
 		rewardAddressString,
 		ownerAddressString,
 	)
-	return stakeStartTime,
-		stakeEndTime,
+	return stakeStartBlock,
+		stakeEndBlock,
 		stakedAmount,
 		delegationFeeRate,
 		rewardAddressString,
@@ -303,7 +303,7 @@ func (*Handler) GetValidatorStake(
 func (*Handler) GetUserStake(ctx context.Context,
 	cli *nrpc.JSONRPCClient, owner codec.Address, nodeID ids.NodeID,
 ) (uint64, uint64, string, string, error) {
-	stakeStartTime, stakedAmount, rewardAddress, ownerAddress, err := cli.UserStake(ctx, owner, nodeID)
+	stakeStartBlock, stakedAmount, rewardAddress, ownerAddress, err := cli.UserStake(ctx, owner, nodeID)
 	if err != nil {
 		return 0, 0, "", "", err
 	}
@@ -318,13 +318,13 @@ func (*Handler) GetUserStake(ctx context.Context,
 	}
 
 	hutils.Outf(
-		"{{yellow}}validator stake: {{/}}\nStakeStartTime=%v StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
-		time.Unix(int64(stakeStartTime), 0).UTC(),
+		"{{yellow}}validator stake: {{/}}\nStakeStartBlock=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
+		stakeStartBlock,
 		stakedAmount,
 		rewardAddressString,
 		ownerAddressString,
 	)
-	return stakeStartTime,
+	return stakeStartBlock,
 		stakedAmount,
 		rewardAddressString,
 		ownerAddressString, err

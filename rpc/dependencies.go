@@ -22,13 +22,13 @@ type Controller interface {
 	GetBalanceFromState(context.Context, codec.Address, ids.ID) (uint64, error)
 	GetLoanFromState(context.Context, ids.ID, ids.ID) (uint64, error)
 
-	GetEmissionInfo() (uint64, uint64, uint64, uint64, emission.EmissionAccount, emission.EpochTracker, error)
+	GetEmissionInfo() (uint64, uint64, uint64, uint64, uint64, emission.EmissionAccount, emission.EpochTracker, error)
 	GetValidators(ctx context.Context, staked bool) ([]*emission.Validator, error)
 	GetStakedValidatorInfo(nodeID ids.NodeID) (*emission.Validator, error)
 	GetValidatorStakeFromState(ctx context.Context, nodeID ids.NodeID) (
 		bool, // exists
-		uint64, // StakeStartTime
-		uint64, // StakeEndTime
+		uint64, // StakeStartBlock
+		uint64, // StakeEndBlock
 		uint64, // StakedAmount
 		uint64, // DelegationFeeRate
 		codec.Address, // RewardAddress
@@ -37,7 +37,7 @@ type Controller interface {
 	)
 	GetDelegatedUserStakeFromState(ctx context.Context, owner codec.Address, nodeID ids.NodeID) (
 		bool, // exists
-		uint64, // StakeStartTime
+		uint64, // StakeStartBlock
 		uint64, // StakedAmount
 		codec.Address, // RewardAddress
 		codec.Address, // OwnerAddress
