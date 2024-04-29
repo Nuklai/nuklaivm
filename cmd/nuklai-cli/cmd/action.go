@@ -677,7 +677,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 		if !autoRegister {
 			// Select stakeStartBlock
 			stakeStartBlockString, err := handler.Root().PromptString(
-				fmt.Sprintf("Staking Start Block(must be after %s)", currentBlockHeight),
+				fmt.Sprintf("Staking Start Block(must be after %d)", currentBlockHeight),
 				1,
 				32,
 			)
