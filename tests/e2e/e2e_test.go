@@ -1739,7 +1739,7 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 					if h > 0 {
 						break
 					}
-					time.Sleep(1 * time.Second)
+					time.Sleep(2 * time.Second)
 				}
 
 				_, stakedAmount, _, _, err := inst.ncli.UserStake(context.Background(), rdelegate, instancesA[0].nodeID)
@@ -1748,6 +1748,12 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			}
 
 		})
+
+		// ginkgo.By("Get user stake before claim", func() {
+		// 	_, stakedAmount, _, _, err := instancesA[0].ncli.UserStake(context.Background(), rdelegate, instancesA[0].nodeID)
+		// 	gomega.Ω(err).Should(gomega.BeNil())
+		// 	gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(30_000_000_000)))
+		// })
 
 	})
 })
