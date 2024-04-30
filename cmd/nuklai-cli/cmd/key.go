@@ -90,7 +90,7 @@ func generatePrivateKey(k string) (*cli.PrivateKey, error) {
 	}
 }
 
-func loadPrivateKey(k string, path string) (*cli.PrivateKey, error) {
+func LoadPrivateKey(k string, path string) (*cli.PrivateKey, error) {
 	switch k {
 	case ed25519Key:
 		p, err := hutils.LoadBytes(path, ed25519.PrivateKeyLen)
@@ -174,7 +174,7 @@ var importKeyCmd = &cobra.Command{
 		return checkKeyType(args[0])
 	},
 	RunE: func(_ *cobra.Command, args []string) error {
-		priv, err := loadPrivateKey(args[0], args[1])
+		priv, err := LoadPrivateKey(args[0], args[1])
 		if err != nil {
 			return err
 		}

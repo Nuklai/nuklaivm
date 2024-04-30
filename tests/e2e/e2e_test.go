@@ -1525,7 +1525,6 @@ var _ = ginkgo.Describe("[Test]", func() {
 })
 
 var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
-	// ginkgo.FIt("Setup and get initial staked validators", func() {
 	ginkgo.FIt("Initial staked validators", func() {
 		validators, err := instancesA[0].ncli.StakedValidators(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
@@ -1533,8 +1532,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 	})
 
 	ginkgo.FIt("Funding node 0", func() {
-		fmt.Println("-----------NODES ADDRESSES------------")
-		fmt.Println(len(nodesAddresses))
 		parser, err := instancesA[0].ncli.Parser(context.TODO())
 		gomega.Ω(err).Should(gomega.BeNil())
 		submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
@@ -1583,15 +1580,15 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		rwithdraw0 := auth.NewED25519Address(withdraw0Priv.PublicKey())
 		parser, err := instancesA[0].ncli.Parser(context.TODO())
 		gomega.Ω(err).Should(gomega.BeNil())
-		currentTime := time.Now().UTC()
-		stakeStartTime := currentTime.Add(30 * time.Second)
-		stakeEndTime := currentTime.Add(15 * time.Minute)
+		currentBlockHeight, _, _, _, _, _, _, _ := instancesA[0].ncli.EmissionInfo(context.Background())
+		stakeStartBlock := currentBlockHeight + 2
+		stakeEndBlock := currentBlockHeight + 100
 		delegationFeeRate := 50
 
 		stakeInfo := &actions.ValidatorStakeInfo{
 			NodeID:            instancesA[0].nodeID.Bytes(),
-			StakeStartTime:    uint64(stakeStartTime.Unix()),
-			StakeEndTime:      uint64(stakeEndTime.Unix()),
+			StakeStartBlock:   stakeStartBlock,
+			StakeEndBlock:     stakeEndBlock,
 			StakedAmount:      100_000_000_000,
 			DelegationFeeRate: uint64(delegationFeeRate),
 			RewardAddress:     rwithdraw0,
@@ -1719,18 +1716,14 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 	ginkgo.FIt("Delegate user stake to node 0", func() {
 		parser, err := instancesA[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		currentTime := time.Now().UTC()
-		// userStakeStartTime := currentTime.Add(2 * time.Minute)
-		userStakeStartTime := currentTime.Add(1 * time.Minute)
 		submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
 			&actions.DelegateUserStake{
-				NodeID:         instancesA[0].nodeID.Bytes(),
-				StakeStartTime: uint64(userStakeStartTime.Unix()),
-				StakedAmount:   30_000_000_000,
-				RewardAddress:  rdelegate,
+				NodeID:        instancesA[0].nodeID.Bytes(),
+				StakedAmount:  30_000_000_000,
+				RewardAddress: rdelegate,
 			},
 			delegateFactory,
 		)

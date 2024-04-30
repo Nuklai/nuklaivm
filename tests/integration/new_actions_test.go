@@ -407,15 +407,15 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 	ginkgo.FIt("Register validator stake node 3", func() {
 		parser, err := instances[3].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		currentTime := time.Now().UTC()
-		stakeStartTime := currentTime.Add(1 * time.Second)
-		stakeEndTime := currentTime.Add(15 * time.Minute)
+		currentBlockHeight := instances[3].vm.LastAcceptedBlock().Height()
+		stakeStartBlock := currentBlockHeight + 2
+		stakeEndBlock := currentBlockHeight + 50
 		delegationFeeRate := 50
 
 		stakeInfo := &actions.ValidatorStakeInfo{
 			NodeID:            instances[3].nodeID.Bytes(),
-			StakeStartTime:    uint64(stakeStartTime.Unix()),
-			StakeEndTime:      uint64(stakeEndTime.Unix()),
+			StakeStartBlock:   stakeStartBlock,
+			StakeEndBlock:     stakeEndBlock,
 			StakedAmount:      100_000_000_000,
 			DelegationFeeRate: uint64(delegationFeeRate),
 			RewardAddress:     rwithdraw0,
@@ -560,17 +560,14 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 	ginkgo.FIt("delegate user stake to node 3", func() {
 		parser, err := instances[3].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		currentTime := time.Now().UTC()
-		userStakeStartTime := currentTime.Add(1 * time.Second)
 		submit, _, _, err := instances[3].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
 			&actions.DelegateUserStake{
-				NodeID:         instances[3].nodeID.Bytes(),
-				StakeStartTime: uint64(userStakeStartTime.Unix()),
-				StakedAmount:   30_000_000_000,
-				RewardAddress:  rdelegate,
+				NodeID:        instances[3].nodeID.Bytes(),
+				StakedAmount:  30_000_000_000,
+				RewardAddress: rdelegate,
 			},
 			delegateFactory,
 		)
