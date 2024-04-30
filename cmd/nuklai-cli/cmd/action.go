@@ -580,7 +580,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 
 		if autoRegister {
 			hutils.Outf("{{yellow}}Loading private key for %s{{/}}\n", nodeNumber)
-			validatorSignerKey, err := loadPrivateKey("bls", fmt.Sprintf("/tmp/nuklaivm/nodes/%s-bls/signer.key", nodeNumber))
+			validatorSignerKey, err := LoadPrivateKey("bls", fmt.Sprintf("/tmp/nuklaivm/nodes/%s-bls/signer.key", nodeNumber))
 			if err != nil {
 				return err
 			}
