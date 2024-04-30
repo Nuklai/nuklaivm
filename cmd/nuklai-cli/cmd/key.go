@@ -170,7 +170,7 @@ var genKeyCmd = &cobra.Command{
 		// Construct the filename with Address
 		filename := fmt.Sprintf("./test_accounts/%s-%s.pk", codec.MustAddressBech32(nconsts.HRP, priv.Address), args[0])
 		// Write the byte slice to the file
-		err = os.WriteFile(filename, priv.Bytes, 0644)
+		err = os.WriteFile(filename, priv.Bytes, 0o600)
 		if err != nil {
 			panic(err)
 		}
