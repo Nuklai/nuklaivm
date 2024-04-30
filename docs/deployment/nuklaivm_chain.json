@@ -1,0 +1,17 @@
+{
+  "mempoolSize": 10000000,
+  "mempoolSponsorSize": 10000000,
+  "mempoolExemptSponsors": [
+    "nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx",
+    "nuklai1qqmzlnnredketlj3cu20v56nt5ken6thchra7nylwcrmz77td654w2jmpt9"
+  ],
+  "authVerificationCores": 2,
+  "rootGenerationCores": 2,
+  "transactionExecutionCores": 2,
+  "verifyAuth": true,
+  "storeTransactions": false,
+  "streamingBacklogSize": 10000000,
+  "logLevel": "info",
+  "continuousProfilerDir": "/tmp/nuklaivm/nuklaivm-e2e-profiles/*",
+  "stateSyncServerDelay": 0
+}

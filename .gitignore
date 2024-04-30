@@ -61,3 +61,6 @@ deploys/
 *.coverage.html
 data/
 osxcross/
+
+# Custom
+test_accounts/
