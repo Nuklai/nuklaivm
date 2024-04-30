@@ -19,7 +19,7 @@ type Tracker interface {
 	MintNewNAI() uint64
 	ClaimStakingRewards(nodeID ids.NodeID, actor codec.Address) (uint64, error)
 	UndelegateUserStake(nodeID ids.NodeID, actor codec.Address, stakeAmount uint64) (uint64, error)
-	DelegateUserStake(nodeID ids.NodeID, delegatorAddress codec.Address, stakeAmount uint64) error
+	DelegateUserStake(nodeID ids.NodeID, delegatorAddress codec.Address, stakeStartBlock, stakeAmount uint64) error
 	WithdrawValidatorStake(nodeID ids.NodeID) (uint64, error)
 	RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey *bls.PublicKey, stakeStartTime, stakeEndTime, stakedAmount, delegationFeeRate uint64) error
 	CalculateUserDelegationRewards(nodeID ids.NodeID, actor codec.Address, currentBlockHeight uint64) (uint64, error)

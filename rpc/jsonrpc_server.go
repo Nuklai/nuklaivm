@@ -142,22 +142,24 @@ func (j *JSONRPCServer) Loan(req *http.Request, args *LoanArgs, reply *LoanReply
 }
 
 type EmissionReply struct {
-	TotalSupply     uint64                   `json:"totalSupply"`
-	MaxSupply       uint64                   `json:"maxSupply"`
-	TotalStaked     uint64                   `json:"totalStaked"`
-	RewardsPerEpoch uint64                   `json:"rewardsPerEpoch"`
-	EmissionAccount emission.EmissionAccount `json:"emissionAccount"`
-	EpochTracker    emission.EpochTracker    `json:"epochTracker"`
+	CurrentBlockHeight uint64                   `json:"currentBlockHeight"`
+	TotalSupply        uint64                   `json:"totalSupply"`
+	MaxSupply          uint64                   `json:"maxSupply"`
+	TotalStaked        uint64                   `json:"totalStaked"`
+	RewardsPerEpoch    uint64                   `json:"rewardsPerEpoch"`
+	EmissionAccount    emission.EmissionAccount `json:"emissionAccount"`
+	EpochTracker       emission.EpochTracker    `json:"epochTracker"`
 }
 
 func (j *JSONRPCServer) EmissionInfo(req *http.Request, _ *struct{}, reply *EmissionReply) (err error) {
 	_, span := j.c.Tracer().Start(req.Context(), "Server.EmissionInfo")
 	defer span.End()
 
-	totalSupply, maxSupply, totalStaked, rewardsPerEpoch, emissionAccount, epochTracker, err := j.c.GetEmissionInfo()
+	currentBlockHeight, totalSupply, maxSupply, totalStaked, rewardsPerEpoch, emissionAccount, epochTracker, err := j.c.GetEmissionInfo()
 	if err != nil {
 		return err
 	}
+	reply.CurrentBlockHeight = currentBlockHeight
 	reply.TotalSupply = totalSupply
 	reply.MaxSupply = maxSupply
 	reply.TotalStaked = totalStaked
@@ -200,8 +202,8 @@ type ValidatorStakeArgs struct {
 }
 
 type ValidatorStakeReply struct {
-	StakeStartTime    uint64        `json:"stakeStartTime"`    // Start date of the stake
-	StakeEndTime      uint64        `json:"stakeEndTime"`      // End date of the stake
+	StakeStartBlock   uint64        `json:"stakeStartBlock"`   // Start block of the stake
+	StakeEndBlock     uint64        `json:"stakeEndBlock"`     // End block of the stake
 	StakedAmount      uint64        `json:"stakedAmount"`      // Amount of NAI staked
 	DelegationFeeRate uint64        `json:"delegationFeeRate"` // Delegation fee rate
 	RewardAddress     codec.Address `json:"rewardAddress"`     // Address to receive rewards
@@ -212,7 +214,7 @@ func (j *JSONRPCServer) ValidatorStake(req *http.Request, args *ValidatorStakeAr
 	ctx, span := j.c.Tracer().Start(req.Context(), "Server.ValidatorStake")
 	defer span.End()
 
-	exists, stakeStartTime, stakeEndTime, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, err := j.c.GetValidatorStakeFromState(ctx, args.NodeID)
+	exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, err := j.c.GetValidatorStakeFromState(ctx, args.NodeID)
 	if err != nil {
 		return err
 	}
@@ -220,8 +222,8 @@ func (j *JSONRPCServer) ValidatorStake(req *http.Request, args *ValidatorStakeAr
 		return ErrValidatorStakeNotFound
 	}
 
-	reply.StakeStartTime = stakeStartTime
-	reply.StakeEndTime = stakeEndTime
+	reply.StakeStartBlock = stakeStartBlock
+	reply.StakeEndBlock = stakeEndBlock
 	reply.StakedAmount = stakedAmount
 	reply.DelegationFeeRate = delegationFeeRate
 	reply.RewardAddress = rewardAddress
@@ -235,17 +237,17 @@ type UserStakeArgs struct {
 }
 
 type UserStakeReply struct {
-	StakeStartTime uint64        `json:"stakeStartTime"` // Start date of the stake
-	StakedAmount   uint64        `json:"stakedAmount"`   // Amount of NAI staked
-	RewardAddress  codec.Address `json:"rewardAddress"`  // Address to receive rewards
-	OwnerAddress   codec.Address `json:"ownerAddress"`   // Address of the owner who delegated
+	StakeStartBlock uint64        `json:"stakeStartBlock"` // Start block of the stake
+	StakedAmount    uint64        `json:"stakedAmount"`    // Amount of NAI staked
+	RewardAddress   codec.Address `json:"rewardAddress"`   // Address to receive rewards
+	OwnerAddress    codec.Address `json:"ownerAddress"`    // Address of the owner who delegated
 }
 
 func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply *UserStakeReply) (err error) {
 	ctx, span := j.c.Tracer().Start(req.Context(), "Server.UserStake")
 	defer span.End()
 
-	exists, stakeStartTime, stakedAmount, rewardAddress, ownerAddress, err := j.c.GetDelegatedUserStakeFromState(ctx, args.Owner, args.NodeID)
+	exists, stakeStartBlock, stakedAmount, rewardAddress, ownerAddress, err := j.c.GetDelegatedUserStakeFromState(ctx, args.Owner, args.NodeID)
 	if err != nil {
 		return err
 	}
@@ -253,7 +255,7 @@ func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply 
 		return ErrUserStakeNotFound
 	}
 
-	reply.StakeStartTime = stakeStartTime
+	reply.StakeStartBlock = stakeStartBlock
 	reply.StakedAmount = stakedAmount
 	reply.RewardAddress = rewardAddress
 	reply.OwnerAddress = ownerAddress

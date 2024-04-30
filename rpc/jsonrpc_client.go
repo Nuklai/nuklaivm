@@ -150,7 +150,7 @@ func (cli *JSONRPCClient) Loan(
 	return resp.Amount, err
 }
 
-func (cli *JSONRPCClient) EmissionInfo(ctx context.Context) (uint64, uint64, uint64, uint64, emission.EmissionAccount, emission.EpochTracker, error) {
+func (cli *JSONRPCClient) EmissionInfo(ctx context.Context) (uint64, uint64, uint64, uint64, uint64, emission.EmissionAccount, emission.EpochTracker, error) {
 	resp := new(EmissionReply)
 	err := cli.requester.SendRequest(
 		ctx,
@@ -159,10 +159,10 @@ func (cli *JSONRPCClient) EmissionInfo(ctx context.Context) (uint64, uint64, uin
 		resp,
 	)
 	if err != nil {
-		return 0, 0, 0, 0, emission.EmissionAccount{}, emission.EpochTracker{}, err
+		return 0, 0, 0, 0, 0, emission.EmissionAccount{}, emission.EpochTracker{}, err
 	}
 
-	return resp.TotalSupply, resp.MaxSupply, resp.TotalStaked, resp.RewardsPerEpoch, resp.EmissionAccount, resp.EpochTracker, err
+	return resp.CurrentBlockHeight, resp.TotalSupply, resp.MaxSupply, resp.TotalStaked, resp.RewardsPerEpoch, resp.EmissionAccount, resp.EpochTracker, err
 }
 
 func (cli *JSONRPCClient) AllValidators(ctx context.Context) ([]*emission.Validator, error) {
@@ -206,7 +206,7 @@ func (cli *JSONRPCClient) ValidatorStake(ctx context.Context, nodeID ids.NodeID)
 	if err != nil {
 		return 0, 0, 0, 0, codec.EmptyAddress, codec.EmptyAddress, err
 	}
-	return resp.StakeStartTime, resp.StakeEndTime, resp.StakedAmount, resp.DelegationFeeRate, resp.RewardAddress, resp.OwnerAddress, err
+	return resp.StakeStartBlock, resp.StakeEndBlock, resp.StakedAmount, resp.DelegationFeeRate, resp.RewardAddress, resp.OwnerAddress, err
 }
 
 func (cli *JSONRPCClient) UserStake(ctx context.Context, owner codec.Address, nodeID ids.NodeID) (uint64, uint64, codec.Address, codec.Address, error) {
@@ -223,7 +223,7 @@ func (cli *JSONRPCClient) UserStake(ctx context.Context, owner codec.Address, no
 	if err != nil {
 		return 0, 0, codec.EmptyAddress, codec.EmptyAddress, err
 	}
-	return resp.StakeStartTime, resp.StakedAmount, resp.RewardAddress, resp.OwnerAddress, err
+	return resp.StakeStartBlock, resp.StakedAmount, resp.RewardAddress, resp.OwnerAddress, err
 }
 
 func (cli *JSONRPCClient) WaitForBalance(

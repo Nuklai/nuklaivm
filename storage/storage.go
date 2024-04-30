@@ -47,9 +47,9 @@ type ReadState func(context.Context, [][]byte) ([][]byte, []error)
 //   -> [assetID|destination] => amount
 
 // 0x8/ (stake)
-//   -> [nodeID] => stakeStartTime|stakeEndTime|stakedAmount|delegationFeeRate|rewardAddress|ownerAddress
+//   -> [nodeID] => stakeStartBlock|stakeEndBlock|stakedAmount|delegationFeeRate|rewardAddress|ownerAddress
 // 0x9/ (delegate)
-//   -> [owner|nodeID] => stakeStartTime|stakedAmount|rewardAddress|ownerAddress
+//   -> [owner|nodeID] => stakeStartBlock|stakedAmount|rewardAddress|ownerAddress
 
 const (
 	// metaDB
@@ -504,8 +504,8 @@ func SetRegisterValidatorStake(
 	ctx context.Context,
 	mu state.Mutable,
 	nodeID ids.NodeID,
-	stakeStartTime uint64,
-	stakeEndTime uint64,
+	stakeStartBlock uint64,
+	stakeEndBlock uint64,
 	stakedAmount uint64,
 	delegationFeeRate uint64,
 	rewardAddress codec.Address,
@@ -515,9 +515,9 @@ func SetRegisterValidatorStake(
 	v := make([]byte, (4*hconsts.Uint64Len)+(2*codec.AddressLen)) // Calculate the length of the encoded data
 
 	offset := 0
-	binary.BigEndian.PutUint64(v[offset:], stakeStartTime)
+	binary.BigEndian.PutUint64(v[offset:], stakeStartBlock)
 	offset += hconsts.Uint64Len
-	binary.BigEndian.PutUint64(v[offset:], stakeEndTime)
+	binary.BigEndian.PutUint64(v[offset:], stakeEndBlock)
 	offset += hconsts.Uint64Len
 	binary.BigEndian.PutUint64(v[offset:], stakedAmount)
 	offset += hconsts.Uint64Len
@@ -537,8 +537,8 @@ func GetRegisterValidatorStake(
 	im state.Immutable,
 	nodeID ids.NodeID,
 ) (bool, // exists
-	uint64, // StakeStartTime
-	uint64, // StakeEndTime
+	uint64, // StakeStartBlock
+	uint64, // StakeEndBlock
 	uint64, // StakedAmount
 	uint64, // DelegationFeeRate
 	codec.Address, // RewardAddress
@@ -556,8 +556,8 @@ func GetRegisterValidatorStakeFromState(
 	f ReadState,
 	nodeID ids.NodeID,
 ) (bool, // exists
-	uint64, // StakeStartTime
-	uint64, // StakeEndTime
+	uint64, // StakeStartBlock
+	uint64, // StakeEndBlock
 	uint64, // StakedAmount
 	uint64, // DelegationFeeRate
 	codec.Address, // RewardAddress
@@ -570,8 +570,8 @@ func GetRegisterValidatorStakeFromState(
 
 func innerGetRegisterValidatorStake(v []byte, err error) (
 	bool, // exists
-	uint64, // StakeStartTime
-	uint64, // StakeEndTime
+	uint64, // StakeStartBlock
+	uint64, // StakeEndBlock
 	uint64, // StakedAmount
 	uint64, // DelegationFeeRate
 	codec.Address, // RewardAddress
@@ -586,9 +586,9 @@ func innerGetRegisterValidatorStake(v []byte, err error) (
 	}
 
 	offset := 0
-	stakeStartTime := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
+	stakeStartBlock := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
 	offset += hconsts.Uint64Len
-	stakeEndTime := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
+	stakeEndBlock := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
 	offset += hconsts.Uint64Len
 	stakedAmount := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
 	offset += hconsts.Uint64Len
@@ -602,7 +602,7 @@ func innerGetRegisterValidatorStake(v []byte, err error) (
 	var ownerAddress codec.Address
 	copy(ownerAddress[:], v[offset:offset+codec.AddressLen])
 
-	return true, stakeStartTime, stakeEndTime, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, nil
+	return true, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, nil
 }
 
 func DeleteRegisterValidatorStake(
@@ -628,7 +628,7 @@ func SetDelegateUserStake(
 	mu state.Mutable,
 	owner codec.Address,
 	nodeID ids.NodeID,
-	stakeStartTime uint64,
+	stakeStartBlock uint64,
 	stakedAmount uint64,
 	rewardAddress codec.Address,
 ) error {
@@ -637,7 +637,7 @@ func SetDelegateUserStake(
 
 	offset := 0
 
-	binary.BigEndian.PutUint64(v[offset:], stakeStartTime)
+	binary.BigEndian.PutUint64(v[offset:], stakeStartBlock)
 	offset += hconsts.Uint64Len
 	binary.BigEndian.PutUint64(v[offset:], stakedAmount)
 	offset += hconsts.Uint64Len
@@ -655,7 +655,7 @@ func GetDelegateUserStake(
 	owner codec.Address,
 	nodeID ids.NodeID,
 ) (bool, // exists
-	uint64, // StakeStartTime
+	uint64, // StakeStartBlock
 	uint64, // StakedAmount
 	codec.Address, // RewardAddress
 	codec.Address, // OwnerAddress
@@ -673,7 +673,7 @@ func GetDelegateUserStakeFromState(
 	owner codec.Address,
 	nodeID ids.NodeID,
 ) (bool, // exists
-	uint64, // StakeStartTime
+	uint64, // StakeStartBlock
 	uint64, // StakedAmount
 	codec.Address, // RewardAddress
 	codec.Address, // OwnerAddress
@@ -685,7 +685,7 @@ func GetDelegateUserStakeFromState(
 
 func innerGetDelegateUserStake(v []byte, err error) (
 	bool, // exists
-	uint64, // StakeStartTime
+	uint64, // StakeStartBlock
 	uint64, // StakedAmount
 	codec.Address, // RewardAddress
 	codec.Address, // OwnerAddress
@@ -700,7 +700,7 @@ func innerGetDelegateUserStake(v []byte, err error) (
 
 	offset := 0
 
-	stakeStartTime := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
+	stakeStartBlock := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
 	offset += hconsts.Uint64Len
 	stakedAmount := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
 	offset += hconsts.Uint64Len
@@ -711,7 +711,7 @@ func innerGetDelegateUserStake(v []byte, err error) (
 	var ownerAddress codec.Address
 	copy(ownerAddress[:], v[offset:offset+codec.AddressLen])
 
-	return true, stakeStartTime, stakedAmount, rewardAddress, ownerAddress, nil
+	return true, stakeStartBlock, stakedAmount, rewardAddress, ownerAddress, nil
 }
 
 func DeleteDelegateUserStake(

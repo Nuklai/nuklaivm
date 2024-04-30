@@ -5,8 +5,6 @@ package actions
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -63,7 +61,7 @@ func (c *ClaimDelegationStakeRewards) Execute(
 		return false, ClaimStakingRewardComputeUnits, OutputInvalidNodeID, nil, nil
 	}
 
-	exists, stakeStartTime, _, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, mu, c.UserStakeAddress, nodeID)
+	exists, stakeStartBlock, _, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, mu, c.UserStakeAddress, nodeID)
 	if !exists {
 		return false, ClaimStakingRewardComputeUnits, OutputStakeMissing, nil, nil
 	}
@@ -74,20 +72,10 @@ func (c *ClaimDelegationStakeRewards) Execute(
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
 
-	// Get current time
-	currentTime := time.Now().UTC()
-	// Get last accepted block time
-	lastBlockTime := emissionInstance.GetLastAcceptedBlockTimestamp()
-	// Convert Unix timestamps to Go's time.Time for easier manipulation
-	startTime := time.Unix(int64(stakeStartTime), 0).UTC()
-	// Check that currentTime and lastBlockTime are after stakeStartTime
-	fmt.Println("CLAIM DELEGATION STAKE REWARDS")
-	fmt.Println(currentTime.Before(startTime))
-	fmt.Println(lastBlockTime.Before(startTime))
-	fmt.Println(currentTime)
-	fmt.Println(startTime)
-	fmt.Println(lastBlockTime)
-	if currentTime.Before(startTime) || lastBlockTime.Before(startTime) {
+	// Get last accepted block height
+	lastBlockHeight := emissionInstance.GetLastAcceptedBlockHeight()
+	// Check that lastBlockHeight is after stakeStartBlock
+	if lastBlockHeight < stakeStartBlock {
 		return false, ClaimStakingRewardComputeUnits, OutputStakeNotStarted, nil, nil
 	}
 

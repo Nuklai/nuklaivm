@@ -137,7 +137,7 @@ func handleTx(ncli *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Res
 		case *actions.RegisterValidatorStake:
 			stakeInfo, _ := actions.UnmarshalValidatorStakeInfo(action.StakeInfo)
 			nodeID, _ := ids.ToNodeID(stakeInfo.NodeID)
-			summaryStr = fmt.Sprintf("nodeID: %s stakeStartTime: %d stakeEndTime: %d stakedAmount: %s delegationFeeRate: %d rewardAddress: %s", nodeID.String(), stakeInfo.StakeStartTime, stakeInfo.StakeEndTime, utils.FormatBalance(stakeInfo.StakedAmount, nconsts.Decimals), stakeInfo.DelegationFeeRate, codec.MustAddressBech32(nconsts.HRP, stakeInfo.RewardAddress))
+			summaryStr = fmt.Sprintf("nodeID: %s stakeStartBlock: %d stakeEndBlock: %d stakedAmount: %s delegationFeeRate: %d rewardAddress: %s", nodeID.String(), stakeInfo.StakeStartBlock, stakeInfo.StakeEndBlock, utils.FormatBalance(stakeInfo.StakedAmount, nconsts.Decimals), stakeInfo.DelegationFeeRate, codec.MustAddressBech32(nconsts.HRP, stakeInfo.RewardAddress))
 		case *actions.ClaimValidatorStakeRewards:
 			nodeID, _ := ids.ToNodeID(action.NodeID)
 			summaryStr = fmt.Sprintf("nodeID: %s", nodeID.String())
@@ -146,7 +146,7 @@ func handleTx(ncli *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Res
 			summaryStr = fmt.Sprintf("nodeID: %s", nodeID.String())
 		case *actions.DelegateUserStake:
 			nodeID, _ := ids.ToNodeID(action.NodeID)
-			summaryStr = fmt.Sprintf("nodeID: %s stakeStartTime: %d stakedAmount: %s rewardAddress: %s", nodeID.String(), action.StakeStartTime, utils.FormatBalance(action.StakedAmount, nconsts.Decimals), codec.MustAddressBech32(nconsts.HRP, action.RewardAddress))
+			summaryStr = fmt.Sprintf("nodeID: %s stakedAmount: %s rewardAddress: %s", nodeID.String(), utils.FormatBalance(action.StakedAmount, nconsts.Decimals), codec.MustAddressBech32(nconsts.HRP, action.RewardAddress))
 		case *actions.ClaimDelegationStakeRewards:
 			nodeID, _ := ids.ToNodeID(action.NodeID)
 			summaryStr = fmt.Sprintf("nodeID: %s userStakeAddress:%s", nodeID.String(), codec.MustAddressBech32(nconsts.HRP, action.UserStakeAddress))

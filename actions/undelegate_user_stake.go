@@ -5,7 +5,6 @@ package actions
 
 import (
 	"context"
-	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -61,7 +60,7 @@ func (u *UndelegateUserStake) Execute(
 		return false, UndelegateUserStakeComputeUnits, OutputInvalidNodeID, nil, nil
 	}
 
-	exists, stakeStartTime, stakedAmount, rewardAddress, ownerAddress, _ := storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
+	exists, stakeStartBlock, stakedAmount, rewardAddress, ownerAddress, _ := storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
 	if !exists {
 		return false, UndelegateUserStakeComputeUnits, OutputStakeMissing, nil, nil
 	}
@@ -72,14 +71,10 @@ func (u *UndelegateUserStake) Execute(
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
 
-	// Get current time
-	currentTime := time.Now().UTC()
-	// Get last accepted block time
-	lastBlockTime := emissionInstance.GetLastAcceptedBlockTimestamp()
-	// Convert Unix timestamps to Go's time.Time for easier manipulation
-	startTime := time.Unix(int64(stakeStartTime), 0).UTC()
-	// Check that currentTime and lastBlockTime are after stakeStartTime
-	if currentTime.Before(startTime) || lastBlockTime.Before(startTime) {
+	// Get last accepted block height
+	lastBlockHeight := emissionInstance.GetLastAcceptedBlockHeight()
+	// Check that lastBlockHeight is after stakeStartBlock
+	if lastBlockHeight < stakeStartBlock {
 		return false, UndelegateUserStakeComputeUnits, OutputStakeNotStarted, nil, nil
 	}
 

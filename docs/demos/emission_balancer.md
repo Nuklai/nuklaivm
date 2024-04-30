@@ -13,8 +13,8 @@ There are two ways of registering your validator for staking.
 
 We can let everything be configured automatically which means it'll set the values for staking automatically such as for:
 
-- stakeStartTime: Sets it to 2 minutes from now
-- stakeEndTime: Sets it to 5 minutes from now
+- stakeStartBlock: Sets it to 40 blocks(2 minutes from now)
+- stakeEndBlock: Sets it to 300 blocks(15 minutes from now)
 - delegationFeeRate: Sets it to 50%
 - rewardAddress: Sets it to the transaction actor
 
@@ -61,13 +61,13 @@ Validator NodeID: NodeID-9aaVYT33M2GPAws7eSjHor5c3zLhkngy9
 balance: 1000.000000000 NAI
 ✔ Staked amount: 999█
 ✔ continue (y/n): y█
-Register Validator Stake Info - stakeStartTime: 2024-03-08 17:07:05 stakeEndTime: 2024-03-08 17:20:05 delegationFeeRate: 50 rewardAddress: nuklai1qgmr8jxysf6c47rc7v86cz5h7y4zj5twmpwkl0js30dpnq5vt0n3jqz2mkt
+Register Validator Stake Info - stakeStartBlock:100 stakeEndBlock: 500 delegationFeeRate: 50 rewardAddress: nuklai1qgmr8jxysf6c47rc7v86cz5h7y4zj5twmpwkl0js30dpnq5vt0n3jqz2mkt
 ✅ txID: 21vrzuZpg4UE2x3LpKkvFtcgyj215rc311mkTQgWT7hYEdRaF9
 ```
 
 #### Manual run
 
-Here, we can be granular and set our own values for stakeStartTime, stakeEndTime, delegationFeeRate and rewardAddress.
+Here, we can be granular and set our own values for stakeStartBlock, stakeEndBlock, delegationFeeRate and rewardAddress.
 
 First, let's import the key manually:
 
@@ -109,18 +109,18 @@ Validator Signer Address: nuklai1q2lwstvq7dwx7jeae4klwzp2psfpq7gmfvp2c4nr0evaj8g
 Validator NodeID: NodeID-JV548bkici8bBx1SzvSCUKZdgP3RY3iXs
 balance: 1000.000000000 NAI
 ✔ Staked amount: 999█
-Staking Start Time(must be after 2024-03-08 17:06:27) [YYYY-MM-DD HH:MM:SS]: 2024-03-08 17:08:00
-Staking End Time(must be after 2024-03-08 17:08:00) [YYYY-MM-DD HH:MM:SS]: 2024-03-08 17:25:00
+Staking Start Block(must be after 90): 100
+Staking End Block(must be after 100): 500
 Delegation Fee Rate(must be over 2): 90
 Reward Address: nuklai1q2lwstvq7dwx7jeae4klwzp2psfpq7gmfvp2c4nr0evaj8gjgu3zx56dud3
 continue (y/n): y
-Register Validator Stake Info - stakeStartTime: 2024-03-08 17:08:00 stakeEndTime: 2024-03-08 17:25:00 delegationFeeRate: 90 rewardAddress:✔ continue (y/n): y█
+Register Validator Stake Info - stakeStartBlock: 100 stakeEndBlock: 500 delegationFeeRate: 90 rewardAddress:✔ continue (y/n): y█
 ✅ txID: DQ9ApYWKy6Cev9F7dVBYhdJGodCCezrnA9wxYYyseTM3HecUM
 ```
 
 ### Get Validator stake info
 
-You may want to check your validator staking info such as stake start time, stake end time, staked amount, delegation fee rate and reward address. To do so, you can do:
+You may want to check your validator staking info such as stake start block height, stake end block height, staked amount, delegation fee rate and reward address. To do so, you can do:
 
 Let's check the validator staking info for node1 or `NodeID=NodeID-9aaVYT33M2GPAws7eSjHor5c3zLhkngy9` which we staked above.
 
@@ -136,7 +136,7 @@ validators: 2
 1: NodeID=NodeID-9aaVYT33M2GPAws7eSjHor5c3zLhkngy9
 ✔ validator to get staking info for: 1█
 validator stake:
-StakeStartTime=2024-03-08 17:07:05 +0000 UTC StakeEndTime=2024-03-08 17:20:05 +0000 UTC StakedAmount=999000000000 DelegationFeeRate=50 RewardAddress=nuklai1qgmr8jxysf6c47rc7v86cz5h7y4zj5twmpwkl0js30dpnq5vt0n3jqz2mkt OwnerAddress=nuklai1qgmr8jxysf6c47rc7v86cz5h7y4zj5twmpwkl0js30dpnq5vt0n3jqz2mkt
+StakeStartBlock=100 StakeEndBlock=500 StakedAmount=999000000000 DelegationFeeRate=50 RewardAddress=nuklai1qgmr8jxysf6c47rc7v86cz5h7y4zj5twmpwkl0js30dpnq5vt0n3jqz2mkt OwnerAddress=nuklai1qgmr8jxysf6c47rc7v86cz5h7y4zj5twmpwkl0js30dpnq5vt0n3jqz2mkt
 ```
 
 You can also retrieve other useful info from Emission Balancer by doing
@@ -180,7 +180,7 @@ balance: 1000000.000000000 NAI
 
 ### Get Delegated User stake info
 
-You may want to check your delegated staking info such as stake start time, stake end time, staked amount, and reward address. To do so, you can do:
+You may want to check your delegated staking info such as stake start block height, stake end block height, staked amount, and reward address. To do so, you can do:
 
 ```bash
 ./build/nuklai-cli action get-user-stake
@@ -194,7 +194,7 @@ validators: 2
 1: NodeID=NodeID-JV548bkici8bBx1SzvSCUKZdgP3RY3iXs
 validator to get staking info for: 0
 validator stake:
-StakeStartTime=2024-03-08 17:11:11 +0000 UTC StakedAmount=100000000000000 RewardAddress=nuklai1qgtvmjhh5xkjh5tf993s05fptc2l0mzn6j8yw72pmrqpa947xsp5scqsrma OwnerAddress=nuklai1qgtvmjhh5xkjh5tf993s05fptc2l0mzn6j8yw72pmrqpa947xsp5scqsrma
+StakeStartBlock=100 StakedAmount=100000000000000 RewardAddress=nuklai1qgtvmjhh5xkjh5tf993s05fptc2l0mzn6j8yw72pmrqpa947xsp5scqsrma OwnerAddress=nuklai1qgtvmjhh5xkjh5tf993s05fptc2l0mzn6j8yw72pmrqpa947xsp5scqsrma
 ```
 
 ### Get Emission Info

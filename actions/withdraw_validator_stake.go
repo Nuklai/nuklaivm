@@ -5,7 +5,6 @@ package actions
 
 import (
 	"context"
-	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -63,7 +62,7 @@ func (u *WithdrawValidatorStake) Execute(
 	}
 
 	// Check if the validator was already registered
-	exists, _, stakeEndTime, stakedAmount, _, rewardAddress, ownerAddress, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
+	exists, _, stakeEndBlock, stakedAmount, _, rewardAddress, ownerAddress, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
 	if !exists {
 		return false, WithdrawValidatorStakeComputeUnits, OutputValidatorAlreadyRegistered, nil, nil
 	}
@@ -74,14 +73,10 @@ func (u *WithdrawValidatorStake) Execute(
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
 
-	// Get current time
-	currentTime := time.Now().UTC()
-	// Get last accepted block time
-	lastBlockTime := emissionInstance.GetLastAcceptedBlockTimestamp()
-	// Convert Unix timestamps to Go's time.Time for easier manipulation
-	endTime := time.Unix(int64(stakeEndTime), 0).UTC()
-	// Check that currentTime and lastBlockTime are after stakeStartTime
-	if currentTime.Before(endTime) || lastBlockTime.Before(endTime) {
+	// Get last accepted block height
+	lastBlockHeight := emissionInstance.GetLastAcceptedBlockHeight()
+	// Check that lastBlockTime is after stakeStartBlock
+	if lastBlockHeight < stakeEndBlock {
 		return false, WithdrawValidatorStakeComputeUnits, OutputStakeNotStarted, nil, nil
 	}
 

@@ -2,7 +2,6 @@ package emission
 
 import (
 	"sync"
-	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/codec"
@@ -25,8 +24,8 @@ type Validator struct {
 
 	delegatorsLastClaim map[codec.Address]uint64 // Map of delegator addresses to their last claim block height
 	epochRewards        map[uint64]uint64        // Rewards per epoch
-	stakeStartTime      time.Time                // Start time of the stake
-	stakeEndTime        time.Time                // End time of the stake
+	stakeStartBlock     uint64                   // Start block of the stake
+	stakeEndBlock       uint64                   // End block of the stake
 }
 
 type EmissionAccount struct {
