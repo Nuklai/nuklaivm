@@ -163,7 +163,7 @@ var genKeyCmd = &cobra.Command{
 			codec.MustAddressBech32(nconsts.HRP, priv.Address),
 		)
 		// Create the directory with permissions (if it doesn't exist)
-		err = os.MkdirAll("./test_accounts", 0755)
+		err = os.MkdirAll("./test_accounts", 0o755)
 		if err != nil {
 			panic(err)
 		}
