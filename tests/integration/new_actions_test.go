@@ -409,7 +409,7 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		currentBlockHeight := instances[3].vm.LastAcceptedBlock().Height()
 		stakeStartBlock := currentBlockHeight + 2
-		stakeEndBlock := currentBlockHeight + 50
+		stakeEndBlock := currentBlockHeight + 100
 		delegationFeeRate := 50
 
 		stakeInfo := &actions.ValidatorStakeInfo{
@@ -702,24 +702,57 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			factory,
 		)
 		gomega.Ω(err).Should(gomega.BeNil())
-		gomega.Ω(instances[0].ncli.Balance(context.Background(), withdraw0, ids.Empty)).Should(gomega.BeNumerically(">", 0))
 		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
+
+		accept := expectBlk(instances[3])
+		results := accept(true)
+		gomega.Ω(results).Should(gomega.HaveLen(1))
+		gomega.Ω(results[0].Success).Should(gomega.BeTrue())
+
+		gomega.Ω(len(blocks)).Should(gomega.Equal(height + 1))
+
+		blk := blocks[height]
+		fmt.Println(blk.ID())
+		ImportBlockToInstance(instances[4].vm, blk)
+		ImportBlockToInstance(instances[0].vm, blk)
+		ImportBlockToInstance(instances[2].vm, blk)
+		ImportBlockToInstance(instances[1].vm, blk)
+		height++
+
+		gomega.Ω(instances[3].ncli.Balance(context.Background(), withdraw0, ids.Empty)).Should(gomega.BeNumerically(">", 0))
 	})
 
 	ginkgo.FIt("Withdraw validator node 0 stake", func() {
 		parser, err := instances[3].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
-		submit, _, _, err := instances[0].hcli.GenerateTransaction(
+		submit, _, _, err := instances[3].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
 			nil,
 			&actions.WithdrawValidatorStake{
-				NodeID: instances[0].nodeID.Bytes(),
+				NodeID: instances[3].nodeID.Bytes(),
 			},
 			factory,
 		)
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+
+		accept := expectBlk(instances[3])
+		results := accept(true)
+		gomega.Ω(results).Should(gomega.HaveLen(1))
+		gomega.Ω(results[0].Success).Should(gomega.BeTrue())
+
+		gomega.Ω(len(blocks)).Should(gomega.Equal(height + 1))
+
+		blk := blocks[height]
+		fmt.Println(blk.ID())
+		ImportBlockToInstance(instances[4].vm, blk)
+		ImportBlockToInstance(instances[0].vm, blk)
+		ImportBlockToInstance(instances[2].vm, blk)
+		ImportBlockToInstance(instances[1].vm, blk)
+		height++
+
 	})
 
 	ginkgo.FIt("Get validator stake after staking withdraw ", func() {
