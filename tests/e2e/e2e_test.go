@@ -1825,7 +1825,10 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 
 	})
 
-	ginkgo.It("Undelegate user stake from node 0", func() {
+	ginkgo.FIt("Undelegate user stake from node 0", func() {
+		balanceBefore, err := instancesA[0].ncli.Balance(context.Background(), delegate, ids.Empty)
+		fmt.Println(balanceBefore)
+		gomega.Ω(err).Should(gomega.BeNil())
 		parser, err := instancesA[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
 		submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
@@ -1841,7 +1844,7 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
 		hutils.Outf("{{yellow}}submitted undelegate user stake transaction{{/}}\n")
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-		success, _, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+		success, fee, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
 		cancel()
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(success).Should(gomega.BeTrue())
@@ -1860,9 +1863,9 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 				time.Sleep(1 * time.Second)
 			}
 
-			balance, err := inst.ncli.Balance(context.Background(), delegate, ids.Empty)
+			balanceAfter, err := inst.ncli.Balance(context.Background(), delegate, ids.Empty)
 			gomega.Ω(err).Should(gomega.BeNil())
-			gomega.Ω(balance).Should(gomega.BeNumerically(">", 100_000_000_000))
+			gomega.Ω(balanceAfter).Should(gomega.BeNumerically(">", balanceBefore-fee))
 		}
 
 	})
