@@ -81,6 +81,7 @@ var (
 	nodesFactories  []*auth.BLSFactory
 	delegate        string
 	rdelegate       codec.Address
+	withdraw0       string
 	delegateFactory *auth.ED25519Factory
 )
 
@@ -1590,6 +1591,7 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		withdraw0Priv, err := ed25519.GeneratePrivateKey()
 		gomega.Ω(err).Should(gomega.BeNil())
 		rwithdraw0 := auth.NewED25519Address(withdraw0Priv.PublicKey())
+		withdraw0 = codec.MustAddressBech32(nconsts.HRP, rwithdraw0)
 		parser, err := instancesA[0].ncli.Parser(context.TODO())
 		gomega.Ω(err).Should(gomega.BeNil())
 		currentBlockHeight, _, _, _, _, _, _, _ := instancesA[0].ncli.EmissionInfo(context.Background())
@@ -1870,6 +1872,54 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 
 	})
 
+	ginkgo.FIt("Claim node 0 stake reward", func() {
+		balanceBefore, err := instancesA[0].ncli.Balance(context.Background(), withdraw0, ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
+		fmt.Println(balanceBefore)
+		gomega.Ω(balanceBefore).Should(gomega.Equal(uint64(0)))
+
+		parser, err := instancesA[0].ncli.Parser(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
+			context.Background(),
+			parser,
+			nil,
+			&actions.ClaimValidatorStakeRewards{
+				NodeID: instancesA[0].nodeID.Bytes(),
+			},
+			nodesFactories[0],
+		)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		hutils.Outf("{{yellow}}submitted claim validator stake reward transaction{{/}}\n")
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		success, fee, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+		cancel()
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(success).Should(gomega.BeTrue())
+		hutils.Outf("{{yellow}}found claim validator stake reward transaction{{/}}\n")
+
+		for _, inst := range instancesA {
+			color.Blue("checking %q", inst.uri)
+
+			// Ensure all blocks processed
+			for {
+				_, h, _, err := inst.hcli.Accepted(context.Background())
+				gomega.Ω(err).Should(gomega.BeNil())
+				if h > 0 {
+					break
+				}
+				time.Sleep(2 * time.Second)
+			}
+
+			balanceAfter, err := inst.ncli.Balance(context.Background(), withdraw0, ids.Empty)
+			fmt.Println(balanceAfter)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(balanceAfter).Should(gomega.BeNumerically(">", balanceBefore-fee))
+		}
+
+	})
+
 	ginkgo.It("Withdraw validator node 0 stake", func() {
 		parser, err := instancesA[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
@@ -1891,6 +1941,20 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(success).Should(gomega.BeTrue())
 		hutils.Outf("{{yellow}}found withdraw validator node stake transaction{{/}}\n")
+
+		for _, inst := range instancesA {
+			color.Blue("checking %q", inst.uri)
+
+			// Ensure all blocks processed
+			for {
+				_, h, _, err := inst.hcli.Accepted(context.Background())
+				gomega.Ω(err).Should(gomega.BeNil())
+				if h > 0 {
+					break
+				}
+				time.Sleep(1 * time.Second)
+			}
+		}
 	})
 
 	ginkgo.It("Get validator stake after staking withdraw ", func() {
