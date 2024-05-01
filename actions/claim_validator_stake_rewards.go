@@ -127,7 +127,7 @@ type ClaimRewardsResult struct {
 func UnmarshalClaimRewardsResult(b []byte) (*ClaimRewardsResult, error) {
 	p := codec.NewReader(b, hconsts.Uint64Len)
 	var result ClaimRewardsResult
-	result.RewardAmount = p.UnpackUint64(true)
+	result.RewardAmount = p.UnpackUint64(false)
 	return &result, p.Err()
 }
 
