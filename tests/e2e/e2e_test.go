@@ -1842,7 +1842,8 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			parser,
 			nil,
 			&actions.UndelegateUserStake{
-				NodeID: instancesA[0].nodeID.Bytes(),
+				NodeID:        instancesA[0].nodeID.Bytes(),
+				RewardAddress: rdelegate,
 			},
 			delegateFactory,
 		)
@@ -1990,7 +1991,8 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			parser,
 			nil,
 			&actions.WithdrawValidatorStake{
-				NodeID: instancesA[0].nodeID.Bytes(),
+				NodeID:        instancesA[0].nodeID.Bytes(),
+				RewardAddress: rwithdraw0,
 			},
 			nodesFactories[0],
 		)
