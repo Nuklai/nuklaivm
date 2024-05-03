@@ -141,7 +141,7 @@ func UnmarshalWithdrawValidatorStakeResult(b []byte) (*WithdrawStakeResult, erro
 	p := codec.NewReader(b, 2*hconsts.Uint64Len)
 	var result WithdrawStakeResult
 	result.StakedAmount = p.UnpackUint64(true)
-	result.RewardAmount = p.UnpackUint64(true)
+	result.RewardAmount = p.UnpackUint64(false)
 	return &result, p.Err()
 }
 
