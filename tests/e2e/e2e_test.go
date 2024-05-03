@@ -1876,7 +1876,7 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 
 	})
 
-	ginkgo.FIt("Transfer NAI to withdraw node 0 address for fees", func() {
+	ginkgo.FIt("Transfer NAI to node 0 withdraw address for fees", func() {
 		parser, err := instancesA[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
 		submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
