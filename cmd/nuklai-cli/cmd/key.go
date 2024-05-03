@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -161,6 +162,18 @@ var genKeyCmd = &cobra.Command{
 			"{{green}}created address:{{/}} %s",
 			codec.MustAddressBech32(nconsts.HRP, priv.Address),
 		)
+		// Create the directory with permissions (if it doesn't exist)
+		err = os.MkdirAll("./test_accounts", 0o755)
+		if err != nil {
+			panic(err)
+		}
+		// Construct the filename with Address
+		filename := fmt.Sprintf("./test_accounts/%s-%s.pk", codec.MustAddressBech32(nconsts.HRP, priv.Address), args[0])
+		// Write the byte slice to the file
+		err = os.WriteFile(filename, priv.Bytes, 0o600)
+		if err != nil {
+			panic(err)
+		}
 		return nil
 	},
 }

@@ -22,11 +22,13 @@ type metrics struct {
 	importAsset prometheus.Counter
 	exportAsset prometheus.Counter
 
-	stakeAmount            prometheus.Gauge
+	validatorStakeAmount   prometheus.Gauge
 	registerValidatorStake prometheus.Counter
 	withdrawValidatorStake prometheus.Counter
+	delegatorStakeAmount   prometheus.Gauge
 	delegateUserStake      prometheus.Counter
 	undelegateUserStake    prometheus.Counter
+	rewardAmount           prometheus.Gauge
 	claimStakingRewards    prometheus.Counter
 }
 
@@ -75,10 +77,10 @@ func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 			Help:      "number of export asset actions",
 		}),
 
-		stakeAmount: prometheus.NewGauge(prometheus.GaugeOpts{
+		validatorStakeAmount: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: "actions",
-			Name:      "stake_amount",
-			Help:      "amount of staked tokens",
+			Name:      "validator_stake_amount",
+			Help:      "amount of staked tokens by validators",
 		}),
 		registerValidatorStake: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "actions",
@@ -90,6 +92,11 @@ func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 			Name:      "withdraw_validator_stake",
 			Help:      "number of withdraw validator stake actions",
 		}),
+		delegatorStakeAmount: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "actions",
+			Name:      "user_stake_amount",
+			Help:      "amount of staked tokens by delegators",
+		}),
 		delegateUserStake: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "actions",
 			Name:      "delegate_user_stake",
@@ -99,6 +106,11 @@ func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 			Namespace: "actions",
 			Name:      "undelegate_user_stake",
 			Help:      "number of undelegate user stake actions",
+		}),
+		rewardAmount: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "actions",
+			Name:      "reward_amount",
+			Help:      "amount of staking rewards",
 		}),
 		claimStakingRewards: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "actions",
@@ -120,11 +132,13 @@ func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 		r.Register(m.importAsset),
 		r.Register(m.exportAsset),
 
-		r.Register(m.stakeAmount),
+		r.Register(m.validatorStakeAmount),
 		r.Register(m.registerValidatorStake),
 		r.Register(m.withdrawValidatorStake),
+		r.Register(m.delegatorStakeAmount),
 		r.Register(m.delegateUserStake),
 		r.Register(m.undelegateUserStake),
+		r.Register(m.rewardAmount),
 		r.Register(m.claimStakingRewards),
 
 		gatherer.Register(consts.Name, r),

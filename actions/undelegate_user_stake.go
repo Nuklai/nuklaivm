@@ -22,7 +22,8 @@ import (
 var _ chain.Action = (*UndelegateUserStake)(nil)
 
 type UndelegateUserStake struct {
-	NodeID []byte `json:"nodeID"` // Node ID of the validator where NAI is staked
+	NodeID        []byte        `json:"nodeID"`        // Node ID of the validator where NAI is staked
+	RewardAddress codec.Address `json:"rewardAddress"` // Address to receive rewards
 }
 
 func (*UndelegateUserStake) GetTypeID() uint8 {
@@ -34,6 +35,7 @@ func (u *UndelegateUserStake) StateKeys(actor codec.Address, _ ids.ID) []string 
 	nodeID, _ := ids.ToNodeID(u.NodeID)
 	return []string{
 		string(storage.BalanceKey(actor, ids.Empty)),
+		string(storage.BalanceKey(u.RewardAddress, ids.Empty)),
 		string(storage.DelegateUserStakeKey(actor, nodeID)),
 	}
 }
@@ -60,7 +62,7 @@ func (u *UndelegateUserStake) Execute(
 		return false, UndelegateUserStakeComputeUnits, OutputInvalidNodeID, nil, nil
 	}
 
-	exists, stakeStartBlock, stakedAmount, rewardAddress, ownerAddress, _ := storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
+	exists, stakeStartBlock, stakedAmount, _, ownerAddress, _ := storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
 	if !exists {
 		return false, UndelegateUserStakeComputeUnits, OutputStakeMissing, nil, nil
 	}
@@ -83,7 +85,7 @@ func (u *UndelegateUserStake) Execute(
 	if err != nil {
 		return false, UndelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
-	if err := storage.AddBalance(ctx, mu, rewardAddress, ids.Empty, rewardAmount, true); err != nil {
+	if err := storage.AddBalance(ctx, mu, u.RewardAddress, ids.Empty, rewardAmount, true); err != nil {
 		return false, UndelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 
@@ -94,7 +96,7 @@ func (u *UndelegateUserStake) Execute(
 		return false, UndelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
 
-	sr := &DelegateStakeResult{stakedAmount}
+	sr := &UndelegateUserStakeResult{stakedAmount, rewardAmount}
 	output, err := sr.Marshal()
 	if err != nil {
 		return false, UndelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
@@ -107,16 +109,18 @@ func (*UndelegateUserStake) MaxComputeUnits(chain.Rules) uint64 {
 }
 
 func (*UndelegateUserStake) Size() int {
-	return hconsts.NodeIDLen
+	return hconsts.NodeIDLen + codec.AddressLen
 }
 
 func (u *UndelegateUserStake) Marshal(p *codec.Packer) {
 	p.PackBytes(u.NodeID)
+	p.PackAddress(u.RewardAddress)
 }
 
 func UnmarshalUndelegateUserStake(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
 	var unstake UndelegateUserStake
 	p.UnpackBytes(hconsts.NodeIDLen, true, &unstake.NodeID)
+	p.UnpackAddress(&unstake.RewardAddress)
 	return &unstake, p.Err()
 }
 
@@ -125,19 +129,22 @@ func (*UndelegateUserStake) ValidRange(chain.Rules) (int64, int64) {
 	return -1, -1
 }
 
-type DelegateStakeResult struct {
+type UndelegateUserStakeResult struct {
 	StakedAmount uint64
+	RewardAmount uint64
 }
 
-func UnmarshalDelegateUserStakeResult(b []byte) (*DelegateStakeResult, error) {
-	p := codec.NewReader(b, hconsts.Uint64Len)
-	var result DelegateStakeResult
+func UnmarshalUndelegateUserStakeResult(b []byte) (*UndelegateUserStakeResult, error) {
+	p := codec.NewReader(b, 2*hconsts.Uint64Len)
+	var result UndelegateUserStakeResult
 	result.StakedAmount = p.UnpackUint64(true)
+	result.RewardAmount = p.UnpackUint64(true)
 	return &result, p.Err()
 }
 
-func (s *DelegateStakeResult) Marshal() ([]byte, error) {
-	p := codec.NewWriter(hconsts.Uint64Len, hconsts.Uint64Len)
+func (s *UndelegateUserStakeResult) Marshal() ([]byte, error) {
+	p := codec.NewWriter(2*hconsts.Uint64Len, 2*hconsts.Uint64Len)
 	p.PackUint64(s.StakedAmount)
+	p.PackUint64(s.RewardAmount)
 	return p.Bytes(), p.Err()
 }

@@ -878,7 +878,7 @@ var withdrawValidatorStakeCmd = &cobra.Command{
 	Use: "withdraw-validator-stake",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, _, factory, hcli, hws, ncli, err := handler.DefaultActor()
+		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
 		if err != nil {
 			return err
 		}
@@ -929,7 +929,8 @@ var withdrawValidatorStakeCmd = &cobra.Command{
 
 		// Generate transaction
 		_, _, err = sendAndWait(ctx, nil, &actions.WithdrawValidatorStake{
-			NodeID: nodeID.Bytes(),
+			NodeID:        nodeID.Bytes(),
+			RewardAddress: priv.Address,
 		}, hcli, hws, ncli, factory, true)
 		return err
 	},
@@ -1195,7 +1196,8 @@ var undelegateUserStakeCmd = &cobra.Command{
 
 		// Generate transaction
 		_, _, err = sendAndWait(ctx, nil, &actions.UndelegateUserStake{
-			NodeID: nodeID.Bytes(),
+			NodeID:        nodeID.Bytes(),
+			RewardAddress: priv.Address,
 		}, hcli, hws, ncli, factory, true)
 		return err
 	},

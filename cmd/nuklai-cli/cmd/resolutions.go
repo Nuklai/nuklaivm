@@ -143,7 +143,7 @@ func handleTx(ncli *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Res
 			summaryStr = fmt.Sprintf("nodeID: %s", nodeID.String())
 		case *actions.WithdrawValidatorStake:
 			nodeID, _ := ids.ToNodeID(action.NodeID)
-			summaryStr = fmt.Sprintf("nodeID: %s", nodeID.String())
+			summaryStr = fmt.Sprintf("nodeID: %s rewardAddress: %s", nodeID.String(), codec.MustAddressBech32(nconsts.HRP, action.RewardAddress))
 		case *actions.DelegateUserStake:
 			nodeID, _ := ids.ToNodeID(action.NodeID)
 			summaryStr = fmt.Sprintf("nodeID: %s stakedAmount: %s rewardAddress: %s", nodeID.String(), utils.FormatBalance(action.StakedAmount, nconsts.Decimals), codec.MustAddressBech32(nconsts.HRP, action.RewardAddress))
@@ -152,7 +152,7 @@ func handleTx(ncli *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Res
 			summaryStr = fmt.Sprintf("nodeID: %s userStakeAddress:%s", nodeID.String(), codec.MustAddressBech32(nconsts.HRP, action.UserStakeAddress))
 		case *actions.UndelegateUserStake:
 			nodeID, _ := ids.ToNodeID(action.NodeID)
-			summaryStr = fmt.Sprintf("nodeID: %s", nodeID.String())
+			summaryStr = fmt.Sprintf("nodeID: %s rewardAddress: %s", nodeID.String(), codec.MustAddressBech32(nconsts.HRP, action.RewardAddress))
 		}
 		utils.Outf(
 			"%s {{yellow}}%s{{/}} {{yellow}}actor:{{/}} %s {{yellow}}summary (%s):{{/}} [%s] {{yellow}}fee (max %.2f%%):{{/}} %s %s {{yellow}}consumed:{{/}} [%s]\n",

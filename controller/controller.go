@@ -215,7 +215,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 					// This should never happen
 					return err
 				}
-				c.metrics.stakeAmount.Add(float64(stakeInfo.StakedAmount))
+				c.metrics.validatorStakeAmount.Add(float64(stakeInfo.StakedAmount))
 				c.metrics.registerValidatorStake.Inc()
 			case *actions.ClaimValidatorStakeRewards:
 				rewardResult, err := actions.UnmarshalClaimRewardsResult(result.Output)
@@ -226,19 +226,23 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 					return err
 				}
 				c.metrics.mintedNAI.Add(float64(rewardResult.RewardAmount))
+				c.metrics.rewardAmount.Add(float64(rewardResult.RewardAmount))
 				c.metrics.claimStakingRewards.Inc()
 			case *actions.WithdrawValidatorStake:
-				stakeResult, err := actions.UnmarshalRegisterValidatorStakeResult(result.Output)
+				stakeResult, err := actions.UnmarshalWithdrawValidatorStakeResult(result.Output)
 				if err != nil {
 					// This should never happen
 					return err
 				}
-				c.metrics.stakeAmount.Add(float64(stakeResult.StakedAmount))
+				c.metrics.validatorStakeAmount.Sub(float64(stakeResult.StakedAmount))
+				c.metrics.mintedNAI.Add(float64(stakeResult.RewardAmount))
+				c.metrics.rewardAmount.Add(float64(stakeResult.RewardAmount))
+				c.metrics.claimStakingRewards.Inc()
 				c.metrics.withdrawValidatorStake.Inc()
 			case *actions.DelegateUserStake:
 				fmt.Println("Controller accepted delegate user stake")
 				// panic("hello")
-				c.metrics.stakeAmount.Add(float64(action.StakedAmount))
+				c.metrics.delegatorStakeAmount.Add(float64(action.StakedAmount))
 				c.metrics.delegateUserStake.Inc()
 			case *actions.ClaimDelegationStakeRewards:
 				rewardResult, err := actions.UnmarshalClaimRewardsResult(result.Output)
@@ -249,14 +253,18 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 					return err
 				}
 				c.metrics.mintedNAI.Add(float64(rewardResult.RewardAmount))
+				c.metrics.rewardAmount.Add(float64(rewardResult.RewardAmount))
 				c.metrics.claimStakingRewards.Inc()
 			case *actions.UndelegateUserStake:
-				stakeResult, err := actions.UnmarshalDelegateUserStakeResult(result.Output)
+				stakeResult, err := actions.UnmarshalUndelegateUserStakeResult(result.Output)
 				if err != nil {
 					// This should never happen
 					return err
 				}
-				c.metrics.stakeAmount.Sub(float64(stakeResult.StakedAmount))
+				c.metrics.delegatorStakeAmount.Sub(float64(stakeResult.StakedAmount))
+				c.metrics.mintedNAI.Add(float64(stakeResult.RewardAmount))
+				c.metrics.rewardAmount.Add(float64(stakeResult.RewardAmount))
+				c.metrics.claimStakingRewards.Inc()
 				c.metrics.undelegateUserStake.Inc()
 			}
 		}
