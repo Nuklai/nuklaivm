@@ -45,24 +45,22 @@ if ${UNLIMITED_USAGE}; then
 fi
 
 echo "Running with:"
-echo AGO_LOGLEVEL: ${AGO_LOGLEVEL}
-echo LOGLEVEL: ${LOGLEVEL}
+echo AGO_LOGLEVEL: "${AGO_LOGLEVEL}"
+echo LOGLEVEL: "${LOGLEVEL}"
 echo VERSION: ${VERSION}
-echo MODE: ${MODE}
-echo LOG LEVEL: ${LOGLEVEL}
-echo STATESYNC_DELAY \(ns\): ${STATESYNC_DELAY}
-echo MIN_BLOCK_GAP \(ms\): ${MIN_BLOCK_GAP}
-echo STORE_TXS: ${STORE_TXS}
+echo MODE: "${MODE}"
+echo LOG LEVEL: "${LOGLEVEL}"
+echo STATESYNC_DELAY \(ns\): "${STATESYNC_DELAY}"
+echo MIN_BLOCK_GAP \(ms\): "${MIN_BLOCK_GAP}"
+echo STORE_TXS: "${STORE_TXS}"
 echo WINDOW_TARGET_UNITS: ${WINDOW_TARGET_UNITS}
 echo MAX_BLOCK_UNITS: ${MAX_BLOCK_UNITS}
-echo INITIAL_OWNER_ADDRESS: ${INITIAL_OWNER_ADDRESS}
-echo EMISSION_ADDRESS: ${EMISSION_ADDRESS}
+echo INITIAL_OWNER_ADDRESS: "${INITIAL_OWNER_ADDRESS}"
+echo EMISSION_ADDRESS: "${EMISSION_ADDRESS}"
 
 ############################
 # build avalanchego
 # https://github.com/ava-labs/avalanchego/releases
-GOARCH=$(go env GOARCH)
-GOOS=$(go env GOOS)
 # Set TMPDIR to the first command line argument if provided, otherwise default to /tmp/nuklaivm
 TMPDIR=${1:-/tmp/nuklaivm}
 
@@ -76,22 +74,22 @@ if [ ! -f "$AVALANCHEGO_PATH" ]; then
   CWD=$(pwd)
 
   # Clear old folders
-  rm -rf ${TMPDIR}/avalanchego-${VERSION}
-  mkdir -p ${TMPDIR}/avalanchego-${VERSION}
-  rm -rf ${TMPDIR}/avalanchego-src
-  mkdir -p ${TMPDIR}/avalanchego-src
+  rm -rf "${TMPDIR}"/avalanchego-${VERSION}
+  mkdir -p "${TMPDIR}"/avalanchego-${VERSION}
+  rm -rf "${TMPDIR}"/avalanchego-src
+  mkdir -p "${TMPDIR}"/avalanchego-src
 
   # Download src
-  cd ${TMPDIR}/avalanchego-src
+  cd "${TMPDIR}"/avalanchego-src
   git clone https://github.com/ava-labs/avalanchego.git
   cd avalanchego
   git checkout ${VERSION}
 
   # Build avalanchego
   ./scripts/build.sh
-  mv build/avalanchego ${TMPDIR}/avalanchego-${VERSION}
+  mv build/avalanchego "${TMPDIR}"/avalanchego-${VERSION}
 
-  cd ${CWD}
+  cd "${CWD}"
 else
   echo "using previously built avalanchego"
 fi
@@ -102,18 +100,18 @@ fi
 echo "building nuklaivm"
 
 # delete previous (if exists)
-rm -f ${TMPDIR}/avalanchego-${VERSION}/plugins/qeX5BUxbiwUhSePncmz1C7RdH6njYYv6dNZhJrdeXRKMnTpKt
+rm -f "${TMPDIR}"/avalanchego-${VERSION}/plugins/qeX5BUxbiwUhSePncmz1C7RdH6njYYv6dNZhJrdeXRKMnTpKt
 
 # rebuild with latest code
 go build \
--o ${TMPDIR}/avalanchego-${VERSION}/plugins/qeX5BUxbiwUhSePncmz1C7RdH6njYYv6dNZhJrdeXRKMnTpKt \
+-o "${TMPDIR}"/avalanchego-${VERSION}/plugins/qeX5BUxbiwUhSePncmz1C7RdH6njYYv6dNZhJrdeXRKMnTpKt \
 ./cmd/nuklaivm
 
 echo "building nuklai-cli"
-go build -v -o ${TMPDIR}/nuklai-cli ./cmd/nuklai-cli
+go build -v -o "${TMPDIR}"/nuklai-cli ./cmd/nuklai-cli
 
 # log everything in the avalanchego directory
-find ${TMPDIR}/avalanchego-${VERSION}
+find "${TMPDIR}"/avalanchego-${VERSION}
 
 ############################
 
@@ -126,14 +124,14 @@ find ${TMPDIR}/avalanchego-${VERSION}
 # funds using the included demo.pk)
 # Initial balance: 853 million NAI
 echo "creating allocations file"
-cat <<EOF > ${TMPDIR}/allocations.json
+cat <<EOF > "${TMPDIR}"/allocations.json
 [
   {"address":"${INITIAL_OWNER_ADDRESS}", "balance":853000000000000000}
 ]
 EOF
 echo "creating emission balancer file"
 # maxSupply: 10 billion NAI
-cat <<EOF > ${TMPDIR}/emission-balancer.json
+cat <<EOF > "${TMPDIR}"/emission-balancer.json
 {
   "maxSupply":  10000000000000000000,
   "emissionAddress":"${EMISSION_ADDRESS}"
@@ -143,16 +141,16 @@ EOF
 GENESIS_PATH=$2
 if [[ -z "${GENESIS_PATH}" ]]; then
   echo "creating VM genesis file with allocations"
-  rm -f ${TMPDIR}/nuklaivm.genesis
-  ${TMPDIR}/nuklai-cli genesis generate ${TMPDIR}/allocations.json ${TMPDIR}/emission-balancer.json \
+  rm -f "${TMPDIR}"/nuklaivm.genesis
+  "${TMPDIR}"/nuklai-cli genesis generate "${TMPDIR}"/allocations.json "${TMPDIR}"/emission-balancer.json \
   --window-target-units ${WINDOW_TARGET_UNITS} \
   --max-block-units ${MAX_BLOCK_UNITS} \
-  --min-block-gap ${MIN_BLOCK_GAP} \
-  --genesis-file ${TMPDIR}/nuklaivm.genesis
+  --min-block-gap "${MIN_BLOCK_GAP}" \
+  --genesis-file "${TMPDIR}"/nuklaivm.genesis
 else
   echo "copying custom genesis file"
-  rm -f ${TMPDIR}/nuklaivm.genesis
-  cp ${GENESIS_PATH} ${TMPDIR}/nuklaivm.genesis
+  rm -f "${TMPDIR}"/nuklaivm.genesis
+  cp "${GENESIS_PATH}" "${TMPDIR}"/nuklaivm.genesis
 fi
 
 ############################
@@ -160,9 +158,9 @@ fi
 ############################
 
 echo "creating vm config"
-rm -f ${TMPDIR}/nuklaivm.config
-rm -rf ${TMPDIR}/nuklaivm-e2e-profiles
-cat <<EOF > ${TMPDIR}/nuklaivm.config
+rm -f "${TMPDIR}"/nuklaivm.config
+rm -rf "${TMPDIR}"/nuklaivm-e2e-profiles
+cat <<EOF > "${TMPDIR}"/nuklaivm.config
 {
   "mempoolSize": 10000000,
   "mempoolSponsorSize": 10000000,
@@ -178,15 +176,15 @@ cat <<EOF > ${TMPDIR}/nuklaivm.config
   "stateSyncServerDelay": ${STATESYNC_DELAY}
 }
 EOF
-mkdir -p ${TMPDIR}/nuklaivm-e2e-profiles
+mkdir -p "${TMPDIR}"/nuklaivm-e2e-profiles
 
 ############################
 
 ############################
 
 echo "creating subnet config"
-rm -f ${TMPDIR}/nuklaivm.subnet
-cat <<EOF > ${TMPDIR}/nuklaivm.subnet
+rm -f "${TMPDIR}"/nuklaivm.subnet
+cat <<EOF > "${TMPDIR}"/nuklaivm.subnet
 {
   "proposerMinBlockDelay": 0,
   "proposerNumHistoricalBlocks": 50000
@@ -237,7 +235,6 @@ $BIN server \
 --log-level verbo \
 --port=":12352" \
 --grpc-gateway-port=":12353" &
-PID=${!}
 
 ############################
 # By default, it runs all e2e test cases!
@@ -265,16 +262,16 @@ echo "running e2e tests"
 ./tests/e2e/e2e.test \
 --ginkgo.v \
 --network-runner-log-level verbo \
---avalanchego-log-level ${AGO_LOGLEVEL} \
+--avalanchego-log-level "${AGO_LOGLEVEL}" \
 --network-runner-grpc-endpoint="0.0.0.0:12352" \
 --network-runner-grpc-gateway-endpoint="0.0.0.0:12353" \
---avalanchego-path=${AVALANCHEGO_PATH} \
---avalanchego-plugin-dir=${AVALANCHEGO_PLUGIN_DIR} \
---vm-genesis-path=${TMPDIR}/nuklaivm.genesis \
---vm-config-path=${TMPDIR}/nuklaivm.config \
---subnet-config-path=${TMPDIR}/nuklaivm.subnet \
---output-path=${TMPDIR}/avalanchego-${VERSION}/output.yaml \
---mode=${MODE}
+--avalanchego-path="${AVALANCHEGO_PATH}" \
+--avalanchego-plugin-dir="${AVALANCHEGO_PLUGIN_DIR}" \
+--vm-genesis-path="${TMPDIR}"/nuklaivm.genesis \
+--vm-config-path="${TMPDIR}"/nuklaivm.config \
+--subnet-config-path="${TMPDIR}"/nuklaivm.subnet \
+--output-path="${TMPDIR}"/avalanchego-${VERSION}/output.yaml \
+--mode="${MODE}"
 
 ############################
 if [[ ${MODE} == "run" ]]; then

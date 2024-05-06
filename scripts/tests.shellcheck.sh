@@ -1,7 +1,6 @@
+#!/usr/bin/env bash
 # Copyright (C) 2023, AllianceBlock. All rights reserved.
 # See the file LICENSE for licensing terms.
-
-#!/usr/bin/env bash
 
 set -euo pipefail
 

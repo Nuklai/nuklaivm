@@ -31,23 +31,23 @@ else
     exit 1
 fi
 
-cd $NUKLAIVM_PATH
+cd "$NUKLAIVM_PATH"
 
 echo "Building nuklaivm in $BINARY_PATH"
-mkdir -p $(dirname $BINARY_PATH)
-go build -o $BINARY_PATH ./cmd/nuklaivm
+mkdir -p "$(dirname "$BINARY_PATH")"
+go build -o "$BINARY_PATH" ./cmd/nuklaivm
 
 CLI_PATH=$NUKLAIVM_PATH/build/nuklai-cli
 echo "Building nuklai-cli in $CLI_PATH"
-mkdir -p $(dirname $CLI_PATH)
-go build -o $CLI_PATH ./cmd/nuklai-cli
+mkdir -p "$(dirname "$CLI_PATH")"
+go build -o "$CLI_PATH" ./cmd/nuklai-cli
 
 FAUCET_PATH=$NUKLAIVM_PATH/build/nuklai-faucet
 echo "Building nuklai-faucet in $FAUCET_PATH"
-mkdir -p $(dirname $FAUCET_PATH)
-go build -o $FAUCET_PATH ./cmd/nuklai-faucet
+mkdir -p "$(dirname "$FAUCET_PATH")"
+go build -o "$FAUCET_PATH" ./cmd/nuklai-faucet
 
 FEED_PATH=$NUKLAIVM_PATH/build/nuklai-feed
 echo "Building nuklai-feed in $FEED_PATH"
-mkdir -p $(dirname $FEED_PATH)
-go build -o $FEED_PATH ./cmd/nuklai-feed
+mkdir -p "$(dirname "$FEED_PATH")"
+go build -o "$FEED_PATH" ./cmd/nuklai-feed
