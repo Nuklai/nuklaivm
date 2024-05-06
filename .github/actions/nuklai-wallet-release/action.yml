@@ -1,0 +1,25 @@
+# Copyright (C) 2023, AllianceBlock. All rights reserved.
+# See the file LICENSE for licensing terms.
+
+name: 'Release Nuklai Wallet'
+description: 'Release the Nuklai Wallet'
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: ./.github/actions/install-go
+      with:
+        cache-dependency-path: |
+          go.sum
+    - name: Build wallet
+      working-directory: ./cmd/nuklai-wallet
+      shell: bash
+      run: scripts/build.sh
+      env:
+        PUBLISH: 'false'
+    - name: Archive Builds
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuklai-wallet
+        path: ./cmd/nuklai-wallet/nuklai-wallet.zip
