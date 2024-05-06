@@ -3,12 +3,12 @@
 
 name: NuklaiVM Sync Tests
 
-# on:
-#   push:
-#     branches:
-#       - main
-#   pull_request:
-#     types: [labeled, synchronize, reopened]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [labeled, synchronize, reopened]
 
 jobs:
   nuklaivm-sync-tests:
