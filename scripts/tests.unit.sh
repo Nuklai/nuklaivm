@@ -15,4 +15,5 @@ if ! [[ "$0" =~ scripts/tests.unit.sh ]]; then
   exit 255
 fi
 
-go test -race -timeout="10m" -coverprofile="coverage.out" -covermode="atomic" "$(go list ./... | grep -v tests)"
+packages=($(go list ./... | grep -v tests))
+go test -race -timeout="10m" -coverprofile="coverage.out" -covermode="atomic" "${packages[@]}"
