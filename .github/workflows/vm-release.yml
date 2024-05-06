@@ -28,5 +28,5 @@ jobs:
         uses: actions/checkout@v4
       - uses: ./.github/actions/vm-release
         with:
-          vm-name: tokenvm
+          vm-name: nuklaivm
           github-token: ${{ secrets.GITHUB_TOKEN }}
