@@ -138,7 +138,7 @@ func UnmarshalUndelegateUserStakeResult(b []byte) (*UndelegateUserStakeResult, e
 	p := codec.NewReader(b, 2*hconsts.Uint64Len)
 	var result UndelegateUserStakeResult
 	result.StakedAmount = p.UnpackUint64(true)
-	result.RewardAmount = p.UnpackUint64(true)
+	result.RewardAmount = p.UnpackUint64(false)
 	return &result, p.Err()
 }
 
