@@ -587,8 +587,10 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		gomega.Ω(lastAcceptedBlock3).To(gomega.Equal(lastAcceptedBlock4))
 	})
 
-	/*
+	// TODO: GetUserStakeFromState is returning an empty value
+	// TODO: transactions are played twice because of Verify and Accept (block is already processed)
 
+	/*
 		ginkgo.FIt("Get user stake before claim", func() {
 			for _, inst := range instances {
 				color.Blue("checking %q", inst.nodeID)
