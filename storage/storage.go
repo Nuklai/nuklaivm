@@ -645,6 +645,7 @@ func SetDelegateUserStake(
 	copy(v[offset:], rewardAddress[:])
 	offset += codec.AddressLen
 	copy(v[offset:], owner[:])
+
 	return mu.Insert(ctx, key, v)
 }
 
