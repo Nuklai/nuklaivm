@@ -5,7 +5,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/trace"
@@ -98,7 +97,5 @@ func (c *Controller) GetDelegatedUserStakeFromState(ctx context.Context, owner c
 	codec.Address, // OwnerAddress
 	error,
 ) {
-	fmt.Println("GetDelegatedUserStakeFromState")
-	fmt.Println(c.inner.ReadState)
 	return storage.GetDelegateUserStakeFromState(ctx, c.inner.ReadState, owner, nodeID)
 }

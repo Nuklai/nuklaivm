@@ -5,7 +5,6 @@ package emission
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -38,7 +37,6 @@ type Manual struct {
 // New initializes the Emission struct with initial parameters and sets up the validators heap
 // and indices map.
 func NewManual(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emissionAddress codec.Address) *Manual {
-	fmt.Println("NewManual controller")
 	once.Do(func() {
 		c.Logger().Info("Initializing emission with max supply and rewards per block settings")
 
@@ -190,7 +188,6 @@ func (e *Manual) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey *bls.Pu
 	}
 
 	if exists {
-		fmt.Println("NEW VALIDATOR FOR EMISSION EXIST")
 		// If validator exists, it's a re-registration, update necessary fields
 		validator.PublicKey = bls.PublicKeyToBytes(nodePublicKey)        // Update public key if needed
 		validator.StakedAmount += stakedAmount                           // Adjust the staked amount
@@ -200,7 +197,6 @@ func (e *Manual) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey *bls.Pu
 		// Note: We might want to keep some attributes unchanged, such as delegatorsLastClaim, epochRewards, etc.
 	} else {
 		// If validator does not exist, create a new entry
-		fmt.Println("NEW VALIDATOR FOR EMISSION")
 		e.validators[nodeID] = &Validator{
 			NodeID:              nodeID,
 			PublicKey:           bls.PublicKeyToBytes(nodePublicKey),
@@ -254,7 +250,6 @@ func (e *Manual) WithdrawValidatorStake(nodeID ids.NodeID) (uint64, error) {
 
 // DelegateUserStake increases the delegated stake for a validator and rebalances the heap.
 func (e *Manual) DelegateUserStake(nodeID ids.NodeID, delegatorAddress codec.Address, stakeStartBlock, stakeAmount uint64) error {
-	fmt.Println("EMISSION MANUAL DELEGATE USER STAKE-1")
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -262,17 +257,13 @@ func (e *Manual) DelegateUserStake(nodeID ids.NodeID, delegatorAddress codec.Add
 
 	// Find the validator
 	validator, exists := e.validators[nodeID]
-	fmt.Println(validator)
 	if !exists {
 		return ErrValidatorNotFound
 	}
-	fmt.Println("EMISSION MANUAL DELEGATE USER STAKE-2")
-	fmt.Println(&e)
 	// Check if the delegator was already staked   ERROR HERE ?
 	if _, exists := validator.delegatorsLastClaim[delegatorAddress]; exists {
 		return ErrDelegatorAlreadyStaked
 	}
-	fmt.Println("EMISSION MANUAL DELEGATE USER STAKE-3")
 	// Update the validator's stake
 	validator.DelegatedAmount += stakeAmount
 
@@ -448,7 +439,6 @@ func (e *Manual) MintNewNAI() uint64 {
 // DistributeFees allocates transaction fees between the emission account and validators,
 // based on the total staked amount.
 func (e *Manual) DistributeFees(fee uint64) {
-	fmt.Println("DISTRIBUTE FEES")
 	e.lock.Lock()
 	defer e.lock.Unlock()
 

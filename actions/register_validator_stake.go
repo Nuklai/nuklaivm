@@ -5,7 +5,6 @@ package actions
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -61,9 +60,6 @@ func (r *RegisterValidatorStake) Execute(
 	_ bool,
 ) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
 	// Check if it's a valid signature
-	fmt.Println("REGISTER VALIDATOR STAKE -1 ")
-	fmt.Println("ACTOR %s", codec.MustAddressBech32(nconsts.HRP, actor))
-	// panic("BREAK REGISTER VALIDATOR STAKE")
 	signer, err := VerifyAuthSignature(r.StakeInfo, r.AuthSignature)
 	if err != nil {
 		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
@@ -79,9 +75,6 @@ func (r *RegisterValidatorStake) Execute(
 
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
-	fmt.Println("GET EMISSION")
-	fmt.Println(&emissionInstance)
-	fmt.Println(emissionInstance.GetEmissionValidators())
 
 	currentValidators := emissionInstance.GetAllValidators(ctx)
 	var nodePublicKey *bls.PublicKey
@@ -97,11 +90,10 @@ func (r *RegisterValidatorStake) Execute(
 			break
 		}
 	}
-	fmt.Println("REGISTER VALIDATOR STAKE -3")
+
 	if !isValidatorOwner {
 		return false, RegisterValidatorStakeComputeUnits, OutputUnauthorized, nil, nil
 	}
-	fmt.Println("REGISTER VALIDATOR STAKE -4")
 	// Unmarshal the stake info
 	stakeInfo, err := UnmarshalValidatorStakeInfo(r.StakeInfo)
 	if err != nil {
@@ -112,7 +104,7 @@ func (r *RegisterValidatorStake) Execute(
 	if err != nil {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidNodeID, nil, nil
 	}
-	fmt.Println("REGISTER VALIDATOR STAKE -5")
+
 	// Check if the validator was already registered
 	exists, _, _, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
 	if exists {
@@ -136,7 +128,7 @@ func (r *RegisterValidatorStake) Execute(
 	if stakeInfo.StakeEndBlock < stakeInfo.StakeStartBlock {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeEndBlock, nil, nil
 	}
-	fmt.Println("REGISTER VALIDATOR STAKE -7")
+
 	// Check that the total staking period is at least the minimum staking period
 	stakeDuration := stakeInfo.StakeEndBlock - stakeInfo.StakeStartBlock
 	if stakeDuration < stakingConfig.MinValidatorStakeDuration || stakeDuration > stakingConfig.MaxValidatorStakeDuration {
