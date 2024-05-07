@@ -134,7 +134,6 @@ func (c *Controller) Initialize(
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
 
-	fmt.Println("-------------CONTROLLER/CONTROLLER.GO %b", c.config)
 	if c.config.TestMode {
 		c.inner.Logger().Info("running build and gossip in test mode")
 		build = builder.NewManual(inner)
@@ -191,9 +190,6 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				return err
 			}
 		}
-		fmt.Println("Controller Accepted")
-		fmt.Println(result.Success)
-		fmt.Println(tx.Action.GetTypeID())
 		totalFee += result.Fee
 		if result.Success {
 			switch action := tx.Action.(type) {
@@ -219,8 +215,6 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				c.metrics.registerValidatorStake.Inc()
 			case *actions.ClaimValidatorStakeRewards:
 				rewardResult, err := actions.UnmarshalClaimRewardsResult(result.Output)
-				fmt.Println("reward result")
-				fmt.Println(rewardResult)
 				if err != nil {
 					// This should never happen
 					return err
@@ -240,14 +234,11 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				c.metrics.claimStakingRewards.Inc()
 				c.metrics.withdrawValidatorStake.Inc()
 			case *actions.DelegateUserStake:
-				fmt.Println("Controller accepted delegate user stake")
 				// panic("hello")
 				c.metrics.delegatorStakeAmount.Add(float64(action.StakedAmount))
 				c.metrics.delegateUserStake.Inc()
 			case *actions.ClaimDelegationStakeRewards:
 				rewardResult, err := actions.UnmarshalClaimRewardsResult(result.Output)
-				fmt.Println("reward result")
-				fmt.Println(rewardResult)
 				if err != nil {
 					// This should never happen
 					return err

@@ -75,7 +75,6 @@ func (r *RegisterValidatorStake) Execute(
 
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
-
 	currentValidators := emissionInstance.GetAllValidators(ctx)
 	var nodePublicKey *bls.PublicKey
 	for _, validator := range currentValidators {
@@ -90,7 +89,6 @@ func (r *RegisterValidatorStake) Execute(
 			break
 		}
 	}
-
 	if !isValidatorOwner {
 		return false, RegisterValidatorStakeComputeUnits, OutputUnauthorized, nil, nil
 	}
