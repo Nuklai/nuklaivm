@@ -565,10 +565,6 @@ func GetRegisterValidatorStakeFromState(
 	error,
 ) {
 	values, errs := f(ctx, [][]byte{RegisterValidatorStakeKey(nodeID)})
-	fmt.Println("GetRegisterValidatorStakeFromState")
-	fmt.Println(nodeID)
-	fmt.Println(values)
-	fmt.Println(errs[0])
 	return innerGetRegisterValidatorStake(values[0], errs[0])
 }
 
@@ -649,7 +645,6 @@ func SetDelegateUserStake(
 	copy(v[offset:], rewardAddress[:])
 	offset += codec.AddressLen
 	copy(v[offset:], owner[:])
-	fmt.Println("SetDelegateUserStake")
 	return mu.Insert(ctx, key, v)
 }
 
@@ -701,6 +696,7 @@ func innerGetDelegateUserStake(v []byte, err error) (
 	if err != nil {
 		return false, 0, 0, codec.Address{}, codec.Address{}, nil
 	}
+
 	offset := 0
 
 	stakeStartBlock := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
@@ -713,6 +709,7 @@ func innerGetDelegateUserStake(v []byte, err error) (
 	offset += codec.AddressLen
 	var ownerAddress codec.Address
 	copy(ownerAddress[:], v[offset:offset+codec.AddressLen])
+
 	return true, stakeStartBlock, stakedAmount, rewardAddress, ownerAddress, nil
 }
 
