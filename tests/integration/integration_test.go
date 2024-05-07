@@ -46,6 +46,7 @@ import (
 	"github.com/nuklai/nuklaivm/auth"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/controller"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
@@ -86,7 +87,7 @@ func init() {
 	flag.IntVar(
 		&vms,
 		"vms",
-		3,
+		5,
 		"number of VMs to create",
 	)
 }
@@ -122,6 +123,18 @@ var (
 
 	networkID uint32
 	gen       *genesis.Genesis
+	app       *appSender
+
+	withdraw0       string
+	delegate        string
+	rwithdraw0      codec.Address
+	rdelegate       codec.Address
+	delegateFactory *auth.ED25519Factory
+	nodesFactories  []*auth.BLSFactory
+	nodesAddresses  []codec.Address
+	emissions       []emission.Tracker
+	nodesPubKeys    []*bls.PublicKey
+	height          int
 )
 
 type instance struct {
@@ -175,6 +188,10 @@ var _ = ginkgo.BeforeSuite(func() {
 
 	// create embedded VMs
 	instances = make([]instance, vms)
+	nodesFactories = make([]*auth.BLSFactory, vms)
+	nodesAddresses = make([]codec.Address, vms)
+	emissions = make([]emission.Tracker, vms)
+	nodesPubKeys = make([]*bls.PublicKey, vms)
 
 	gen = genesis.Default()
 	gen.MinUnitPrice = chain.Dimensions{1, 1, 1, 1, 1}
@@ -182,7 +199,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	gen.CustomAllocation = []*genesis.CustomAllocation{
 		{
 			Address: sender,
-			Balance: 10_000_000,
+			Balance: 10_000_000_000_000_000,
 		},
 	}
 	gen.EmissionBalancer = genesis.EmissionBalancer{
@@ -197,7 +214,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	subnetID := ids.GenerateTestID()
 	chainID := ids.GenerateTestID()
 
-	app := &appSender{}
+	app = &appSender{}
 	for i := range instances {
 		nodeID := ids.GenerateTestNodeID()
 		sk, err := bls.NewSecretKey()
@@ -218,6 +235,9 @@ var _ = ginkgo.BeforeSuite(func() {
 			WarpSigner:     warp.NewSigner(sk, networkID, chainID),
 			ValidatorState: &validators.TestState{},
 		}
+		nodesFactories[i] = auth.NewBLSFactory(sk)
+		nodesAddresses[i] = auth.NewBLSAddress(snowCtx.PublicKey)
+		nodesPubKeys[i] = snowCtx.PublicKey
 
 		toEngine := make(chan common.Message, 1)
 		db := memdb.New()
@@ -241,6 +261,8 @@ var _ = ginkgo.BeforeSuite(func() {
 		var hd map[string]http.Handler
 		hd, err = v.CreateHandlers(context.TODO())
 		gomega.Ω(err).Should(gomega.BeNil())
+
+		emissions[i] = emission.GetEmission()
 
 		hjsonRPCServer := httptest.NewServer(hd[hrpc.JSONRPCEndpoint])
 		njsonRPCServer := httptest.NewServer(hd[nrpc.JSONRPCEndpoint])
@@ -286,6 +308,8 @@ var _ = ginkgo.BeforeSuite(func() {
 		gomega.Ω(warp).Should(gomega.BeFalse())
 	}
 	blocks = []snowman.Block{}
+
+	setEmissionValidators()
 
 	app.instances = instances
 	color.Blue("created %d VMs", vms)
@@ -1549,6 +1573,442 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	})
 })
 
+var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
+	ginkgo.FIt("Setup and get initial staked validators", func() {
+		height = 0
+		withdraw0Priv, err := ed25519.GeneratePrivateKey()
+		gomega.Ω(err).Should(gomega.BeNil())
+		rwithdraw0 = auth.NewED25519Address(withdraw0Priv.PublicKey())
+		withdraw0 = codec.MustAddressBech32(nconsts.HRP, rwithdraw0)
+
+		delegatePriv, err := ed25519.GeneratePrivateKey()
+		gomega.Ω(err).Should(gomega.BeNil())
+		rdelegate = auth.NewED25519Address(delegatePriv.PublicKey())
+		delegate = codec.MustAddressBech32(nconsts.HRP, rdelegate)
+		delegateFactory = auth.NewED25519Factory(delegatePriv)
+
+		validators, err := instances[3].ncli.StakedValidators(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(len(validators)).Should(gomega.Equal(0))
+	})
+
+	ginkgo.FIt("Funding node 3", func() {
+		parser, err := instances[3].ncli.Parser(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		submit, _, _, err := instances[3].hcli.GenerateTransaction(
+			context.Background(),
+			parser,
+			nil,
+			&actions.Transfer{
+				To:    nodesAddresses[3],
+				Asset: ids.Empty,
+				Value: 200_000_000_000,
+			},
+			factory,
+		)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
+
+		accept := expectBlk(instances[3])
+		results := accept(true)
+		gomega.Ω(results).Should(gomega.HaveLen(1))
+		gomega.Ω(results[0].Success).Should(gomega.BeTrue())
+
+		gomega.Ω(len(blocks)).Should(gomega.Equal(1))
+
+		blk := blocks[height]
+		ImportBlockToInstance(instances[0].vm, blk)
+		ImportBlockToInstance(instances[4].vm, blk)
+		ImportBlockToInstance(instances[2].vm, blk)
+		ImportBlockToInstance(instances[1].vm, blk)
+		height++
+
+		balance, err := instances[3].ncli.Balance(context.TODO(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[3]), ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(balance).Should(gomega.Equal(uint64(200_000_000_000)))
+
+		// check if gossip/ new state happens
+		balanceOther, err := instances[4].ncli.Balance(context.TODO(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[3]), ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(balanceOther).Should(gomega.Equal(uint64(200_000_000_000)))
+
+		balance, err = instances[3].ncli.Balance(context.TODO(), sender, ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(balance).Should(gomega.Equal(uint64(9_999_799_999_999_703)))
+	})
+
+	ginkgo.FIt("Register validator stake node 3", func() {
+		parser, err := instances[3].ncli.Parser(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		currentBlockHeight := instances[3].vm.LastAcceptedBlock().Height()
+		stakeStartBlock := currentBlockHeight + 2
+		stakeEndBlock := currentBlockHeight + 100
+		delegationFeeRate := 50
+
+		stakeInfo := &actions.ValidatorStakeInfo{
+			NodeID:            instances[3].nodeID.Bytes(),
+			StakeStartBlock:   stakeStartBlock,
+			StakeEndBlock:     stakeEndBlock,
+			StakedAmount:      100_000_000_000,
+			DelegationFeeRate: uint64(delegationFeeRate),
+			RewardAddress:     rwithdraw0,
+		}
+
+		stakeInfoBytes, err := stakeInfo.Marshal()
+		gomega.Ω(err).Should(gomega.BeNil())
+		signature, err := nodesFactories[3].Sign(stakeInfoBytes)
+		gomega.Ω(err).Should(gomega.BeNil())
+		signaturePacker := codec.NewWriter(signature.Size(), signature.Size())
+		signature.Marshal(signaturePacker)
+		authSignature := signaturePacker.Bytes()
+		submit, _, _, err := instances[3].hcli.GenerateTransaction(
+			context.Background(),
+			parser,
+			nil,
+			&actions.RegisterValidatorStake{
+				StakeInfo:     stakeInfoBytes,
+				AuthSignature: authSignature,
+			},
+			nodesFactories[3],
+		)
+		gomega.Ω(err).Should(gomega.BeNil())
+
+		_, err = instances[3].ncli.Balance(context.TODO(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[3]), ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
+
+		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
+
+		accept := expectBlk(instances[3])
+		results := accept(true)
+		gomega.Ω(results).Should(gomega.HaveLen(1))
+		gomega.Ω(results[0].Success).Should(gomega.BeTrue())
+
+		gomega.Ω(len(blocks)).Should(gomega.Equal(height + 1))
+
+		blk := blocks[height]
+		ImportBlockToInstance(instances[4].vm, blk)
+		ImportBlockToInstance(instances[0].vm, blk)
+		ImportBlockToInstance(instances[2].vm, blk)
+		ImportBlockToInstance(instances[1].vm, blk)
+		height++
+
+		_, err = instances[3].ncli.Balance(context.TODO(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[3]), ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
+
+		// check if gossip/ new state happens
+		_, err = instances[4].ncli.Balance(context.TODO(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[3]), ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
+
+		emissionInstance := emissions[3]
+		currentValidators := emissionInstance.GetAllValidators(context.TODO())
+		gomega.Ω(len(currentValidators)).To(gomega.Equal(5))
+		stakedValidator := emissionInstance.GetStakedValidator(instances[3].nodeID)
+		fmt.Println(stakedValidator)
+		gomega.Ω(len(stakedValidator)).To(gomega.Equal(1))
+
+		validator, exists := emissions[3].GetEmissionValidators()[instances[3].nodeID]
+		gomega.Ω(exists).To(gomega.Equal(true))
+
+		// check when it becomes active ?
+		gomega.Ω(validator.IsActive).To(gomega.Equal(false))
+
+		// test same block is accepted
+		lastAcceptedBlock3, err := instances[3].vm.LastAccepted(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		lastAcceptedBlock4, err := instances[4].vm.LastAccepted(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(lastAcceptedBlock3).To(gomega.Equal(lastAcceptedBlock4))
+
+		validators, err := instances[4].ncli.StakedValidators(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(len(validators)).Should(gomega.Equal(1))
+
+	})
+
+	ginkgo.FIt("Get validator staked amount after node 3 validator staking", func() {
+		_, _, stakedAmount, _, _, _, err := instances[3].ncli.ValidatorStake(context.Background(), instances[3].nodeID)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(100_000_000_000)))
+	})
+
+	ginkgo.FIt("Get validator staked amount after staking using node 0 cli", func() {
+		_, _, stakedAmount, _, _, _, err := instances[0].ncli.ValidatorStake(context.Background(), instances[3].nodeID)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(100_000_000_000)))
+	})
+
+	ginkgo.FIt("Get staked validators", func() {
+		validators, err := instances[4].ncli.StakedValidators(context.TODO())
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(len(validators)).Should(gomega.Equal(1))
+	})
+
+	ginkgo.FIt("Transfer NAI to delegate user", func() {
+		parser, err := instances[3].ncli.Parser(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		submit, _, _, err := instances[3].hcli.GenerateTransaction(
+			context.Background(),
+			parser,
+			nil,
+			&actions.Transfer{
+				To:    rdelegate,
+				Asset: ids.Empty,
+				Value: 100_000_000_000,
+			},
+			factory,
+		)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
+
+		accept := expectBlk(instances[3])
+		results := accept(true)
+		gomega.Ω(results).Should(gomega.HaveLen(1))
+		gomega.Ω(results[0].Success).Should(gomega.BeTrue())
+
+		gomega.Ω(len(blocks)).Should(gomega.Equal(height + 1))
+
+		blk := blocks[height]
+		ImportBlockToInstance(instances[0].vm, blk)
+		ImportBlockToInstance(instances[4].vm, blk)
+		ImportBlockToInstance(instances[2].vm, blk)
+		ImportBlockToInstance(instances[1].vm, blk)
+		height++
+
+		balance, err := instances[0].ncli.Balance(context.TODO(), delegate, ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(balance).Should(gomega.Equal(uint64(100_000_000_000)))
+
+		// test same block is accepted
+		lastAcceptedBlock3, err := instances[3].vm.LastAccepted(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		lastAcceptedBlock4, err := instances[4].vm.LastAccepted(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(lastAcceptedBlock3).To(gomega.Equal(lastAcceptedBlock4))
+	})
+
+	ginkgo.FIt("Delegate user stake to node 3", func() {
+		parser, err := instances[3].ncli.Parser(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		submit, _, _, err := instances[3].hcli.GenerateTransaction(
+			context.Background(),
+			parser,
+			nil,
+			&actions.DelegateUserStake{
+				NodeID:        instances[3].nodeID.Bytes(),
+				StakedAmount:  30_000_000_000,
+				RewardAddress: rdelegate,
+			},
+			delegateFactory,
+		)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
+
+		accept := expectBlk(instances[3])
+		results := accept(true)
+		gomega.Ω(results).Should(gomega.HaveLen(1))
+		gomega.Ω(results[0].Success).Should(gomega.BeTrue())
+
+		gomega.Ω(len(blocks)).Should(gomega.Equal(height + 1))
+
+		fmt.Printf("delegate stake to node 3 %d", height)
+
+		blk := blocks[height]
+		ImportBlockToInstance(instances[4].vm, blk)
+		ImportBlockToInstance(instances[2].vm, blk)
+		ImportBlockToInstance(instances[1].vm, blk)
+		ImportBlockToInstance(instances[0].vm, blk)
+		height++
+
+		// test same block is accepted
+		lastAcceptedBlock3, err := instances[3].vm.LastAccepted(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		lastAcceptedBlock4, err := instances[4].vm.LastAccepted(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(lastAcceptedBlock3).To(gomega.Equal(lastAcceptedBlock4))
+	})
+
+	// TODO: GetUserStakeFromState is returning an empty value
+	// TODO: transactions are played twice because of Verify and Accept (block is already processed)
+
+	/*
+		ginkgo.FIt("Get user stake before claim", func() {
+			for _, inst := range instances {
+				color.Blue("checking %q", inst.nodeID)
+
+				// Ensure all blocks processed
+				for {
+					_, h, _, err := inst.hcli.Accepted(context.Background())
+					gomega.Ω(err).Should(gomega.BeNil())
+					if h > 0 {
+						break
+					}
+					time.Sleep(1 * time.Second)
+				}
+				_, stakedAmount, _, _, err := inst.ncli.UserStake(context.Background(), rdelegate, instances[3].nodeID)
+				gomega.Ω(err).Should(gomega.BeNil())
+				gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(30_000_000_000)))
+
+			}
+		})
+
+		ginkgo.It("Claim delegation stake rewards from node 3", func() {
+			parser, err := instances[3].ncli.Parser(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			submit, _, _, err := instances[3].hcli.GenerateTransaction(
+				context.Background(),
+				parser,
+				nil,
+				&actions.ClaimDelegationStakeRewards{
+					NodeID:           instances[3].nodeID.Bytes(),
+					UserStakeAddress: rdelegate,
+				},
+				delegateFactory,
+			)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+			gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
+
+			accept := expectBlk(instances[3])
+			results := accept(true)
+			gomega.Ω(results).Should(gomega.HaveLen(1))
+			gomega.Ω(results[0].Success).Should(gomega.BeTrue())
+
+			gomega.Ω(len(blocks)).Should(gomega.Equal(height + 1))
+
+			blk := blocks[height]
+			fmt.Println(blk.ID())
+			ImportBlockToInstance(instances[4].vm, blk)
+			ImportBlockToInstance(instances[0].vm, blk)
+			ImportBlockToInstance(instances[2].vm, blk)
+			ImportBlockToInstance(instances[1].vm, blk)
+			height++
+
+			// test same block is accepted
+			lastAcceptedBlock3, err := instances[3].vm.LastAccepted(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			lastAcceptedBlock4, err := instances[4].vm.LastAccepted(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(lastAcceptedBlock3).To(gomega.Equal(lastAcceptedBlock4))
+		})
+
+		ginkgo.It("Get user stake after claim", func() {
+			_, stakedAmount, _, _, err := instances[3].ncli.UserStake(context.Background(), rdelegate, instances[0].nodeID)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(stakedAmount).Should(gomega.Equal(0))
+		})
+
+		ginkgo.It("Undelegate user stake from node 3", func() {
+			parser, err := instances[3].ncli.Parser(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			submit, _, _, err := instances[3].hcli.GenerateTransaction(
+				context.Background(),
+				parser,
+				nil,
+				&actions.UndelegateUserStake{
+					NodeID:        instances[3].nodeID.Bytes(),
+					RewardAddress: rdelegate,
+				},
+				delegateFactory,
+			)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+			gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
+
+			accept := expectBlk(instances[3])
+			results := accept(true)
+			gomega.Ω(results).Should(gomega.HaveLen(1))
+			gomega.Ω(results[0].Success).Should(gomega.BeTrue())
+
+			gomega.Ω(len(blocks)).Should(gomega.Equal(height + 1))
+
+			blk := blocks[height]
+			fmt.Println(blk.ID())
+			ImportBlockToInstance(instances[4].vm, blk)
+			ImportBlockToInstance(instances[0].vm, blk)
+			ImportBlockToInstance(instances[2].vm, blk)
+			ImportBlockToInstance(instances[1].vm, blk)
+			height++
+		})
+
+		ginkgo.It("Claim validator node 0 stake reward", func() {
+			parser, err := instances[3].ncli.Parser(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			submit, _, _, err := instances[3].hcli.GenerateTransaction(
+				context.Background(),
+				parser,
+				nil,
+				&actions.ClaimValidatorStakeRewards{
+					NodeID: instances[3].nodeID.Bytes(),
+				},
+				factory,
+			)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+			gomega.Ω(instances[3].vm.Mempool().Len(context.TODO())).Should(gomega.Equal(1))
+
+			accept := expectBlk(instances[3])
+			results := accept(true)
+			gomega.Ω(results).Should(gomega.HaveLen(1))
+			gomega.Ω(results[0].Success).Should(gomega.BeTrue())
+
+			gomega.Ω(len(blocks)).Should(gomega.Equal(height + 1))
+
+			blk := blocks[height]
+			fmt.Println(blk.ID())
+			ImportBlockToInstance(instances[4].vm, blk)
+			ImportBlockToInstance(instances[0].vm, blk)
+			ImportBlockToInstance(instances[2].vm, blk)
+			ImportBlockToInstance(instances[1].vm, blk)
+			height++
+
+			gomega.Ω(instances[3].ncli.Balance(context.Background(), withdraw0, ids.Empty)).Should(gomega.BeNumerically(">", 0))
+		})
+
+		ginkgo.It("Withdraw validator node 0 stake", func() {
+			parser, err := instances[3].ncli.Parser(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			submit, _, _, err := instances[3].hcli.GenerateTransaction(
+				context.Background(),
+				parser,
+				nil,
+				&actions.WithdrawValidatorStake{
+					NodeID:        instances[3].nodeID.Bytes(),
+					RewardAddress: rwithdraw0,
+				},
+				factory,
+			)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+
+			accept := expectBlk(instances[3])
+			results := accept(true)
+			gomega.Ω(results).Should(gomega.HaveLen(1))
+			gomega.Ω(results[0].Success).Should(gomega.BeTrue())
+
+			gomega.Ω(len(blocks)).Should(gomega.Equal(height + 1))
+
+			blk := blocks[height]
+			fmt.Println(blk.ID())
+			ImportBlockToInstance(instances[4].vm, blk)
+			ImportBlockToInstance(instances[0].vm, blk)
+			ImportBlockToInstance(instances[2].vm, blk)
+			ImportBlockToInstance(instances[1].vm, blk)
+			height++
+
+		})
+
+		ginkgo.It("Get staked validators after staking withdraw ", func() {
+			validators, err := instances[0].ncli.StakedValidators(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(len(validators)).Should(gomega.Equal(0))
+		})
+	*/
+})
+
 func expectBlk(i instance) func(bool) []*chain.Result {
 	ctx := context.TODO()
 
@@ -1651,4 +2111,34 @@ func (*appSender) SendCrossChainAppRequest(context.Context, ids.ID, uint32, []by
 
 func (*appSender) SendCrossChainAppResponse(context.Context, ids.ID, uint32, []byte) error {
 	return nil
+}
+
+func ImportBlockToInstance(vm *vm.VM, block snowman.Block) {
+	blk, err := vm.ParseBlock(context.Background(), block.Bytes())
+	gomega.Ω(err).Should(gomega.BeNil())
+	err = blk.Verify(context.Background())
+	gomega.Ω(err).Should(gomega.BeNil())
+
+	gomega.Ω(blk.Status()).To(gomega.Equal(choices.Processing))
+	err = vm.SetPreference(context.Background(), blk.ID())
+	gomega.Ω(err).To(gomega.BeNil())
+
+	err = blk.Accept(context.Background())
+	gomega.Ω(err).Should(gomega.BeNil())
+}
+
+func setEmissionValidators() {
+	currentValidators := make([]*emission.Validator, 0, len(instances))
+	for i, inst := range instances {
+		val := emission.Validator{
+			NodeID:    inst.nodeID,
+			PublicKey: bls.PublicKeyToBytes(nodesPubKeys[i]),
+		}
+		currentValidators = append(currentValidators, &val)
+	}
+	fmt.Println(len(currentValidators))
+	for i := range instances {
+		fmt.Println(emissions[i])
+		emissions[i].(*emission.Manual).CurrentValidators = currentValidators
+	}
 }

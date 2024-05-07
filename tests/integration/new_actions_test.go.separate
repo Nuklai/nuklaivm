@@ -7,13 +7,11 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"testing"
 	"time"
 
 	"github.com/ava-labs/avalanchego/api/metrics"
@@ -23,11 +21,9 @@ import (
 	"github.com/ava-labs/avalanchego/snow/choices"
 	"github.com/ava-labs/avalanchego/snow/consensus/snowman"
 	"github.com/ava-labs/avalanchego/snow/engine/common"
-	"github.com/ava-labs/avalanchego/snow/engine/snowman/block"
 	"github.com/ava-labs/avalanchego/snow/validators"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/avalanchego/utils/set"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/fatih/color"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -49,11 +45,6 @@ import (
 	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
 
-var (
-	logFactory logging.Factory
-	log        logging.Logger
-)
-
 func init() {
 	logFactory = logging.NewFactory(logging.Config{
 		DisplayLevel: logging.Debug,
@@ -64,17 +55,6 @@ func init() {
 	}
 	log = l
 }
-
-func TestIntegration(t *testing.T) {
-	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "nuklaivm integration test suites")
-}
-
-var (
-	requestTimeout time.Duration
-	vms            int
-	app            *appSender
-)
 
 func init() {
 	flag.DurationVar(
@@ -92,42 +72,9 @@ func init() {
 }
 
 var (
-	priv    ed25519.PrivateKey
-	factory *auth.ED25519Factory
-	rsender codec.Address
-	sender  string
-
-	priv2    ed25519.PrivateKey
-	factory2 *auth.ED25519Factory
-	rsender2 codec.Address
-	sender2  string
-
-	asset1         []byte
-	asset1Symbol   []byte
-	asset1Decimals uint8
-	asset1ID       ids.ID
-	asset2         []byte
-	asset2Symbol   []byte
-	asset2Decimals uint8
-	asset2ID       ids.ID
-	asset3         []byte
-	asset3Symbol   []byte
-	asset3Decimals uint8
-	asset3ID       ids.ID
-
-	// when used with embedded VMs
-	genesisBytes []byte
-	instances    []instance
-	blocks       []snowman.Block
-
-	networkID uint32
-	gen       *genesis.Genesis
-
 	withdraw0       string
-	withdraw1       string
 	delegate        string
 	rwithdraw0      codec.Address
-	rwithdraw1      codec.Address
 	rdelegate       codec.Address
 	delegateFactory *auth.ED25519Factory
 	nodesFactories  []*auth.BLSFactory
@@ -136,18 +83,6 @@ var (
 	nodesPubKeys    []*bls.PublicKey
 	height          int
 )
-
-type instance struct {
-	chainID             ids.ID
-	nodeID              ids.NodeID
-	vm                  *vm.VM
-	toEngine            chan common.Message
-	JSONRPCServer       *httptest.Server
-	NuklaiJSONRPCServer *httptest.Server
-	WebSocketServer     *httptest.Server
-	hcli                *hrpc.JSONRPCClient // clients for embedded VMs
-	ncli                *nrpc.JSONRPCClient
-}
 
 var _ = ginkgo.BeforeSuite(func() {
 	log.Info("VMID", zap.Stringer("id", nconsts.ID))
@@ -214,7 +149,6 @@ var _ = ginkgo.BeforeSuite(func() {
 	subnetID := ids.GenerateTestID()
 	chainID := ids.GenerateTestID()
 
-	app = &appSender{}
 	for i := range instances {
 		nodeID := ids.GenerateTestNodeID()
 		sk, err := bls.NewSecretKey()
@@ -331,11 +265,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		rwithdraw0 = auth.NewED25519Address(withdraw0Priv.PublicKey())
 		withdraw0 = codec.MustAddressBech32(nconsts.HRP, rwithdraw0)
-
-		withdraw1Priv, err := ed25519.GeneratePrivateKey()
-		gomega.Ω(err).Should(gomega.BeNil())
-		rwithdraw1 = auth.NewED25519Address(withdraw1Priv.PublicKey())
-		withdraw1 = codec.MustAddressBech32(nconsts.HRP, rwithdraw1)
 
 		delegatePriv, err := ed25519.GeneratePrivateKey()
 		gomega.Ω(err).Should(gomega.BeNil())
@@ -765,110 +694,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 	*/
 })
 
-func expectBlk(i instance) func(bool) []*chain.Result {
-	ctx := context.TODO()
-
-	// manually signal ready
-	gomega.Ω(i.vm.Builder().Force(ctx)).To(gomega.BeNil())
-	// manually ack ready sig as in engine
-	<-i.toEngine
-
-	blk, err := i.vm.BuildBlock(ctx)
-	gomega.Ω(err).To(gomega.BeNil())
-	gomega.Ω(blk).To(gomega.Not(gomega.BeNil()))
-
-	gomega.Ω(blk.Verify(ctx)).To(gomega.BeNil())
-	gomega.Ω(blk.Status()).To(gomega.Equal(choices.Processing))
-
-	err = i.vm.SetPreference(ctx, blk.ID())
-	gomega.Ω(err).To(gomega.BeNil())
-
-	return func(add bool) []*chain.Result {
-		gomega.Ω(blk.Accept(ctx)).To(gomega.BeNil())
-		gomega.Ω(blk.Status()).To(gomega.Equal(choices.Accepted))
-
-		if add {
-			blocks = append(blocks, blk)
-		}
-
-		lastAccepted, err := i.vm.LastAccepted(ctx)
-		gomega.Ω(err).To(gomega.BeNil())
-		gomega.Ω(lastAccepted).To(gomega.Equal(blk.ID()))
-		return blk.(*chain.StatelessBlock).Results()
-	}
-}
-
-// TODO: unify with expectBlk
-func expectBlkWithContext(i instance) func(bool) []*chain.Result {
-	ctx := context.TODO()
-
-	// manually signal ready
-	gomega.Ω(i.vm.Builder().Force(ctx)).To(gomega.BeNil())
-	// manually ack ready sig as in engine
-	<-i.toEngine
-
-	bctx := &block.Context{PChainHeight: 1}
-	blk, err := i.vm.BuildBlockWithContext(ctx, bctx)
-	gomega.Ω(err).To(gomega.BeNil())
-	gomega.Ω(blk).To(gomega.Not(gomega.BeNil()))
-	cblk := blk.(block.WithVerifyContext)
-
-	gomega.Ω(cblk.VerifyWithContext(ctx, bctx)).To(gomega.BeNil())
-	gomega.Ω(blk.Status()).To(gomega.Equal(choices.Processing))
-
-	err = i.vm.SetPreference(ctx, blk.ID())
-	gomega.Ω(err).To(gomega.BeNil())
-
-	return func(add bool) []*chain.Result {
-		gomega.Ω(blk.Accept(ctx)).To(gomega.BeNil())
-		gomega.Ω(blk.Status()).To(gomega.Equal(choices.Accepted))
-
-		if add {
-			blocks = append(blocks, blk)
-		}
-
-		lastAccepted, err := i.vm.LastAccepted(ctx)
-		gomega.Ω(err).To(gomega.BeNil())
-		gomega.Ω(lastAccepted).To(gomega.Equal(blk.ID()))
-		return blk.(*chain.StatelessBlock).Results()
-	}
-}
-
-var _ common.AppSender = &appSender{}
-
-type appSender struct {
-	next      int
-	instances []instance
-}
-
-func (app *appSender) SendAppGossip(ctx context.Context, appGossipBytes []byte) error {
-	n := len(app.instances)
-	sender := app.instances[app.next].nodeID
-	app.next++
-	app.next %= n
-	return app.instances[app.next].vm.AppGossip(ctx, sender, appGossipBytes)
-}
-
-func (*appSender) SendAppRequest(context.Context, set.Set[ids.NodeID], uint32, []byte) error {
-	return nil
-}
-
-func (*appSender) SendAppResponse(context.Context, ids.NodeID, uint32, []byte) error {
-	return nil
-}
-
-func (*appSender) SendAppGossipSpecific(context.Context, set.Set[ids.NodeID], []byte) error {
-	return nil
-}
-
-func (*appSender) SendCrossChainAppRequest(context.Context, ids.ID, uint32, []byte) error {
-	return nil
-}
-
-func (*appSender) SendCrossChainAppResponse(context.Context, ids.ID, uint32, []byte) error {
-	return nil
-}
-
 func ImportBlockToInstance(vm *vm.VM, block snowman.Block) {
 	blk, err := vm.ParseBlock(context.Background(), block.Bytes())
 	gomega.Ω(err).Should(gomega.BeNil())
@@ -881,71 +706,6 @@ func ImportBlockToInstance(vm *vm.VM, block snowman.Block) {
 
 	err = blk.Accept(context.Background())
 	gomega.Ω(err).Should(gomega.BeNil())
-}
-
-func ImportBlockToInstance2(vm *vm.VM, block snowman.Block) {
-	blk, err := vm.ParseBlock(context.Background(), block.Bytes())
-	gomega.Ω(err).Should(gomega.BeNil())
-	err = blk.Verify(context.Background())
-	gomega.Ω(err).Should(gomega.BeNil())
-
-	// gomega.Ω(blk.Status()).To(gomega.Equal(choices.Processing))
-	// err = vm.SetPreference(context.Background(), blk.ID())
-	// gomega.Ω(err).To(gomega.BeNil())
-
-	// sblk := blk.(*chain.StatelessBlock)
-	// sblkt := sblk.Timestamp().UnixMilli()
-	// tx := blk.(*chain.StatelessBlock).Txs[0]
-	// ok, err := sblk.IsRepeat(ctx, vm.Rules(sblkt).GetValidityWindow(), []*chain.Transaction{tx}, set.NewBits(), true)
-	// gomega.Ω(err).Should(gomega.BeNil())
-	// gomega.Ω(ok.Len()).Should(gomega.Equal(1))
-	err = blk.Accept(context.Background())
-	gomega.Ω(err).Should(gomega.BeNil())
-}
-
-func produceBlock(i *instance) (*chain.StatelessBlock, func()) {
-	ctx := context.TODO()
-
-	blk, err := i.vm.BuildBlock(ctx)
-	if errors.Is(err, chain.ErrNoTxs) {
-		return nil, nil
-	}
-	gomega.Ω(err).To(gomega.BeNil())
-	gomega.Ω(blk).To(gomega.Not(gomega.BeNil()))
-
-	gomega.Ω(blk.Verify(ctx)).To(gomega.BeNil())
-	gomega.Ω(blk.Status()).To(gomega.Equal(choices.Processing))
-
-	err = i.vm.SetPreference(ctx, blk.ID())
-	gomega.Ω(err).To(gomega.BeNil())
-
-	return blk.(*chain.StatelessBlock), func() {
-		gomega.Ω(blk.Accept(ctx)).To(gomega.BeNil())
-		gomega.Ω(blk.Status()).To(gomega.Equal(choices.Accepted))
-
-		lastAccepted, err := i.vm.LastAccepted(ctx)
-		gomega.Ω(err).To(gomega.BeNil())
-		gomega.Ω(lastAccepted).To(gomega.Equal(blk.ID()))
-	}
-}
-
-func addBlock(i *instance, blk *chain.StatelessBlock) func() {
-	ctx := context.TODO()
-	// start := time.Now()
-	tblk, err := i.vm.ParseBlock(ctx, blk.Bytes())
-	// i.parse = append(i.parse, time.Since(start).Seconds())
-	gomega.Ω(err).Should(gomega.BeNil())
-	// start = time.Now()
-	gomega.Ω(tblk.Verify(ctx)).Should(gomega.BeNil())
-	// i.verify = append(i.verify, time.Since(start).Seconds())
-	// blk.MarkAccepted(context.Background())
-	// err = i.vm.SetPreference(ctx, blk.ID())
-	gomega.Ω(err).To(gomega.BeNil())
-	return func() {
-		// start = time.Now()
-		gomega.Ω(blk.Accept(ctx)).Should(gomega.BeNil())
-		// i.accept = append(i.accept, time.Since(start).Seconds())
-	}
 }
 
 func setEmissionValidators() {
