@@ -666,9 +666,6 @@ func GetDelegateUserStake(
 	error,
 ) {
 	key := DelegateUserStakeKey(owner, nodeID)
-	fmt.Println("GetDelegateUserStake")
-	fmt.Println(codec.MustAddressBech32(nconsts.HRP, owner))
-	fmt.Println(nodeID)
 	v, err := im.GetValue(ctx, key)
 	return innerGetDelegateUserStake(v, err)
 }
@@ -687,11 +684,6 @@ func GetDelegateUserStakeFromState(
 	error,
 ) {
 	values, errs := f(ctx, [][]byte{DelegateUserStakeKey(owner, nodeID)})
-	fmt.Println("GetDelegateUserStakeFromState")
-	fmt.Println(codec.MustAddressBech32(nconsts.HRP, owner))
-	fmt.Println(nodeID)
-	fmt.Println(values)
-	fmt.Println(errs[0])
 	return innerGetDelegateUserStake(values[0], errs[0])
 }
 
@@ -704,14 +696,11 @@ func innerGetDelegateUserStake(v []byte, err error) (
 	error,
 ) {
 	if errors.Is(err, database.ErrNotFound) {
-		fmt.Println("innerGetDelegateUserStake-0")
 		return false, 0, 0, codec.Address{}, codec.Address{}, nil
 	}
-	fmt.Println("innerGetDelegateUserStake-1")
 	if err != nil {
 		return false, 0, 0, codec.Address{}, codec.Address{}, nil
 	}
-	fmt.Println("innerGetDelegateUserStake-2")
 	offset := 0
 
 	stakeStartBlock := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
@@ -724,7 +713,6 @@ func innerGetDelegateUserStake(v []byte, err error) (
 	offset += codec.AddressLen
 	var ownerAddress codec.Address
 	copy(ownerAddress[:], v[offset:offset+codec.AddressLen])
-	fmt.Println("innerGetDelegateUserStake-3")
 	return true, stakeStartBlock, stakedAmount, rewardAddress, ownerAddress, nil
 }
 

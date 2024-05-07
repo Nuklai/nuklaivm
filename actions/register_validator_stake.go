@@ -92,6 +92,7 @@ func (r *RegisterValidatorStake) Execute(
 	if !isValidatorOwner {
 		return false, RegisterValidatorStakeComputeUnits, OutputUnauthorized, nil, nil
 	}
+
 	// Unmarshal the stake info
 	stakeInfo, err := UnmarshalValidatorStakeInfo(r.StakeInfo)
 	if err != nil {

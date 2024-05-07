@@ -234,7 +234,6 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				c.metrics.claimStakingRewards.Inc()
 				c.metrics.withdrawValidatorStake.Inc()
 			case *actions.DelegateUserStake:
-				// panic("hello")
 				c.metrics.delegatorStakeAmount.Add(float64(action.StakedAmount))
 				c.metrics.delegateUserStake.Inc()
 			case *actions.ClaimDelegationStakeRewards:
