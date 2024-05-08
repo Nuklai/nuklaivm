@@ -547,10 +547,10 @@ var _ = ginkgo.Describe("[Test]", func() {
 		return
 	}
 
-	ginkgo.XIt("transfer in a single node (raw)", func() {
+	ginkgo.It("transfer in a single node (raw)", func() {
 		nativeBalance, err := instancesA[0].ncli.Balance(context.TODO(), sender, ids.Empty)
 		gomega.Ω(err).Should(gomega.BeNil())
-		gomega.Ω(nativeBalance).Should(gomega.Equal(startAmount))
+		gomega.Ω(nativeBalance).Should(gomega.BeNumerically("<=", startAmount))
 
 		other, err := ed25519.GeneratePrivateKey()
 		gomega.Ω(err).Should(gomega.BeNil())
@@ -593,7 +593,7 @@ var _ = ginkgo.Describe("[Test]", func() {
 				sendAmount,
 				balance,
 			)
-			updatedAmount := startAmount - fee - sendAmount
+			updatedAmount := nativeBalance - fee - sendAmount
 			gomega.Ω(balance).Should(gomega.Equal(updatedAmount))
 			hutils.Outf("{{yellow}}fetched balance{{/}}\n")
 		})
