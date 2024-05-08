@@ -481,7 +481,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		currentValidators := emissionInstance.GetAllValidators(context.TODO())
 		gomega.Ω(len(currentValidators)).To(gomega.Equal(5))
 		stakedValidator := emissionInstance.GetStakedValidator(instances[3].nodeID)
-		fmt.Println(stakedValidator)
 		gomega.Ω(len(stakedValidator)).To(gomega.Equal(1))
 
 		validator, exists := emissions[3].GetEmissionValidators()[instances[3].nodeID]
@@ -786,8 +785,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 
 	var _ = ginkgo.Describe("[Tx Processing]", func() {
 		ginkgo.It("get currently accepted block ID", func() {
-			fmt.Println("block-beginning")
-			fmt.Println(blocks)
 			for _, inst := range instances {
 				hcli := inst.hcli
 				_, _, _, err := hcli.Accepted(context.Background())
@@ -1024,8 +1021,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 
 		ginkgo.It("ensure unprocessed tip and replay protection works", func() {
 			ginkgo.By("import accepted blocks to instance 2", func() {
-				fmt.Println("blocks")
-				fmt.Println(blocks)
 				ctx := context.TODO()
 
 				gomega.Ω(blocks[0].Height()).Should(gomega.Equal(uint64(1)))
@@ -2140,9 +2135,7 @@ func setEmissionValidators() {
 		}
 		currentValidators = append(currentValidators, &val)
 	}
-	fmt.Println(len(currentValidators))
 	for i := range instances {
-		fmt.Println(emissions[i])
 		emissions[i].(*emission.Manual).CurrentValidators = currentValidators
 	}
 }
