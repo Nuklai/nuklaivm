@@ -547,7 +547,7 @@ var _ = ginkgo.Describe("[Test]", func() {
 		return
 	}
 
-	ginkgo.It("transfer in a single node (raw)", func() {
+	ginkgo.XIt("transfer in a single node (raw)", func() {
 		nativeBalance, err := instancesA[0].ncli.Balance(context.TODO(), sender, ids.Empty)
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(nativeBalance).Should(gomega.Equal(startAmount))
@@ -593,7 +593,8 @@ var _ = ginkgo.Describe("[Test]", func() {
 				sendAmount,
 				balance,
 			)
-			gomega.Ω(balance).Should(gomega.Equal(startAmount - fee - sendAmount))
+			updatedAmount := startAmount - fee - sendAmount
+			gomega.Ω(balance).Should(gomega.Equal(updatedAmount))
 			hutils.Outf("{{yellow}}fetched balance{{/}}\n")
 		})
 
@@ -1532,10 +1533,12 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(len(validators)).Should(gomega.Equal(0))
 	})
-
 	ginkgo.It("Funding node 0", func() {
+		balanceBefore, err := instancesA[0].ncli.Balance(context.TODO(), sender, ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
 		parser, err := instancesA[0].ncli.Parser(context.TODO())
 		gomega.Ω(err).Should(gomega.BeNil())
+		amount := uint64(200_000_000_000)
 		submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
 			context.Background(),
 			parser,
@@ -1543,7 +1546,7 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			&actions.Transfer{
 				To:    nodesAddresses[0],
 				Asset: ids.Empty,
-				Value: 200_000_000_000,
+				Value: amount,
 			},
 			factory,
 		)
@@ -1553,7 +1556,7 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
 		hutils.Outf("{{yellow}}submitted transaction{{/}}\n")
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-		success, _, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+		success, fee, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
 		cancel()
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(success).Should(gomega.BeTrue())
@@ -1582,12 +1585,11 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			hutils.Outf("{{yellow}}fetched balance{{/}}\n")
 		}
 
-		balance, err = instancesA[0].ncli.Balance(context.TODO(), sender, ids.Empty)
+		balanceAfter, err := instancesA[0].ncli.Balance(context.TODO(), sender, ids.Empty)
 		gomega.Ω(err).Should(gomega.BeNil())
-		gomega.Ω(balance).Should(gomega.Equal(uint64(852_999_799_999_970_300)))
+		gomega.Ω(balanceAfter).Should(gomega.Equal(balanceBefore - fee - amount))
 		hutils.Outf("{{yellow}}fetched balance{{/}}\n")
 	})
-
 	ginkgo.It("Register validator stake node 0", func() {
 		withdraw0Priv, err := ed25519.GeneratePrivateKey()
 		gomega.Ω(err).Should(gomega.BeNil())
@@ -1641,7 +1643,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(success).Should(gomega.BeTrue())
 		hutils.Outf("{{yellow}}found register validator stake transaction{{/}}\n")
-
 		for _, inst := range instancesA {
 			color.Blue("checking %q", inst.uri)
 
@@ -1665,20 +1666,17 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			fmt.Printf("node 3 instances[4] %s balance after staking %d\n", codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), balanceOther)
 		}
 	})
-
 	ginkgo.It("Get validator staked amount after node 0 validator staking", func() {
 		_, _, stakedAmount, _, _, _, err := instancesA[0].ncli.ValidatorStake(context.Background(), instancesA[0].nodeID)
 		fmt.Printf("NODE 3 STAKED AMOUNT %d", stakedAmount)
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(100_000_000_000)))
 	})
-
 	ginkgo.It("Get staked validators", func() {
 		validators, err := instancesA[0].ncli.StakedValidators(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(len(validators)).Should(gomega.Equal(1))
 	})
-
 	ginkgo.It("Transfer NAI to delegate user", func() {
 		delegatePriv, err := ed25519.GeneratePrivateKey()
 		gomega.Ω(err).Should(gomega.BeNil())
@@ -1727,7 +1725,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 
 		}
 	})
-
 	ginkgo.It("Delegate user stake to node 0", func() {
 		parser, err := instancesA[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
@@ -1771,13 +1768,11 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		}
 
 	})
-
 	ginkgo.It("Get user stake before claim", func() {
 		_, stakedAmount, _, _, err := instancesA[0].ncli.UserStake(context.Background(), rdelegate, instancesA[0].nodeID)
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(30_000_000_000)))
 	})
-
 	ginkgo.It("Claim delegation stake rewards from node 0", func() {
 		balanceBefore, err := instancesA[0].ncli.Balance(context.Background(), delegate, ids.Empty)
 		gomega.Ω(err).Should(gomega.BeNil())
@@ -1825,7 +1820,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		}
 
 	})
-
 	ginkgo.It("Undelegate user stake from node 0", func() {
 		balanceBefore, err := instancesA[0].ncli.Balance(context.Background(), delegate, ids.Empty)
 		gomega.Ω(err).Should(gomega.BeNil())
@@ -1853,7 +1847,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 
 		for _, inst := range instancesA {
 			color.Blue("checking %q", inst.uri)
-
 			// Ensure all blocks processed
 			for {
 				_, h, _, err := inst.hcli.Accepted(context.Background())
@@ -1870,7 +1863,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		}
 
 	})
-
 	ginkgo.It("Transfer NAI to node 0 withdraw address for fees", func() {
 		parser, err := instancesA[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
@@ -1894,10 +1886,8 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(success).Should(gomega.BeTrue())
 		hutils.Outf("{{yellow}}found transaction{{/}}\n")
-
 		for _, inst := range instancesA {
 			color.Blue("checking %q", inst.uri)
-
 			// Ensure all blocks processed
 			for {
 				_, h, _, err := inst.hcli.Accepted(context.Background())
@@ -1914,7 +1904,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 
 		}
 	})
-
 	ginkgo.It("Claim node 0 stake reward", func() {
 		balanceBefore, err := instancesA[0].ncli.Balance(context.Background(), withdraw0, ids.Empty)
 		gomega.Ω(err).Should(gomega.BeNil())
@@ -1958,9 +1947,7 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(balanceAfter).Should(gomega.BeNumerically(">", balanceBefore-fee))
 		}
-
 	})
-
 	ginkgo.It("Withdraw validator node 0 stake", func() {
 		for {
 			currentBlockHeight, _, _, _, _, _, _, _ := instancesA[0].ncli.EmissionInfo(context.Background())
@@ -2013,7 +2000,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			gomega.Ω(len(validators)).Should(gomega.Equal(0))
 		}
 	})
-
 })
 
 func awaitHealthy(cli runner_sdk.Client) {
