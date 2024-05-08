@@ -260,10 +260,12 @@ func (e *Manual) DelegateUserStake(nodeID ids.NodeID, delegatorAddress codec.Add
 	if !exists {
 		return ErrValidatorNotFound
 	}
-	// Check if the delegator was already staked   ERROR HERE ?
+
+	// Check if the delegator was already staked
 	if _, exists := validator.delegatorsLastClaim[delegatorAddress]; exists {
 		return ErrDelegatorAlreadyStaked
 	}
+
 	// Update the validator's stake
 	validator.DelegatedAmount += stakeAmount
 
@@ -275,7 +277,7 @@ func (e *Manual) DelegateUserStake(nodeID ids.NodeID, delegatorAddress codec.Add
 	}
 
 	// Update the delegator's stake
-	validator.delegatorsLastClaim[delegatorAddress] = e.GetLastAcceptedBlockHeight()
+	validator.delegatorsLastClaim[delegatorAddress] = stakeStartBlock
 
 	return nil
 }
@@ -390,7 +392,7 @@ func (e *Manual) MintNewNAI() uint64 {
 		// Distribute rewards based on stake proportion
 		for _, validator := range e.validators {
 			lastBlockHeight := e.GetLastAcceptedBlockHeight()
-			// Mark validator active based on if stakeStartTime has started
+			// Mark validator active based on if stakeStartBlock has started
 			if lastBlockHeight > validator.stakeStartBlock {
 				validator.IsActive = true
 				e.TotalStaked += (validator.StakedAmount + validator.DelegatedAmount)
@@ -398,7 +400,7 @@ func (e *Manual) MintNewNAI() uint64 {
 			if !validator.IsActive {
 				continue
 			}
-			// Mark validator inactive based on if stakeEndTime has ended
+			// Mark validator inactive based on if stakeEndBlock has ended
 			if lastBlockHeight > validator.stakeEndBlock {
 				validator.IsActive = false
 				e.TotalStaked -= (validator.StakedAmount + validator.DelegatedAmount)
@@ -464,7 +466,7 @@ func (e *Manual) DistributeFees(fee uint64) {
 	// Distribute fees based on stake proportion
 	for _, validator := range e.validators {
 		lastBlockHeight := e.GetLastAcceptedBlockHeight()
-		// Mark validator active based on if stakeStartTime has started
+		// Mark validator active based on if stakeStartBlock has started
 		if lastBlockHeight > validator.stakeStartBlock {
 			validator.IsActive = true
 			e.TotalStaked += (validator.StakedAmount + validator.DelegatedAmount)
@@ -472,7 +474,7 @@ func (e *Manual) DistributeFees(fee uint64) {
 		if !validator.IsActive {
 			continue
 		}
-		// Mark validator inactive based on if stakeEndTime has ended
+		// Mark validator inactive based on if stakeEndBlock has ended
 		if lastBlockHeight > validator.stakeEndBlock {
 			validator.IsActive = false
 			e.TotalStaked -= (validator.StakedAmount + validator.DelegatedAmount)
