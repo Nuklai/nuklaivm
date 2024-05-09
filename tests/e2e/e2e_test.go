@@ -1705,7 +1705,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(success).Should(gomega.BeTrue())
 		hutils.Outf("{{yellow}}found transaction{{/}}\n")
-
 		for _, inst := range instancesA {
 			color.Blue("checking %q", inst.uri)
 
@@ -1722,7 +1721,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 			balance, err := inst.ncli.Balance(context.Background(), delegate, ids.Empty)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(balance).Should(gomega.Equal(uint64(100_000_000_000)))
-
 		}
 	})
 	ginkgo.It("Delegate user stake to node 0", func() {
@@ -1748,7 +1746,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(success).Should(gomega.BeTrue())
 		hutils.Outf("{{yellow}}found delegate user stake transaction{{/}}\n")
-
 		for _, inst := range instancesA {
 			color.Blue("checking %q", inst.uri)
 
@@ -1761,12 +1758,10 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 				}
 				time.Sleep(1 * time.Second)
 			}
-
 			_, stakedAmount, _, _, err := inst.ncli.UserStake(context.Background(), rdelegate, instancesA[0].nodeID)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(30_000_000_000)))
 		}
-
 	})
 	ginkgo.It("Get user stake before claim", func() {
 		_, stakedAmount, _, _, err := instancesA[0].ncli.UserStake(context.Background(), rdelegate, instancesA[0].nodeID)
@@ -1776,8 +1771,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 	ginkgo.It("Claim delegation stake rewards from node 0", func() {
 		balanceBefore, err := instancesA[0].ncli.Balance(context.Background(), delegate, ids.Empty)
 		gomega.Ω(err).Should(gomega.BeNil())
-
-		// wait for blocks otherwise reward = 0 and error on UnpackUint64 while unmarshalling the data
 		time.Sleep(1 * time.Minute)
 		parser, err := instancesA[0].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
@@ -1800,7 +1793,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(success).Should(gomega.BeTrue())
 		hutils.Outf("{{yellow}}found claim delegation stake transaction{{/}}\n")
-
 		for _, inst := range instancesA {
 			color.Blue("checking %q", inst.uri)
 
@@ -1813,12 +1805,10 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 				}
 				time.Sleep(2 * time.Second)
 			}
-
 			balanceAfter, err := inst.ncli.Balance(context.Background(), delegate, ids.Empty)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(balanceAfter).Should(gomega.BeNumerically(">", balanceBefore-fee))
 		}
-
 	})
 	ginkgo.It("Undelegate user stake from node 0", func() {
 		balanceBefore, err := instancesA[0].ncli.Balance(context.Background(), delegate, ids.Empty)
@@ -1844,7 +1834,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(success).Should(gomega.BeTrue())
 		hutils.Outf("{{yellow}}found undelegate user stake transaction{{/}}\n")
-
 		for _, inst := range instancesA {
 			color.Blue("checking %q", inst.uri)
 			// Ensure all blocks processed
@@ -1856,12 +1845,10 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 				}
 				time.Sleep(1 * time.Second)
 			}
-
 			balanceAfter, err := inst.ncli.Balance(context.Background(), delegate, ids.Empty)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(balanceAfter).Should(gomega.BeNumerically(">", balanceBefore-fee))
 		}
-
 	})
 	ginkgo.It("Transfer NAI to node 0 withdraw address for fees", func() {
 		parser, err := instancesA[0].ncli.Parser(context.Background())
@@ -1897,11 +1884,9 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 				}
 				time.Sleep(1 * time.Second)
 			}
-
 			balance, err := inst.ncli.Balance(context.Background(), withdraw0, ids.Empty)
 			gomega.Ω(err).Should(gomega.BeNil())
 			gomega.Ω(balance).Should(gomega.Equal(uint64(100_000_000_000)))
-
 		}
 	})
 	ginkgo.It("Claim node 0 stake reward", func() {
