@@ -21,14 +21,14 @@ var (
 )
 
 type Validator struct {
-	IsActive                 bool       `json:"isActive"`          // Indicates if the validator is currently active
-	NodeID                   ids.NodeID `json:"nodeID"`            // Node ID of the validator
-	PublicKey                []byte     `json:"publicKey"`         // Public key of the validator
-	StakedAmount             uint64     `json:"stakedAmount"`      // Total amount staked by the validator
-	UnclaimedStakedReward    uint64     `json:"stakedReward"`      // Total rewards accumulated by the validator
-	DelegationFeeRate        float64    `json:"delegationFeeRate"` // Fee rate for delegations
-	DelegatedAmount          uint64     `json:"delegatedAmount"`   // Total amount delegated to the validator
-	UnclaimedDelegatedReward uint64     `json:"delegatedReward"`   // Total rewards accumulated by the delegators
+	IsActive                 bool       `json:"isActive"`                 // Indicates if the validator is currently active
+	NodeID                   ids.NodeID `json:"nodeID"`                   // Node ID of the validator
+	PublicKey                []byte     `json:"publicKey"`                // Public key of the validator
+	StakedAmount             uint64     `json:"stakedAmount"`             // Total amount staked by the validator
+	UnclaimedStakedReward    uint64     `json:"stakedReward"`             // Total rewards accumulated by the validator
+	DelegationFeeRate        float64    `json:"delegationFeeRate"`        // Fee rate for delegations
+	DelegatedAmount          uint64     `json:"delegatedAmount"`          // Total amount delegated to the validator
+	UnclaimedDelegatedReward uint64     `json:"unclaimedDelegatedReward"` // Total rewards accumulated by the delegators
 
 	delegatorsLastClaim map[codec.Address]uint64 // Map of delegator addresses to their last claim block height
 	epochRewards        map[uint64]uint64        // Rewards per epoch
