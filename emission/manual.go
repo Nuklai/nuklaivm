@@ -513,7 +513,7 @@ func (e *Manual) GetStakedValidator(nodeID ids.NodeID) []*Validator {
 }
 
 // GetAllValidators fetches the current validators from the underlying VM
-func (e *Manual) GetAllValidators(ctx context.Context) []*Validator {
+func (e *Manual) GetAllValidators(_ context.Context) []*Validator {
 	e.c.Logger().Info("fetching all staked and unstaked validators")
 
 	for _, v := range e.CurrentValidators {
