@@ -45,7 +45,7 @@ type Controller struct {
 
 	metaDB database.Database
 
-	emission *emission.Emission // Emission Balancer for NuklaiVM
+	emission emission.Tracker // Emission Balancer for NuklaiVM
 }
 
 func New() *vm.VM {
@@ -123,13 +123,23 @@ func (c *Controller) Initialize(
 
 	// Create builder and gossiper
 	var (
-		build  builder.Builder
-		gossip gossiper.Gossiper
+		build   builder.Builder
+		gossip  gossiper.Gossiper
+		tracker emission.Tracker
 	)
+
+	// Initialize emission balancer
+	emissionAddr, err := codec.ParseAddressBech32(nconsts.HRP, c.genesis.EmissionBalancer.EmissionAddress)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
+
 	if c.config.TestMode {
 		c.inner.Logger().Info("running build and gossip in test mode")
 		build = builder.NewManual(inner)
 		gossip = gossiper.NewManual(inner)
+		tracker = emission.NewManual(c, c.inner, c.genesis.EmissionBalancer.TotalSupply, c.genesis.EmissionBalancer.MaxSupply, emissionAddr)
+		c.emission = tracker
 	} else {
 		build = builder.NewTime(inner)
 		gcfg := gossiper.DefaultProposerConfig()
@@ -142,14 +152,9 @@ func (c *Controller) Initialize(
 		if err != nil {
 			return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 		}
+		tracker = emission.NewEmission(c, c.inner, c.genesis.EmissionBalancer.TotalSupply, c.genesis.EmissionBalancer.MaxSupply, emissionAddr)
+		c.emission = tracker
 	}
-
-	// Initialize emission balancer
-	emissionAddr, err := codec.ParseAddressBech32(nconsts.HRP, c.genesis.EmissionBalancer.EmissionAddress)
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
-	}
-	c.emission = emission.New(c, c.inner, c.genesis.EmissionBalancer.TotalSupply, c.genesis.EmissionBalancer.MaxSupply, emissionAddr)
 
 	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, nconsts.ActionRegistry, nconsts.AuthRegistry, auth.Engines(), nil
 }
@@ -255,14 +260,15 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 		}
 	}
 
+	emissionAccount, totalSupply, maxSupply, _, _ := c.emission.GetInfo()
 	// Distribute fees
 	if totalFee > 0 {
 		c.emission.DistributeFees(totalFee)
-		emissionAddress, err := codec.AddressBech32(nconsts.HRP, c.emission.EmissionAccount.Address)
+		emissionAddress, err := codec.AddressBech32(nconsts.HRP, emissionAccount.Address)
 		if err != nil {
 			return err // This should never happen
 		}
-		c.inner.Logger().Info("distributed fees to Emission and Validators", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("total fee", totalFee), zap.Uint64("total supply", c.emission.TotalSupply), zap.Uint64("max supply", c.emission.MaxSupply), zap.Uint64("rewards per epock", c.emission.GetRewardsPerEpoch()), zap.String("emission address", emissionAddress), zap.Uint64("emission address unclaimed balance", c.emission.EmissionAccount.UnclaimedBalance))
+		c.inner.Logger().Info("distributed fees to Emission and Validators", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("total fee", totalFee), zap.Uint64("total supply", totalSupply), zap.Uint64("max supply", maxSupply), zap.Uint64("rewards per epock", c.emission.GetRewardsPerEpoch()), zap.String("emission address", emissionAddress), zap.Uint64("emission address unclaimed balance", emissionAccount.UnclaimedBalance))
 		c.metrics.feesDistributed.Add(float64(totalFee))
 	}
 
@@ -270,7 +276,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 	mintNewNAI := c.emission.MintNewNAI()
 	if mintNewNAI > 0 {
 		c.emission.AddToTotalSupply(mintNewNAI)
-		c.inner.Logger().Info("minted new NAI", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("newly minted NAI", mintNewNAI), zap.Uint64("total supply", c.emission.TotalSupply), zap.Uint64("max supply", c.emission.MaxSupply))
+		c.inner.Logger().Info("minted new NAI", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("newly minted NAI", mintNewNAI), zap.Uint64("total supply", totalSupply), zap.Uint64("max supply", maxSupply))
 	}
 
 	return batch.Write()

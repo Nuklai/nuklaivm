@@ -15,9 +15,9 @@ import (
 	"github.com/nuklai/nuklaivm/storage"
 )
 
-var _ Tracker = (*Emission)(nil)
+var _ Tracker = (*Manual)(nil)
 
-type Emission struct {
+type Manual struct {
 	c        Controller
 	nuklaivm NuklaiVM
 
@@ -25,8 +25,9 @@ type Emission struct {
 	MaxSupply       uint64          `json:"maxSupply"`       // Max supply of NAI
 	EmissionAccount EmissionAccount `json:"emissionAccount"` // Emission Account Info
 
-	validators  map[ids.NodeID]*Validator
-	TotalStaked uint64 `json:"totalStaked"` // Total staked NAI
+	validators        map[ids.NodeID]*Validator
+	CurrentValidators []*Validator
+	TotalStaked       uint64 `json:"totalStaked"` // Total staked NAI
 
 	EpochTracker EpochTracker `json:"epochTracker"` // Epoch Tracker Info
 
@@ -35,7 +36,7 @@ type Emission struct {
 
 // New initializes the Emission struct with initial parameters and sets up the validators heap
 // and indices map.
-func NewEmission(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emissionAddress codec.Address) *Emission {
+func NewManual(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emissionAddress codec.Address) *Manual {
 	once.Do(func() {
 		c.Logger().Info("Initializing emission with max supply and rewards per block settings")
 
@@ -43,7 +44,7 @@ func NewEmission(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emiss
 			maxSupply = GetStakingConfig().RewardConfig.SupplyCap // Use the staking config's supply cap if maxSupply is not specified
 		}
 
-		emission = &Emission{ // Create the Emission instance with initialized values
+		emission = &Manual{ // Create the Emission instance with initialized values
 			c:           c,
 			nuklaivm:    vm,
 			TotalSupply: totalSupply,
@@ -61,12 +62,12 @@ func NewEmission(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emiss
 			},
 		}
 	})
-	return emission.(*Emission)
+	return emission.(*Manual)
 }
 
 // AddToTotalSupply increases the total supply of NAI by a specified amount, ensuring it
 // does not exceed the max supply.
-func (e *Emission) AddToTotalSupply(amount uint64) uint64 {
+func (e *Manual) AddToTotalSupply(amount uint64) uint64 {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -79,7 +80,7 @@ func (e *Emission) AddToTotalSupply(amount uint64) uint64 {
 }
 
 // GetNumDelegators returns the total number of delegators across all validators.
-func (e *Emission) GetNumDelegators(nodeID ids.NodeID) int {
+func (e *Manual) GetNumDelegators(nodeID ids.NodeID) int {
 	e.c.Logger().Info("fetching total number of delegators")
 
 	numDelegators := 0
@@ -100,7 +101,7 @@ func (e *Emission) GetNumDelegators(nodeID ids.NodeID) int {
 
 // GetAPRForValidators calculates the Annual Percentage Rate (APR) for validators
 // based on the number of validators.
-func (e *Emission) GetAPRForValidators() float64 {
+func (e *Manual) GetAPRForValidators() float64 {
 	e.c.Logger().Info("getting APR for validators")
 
 	apr := e.EpochTracker.BaseAPR // APR is expressed per year as a decimal, e.g., 0.25 for 25%
@@ -114,7 +115,7 @@ func (e *Emission) GetAPRForValidators() float64 {
 
 // GetRewardsPerEpoch calculates the rewards per epock based on the total staked amount
 // and the APR for validators.
-func (e *Emission) GetRewardsPerEpoch() uint64 {
+func (e *Manual) GetRewardsPerEpoch() uint64 {
 	e.c.Logger().Info("getting rewards per epock")
 
 	// Calculate total rewards for the epoch based on APR and staked amount
@@ -128,7 +129,7 @@ func (e *Emission) GetRewardsPerEpoch() uint64 {
 
 // CalculateUserDelegationRewards computes the rewards for a user's delegated stake to a
 // validator, factoring in the delegation duration and amount.
-func (e *Emission) CalculateUserDelegationRewards(nodeID ids.NodeID, actor codec.Address, currentBlockHeight uint64) (uint64, error) {
+func (e *Manual) CalculateUserDelegationRewards(nodeID ids.NodeID, actor codec.Address, currentBlockHeight uint64) (uint64, error) {
 	e.c.Logger().Info("calculating rewards for user delegation")
 
 	// Find the validator
@@ -174,7 +175,7 @@ func (e *Emission) CalculateUserDelegationRewards(nodeID ids.NodeID, actor codec
 
 // RegisterValidatorStake adds a new validator to the heap with the specified staked amount
 // and updates the total staked amount.
-func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey *bls.PublicKey, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate uint64) error {
+func (e *Manual) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey *bls.PublicKey, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate uint64) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -213,7 +214,7 @@ func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey *bls.
 
 // WithdrawValidatorStake removes a validator from the heap and updates the total
 // staked amount accordingly.
-func (e *Emission) WithdrawValidatorStake(nodeID ids.NodeID) (uint64, error) {
+func (e *Manual) WithdrawValidatorStake(nodeID ids.NodeID) (uint64, error) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -248,7 +249,7 @@ func (e *Emission) WithdrawValidatorStake(nodeID ids.NodeID) (uint64, error) {
 }
 
 // DelegateUserStake increases the delegated stake for a validator and rebalances the heap.
-func (e *Emission) DelegateUserStake(nodeID ids.NodeID, delegatorAddress codec.Address, stakeStartBlock, stakeAmount uint64) error {
+func (e *Manual) DelegateUserStake(nodeID ids.NodeID, delegatorAddress codec.Address, stakeStartBlock, stakeAmount uint64) error {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -282,7 +283,7 @@ func (e *Emission) DelegateUserStake(nodeID ids.NodeID, delegatorAddress codec.A
 }
 
 // UndelegateUserStake decreases the delegated stake for a validator and rebalances the heap.
-func (e *Emission) UndelegateUserStake(nodeID ids.NodeID, actor codec.Address, stakeAmount uint64) (uint64, error) {
+func (e *Manual) UndelegateUserStake(nodeID ids.NodeID, actor codec.Address, stakeAmount uint64) (uint64, error) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -329,7 +330,7 @@ func (e *Emission) UndelegateUserStake(nodeID ids.NodeID, actor codec.Address, s
 }
 
 // ClaimStakingRewards lets validators and delegators claim their rewards
-func (e *Emission) ClaimStakingRewards(nodeID ids.NodeID, actor codec.Address) (uint64, error) {
+func (e *Manual) ClaimStakingRewards(nodeID ids.NodeID, actor codec.Address) (uint64, error) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -367,7 +368,7 @@ func (e *Emission) ClaimStakingRewards(nodeID ids.NodeID, actor codec.Address) (
 	return rewardAmount, nil
 }
 
-func (e *Emission) MintNewNAI() uint64 {
+func (e *Manual) MintNewNAI() uint64 {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -439,7 +440,7 @@ func (e *Emission) MintNewNAI() uint64 {
 
 // DistributeFees allocates transaction fees between the emission account and validators,
 // based on the total staked amount.
-func (e *Emission) DistributeFees(fee uint64) {
+func (e *Manual) DistributeFees(fee uint64) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -493,7 +494,7 @@ func (e *Emission) DistributeFees(fee uint64) {
 }
 
 // GetStakedValidator retrieves the details of a specific validator by their NodeID.
-func (e *Emission) GetStakedValidator(nodeID ids.NodeID) []*Validator {
+func (e *Manual) GetStakedValidator(nodeID ids.NodeID) []*Validator {
 	e.c.Logger().Info("fetching staked validator")
 
 	if nodeID == ids.EmptyNodeID {
@@ -512,17 +513,11 @@ func (e *Emission) GetStakedValidator(nodeID ids.NodeID) []*Validator {
 }
 
 // GetAllValidators fetches the current validators from the underlying VM
-func (e *Emission) GetAllValidators(ctx context.Context) []*Validator {
+func (e *Manual) GetAllValidators(_ context.Context) []*Validator {
 	e.c.Logger().Info("fetching all staked and unstaked validators")
 
-	currentValidators, _ := e.nuklaivm.CurrentValidators(ctx)
-	validators := make([]*Validator, 0, len(currentValidators))
-	for nodeID, validator := range currentValidators {
-		v := Validator{
-			NodeID:    nodeID,
-			PublicKey: bls.PublicKeyToBytes(validator.PublicKey),
-		}
-		stakedValidator := e.GetStakedValidator(nodeID)
+	for _, v := range e.CurrentValidators {
+		stakedValidator := e.GetStakedValidator(v.NodeID)
 		if len(stakedValidator) > 0 {
 			v.StakedAmount = stakedValidator[0].StakedAmount
 			v.UnclaimedStakedReward = stakedValidator[0].UnclaimedStakedReward
@@ -531,28 +526,27 @@ func (e *Emission) GetAllValidators(ctx context.Context) []*Validator {
 			v.UnclaimedDelegatedReward = stakedValidator[0].UnclaimedDelegatedReward
 			v.delegatorsLastClaim = stakedValidator[0].delegatorsLastClaim
 		}
-		validators = append(validators, &v)
 	}
-	return validators
+	return e.CurrentValidators
 }
 
 // GetLastAcceptedBlockTimestamp retrieves the timestamp of the last accepted block from the VM.
-func (e *Emission) GetLastAcceptedBlockTimestamp() time.Time {
+func (e *Manual) GetLastAcceptedBlockTimestamp() time.Time {
 	e.c.Logger().Info("fetching last accepted block timestamp")
 	return e.nuklaivm.LastAcceptedBlock().Timestamp().UTC()
 }
 
 // GetLastAcceptedBlockHeight retrieves the height of the last accepted block from the VM.
-func (e *Emission) GetLastAcceptedBlockHeight() uint64 {
+func (e *Manual) GetLastAcceptedBlockHeight() uint64 {
 	e.c.Logger().Info("fetching last accepted block height")
 	return e.nuklaivm.LastAcceptedBlock().Height()
 }
 
-func (e *Emission) GetEmissionValidators() map[ids.NodeID]*Validator {
+func (e *Manual) GetEmissionValidators() map[ids.NodeID]*Validator {
 	e.c.Logger().Info("fetching emission validators")
 	return e.validators
 }
 
-func (e *Emission) GetInfo() (emissionAccount EmissionAccount, totalSupply uint64, maxSupply uint64, totalStaked uint64, epochTracker EpochTracker) {
+func (e *Manual) GetInfo() (emissionAccount EmissionAccount, totalSupply uint64, maxSupply uint64, totalStaked uint64, epochTracker EpochTracker) {
 	return e.EmissionAccount, e.TotalSupply, e.MaxSupply, e.TotalStaked, e.EpochTracker
 }

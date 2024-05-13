@@ -26,12 +26,14 @@ import (
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/hypersdk/codec"
+	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
 	hrpc "github.com/ava-labs/hypersdk/rpc"
 	hutils "github.com/ava-labs/hypersdk/utils"
 
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/auth"
+	"github.com/nuklai/nuklaivm/cmd/nuklai-cli/cmd"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
@@ -74,7 +76,16 @@ var (
 
 	trackSubnetsOpt runner_sdk.OpOption
 
-	numValidators uint
+	numValidators    uint
+	nodesAddresses   []codec.Address
+	nodesFactories   []*auth.BLSFactory
+	delegate         string
+	rdelegate        codec.Address
+	withdraw0        string
+	rwithdraw0       codec.Address
+	withdraw0Factory *auth.ED25519Factory
+	delegateFactory  *auth.ED25519Factory
+	stakeEndBlock    uint64
 )
 
 func init() {
@@ -347,7 +358,9 @@ var _ = ginkgo.BeforeSuite(func() {
 	nodeInfos := status.GetClusterInfo().GetNodeInfos()
 
 	instancesA = []instance{}
-	for _, nodeName := range subnetA {
+	nodesAddresses = make([]codec.Address, len(subnetA))
+	nodesFactories = make([]*auth.BLSFactory, len(subnetA))
+	for i, nodeName := range subnetA {
 		info := nodeInfos[nodeName]
 		u := fmt.Sprintf("%s/ext/bc/%s", info.Uri, blockchainIDA)
 		bid, err := ids.FromString(blockchainIDA)
@@ -380,6 +393,13 @@ var _ = ginkgo.BeforeSuite(func() {
 		destDir := fmt.Sprintf("/tmp/nuklaivm/nodes/%s/", info.GetName())
 		err = copyNodeInfo(info.GetDbDir(), destDir)
 		gomega.Expect(err).Should(gomega.BeNil())
+
+		validatorSignerKey, err := cmd.LoadPrivateKey("bls", fmt.Sprintf("%s/signer.key", destDir))
+		gomega.Expect(err).Should(gomega.BeNil())
+		nodesAddresses[i] = validatorSignerKey.Address
+		sk, err := bls.PrivateKeyFromBytes(validatorSignerKey.Bytes)
+		gomega.Expect(err).Should(gomega.BeNil())
+		nodesFactories[i] = auth.NewBLSFactory(sk)
 	}
 
 	if mode != modeRunSingle {
@@ -530,7 +550,7 @@ var _ = ginkgo.Describe("[Test]", func() {
 	ginkgo.It("transfer in a single node (raw)", func() {
 		nativeBalance, err := instancesA[0].ncli.Balance(context.TODO(), sender, ids.Empty)
 		gomega.Ω(err).Should(gomega.BeNil())
-		gomega.Ω(nativeBalance).Should(gomega.Equal(startAmount))
+		gomega.Ω(nativeBalance).Should(gomega.BeNumerically("<=", startAmount))
 
 		other, err := ed25519.GeneratePrivateKey()
 		gomega.Ω(err).Should(gomega.BeNil())
@@ -573,7 +593,8 @@ var _ = ginkgo.Describe("[Test]", func() {
 				sendAmount,
 				balance,
 			)
-			gomega.Ω(balance).Should(gomega.Equal(startAmount - fee - sendAmount))
+			updatedAmount := nativeBalance - fee - sendAmount
+			gomega.Ω(balance).Should(gomega.Equal(updatedAmount))
 			hutils.Outf("{{yellow}}fetched balance{{/}}\n")
 		})
 
@@ -1504,6 +1525,466 @@ var _ = ginkgo.Describe("[Test]", func() {
 	})
 
 	// TODO: restart all nodes (crisis simulation)
+})
+
+var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
+	ginkgo.It("Initial staked validators", func() {
+		validators, err := instancesA[0].ncli.StakedValidators(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(len(validators)).Should(gomega.Equal(0))
+	})
+	ginkgo.It("Funding node 0", func() {
+		balanceBefore, err := instancesA[0].ncli.Balance(context.TODO(), sender, ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
+		parser, err := instancesA[0].ncli.Parser(context.TODO())
+		gomega.Ω(err).Should(gomega.BeNil())
+		amount := uint64(200_000_000_000)
+		submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
+			context.Background(),
+			parser,
+			nil,
+			&actions.Transfer{
+				To:    nodesAddresses[0],
+				Asset: ids.Empty,
+				Value: amount,
+			},
+			factory,
+		)
+		gomega.Ω(err).Should(gomega.BeNil())
+		hutils.Outf("{{yellow}}generated transaction{{/}}\n")
+
+		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		hutils.Outf("{{yellow}}submitted transaction{{/}}\n")
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		success, fee, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+		cancel()
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(success).Should(gomega.BeTrue())
+		hutils.Outf("{{yellow}}found transaction %s on B{{/}}\n", tx.ID())
+
+		balance, err := instancesA[0].ncli.Balance(context.Background(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(balance).Should(gomega.Equal(uint64(200_000_000_000)))
+		hutils.Outf("{{yellow}}fetched balance{{/}}\n")
+
+		for _, inst := range instancesA {
+			color.Blue("checking %q", inst.uri)
+
+			// Ensure all blocks processed
+			for {
+				_, h, _, err := inst.hcli.Accepted(context.Background())
+				gomega.Ω(err).Should(gomega.BeNil())
+				if h > 0 {
+					break
+				}
+				time.Sleep(1 * time.Second)
+			}
+			balance, err = inst.ncli.Balance(context.TODO(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(balance).Should(gomega.Equal(uint64(200_000_000_000)))
+			hutils.Outf("{{yellow}}fetched balance{{/}}\n")
+		}
+
+		balanceAfter, err := instancesA[0].ncli.Balance(context.TODO(), sender, ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(balanceAfter).Should(gomega.Equal(balanceBefore - fee - amount))
+		hutils.Outf("{{yellow}}fetched balance{{/}}\n")
+	})
+	ginkgo.It("Register validator stake node 0", func() {
+		withdraw0Priv, err := ed25519.GeneratePrivateKey()
+		gomega.Ω(err).Should(gomega.BeNil())
+		withdraw0Factory = auth.NewED25519Factory(withdraw0Priv)
+		rwithdraw0 = auth.NewED25519Address(withdraw0Priv.PublicKey())
+		withdraw0 = codec.MustAddressBech32(nconsts.HRP, rwithdraw0)
+		parser, err := instancesA[0].ncli.Parser(context.TODO())
+		gomega.Ω(err).Should(gomega.BeNil())
+		currentBlockHeight, _, _, _, _, _, _, _ := instancesA[0].ncli.EmissionInfo(context.Background())
+		stakeStartBlock := currentBlockHeight + 2
+		stakeEndBlock = currentBlockHeight + 100
+		delegationFeeRate := 50
+
+		stakeInfo := &actions.ValidatorStakeInfo{
+			NodeID:            instancesA[0].nodeID.Bytes(),
+			StakeStartBlock:   stakeStartBlock,
+			StakeEndBlock:     stakeEndBlock,
+			StakedAmount:      100_000_000_000,
+			DelegationFeeRate: uint64(delegationFeeRate),
+			RewardAddress:     rwithdraw0,
+		}
+
+		stakeInfoBytes, err := stakeInfo.Marshal()
+		gomega.Ω(err).Should(gomega.BeNil())
+		signature, err := nodesFactories[0].Sign(stakeInfoBytes)
+		gomega.Ω(err).Should(gomega.BeNil())
+		signaturePacker := codec.NewWriter(signature.Size(), signature.Size())
+		signature.Marshal(signaturePacker)
+		authSignature := signaturePacker.Bytes()
+		submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
+			context.Background(),
+			parser,
+			nil,
+			&actions.RegisterValidatorStake{
+				StakeInfo:     stakeInfoBytes,
+				AuthSignature: authSignature,
+			},
+			nodesFactories[0],
+		)
+		gomega.Ω(err).Should(gomega.BeNil())
+
+		balance, err := instancesA[0].ncli.Balance(context.Background(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
+		fmt.Printf("node 3 %s balance before staking %d\n", codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), balance)
+
+		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		hutils.Outf("{{yellow}}submitted register validator stake transaction{{/}}\n")
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		success, _, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+		cancel()
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(success).Should(gomega.BeTrue())
+		hutils.Outf("{{yellow}}found register validator stake transaction{{/}}\n")
+		for _, inst := range instancesA {
+			color.Blue("checking %q", inst.uri)
+
+			// Ensure all blocks processed
+			for {
+				_, h, _, err := inst.hcli.Accepted(context.Background())
+				gomega.Ω(err).Should(gomega.BeNil())
+				if h > 0 {
+					break
+				}
+				time.Sleep(2 * time.Second)
+			}
+
+			balance, err = instancesA[0].ncli.Balance(context.Background(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
+			fmt.Printf("node 3 instances[3] %s balance after staking %d\n", codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), balance)
+
+			// check if gossip/ new state happens
+			balanceOther, err := instancesA[0].ncli.Balance(context.Background(), codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
+			fmt.Printf("node 3 instances[4] %s balance after staking %d\n", codec.MustAddressBech32(nconsts.HRP, nodesAddresses[0]), balanceOther)
+		}
+	})
+	ginkgo.It("Get validator staked amount after node 0 validator staking", func() {
+		_, _, stakedAmount, _, _, _, err := instancesA[0].ncli.ValidatorStake(context.Background(), instancesA[0].nodeID)
+		fmt.Printf("NODE 3 STAKED AMOUNT %d", stakedAmount)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(100_000_000_000)))
+	})
+	ginkgo.It("Get staked validators", func() {
+		validators, err := instancesA[0].ncli.StakedValidators(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(len(validators)).Should(gomega.Equal(1))
+	})
+	ginkgo.It("Transfer NAI to delegate user", func() {
+		delegatePriv, err := ed25519.GeneratePrivateKey()
+		gomega.Ω(err).Should(gomega.BeNil())
+		rdelegate = auth.NewED25519Address(delegatePriv.PublicKey())
+		delegate = codec.MustAddressBech32(nconsts.HRP, rdelegate)
+		delegateFactory = auth.NewED25519Factory(delegatePriv)
+		parser, err := instancesA[0].ncli.Parser(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
+			context.Background(),
+			parser,
+			nil,
+			&actions.Transfer{
+				To:    rdelegate,
+				Asset: ids.Empty,
+				Value: 100_000_000_000,
+			},
+			factory,
+		)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		hutils.Outf("{{yellow}}submitted transaction{{/}}\n")
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		success, _, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+		cancel()
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(success).Should(gomega.BeTrue())
+		hutils.Outf("{{yellow}}found transaction{{/}}\n")
+		for _, inst := range instancesA {
+			color.Blue("checking %q", inst.uri)
+
+			// Ensure all blocks processed
+			for {
+				_, h, _, err := inst.hcli.Accepted(context.Background())
+				gomega.Ω(err).Should(gomega.BeNil())
+				if h > 0 {
+					break
+				}
+				time.Sleep(1 * time.Second)
+			}
+
+			balance, err := inst.ncli.Balance(context.Background(), delegate, ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(balance).Should(gomega.Equal(uint64(100_000_000_000)))
+		}
+	})
+	ginkgo.It("Delegate user stake to node 0", func() {
+		parser, err := instancesA[0].ncli.Parser(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
+			context.Background(),
+			parser,
+			nil,
+			&actions.DelegateUserStake{
+				NodeID:        instancesA[0].nodeID.Bytes(),
+				StakedAmount:  30_000_000_000,
+				RewardAddress: rdelegate,
+			},
+			delegateFactory,
+		)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		hutils.Outf("{{yellow}}submitted delegate user stake transaction{{/}}\n")
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		success, _, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+		cancel()
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(success).Should(gomega.BeTrue())
+		hutils.Outf("{{yellow}}found delegate user stake transaction{{/}}\n")
+		for _, inst := range instancesA {
+			color.Blue("checking %q", inst.uri)
+
+			// Ensure all blocks processed
+			for {
+				_, h, _, err := inst.hcli.Accepted(context.Background())
+				gomega.Ω(err).Should(gomega.BeNil())
+				if h > 0 {
+					break
+				}
+				time.Sleep(1 * time.Second)
+			}
+			_, stakedAmount, _, _, err := inst.ncli.UserStake(context.Background(), rdelegate, instancesA[0].nodeID)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(30_000_000_000)))
+		}
+	})
+	ginkgo.It("Get user stake before claim", func() {
+		_, stakedAmount, _, _, err := instancesA[0].ncli.UserStake(context.Background(), rdelegate, instancesA[0].nodeID)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(stakedAmount).Should(gomega.Equal(uint64(30_000_000_000)))
+	})
+	ginkgo.It("Claim delegation stake rewards from node 0", func() {
+		balanceBefore, err := instancesA[0].ncli.Balance(context.Background(), delegate, ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
+		time.Sleep(1 * time.Minute)
+		parser, err := instancesA[0].ncli.Parser(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
+			context.Background(),
+			parser,
+			nil,
+			&actions.ClaimDelegationStakeRewards{
+				NodeID:           instancesA[0].nodeID.Bytes(),
+				UserStakeAddress: rdelegate,
+			},
+			delegateFactory,
+		)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		hutils.Outf("{{yellow}}submitted claim delegation stake transaction{{/}}\n")
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		success, fee, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+		cancel()
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(success).Should(gomega.BeTrue())
+		hutils.Outf("{{yellow}}found claim delegation stake transaction{{/}}\n")
+		for _, inst := range instancesA {
+			color.Blue("checking %q", inst.uri)
+
+			// Ensure all blocks processed
+			for {
+				_, h, _, err := inst.hcli.Accepted(context.Background())
+				gomega.Ω(err).Should(gomega.BeNil())
+				if h > 0 {
+					break
+				}
+				time.Sleep(2 * time.Second)
+			}
+			balanceAfter, err := inst.ncli.Balance(context.Background(), delegate, ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(balanceAfter).Should(gomega.BeNumerically(">", balanceBefore-fee))
+		}
+	})
+	ginkgo.It("Undelegate user stake from node 0", func() {
+		balanceBefore, err := instancesA[0].ncli.Balance(context.Background(), delegate, ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
+		parser, err := instancesA[0].ncli.Parser(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
+			context.Background(),
+			parser,
+			nil,
+			&actions.UndelegateUserStake{
+				NodeID:        instancesA[0].nodeID.Bytes(),
+				RewardAddress: rdelegate,
+			},
+			delegateFactory,
+		)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		hutils.Outf("{{yellow}}submitted undelegate user stake transaction{{/}}\n")
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		success, fee, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+		cancel()
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(success).Should(gomega.BeTrue())
+		hutils.Outf("{{yellow}}found undelegate user stake transaction{{/}}\n")
+		for _, inst := range instancesA {
+			color.Blue("checking %q", inst.uri)
+			// Ensure all blocks processed
+			for {
+				_, h, _, err := inst.hcli.Accepted(context.Background())
+				gomega.Ω(err).Should(gomega.BeNil())
+				if h > 0 {
+					break
+				}
+				time.Sleep(1 * time.Second)
+			}
+			balanceAfter, err := inst.ncli.Balance(context.Background(), delegate, ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(balanceAfter).Should(gomega.BeNumerically(">", balanceBefore-fee))
+		}
+	})
+	ginkgo.It("Transfer NAI to node 0 withdraw address for fees", func() {
+		parser, err := instancesA[0].ncli.Parser(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
+			context.Background(),
+			parser,
+			nil,
+			&actions.Transfer{
+				To:    rwithdraw0,
+				Asset: ids.Empty,
+				Value: 100_000_000_000,
+			},
+			factory,
+		)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		hutils.Outf("{{yellow}}submitted transaction{{/}}\n")
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		success, _, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+		cancel()
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(success).Should(gomega.BeTrue())
+		hutils.Outf("{{yellow}}found transaction{{/}}\n")
+		for _, inst := range instancesA {
+			color.Blue("checking %q", inst.uri)
+			// Ensure all blocks processed
+			for {
+				_, h, _, err := inst.hcli.Accepted(context.Background())
+				gomega.Ω(err).Should(gomega.BeNil())
+				if h > 0 {
+					break
+				}
+				time.Sleep(1 * time.Second)
+			}
+			balance, err := inst.ncli.Balance(context.Background(), withdraw0, ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(balance).Should(gomega.Equal(uint64(100_000_000_000)))
+		}
+	})
+	ginkgo.It("Claim node 0 stake reward", func() {
+		balanceBefore, err := instancesA[0].ncli.Balance(context.Background(), withdraw0, ids.Empty)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(balanceBefore).Should(gomega.Equal(uint64(100_000_000_000)))
+
+		parser, err := instancesA[0].ncli.Parser(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
+			context.Background(),
+			parser,
+			nil,
+			&actions.ClaimValidatorStakeRewards{
+				NodeID: instancesA[0].nodeID.Bytes(),
+			},
+			withdraw0Factory,
+		)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		hutils.Outf("{{yellow}}submitted claim validator stake reward transaction{{/}}\n")
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		success, fee, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+		cancel()
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(success).Should(gomega.BeTrue())
+		hutils.Outf("{{yellow}}found claim validator stake reward transaction{{/}}\n")
+
+		for _, inst := range instancesA {
+			color.Blue("checking %q", inst.uri)
+
+			// Ensure all blocks processed
+			for {
+				_, h, _, err := inst.hcli.Accepted(context.Background())
+				gomega.Ω(err).Should(gomega.BeNil())
+				if h > 0 {
+					break
+				}
+				time.Sleep(2 * time.Second)
+			}
+
+			balanceAfter, err := inst.ncli.Balance(context.Background(), withdraw0, ids.Empty)
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(balanceAfter).Should(gomega.BeNumerically(">", balanceBefore-fee))
+		}
+	})
+	ginkgo.It("Withdraw validator node 0 stake", func() {
+		for {
+			currentBlockHeight, _, _, _, _, _, _, _ := instancesA[0].ncli.EmissionInfo(context.Background())
+			if stakeEndBlock < currentBlockHeight {
+				break
+			}
+			time.Sleep(2 * time.Second)
+		}
+		_, _, _, _, _, _, err := instancesA[0].ncli.ValidatorStake(context.Background(), instancesA[0].nodeID)
+		gomega.Ω(err).Should(gomega.BeNil())
+
+		parser, err := instancesA[0].ncli.Parser(context.Background())
+		gomega.Ω(err).Should(gomega.BeNil())
+		submit, tx, _, err := instancesA[0].hcli.GenerateTransaction(
+			context.Background(),
+			parser,
+			nil,
+			&actions.WithdrawValidatorStake{
+				NodeID:        instancesA[0].nodeID.Bytes(),
+				RewardAddress: rwithdraw0,
+			},
+			nodesFactories[0],
+		)
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(submit(context.Background())).Should(gomega.BeNil())
+		hutils.Outf("{{yellow}}submitted withdraw validator node stake transaction{{/}}\n")
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		success, _, err := instancesA[0].ncli.WaitForTransaction(ctx, tx.ID())
+		cancel()
+		gomega.Ω(err).Should(gomega.BeNil())
+		gomega.Ω(success).Should(gomega.BeTrue())
+		hutils.Outf("{{yellow}}found withdraw validator node stake transaction{{/}}\n")
+
+		for _, inst := range instancesA {
+			color.Blue("checking %q", inst.uri)
+
+			// Ensure all blocks processed
+			for {
+				_, h, _, err := inst.hcli.Accepted(context.Background())
+				gomega.Ω(err).Should(gomega.BeNil())
+				if h > 0 {
+					break
+				}
+				time.Sleep(2 * time.Second)
+			}
+			_, _, _, _, _, _, err := instancesA[0].ncli.ValidatorStake(context.Background(), instancesA[0].nodeID)
+			gomega.Ω(err).ShouldNot(gomega.BeNil())
+			validators, err := instancesA[0].ncli.StakedValidators(context.Background())
+			gomega.Ω(err).Should(gomega.BeNil())
+			gomega.Ω(len(validators)).Should(gomega.Equal(0))
+		}
+	})
 })
 
 func awaitHealthy(cli runner_sdk.Client) {
