@@ -781,7 +781,7 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 
 	}) */
 
-	var _ = ginkgo.Describe("[Tx Processing]", func() {
+	_ = ginkgo.Describe("[Tx Processing]", func() {
 		ginkgo.It("get currently accepted block ID", func() {
 			for _, inst := range instances {
 				hcli := inst.hcli
