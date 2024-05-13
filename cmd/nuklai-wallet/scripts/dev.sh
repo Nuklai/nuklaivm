@@ -16,9 +16,6 @@ mkdir -p "$nuklai_wallet_dir"
 # Install wails
 go install -v github.com/wailsapp/wails/v2/cmd/wails@v2.8.0
 
-# Save current directory
-current_dir=$(pwd)
-
 # Go up two directories
 pushd ../..
 

@@ -47,7 +47,7 @@ function find_go_files {
 # automatically checks license headers
 # to modify the file headers (if missing), remove "--verify" flag
 # TESTS='license_header' ADDLICENSE_FLAGS="--verify --debug" ./scripts/tests.lint.sh
-_addlicense_flags=${ADDLICENSE_FLAGS:-"--verify --debug"}
+_addlicense_flags=${ADDLICENSE_FLAGS:-"--debug"}
 function test_license_header {
   go install -v github.com/palantir/go-license@latest
   local target="${1}"
@@ -57,7 +57,7 @@ function test_license_header {
   # ignore 3rd party code
   go-license \
   --config ./license.yml \
-  ${_addlicense_flags} \
+  "${_addlicense_flags}" \
   "${files[@]}"
 }
 

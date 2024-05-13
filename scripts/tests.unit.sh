@@ -15,4 +15,7 @@ if ! [[ "$0" =~ scripts/tests.unit.sh ]]; then
   exit 255
 fi
 
-go test -race -timeout="10m" -coverprofile="coverage.out" -covermode="atomic" $(go list ./... | grep -v tests)
+# Use mapfile to read the output into an array
+mapfile -t packages < <(go list ./... | grep -v tests)
+# Now use the array with the 'go test' command
+go test -race -timeout="10m" -coverprofile="coverage.out" -covermode="atomic" "${packages[@]}"
