@@ -413,7 +413,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(balance).Should(gomega.Equal(uint64(9_999_799_999_999_703)))
 	})
-
 	ginkgo.It("Register validator stake node 3", func() {
 		parser, err := instances[3].ncli.Parser(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
@@ -499,7 +498,6 @@ var _ = ginkgo.Describe("[Nuklai staking mechanism]", func() {
 		validators, err := instances[4].ncli.StakedValidators(context.Background())
 		gomega.Ω(err).Should(gomega.BeNil())
 		gomega.Ω(len(validators)).Should(gomega.Equal(1))
-
 	})
 
 	ginkgo.It("Get validator staked amount after node 3 validator staking", func() {
