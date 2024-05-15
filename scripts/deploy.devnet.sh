@@ -59,7 +59,7 @@ mv ./bin/avalanche "${TMPDIR}/avalanche"
 cd $pw
 
 # Install nuklai-cli
-NUKLAI_VM_COMMIT=cfb87265cdcc0da0bc4ad199556fe297e375d7cc
+NUKLAI_VM_COMMIT=main
 echo -e "${YELLOW}building nuklai-cli${NC}"
 echo "set working directory: $TMPDIR"
 cd $TMPDIR
@@ -76,130 +76,28 @@ echo "moving nuklai-cli to $TMPDIR"
 mv ./build/nuklai-cli "${TMPDIR}/nuklai-cli"
 cd $pw
 
-# Generate genesis file and configs
-#
-# We use a shorter EPOCH_DURATION and VALIDITY_WINDOW to speed up devnet
-# startup. In a production environment, these should be set to longer values.
-#
-EPOCH_DURATION=60000
-VALIDITY_WINDOW=59000
-MIN_BLOCK_GAP=100
-MIN_UNIT_PRICE="100,100,100,100,100"
-MAX_UINT64=18446744073709551615
-WINDOW_TARGET_UNITS="40000000,450000,450000,450000,450000"
-MAX_BLOCK_UNITS="1800000,${MAX_UINT64},${MAX_UINT64},${MAX_UINT64},${MAX_UINT64}" # in a load test, all we care about is that chunks are size-bounded (2MB network limit)
-
-INITIAL_OWNER_ADDRESS=${INITIAL_OWNER_ADDRESS:-nuklai1qpg4ecapjymddcde8sfq06dshzpxltqnl47tvfz0hnkesjz7t0p35d5fnr3}
-EMISSION_ADDRESS=${EMISSION_ADDRESS:-nuklai1qr4hhj8vfrnmzghgfnqjss0ns9tv7pjhhhggfm2zeagltnlmu4a6sgh6dqn}
-# Sum of allocations must be less than uint64 max
-cat <<EOF > "${TMPDIR}"/allocations.json
-[
-  {"address":"${INITIAL_OWNER_ADDRESS}", "balance":853000000000000000}
-]
-EOF
-# maxSupply: 10 billion NAI
-cat <<EOF > "${TMPDIR}"/emission-balancer.json
-{
-  "maxSupply":  10000000000000000000,
-  "emissionAddress":"${EMISSION_ADDRESS}"
-}
-EOF
-
-"${TMPDIR}"/nuklai-cli genesis generate "${TMPDIR}"/allocations.json "${TMPDIR}"/emission-balancer.json \
---min-unit-price "${MIN_UNIT_PRICE}" \
---window-target-units ${WINDOW_TARGET_UNITS} \
---max-block-units ${MAX_BLOCK_UNITS} \
---min-block-gap "${MIN_BLOCK_GAP}" \
---genesis-file "${TMPDIR}"/nuklaivm.genesis
-
-# TODO: find a smarter way to split auth cores between exec and RPC
-# TODO: we limit root generation cores because it can cause network handling to stop (exhausts all CPU for a few seconds)
-cat <<EOF > "${TMPDIR}"/nuklaivm.config
-{
-  "chunkBuildFrequency": 250,
-  "targetChunkBuildDuration": 250,
-  "blockBuildFrequency": 100,
-  "mempoolSize": 2147483648,
-  "mempoolSponsorSize": 10000000,
-  "authExecutionCores": 2,
-  "precheckCores": 2,
-  "actionExecutionCores": 2,
-  "missingChunkFetchers": 48,
-  "verifyAuth": true,
-  "authRPCCores": 2,
-  "authRPCBacklog": 10000000,
-  "authGossipCores": 2,
-  "authGossipBacklog": 10000000,
-  "chunkStorageCores": 2,
-  "chunkStorageBacklog": 10000000,
-  "streamingBacklogSize": 10000000,
-  "continuousProfilerDir":"/home/ubuntu/nuklaivm-profiles",
-  "logLevel": "INFO",
-  "mempoolExemptSponsors": [
-    "nuklai1qpg4ecapjymddcde8sfq06dshzpxltqnl47tvfz0hnkesjz7t0p35d5fnr3",
-    "nuklai1qr4hhj8vfrnmzghgfnqjss0ns9tv7pjhhhggfm2zeagltnlmu4a6sgh6dqn"
-  ],
-  "authVerificationCores": 2,
-  "rootGenerationCores": 2,
-  "transactionExecutionCores": 2,
-  "storeTransactions": false,
-  "stateSyncServerDelay": 0
-}
-EOF
-
-cat <<EOF > "${TMPDIR}"/nuklaivm.subnet
-{
-  "proposerMinBlockDelay": 0,
-  "proposerNumHistoricalBlocks": 512
-}
-EOF
-
-cat <<EOF > "${TMPDIR}"/node.config
-{
-  "log-level":"INFO",
-  "log-display-level":"INFO",
-  "proposervm-use-current-height":true,
-  "throttler-inbound-validator-alloc-size":"10737418240",
-  "throttler-inbound-at-large-alloc-size":"10737418240",
-  "throttler-inbound-node-max-processing-msgs":"1000000",
-	"throttler-inbound-node-max-at-large-bytes":"10737418240",
-  "throttler-inbound-bandwidth-refill-rate":"1073741824",
-  "throttler-inbound-bandwidth-max-burst-size":"1073741824",
-  "throttler-inbound-cpu-validator-alloc":"100000",
-  "throttler-inbound-cpu-max-non-validator-usage":"100000",
-  "throttler-inbound-cpu-max-non-validator-node-usage":"100000",
-  "throttler-inbound-disk-validator-alloc":"10737418240000",
-  "throttler-outbound-validator-alloc-size":"10737418240",
-  "throttler-outbound-at-large-alloc-size":"10737418240",
-  "throttler-outbound-node-max-at-large-bytes":"10737418240",
-  "consensus-on-accept-gossip-validator-size":"10",
-  "consensus-on-accept-gossip-peer-size":"10",
-  "network-compression-type":"zstd",
-  "consensus-app-concurrency":"128",
-  "profile-continuous-enabled":true,
-  "profile-continuous-freq":"1m",
-  "http-host":"",
-  "http-allowed-origins": "*",
-  "http-allowed-hosts": "*"
-}
-EOF
-
 # Setup devnet
 CLUSTER="nuklai-$(date +%s)"
 function cleanup {
   echo -e "\n\n${RED}run this command to destroy the devnet:${NC} ${TMPDIR}/avalanche node destroy ${CLUSTER}\n"
 }
 trap cleanup EXIT
+
 # List of supported instances in each AWS region: https://docs.aws.amazon.com/ec2/latest/instancetypes/ec2-instance-regions.html
 #
 # It is not recommended to use an instance with burstable network performance.
-cp ./grafana.json "${TMPDIR}/nuklaivm/grafana.json"
 echo -e "${YELLOW}creating devnet${NC}"
-$TMPDIR/avalanche node devnet wiz ${CLUSTER} ${VMID} --force-subnet-create=true --authorize-access=true --aws --node-type t4g.medium --num-apis 1 --num-validators 5 --region eu-west-1 --use-static-ip=true --enable-monitoring=true --default-validator-params --custom-avalanchego-version $AVALANCHEGO_VERSION --custom-vm-repo-url="https://www.github.com/nuklai/nuklaivm" --custom-vm-branch $VM_COMMIT --custom-vm-build-script="scripts/build.sh" --custom-subnet=true --subnet-genesis="${TMPDIR}/nuklaivm.genesis" --subnet-config="${TMPDIR}/nuklaivm.genesis" --chain-config="${TMPDIR}/nuklaivm.config" --node-config="${TMPDIR}/node.config" --config="${TMPDIR}/node.config" --remote-cli-version $REMOTE_CLI_COMMIT --add-grafana-dashboard="${TMPDIR}/nuklaivm/grafana.json" --log-level DEBUG
+$TMPDIR/avalanche node devnet wiz ${CLUSTER} ${VMID} --force-subnet-create=true --authorize-access=true --aws --node-type t4g.medium --num-apis 1 --num-validators 5 --region eu-west-1 --use-static-ip=true --enable-monitoring=true --default-validator-params --custom-avalanchego-version $AVALANCHEGO_VERSION --custom-vm-repo-url="https://www.github.com/nuklai/nuklaivm" --custom-vm-branch $VM_COMMIT --custom-vm-build-script="scripts/build.sh" --custom-subnet=true --subnet-genesis="${TMPDIR}/nuklaivm/docs/deployment/nuklaivm_genesis.json" --subnet-config="${TMPDIR}/nuklaivm/docs/deployment/nuklaivm_genesis.json" --chain-config="${TMPDIR}/nuklaivm/docs/deployment/nuklaivm_chain.json" --node-config="${TMPDIR}/nuklaivm/docs/deployment/nuklaivm_avago.json" --config="${TMPDIR}/nuklaivm/docs/deployment/nuklaivm_avago.json" --remote-cli-version $REMOTE_CLI_COMMIT --add-grafana-dashboard="${TMPDIR}/nuklaivm/grafana.json" --log-level DEBUG
 EPOCH_WAIT_START=$(date +%s)
 
 # Import the cluster into nuklai-cli for local interaction
-$TMPDIR/nuklai-cli chain import-cli ~/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml
+$TMPDIR/nuklai-cli chain import-ops ~/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml
+
+# We use a shorter EPOCH_DURATION and VALIDITY_WINDOW to speed up devnet
+# startup. In a production environment, these should be set to longer values.
+#
+EPOCH_DURATION=60000
+VALIDITY_WINDOW=59000
 
 # Wait for epoch initialization
 SLEEP_DUR=$(($EPOCH_DURATION / 1000 * 3))
@@ -209,14 +107,7 @@ echo -e "\n${YELLOW}waiting for epoch initialization:${NC} $SLEEP_DUR seconds"
 echo "We use a shorter EPOCH_DURATION ($EPOCH_SEC seconds) and VALIDITY_WINDOW ($VALIDITY_WINDOW_SEC seconds) to speed up devnet startup. In a production environment, these should be set to larger values."
 sleep $SLEEP_DUR
 
-# Start load test on dedicated machine
-#
-# Zipf parameters expected to lead to ~1M active accounts per 60s
-# echo -e "\n${YELLOW}starting load test...${NC}"
-# $TMPDIR/avalanche node loadtest start "default" ${CLUSTER} ${VMID} --region eu-west-1 --aws --node-type c7gn.8xlarge --load-test-repo="https://github.com/ava-labs/hypersdk" --load-test-branch=$VM_COMMIT --load-test-build-cmd="cd /home/ubuntu/hypersdk/examples/morpheusvm; CGO_CFLAGS=\"-O -D__BLST_PORTABLE__\" go build -o ~/simulator ./cmd/morpheus-cli" --load-test-cmd="/home/ubuntu/simulator spam run ed25519 --accounts=10000000 --txs-per-second=100000 --min-capacity=15000 --step-size=1000 --s-zipf=1.0001 --v-zipf=2.7 --conns-per-host=10 --cluster-info=/home/ubuntu/clusterInfo.yaml --private-key=323b1d8f4eed5f0da9da93071b034f2dce9d2d22692c172f3cb252a64ddfafd01b057de320297c29ad0c1f589ea216869cf1938d88c9fbd70d6748323dbf2fa7"
-
 # Log dashboard information
 echo -e "\n\n${CYAN}dashboards:${NC} (username: admin, password: admin)"
 echo "* nuklaivm (metrics): http://$(yq e '.MONITOR.IP' ~/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml):3000/d/vryx-poc"
 echo "* nuklaivm (logs): http://$(yq e '.MONITOR.IP' ~/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml):3000/d/avalanche-loki-logs/avalanche-logs?var-app=subnet"
-# echo "* load test (logs): http://$(yq e '.MONITOR.IP' ~/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml):3000/d/avalanche-loki-logs/avalanche-logs?var-app=loadtest"
