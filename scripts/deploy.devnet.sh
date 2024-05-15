@@ -2,297 +2,221 @@
 # Copyright (C) 2024, AllianceBlock. All rights reserved.
 # See the file LICENSE for licensing terms.
 
-set -o errexit
-set -o nounset
-set -o pipefail
+set -e
 
-# Ensure we return back to current directory
+# Set the CGO flags to use the portable version of BLST
+#
+# We use "export" here instead of just setting a bash variable because we need
+# to pass this flag to all child processes spawned by the shell.
+export CGO_CFLAGS="-O -D__BLST_PORTABLE__" CGO_ENABLED=1
+
+# Set console colors
+RED='\033[1;31m'
+YELLOW='\033[1;33m'
+CYAN='\033[1;36m'
+NC='\033[0m'
+
+# Ensure we return back to the original directory
 pw=$(pwd)
 function cleanup() {
   cd "$pw"
 }
 trap cleanup EXIT
 
-# Setup cache
-BUST_CACHE=${BUST_CACHE:-false}
-if ${BUST_CACHE}; then
-  rm -rf /tmp/avalanche-ops-cache
-fi
-mkdir -p /tmp/avalanche-ops-cache
-
-# Create deployment directory (avalanche-ops creates metadata in cwd)
-DATE=$(date '+%m%d%Y-%H%M%S')
-DEPLOY_PREFIX=~/avalanche-ops-deploys/${DATE}
-mkdir -p "${DEPLOY_PREFIX}"
-DEPLOY_ARTIFACT_PREFIX=${DEPLOY_PREFIX}/artifacts
-mkdir -p "${DEPLOY_ARTIFACT_PREFIX}"
-echo create deployment folder: "${DEPLOY_PREFIX}"
-cd "${DEPLOY_PREFIX}"
-
-# Set constants
-DEPLOYER_ARCH_TYPE=$(uname -m)
-export DEPLOYER_ARCH_TYPE
-[ "$DEPLOYER_ARCH_TYPE" = x86_64 ] && DEPLOYER_ARCH_TYPE=amd64
-echo DEPLOYER_ARCH_TYPE: "${DEPLOYER_ARCH_TYPE}"
-DEPLOYER_OS_TYPE=$(uname | tr '[:upper:]' '[:lower:]')
-export DEPLOYER_OS_TYPE
-echo DEPLOYER_OS_TYPE: "${DEPLOYER_OS_TYPE}"
-export AVALANCHEGO_VERSION="1.10.12"
-echo AVALANCHEGO_VERSION: ${AVALANCHEGO_VERSION}
-export NUKLAIVM_VERSION="0.1.0"
-echo NUKLAIVM_VERSION: ${NUKLAIVM_VERSION}
-INITIAL_OWNER_ADDRESS="nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx"
-echo INITIAL_OWNER_ADDRESS: ${INITIAL_OWNER_ADDRESS}
-EMISSION_ADDRESS="nuklai1qqmzlnnredketlj3cu20v56nt5ken6thchra7nylwcrmz77td654w2jmpt9"
-echo EMISSION_ADDRESS: ${EMISSION_ADDRESS}
-
-# TODO: set deploy os/arch
-
-# Check valid setup
-if [ "${DEPLOYER_OS_TYPE}" != 'darwin' ]; then
-  echo 'os is not supported' >&2
-  exit 1
-fi
-if [ "${DEPLOYER_ARCH_TYPE}" != 'arm64' ]; then
-  echo 'arch is not supported' >&2
-  exit 1
-fi
-if ! [ -x "$(command -v aws)" ]; then
-  echo 'aws-cli is not installed' >&2
-  exit 1
-fi
-if ! [ -x "$(command -v yq)" ]; then
-  echo 'yq is not installed' >&2
+# Ensure that the script is being run from the repository root
+if ! [[ "$0" =~ scripts/deploy.devnet.sh ]]; then
+  echo -e "${RED}must be run from repository root${NC}"
   exit 1
 fi
 
-# Install avalanche-ops
-echo 'installing avalanche-ops...'
-if [ -f /tmp/avalanche-ops-cache/avalancheup-aws ]; then
-  cp /tmp/avalanche-ops-cache/avalancheup-aws "${DEPLOY_ARTIFACT_PREFIX}"/avalancheup-aws
-  echo 'found avalanche-ops in cache'
-else
-  wget https://github.com/ava-labs/avalanche-ops/releases/download/latest/avalancheup-aws.aarch64-apple-darwin
-  mv ./avalancheup-aws.aarch64-apple-darwin "${DEPLOY_ARTIFACT_PREFIX}"/avalancheup-aws
-  chmod +x "${DEPLOY_ARTIFACT_PREFIX}"/avalancheup-aws
-  cp "${DEPLOY_ARTIFACT_PREFIX}"/avalancheup-aws /tmp/avalanche-ops-cache/avalancheup-aws
+# Ensure required software is installed and aws credentials are set
+if ! command -v go >/dev/null 2>&1 ; then
+    echo -e "${RED}golang is not installed. exiting...${NC}"
+    exit 1
 fi
-"${DEPLOY_ARTIFACT_PREFIX}"/avalancheup-aws --help
+if ! aws sts get-caller-identity >/dev/null 2>&1 ; then
+    echo -e "${RED}aws credentials not set. exiting...${NC}"
+    exit 1
+fi
+
+# Set AvalancheGo Build (should have canPop disabled)
+AVALANCHEGO_VERSION=v1.10.18
+
+# Create temporary directory for the deployment
+TMPDIR=/tmp/nuklaivm-deploy
+rm -rf $TMPDIR && mkdir -p $TMPDIR
+echo -e "${YELLOW}set working directory:${NC} $TMPDIR"
+
+# Install avalanche-cli
+LOCAL_CLI_COMMIT=v1.5.2
+REMOTE_CLI_COMMIT=v1.5.2
+cd $TMPDIR
+git clone https://github.com/ava-labs/avalanche-cli
+cd avalanche-cli
+git checkout $LOCAL_CLI_COMMIT
+./scripts/build.sh
+mv ./bin/avalanche "${TMPDIR}/avalanche"
+cd $pw
 
 # Install nuklai-cli
-echo 'installing nuklai-cli...'
-if [ -f /tmp/avalanche-ops-cache/nuklai-cli ]; then
-  cp /tmp/avalanche-ops-cache/nuklai-cli "${DEPLOY_ARTIFACT_PREFIX}"/nuklai-cli
-  echo 'found nuklai-cli in cache'
-else
-  wget "https://github.com/nuklai/nuklaivm/releases/download/v${NUKLAIVM_VERSION}/nuklaivm_${NUKLAIVM_VERSION}_${DEPLOYER_OS_TYPE}_${DEPLOYER_ARCH_TYPE}.tar.gz"
-  mkdir -p /tmp/nuklai-installs
-  tar -xvf nuklaivm_${NUKLAIVM_VERSION}_"${DEPLOYER_OS_TYPE}"_"${DEPLOYER_ARCH_TYPE}".tar.gz -C /tmp/nuklai-installs
-  rm -rf nuklaivm_${NUKLAIVM_VERSION}_"${DEPLOYER_OS_TYPE}"_"${DEPLOYER_ARCH_TYPE}".tar.gz
-  mv /tmp/nuklai-installs/nuklai-cli "${DEPLOY_ARTIFACT_PREFIX}"/nuklai-cli
-  rm -rf /tmp/nuklai-installs
-  cp "${DEPLOY_ARTIFACT_PREFIX}"/nuklai-cli /tmp/avalanche-ops-cache/nuklai-cli
-fi
+NUKLAI_VM_COMMIT=cfb87265cdcc0da0bc4ad199556fe297e375d7cc
+echo -e "${YELLOW}building nuklai-cli${NC}"
+echo "set working directory: $TMPDIR"
+cd $TMPDIR
+echo "cloning nuklaivm commit: $NUKLAI_VM_COMMIT"
+git clone https://github.com/nuklai/nuklaivm
+cd nuklaivm
+echo "checking out nuklaivm commit: $NUKLAI_VM_COMMIT"
+git checkout $NUKLAI_VM_COMMIT
+echo "building nuklaivm"
+VMID=$(git rev-parse --short HEAD) # ensure we use a fresh vm
+VM_COMMIT=$(git rev-parse HEAD)
+./scripts/build.sh
+echo "moving nuklai-cli to $TMPDIR"
+mv ./build/nuklai-cli "${TMPDIR}/nuklai-cli"
+cd $pw
 
-# Download nuklaivm
-echo 'downloading nuklaivm...'
-if [ -f /tmp/avalanche-ops-cache/nuklaivm ]; then
-  cp /tmp/avalanche-ops-cache/nuklaivm "${DEPLOY_ARTIFACT_PREFIX}"/nuklaivm
-  cp /tmp/avalanche-ops-cache/nuklai-cli-dev "${DEPLOY_ARTIFACT_PREFIX}"/nuklai-cli-dev
-  echo 'found nuklaivm in cache'
-else
-  wget "https://github.com/ava-labs/hypersdk/releases/download/v${NUKLAIVM_VERSION}/nuklaivm_${NUKLAIVM_VERSION}_linux_amd64.tar.gz"
-  mkdir -p /tmp/nuklai-installs
-  tar -xvf nuklaivm_${NUKLAIVM_VERSION}_linux_amd64.tar.gz -C /tmp/nuklai-installs
-  rm -rf nuklaivm_${NUKLAIVM_VERSION}_linux_amd64.tar.gz
-  mv /tmp/nuklai-installs/nuklaivm "${DEPLOY_ARTIFACT_PREFIX}"/nuklaivm
-  mv /tmp/nuklai-installs/nuklai-cli "${DEPLOY_ARTIFACT_PREFIX}"/nuklai-cli-dev
-  rm -rf /tmp/nuklai-installs
-  cp "${DEPLOY_ARTIFACT_PREFIX}"/nuklaivm /tmp/avalanche-ops-cache/nuklaivm
-  cp "${DEPLOY_ARTIFACT_PREFIX}"/nuklai-cli-dev /tmp/avalanche-ops-cache/nuklai-cli-dev
-fi
+# Generate genesis file and configs
+#
+# We use a shorter EPOCH_DURATION and VALIDITY_WINDOW to speed up devnet
+# startup. In a production environment, these should be set to longer values.
+#
+EPOCH_DURATION=60000
+VALIDITY_WINDOW=59000
+MIN_BLOCK_GAP=100
+MIN_UNIT_PRICE="100,100,100,100,100"
+MAX_UINT64=18446744073709551615
+WINDOW_TARGET_UNITS="40000000,450000,450000,450000,450000"
+MAX_BLOCK_UNITS="1800000,${MAX_UINT64},${MAX_UINT64},${MAX_UINT64},${MAX_UINT64}" # in a load test, all we care about is that chunks are size-bounded (2MB network limit)
 
-# Setup genesis and configuration files
-cat <<EOF > "${DEPLOY_ARTIFACT_PREFIX}"/nuklaivm-subnet-config.json
-{
-  "proposerMinBlockDelay": 0,
-  "proposerNumHistoricalBlocks": 50000
-}
-EOF
-cat "${DEPLOY_ARTIFACT_PREFIX}"/nuklaivm-subnet-config.json
-
-# TODO: make address configurable via ENV
-cat <<EOF > "${DEPLOY_ARTIFACT_PREFIX}"/allocations.json
+INITIAL_OWNER_ADDRESS=${INITIAL_OWNER_ADDRESS:-nuklai1qpg4ecapjymddcde8sfq06dshzpxltqnl47tvfz0hnkesjz7t0p35d5fnr3}
+EMISSION_ADDRESS=${EMISSION_ADDRESS:-nuklai1qr4hhj8vfrnmzghgfnqjss0ns9tv7pjhhhggfm2zeagltnlmu4a6sgh6dqn}
+# Sum of allocations must be less than uint64 max
+cat <<EOF > "${TMPDIR}"/allocations.json
 [
   {"address":"${INITIAL_OWNER_ADDRESS}", "balance":853000000000000000}
 ]
 EOF
-cat <<EOF > "${DEPLOY_ARTIFACT_PREFIX}"/emission-balancer.json
+# maxSupply: 10 billion NAI
+cat <<EOF > "${TMPDIR}"/emission-balancer.json
 {
   "maxSupply":  10000000000000000000,
   "emissionAddress":"${EMISSION_ADDRESS}"
 }
 EOF
 
-# Block bandwidth per second is a function of ~1.8MB * 1/blockGap
-#
-# TODO: make fee params configurable via ENV
-MAX_UINT64=18446744073709551615
-"${DEPLOY_ARTIFACT_PREFIX}"/nuklai-cli genesis generate "${DEPLOY_ARTIFACT_PREFIX}"/allocations.json "${DEPLOY_ARTIFACT_PREFIX}"/emission-balancer.json \
---genesis-file "${DEPLOY_ARTIFACT_PREFIX}"/nuklaivm-genesis.json \
---max-block-units 1800000,${MAX_UINT64},${MAX_UINT64},${MAX_UINT64},${MAX_UINT64} \
---window-target-units ${MAX_UINT64},${MAX_UINT64},${MAX_UINT64},${MAX_UINT64},${MAX_UINT64} \
---min-block-gap 250
-cat "${DEPLOY_ARTIFACT_PREFIX}"/nuklaivm-genesis.json
+"${TMPDIR}"/nuklai-cli genesis generate "${TMPDIR}"/allocations.json "${TMPDIR}"/emission-balancer.json \
+--min-unit-price "${MIN_UNIT_PRICE}" \
+--window-target-units ${WINDOW_TARGET_UNITS} \
+--max-block-units ${MAX_BLOCK_UNITS} \
+--min-block-gap "${MIN_BLOCK_GAP}" \
+--genesis-file "${TMPDIR}"/nuklaivm.genesis
 
-cat <<EOF > "${DEPLOY_ARTIFACT_PREFIX}"/nuklaivm-chain-config.json
+# TODO: find a smarter way to split auth cores between exec and RPC
+# TODO: we limit root generation cores because it can cause network handling to stop (exhausts all CPU for a few seconds)
+cat <<EOF > "${TMPDIR}"/nuklaivm.config
 {
-  "logLevel": "info",
-  "mempoolSize": 10000000,
-  "mempoolPayerSize": 10000000,
-  "mempoolExemptPayers":["${INITIAL_OWNER_ADDRESS}", "${EMISSION_ADDRESS}"],
-  "streamingBacklogSize": 10000000,
-  "authVerificationCores": 4,
-  "rootGenerationCores": 4,
-  "transactionExecutionCores": 4,
-  "storeTransactions": false,
+  "chunkBuildFrequency": 250,
+  "targetChunkBuildDuration": 250,
+  "blockBuildFrequency": 100,
+  "mempoolSize": 2147483648,
+  "mempoolSponsorSize": 10000000,
+  "authExecutionCores": 2,
+  "precheckCores": 2,
+  "actionExecutionCores": 2,
+  "missingChunkFetchers": 48,
   "verifyAuth": true,
-  "trackedPairs":["*"],
-  "continuousProfilerDir":"/data/nuklaivm-profiles"
+  "authRPCCores": 2,
+  "authRPCBacklog": 10000000,
+  "authGossipCores": 2,
+  "authGossipBacklog": 10000000,
+  "chunkStorageCores": 2,
+  "chunkStorageBacklog": 10000000,
+  "streamingBacklogSize": 10000000,
+  "continuousProfilerDir":"/home/ubuntu/nuklaivm-profiles",
+  "logLevel": "INFO",
+  "mempoolExemptSponsors": [
+    "nuklai1qpg4ecapjymddcde8sfq06dshzpxltqnl47tvfz0hnkesjz7t0p35d5fnr3",
+    "nuklai1qr4hhj8vfrnmzghgfnqjss0ns9tv7pjhhhggfm2zeagltnlmu4a6sgh6dqn"
+  ],
+  "authVerificationCores": 2,
+  "rootGenerationCores": 2,
+  "transactionExecutionCores": 2,
+  "storeTransactions": false,
+  "stateSyncServerDelay": 0
 }
 EOF
-cat "${DEPLOY_ARTIFACT_PREFIX}"/nuklaivm-chain-config.json
 
-# Plan network deploy
-if [ ! -f /tmp/avalanche-ops-cache/aws-profile ]; then
-  echo 'what is your AWS profile name?'
-  read -r prof_name
-  echo "${prof_name}" > /tmp/avalanche-ops-cache/aws-profile
-fi
-AWS_PROFILE_NAME=$(cat "/tmp/avalanche-ops-cache/aws-profile")
-
-# Create spec file
-SPEC_FILE=./aops-${DATE}.yml
-echo created avalanche-ops spec file: "${SPEC_FILE}"
-
-# Create key file dir
-KEY_FILES_DIR=keys
-mkdir -p ${KEY_FILES_DIR}
-
-# Create dummy metrics file (can't not upload)
-# TODO: fix this
-cat <<EOF > "${DEPLOY_ARTIFACT_PREFIX}/metrics.yml"
-filters:
-  - regex: ^*$
+cat <<EOF > "${TMPDIR}"/nuklaivm.subnet
+{
+  "proposerMinBlockDelay": 0,
+  "proposerNumHistoricalBlocks": 512
+}
 EOF
-cat "${DEPLOY_ARTIFACT_PREFIX}"/metrics.yml
 
-echo 'planning DEVNET deploy...'
-# TODO: increase size once dev machine is working
-"${DEPLOY_ARTIFACT_PREFIX}"/avalancheup-aws default-spec \
---arch-type amd64 \
---os-type ubuntu20.04 \
---anchor-nodes 3 \
---non-anchor-nodes 7 \
---regions us-west-2,us-east-2,eu-west-1 \
---instance-mode=on-demand \
---instance-types='{"us-west-2":["c5.4xlarge"],"us-east-2":["c5.4xlarge"],"eu-west-1":["c5.4xlarge"]}' \
---ip-mode=ephemeral \
---metrics-fetch-interval-seconds 0 \
---upload-artifacts-prometheus-metrics-rules-file-path "${DEPLOY_ARTIFACT_PREFIX}"/metrics.yml \
---network-name custom \
---staking-amount-in-avax 2000 \
---avalanchego-release-tag v${AVALANCHEGO_VERSION} \
---create-dev-machine \
---keys-to-generate 5 \
---subnet-config-file "${DEPLOY_ARTIFACT_PREFIX}"/nuklaivm-subnet-config.json \
---vm-binary-file "${DEPLOY_ARTIFACT_PREFIX}"/nuklaivm \
---chain-name nuklaivm \
---chain-genesis-file "${DEPLOY_ARTIFACT_PREFIX}"/nuklaivm-genesis.json \
---chain-config-file "${DEPLOY_ARTIFACT_PREFIX}"/nuklaivm-chain-config.json \
---enable-ssh \
---spec-file-path "${SPEC_FILE}" \
---key-files-dir ${KEY_FILES_DIR} \
---profile-name "${AWS_PROFILE_NAME}"
+cat <<EOF > "${TMPDIR}"/node.config
+{
+  "log-level":"INFO",
+  "log-display-level":"INFO",
+  "proposervm-use-current-height":true,
+  "throttler-inbound-validator-alloc-size":"10737418240",
+  "throttler-inbound-at-large-alloc-size":"10737418240",
+  "throttler-inbound-node-max-processing-msgs":"1000000",
+	"throttler-inbound-node-max-at-large-bytes":"10737418240",
+  "throttler-inbound-bandwidth-refill-rate":"1073741824",
+  "throttler-inbound-bandwidth-max-burst-size":"1073741824",
+  "throttler-inbound-cpu-validator-alloc":"100000",
+  "throttler-inbound-cpu-max-non-validator-usage":"100000",
+  "throttler-inbound-cpu-max-non-validator-node-usage":"100000",
+  "throttler-inbound-disk-validator-alloc":"10737418240000",
+  "throttler-outbound-validator-alloc-size":"10737418240",
+  "throttler-outbound-at-large-alloc-size":"10737418240",
+  "throttler-outbound-node-max-at-large-bytes":"10737418240",
+  "consensus-on-accept-gossip-validator-size":"10",
+  "consensus-on-accept-gossip-peer-size":"10",
+  "network-compression-type":"zstd",
+  "consensus-app-concurrency":"128",
+  "profile-continuous-enabled":true,
+  "profile-continuous-freq":"1m",
+  "http-host":"",
+  "http-allowed-origins": "*",
+  "http-allowed-hosts": "*"
+}
+EOF
 
-# Disable rate limits in config
-echo 'updating YAML with new rate limits...'
-yq -i '.avalanchego_config.throttler-inbound-validator-alloc-size = 10737418240' "${SPEC_FILE}"
-yq -i '.avalanchego_config.throttler-inbound-at-large-alloc-size = 10737418240' "${SPEC_FILE}"
-yq -i '.avalanchego_config.throttler-inbound-node-max-processing-msgs = 100000' "${SPEC_FILE}"
-yq -i '.avalanchego_config.throttler-inbound-bandwidth-refill-rate = 1073741824' "${SPEC_FILE}"
-yq -i '.avalanchego_config.throttler-inbound-bandwidth-max-burst-size = 1073741824' "${SPEC_FILE}"
-yq -i '.avalanchego_config.throttler-inbound-cpu-validator-alloc = 100000' "${SPEC_FILE}"
-yq -i '.avalanchego_config.throttler-inbound-disk-validator-alloc = 10737418240000' "${SPEC_FILE}"
-yq -i '.avalanchego_config.throttler-outbound-validator-alloc-size = 10737418240' "${SPEC_FILE}"
-yq -i '.avalanchego_config.throttler-outbound-at-large-alloc-size = 10737418240' "${SPEC_FILE}"
-yq -i '.avalanchego_config.consensus-on-accept-gossip-validator-size = 10' "${SPEC_FILE}"
-yq -i '.avalanchego_config.consensus-on-accept-gossip-non-validator-size = 0' "${SPEC_FILE}"
-yq -i '.avalanchego_config.consensus-on-accept-gossip-peer-size = 10' "${SPEC_FILE}"
-yq -i '.avalanchego_config.consensus-accepted-frontier-gossip-peer-size = 10' "${SPEC_FILE}"
-yq -i '.avalanchego_config.consensus-app-concurrency = 8' "${SPEC_FILE}"
-yq -i '.avalanchego_config.network-compression-type = "zstd"'  "${SPEC_FILE}"
-
-# Deploy DEVNET
-echo 'deploying DEVNET...'
-"${DEPLOY_ARTIFACT_PREFIX}"/avalancheup-aws apply \
---spec-file-path "${SPEC_FILE}"
-echo 'DEVNET deployed'
-
-# Prepare dev machine
+# Setup devnet
+CLUSTER="nuklai-$(date +%s)"
+function cleanup {
+  echo -e "\n\n${RED}run this command to destroy the devnet:${NC} ${TMPDIR}/avalanche node destroy ${CLUSTER}\n"
+}
+trap cleanup EXIT
+# List of supported instances in each AWS region: https://docs.aws.amazon.com/ec2/latest/instancetypes/ec2-instance-regions.html
 #
-# TODO: prepare 1 dev machine per region
-echo 'setting up dev machine...'
-ACCESS_KEY=./aops-${DATE}-ec2-access.us-west-2.key
-chmod 400 "${ACCESS_KEY}"
-DEV_MACHINE_IP=$(yq '.dev_machine_ips[0]' "${SPEC_FILE}")
-until (scp -o "StrictHostKeyChecking=no" -i "${ACCESS_KEY}" "${SPEC_FILE}" ubuntu@"${DEV_MACHINE_IP}":/home/ubuntu/aops.yml)
-do
-  # During initial setup, ssh access may fail
-  echo 'scp failed...trying again'
-  sleep 5
-done
-cd "$pw"
-scp -o "StrictHostKeyChecking=no" -i "${DEPLOY_PREFIX}"/"${ACCESS_KEY}" "${DEPLOY_ARTIFACT_PREFIX}"/nuklai-cli-dev ubuntu@"${DEV_MACHINE_IP}":/tmp/nuklai-cli
-scp -o "StrictHostKeyChecking=no" -i "${DEPLOY_PREFIX}"/"${ACCESS_KEY}" demo.pk ubuntu@"${DEV_MACHINE_IP}":/home/ubuntu/demo.pk
-scp -o "StrictHostKeyChecking=no" -i "${DEPLOY_PREFIX}"/"${ACCESS_KEY}" scripts/setup.dev-machine.sh ubuntu@"${DEV_MACHINE_IP}":/home/ubuntu/setup.sh
-ssh -o "StrictHostKeyChecking=no" -i "${DEPLOY_PREFIX}"/"${ACCESS_KEY}" ubuntu@"${DEV_MACHINE_IP}" /home/ubuntu/setup.sh
-echo 'setup dev machine'
+# It is not recommended to use an instance with burstable network performance.
+cp ./grafana.json "${TMPDIR}/nuklaivm/grafana.json"
+echo -e "${YELLOW}creating devnet${NC}"
+$TMPDIR/avalanche node devnet wiz ${CLUSTER} ${VMID} --force-subnet-create=true --authorize-access=true --aws --node-type t4g.medium --num-apis 1 --num-validators 5 --region eu-west-1 --use-static-ip=true --enable-monitoring=true --default-validator-params --custom-avalanchego-version $AVALANCHEGO_VERSION --custom-vm-repo-url="https://www.github.com/nuklai/nuklaivm" --custom-vm-branch $VM_COMMIT --custom-vm-build-script="scripts/build.sh" --custom-subnet=true --subnet-genesis="${TMPDIR}/nuklaivm.genesis" --subnet-config="${TMPDIR}/nuklaivm.genesis" --chain-config="${TMPDIR}/nuklaivm.config" --node-config="${TMPDIR}/node.config" --config="${TMPDIR}/node.config" --remote-cli-version $REMOTE_CLI_COMMIT --add-grafana-dashboard="${TMPDIR}/nuklaivm/grafana.json" --log-level DEBUG
+EPOCH_WAIT_START=$(date +%s)
 
-# Generate prometheus link
-"${DEPLOY_ARTIFACT_PREFIX}"/nuklai-cli chain import-ops "${DEPLOY_PREFIX}"/"${SPEC_FILE}"
-"${DEPLOY_ARTIFACT_PREFIX}"/nuklai-cli prometheus generate --prometheus-start=false --prometheus-base-uri=http://"${DEV_MACHINE_IP}":9090
+# Import the cluster into nuklai-cli for local interaction
+$TMPDIR/nuklai-cli chain import-cli ~/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml
 
-# Print final logs
-cat << EOF
-to login to the dev machine, run the following command:
+# Wait for epoch initialization
+SLEEP_DUR=$(($EPOCH_DURATION / 1000 * 3))
+EPOCH_SEC=$(($EPOCH_DURATION / 1000))
+VALIDITY_WINDOW_SEC=$(($VALIDITY_WINDOW / 1000))
+echo -e "\n${YELLOW}waiting for epoch initialization:${NC} $SLEEP_DUR seconds"
+echo "We use a shorter EPOCH_DURATION ($EPOCH_SEC seconds) and VALIDITY_WINDOW ($VALIDITY_WINDOW_SEC seconds) to speed up devnet startup. In a production environment, these should be set to larger values."
+sleep $SLEEP_DUR
 
-ssh -o "StrictHostKeyChecking no" -i ${DEPLOY_PREFIX}/${ACCESS_KEY} ubuntu@${DEV_MACHINE_IP}
+# Start load test on dedicated machine
+#
+# Zipf parameters expected to lead to ~1M active accounts per 60s
+# echo -e "\n${YELLOW}starting load test...${NC}"
+# $TMPDIR/avalanche node loadtest start "default" ${CLUSTER} ${VMID} --region eu-west-1 --aws --node-type c7gn.8xlarge --load-test-repo="https://github.com/ava-labs/hypersdk" --load-test-branch=$VM_COMMIT --load-test-build-cmd="cd /home/ubuntu/hypersdk/examples/morpheusvm; CGO_CFLAGS=\"-O -D__BLST_PORTABLE__\" go build -o ~/simulator ./cmd/morpheus-cli" --load-test-cmd="/home/ubuntu/simulator spam run ed25519 --accounts=10000000 --txs-per-second=100000 --min-capacity=15000 --step-size=1000 --s-zipf=1.0001 --v-zipf=2.7 --conns-per-host=10 --cluster-info=/home/ubuntu/clusterInfo.yaml --private-key=323b1d8f4eed5f0da9da93071b034f2dce9d2d22692c172f3cb252a64ddfafd01b057de320297c29ad0c1f589ea216869cf1938d88c9fbd70d6748323dbf2fa7"
 
-to view activity (on the dev machine), run the following command:
-
-/tmp/nuklai-cli chain watch --hide-txs
-
-to run a spam script (on the dev machine), run the following command:
-
-/tmp/nuklai-cli spam run
-
-to delete all resources (excluding asg/ssm), run the following command:
-
-/tmp/avalancheup-aws delete \
---delete-cloudwatch-log-group \
---delete-s3-objects \
---delete-ebs-volumes \
---delete-elastic-ips \
---spec-file-path ${DEPLOY_PREFIX}/${SPEC_FILE}
-
-to delete all resources, run the following command:
-
-/tmp/avalancheup-aws delete \
---override-keep-resources-except-asg-ssm \
---delete-cloudwatch-log-group \
---delete-s3-objects \
---delete-ebs-volumes \
---delete-elastic-ips \
---spec-file-path ${DEPLOY_PREFIX}/${SPEC_FILE}
-EOF
+# Log dashboard information
+echo -e "\n\n${CYAN}dashboards:${NC} (username: admin, password: admin)"
+echo "* nuklaivm (metrics): http://$(yq e '.MONITOR.IP' ~/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml):3000/d/vryx-poc"
+echo "* nuklaivm (logs): http://$(yq e '.MONITOR.IP' ~/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml):3000/d/avalanche-loki-logs/avalanche-logs?var-app=subnet"
+# echo "* load test (logs): http://$(yq e '.MONITOR.IP' ~/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml):3000/d/avalanche-loki-logs/avalanche-logs?var-app=loadtest"
