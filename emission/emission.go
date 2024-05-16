@@ -591,3 +591,23 @@ func (e *Emission) GetLastAcceptedBlockHeight() uint64 {
 	e.c.Logger().Info("fetching last accepted block height")
 	return e.nuklaivm.LastAcceptedBlock().Height()
 }
+
+func (e *Emission) ModifyMaxSypply(supply uint64) {
+	e.MaxSupply = supply
+}
+
+func (e *Emission) ModifyAccountAddress(addr codec.Address) {
+	e.EmissionAccount.Address = addr
+}
+
+func (e *Emission) ModifyBaseAPR(apr float64) {
+	e.EpochTracker.BaseAPR = apr
+}
+
+func (e *Emission) ModifyBaseValidators(validators uint64) {
+	e.EpochTracker.BaseValidators = validators
+}
+
+func (e *Emission) ModifyEpochLength(length uint64) {
+	e.EpochTracker.EpochLength = length
+}
