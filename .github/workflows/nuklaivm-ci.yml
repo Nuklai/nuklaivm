@@ -122,14 +122,6 @@ jobs:
         env:
           MODE: 'full-test'
 
-  nuklaivm-wallet-release:
-    needs: [nuklaivm-load-tests, nuklaivm-sync-tests]
-    runs-on: macos-latest-xl
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - uses: ./.github/actions/nuklai-wallet-release
-
   nuklaivm-release:
     needs: [nuklaivm-load-tests, nuklaivm-sync-tests]
     # We build with 20.04 to maintain max compatibility: https://github.com/golang/go/issues/57328
