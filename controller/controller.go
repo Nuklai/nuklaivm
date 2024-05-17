@@ -251,6 +251,11 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				c.metrics.rewardAmount.Add(float64(stakeResult.RewardAmount))
 				c.metrics.claimStakingRewards.Inc()
 				c.metrics.undelegateUserStake.Inc()
+			case *actions.ModifyEmissionConfigParams:
+				_, err := actions.UnmarshalModifyEmissionConfigParams(result.Output)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

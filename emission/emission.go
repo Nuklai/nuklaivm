@@ -592,7 +592,7 @@ func (e *Emission) GetLastAcceptedBlockHeight() uint64 {
 	return e.nuklaivm.LastAcceptedBlock().Height()
 }
 
-func (e *Emission) ModifyMaxSypply(supply uint64) {
+func (e *Emission) ModifyMaxSupply(supply uint64) {
 	e.MaxSupply = supply
 }
 

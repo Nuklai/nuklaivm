@@ -17,4 +17,5 @@ const (
 	DelegateUserStakeComputeUnits      = 5
 	UndelegateUserStakeComputeUnits    = 1
 	ClaimStakingRewardComputeUnits     = 2
+	ModifyEmissionConfigUnits          = 1
 )

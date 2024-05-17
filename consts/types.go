@@ -20,6 +20,7 @@ const (
 	DelegateUserStakeID          uint8 = 9
 	ClaimDelegationStakeRewards  uint8 = 10
 	UndelegateUserStakeID        uint8 = 11
+	ModifyEmissionConfigParamsID uint8 = 12
 
 	// Auth TypeIDs
 	ED25519ID   uint8 = 0

@@ -174,11 +174,18 @@ func init() {
 		undelegateUserStakeCmd,
 	)
 
+	emissionModifyCmd.Flags().String("address", "", "New emission account address")
+	emissionModifyCmd.Flags().Uint64("maxsupply", 0, "New emission max supply")
+	emissionModifyCmd.Flags().Uint64("base-apr", 0, "New emission tracker base apr")
+	emissionModifyCmd.Flags().Uint64("base-validators", 0, "New emission tracker base validators")
+	emissionModifyCmd.Flags().Uint64("epoch-length", 0, "New emission tracker epoch length")
+
 	// emission
 	emissionCmd.AddCommand(
 		emissionInfoCmd,
 		emissionAllValidatorsCmd,
 		emissionStakedValidatorsCmd,
+		emissionModifyCmd,
 	)
 
 	// spam
