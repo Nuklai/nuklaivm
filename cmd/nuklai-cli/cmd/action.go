@@ -611,8 +611,8 @@ var registerValidatorStakeCmd = &cobra.Command{
 			return err
 		}
 
-		stakeStartBlock := currentBlockHeight + 20*2 // roughly 2 minutes from now
-		stakeEndBlock := currentBlockHeight + 20*15  // roughly 15 minutes from now
+		stakeStartBlock := currentBlockHeight + 20 // roughly 1 minute from now
+		stakeEndBlock := stakeStartBlock + 20*10   // roughly 10 minutes from stakeStartBlock
 		delegationFeeRate := 50
 		rewardAddress := priv.Address
 

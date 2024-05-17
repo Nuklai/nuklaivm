@@ -62,7 +62,26 @@ echo EMISSION_ADDRESS: "${EMISSION_ADDRESS}"
 # build avalanchego
 # https://github.com/ava-labs/avalanchego/releases
 # Set TMPDIR to the first command line argument if provided, otherwise default to /tmp/nuklaivm
-TMPDIR=${1:-/tmp/nuklaivm}
+# Default working directory
+TMPDIR="/tmp/nuklaivm"
+
+# Initialize an array for additional options
+OPTIONS=()
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  key="$1"
+  case $key in
+    --ginkgo.*)
+      OPTIONS+=("$1")
+      shift # past argument
+      ;;
+    *)
+      TMPDIR="$1"
+      shift # past argument
+      ;;
+  esac
+done
 
 echo "working directory: $TMPDIR"
 
@@ -261,6 +280,7 @@ trap cleanup EXIT
 echo "running e2e tests"
 ./tests/e2e/e2e.test \
 --ginkgo.v \
+"${OPTIONS[@]}" \
 --network-runner-log-level verbo \
 --avalanchego-log-level "${AGO_LOGLEVEL}" \
 --network-runner-grpc-endpoint="0.0.0.0:12352" \
