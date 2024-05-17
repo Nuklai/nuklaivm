@@ -81,8 +81,8 @@ cd $pw
 # We use a shorter EPOCH_DURATION and VALIDITY_WINDOW to speed up devnet
 # startup. In a production environment, these should be set to longer values.
 #
-EPOCH_DURATION=60000
-VALIDITY_WINDOW=59000
+EPOCH_DURATION=20000
+VALIDITY_WINDOW=19000
 MIN_BLOCK_GAP=100
 MIN_UNIT_PRICE="100,100,100,100,100"
 MAX_UINT64=18446744073709551615
