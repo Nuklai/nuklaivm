@@ -144,7 +144,7 @@ func init() {
 	chainCmd.AddCommand(
 		importChainCmd,
 		importANRChainCmd,
-		importAvalancheOpsChainCmd,
+		importAvalancheCliChainCmd,
 		setChainCmd,
 		chainInfoCmd,
 		watchChainCmd,

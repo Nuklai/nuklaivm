@@ -40,6 +40,34 @@ func (h *Handler) Root() *cli.Handler {
 	return h.h
 }
 
+func (h *Handler) ImportCLI(cliPath string) error {
+	oldChains, err := h.h.DeleteChains()
+	if err != nil {
+		return err
+	}
+	if len(oldChains) > 0 {
+		hutils.Outf("{{yellow}}deleted old chains:{{/}} %+v\n", oldChains)
+	}
+
+	// Load yaml file
+	chainID, nodes, err := ReadCLIFile(cliPath)
+	if err != nil {
+		return err
+	}
+	for name, uri := range nodes {
+		if err := h.h.StoreChain(chainID, uri); err != nil {
+			return err
+		}
+		hutils.Outf(
+			"{{yellow}}[%s] stored chainID:{{/}} %s {{yellow}}uri:{{/}} %s\n",
+			name,
+			chainID,
+			uri,
+		)
+	}
+	return h.h.StoreDefaultChain(chainID)
+}
+
 func (*Handler) GetAssetInfo(
 	ctx context.Context,
 	ncli *nrpc.JSONRPCClient,
