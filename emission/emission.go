@@ -65,7 +65,7 @@ type Emission struct {
 
 // New initializes the Emission struct with initial parameters and sets up the validators heap
 // and indices map.
-func New(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emissionAddress codec.Address) *Emission {
+func New(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emissionAddress codec.Address, baseAPR uint64, baseValidators uint64, epochLength uint64) *Emission {
 	once.Do(func() {
 		c.Logger().Info("Initializing emission with max supply and rewards per block settings")
 
@@ -83,9 +83,9 @@ func New(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emissionAddre
 			},
 			validators: make(map[ids.NodeID]*Validator),
 			EpochTracker: EpochTracker{
-				BaseAPR:        0.25, // 25% APR
-				BaseValidators: 100,
-				EpochLength:    10,
+				BaseAPR:        float64(baseAPR / 100), // 25% APR
+				BaseValidators: baseValidators,
+				EpochLength:    epochLength,
 				// TODO: Enable this in production
 				// EpochLength:    1200, // roughly 1 hour with 3 sec block time
 			},
