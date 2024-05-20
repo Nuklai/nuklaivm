@@ -5,6 +5,7 @@ package actions
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -54,7 +55,7 @@ func (s *ModifyEmissionConfigParams) Execute(
 	_ ids.ID,
 	_ bool,
 ) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
-
+	fmt.Println("EXECUTE MODIFY EMISSION BALANCER")
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
 
@@ -108,6 +109,19 @@ func (s *ModifyEmissionConfigParams) Marshal(p *codec.Packer) {
 	p.PackAddress(s.AccountAddress)
 }
 
+func UnmarshalModifyEmissionConfigParams(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
+	var config ModifyEmissionConfigParams
+	config.MaxSupply = p.UnpackUint64(false)
+	config.TrackerBaseAPR = p.UnpackUint64(false)
+	config.TrackerBaseValidators = p.UnpackUint64(false)
+	config.TrackerEpochLength = p.UnpackUint64(false)
+	p.UnpackAddress(&config.AccountAddress)
+	if err := p.Err(); err != nil {
+		return nil, err
+	}
+	return &config, nil
+}
+
 type ModifyEmissionConfigParamsResult struct {
 	*ModifyEmissionConfigParams
 }
@@ -122,7 +136,7 @@ func (s *ModifyEmissionConfigParamsResult) Marshal() ([]byte, error) {
 	return p.Bytes(), p.Err()
 }
 
-func UnmarshalModifyEmissionConfigParams(b []byte) (*ModifyEmissionConfigParamsResult, error) {
+func UnmarshalModifyEmissionConfigParamsResult(b []byte) (*ModifyEmissionConfigParamsResult, error) {
 	var config ModifyEmissionConfigParamsResult
 	p := codec.NewReader(b, 4*hconsts.Uint64Len+codec.AddressLen)
 	config.MaxSupply = p.UnpackUint64(false)

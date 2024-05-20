@@ -6,6 +6,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/ava-labs/hypersdk/codec"
@@ -90,8 +91,8 @@ var emissionStakedValidatorsCmd = &cobra.Command{
 }
 
 var emissionModifyCmd = &cobra.Command{
-	Use:   "modify",
-	Short: "Modify emission configuration parameters",
+	Use:   "modify-config [emission balancer file] [options]",
+	Short: "Modify emission balancer configuration parameters",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
 		address, _ := cmd.Flags().GetString("address")
@@ -99,7 +100,7 @@ var emissionModifyCmd = &cobra.Command{
 		apr, _ := cmd.Flags().GetUint64("base-apr")
 		validators, _ := cmd.Flags().GetUint64("base-validators")
 		epoch, _ := cmd.Flags().GetUint64("epoch-length")
-
+		fmt.Println("MODIFY-1 cmd")
 		newAddress := codec.EmptyAddress
 		if address != "" {
 			if newAddress, err = codec.ParseAddressBech32(nconsts.HRP, address); err != nil {
@@ -113,9 +114,9 @@ var emissionModifyCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-
+		fmt.Println("MODIFY-2 cmd")
 		// Read emission balancer file
-		eb, err := os.ReadFile(args[1])
+		eb, err := os.ReadFile(args[0])
 		if err != nil {
 			return err
 		}
@@ -123,7 +124,8 @@ var emissionModifyCmd = &cobra.Command{
 		if err := json.Unmarshal(eb, &emissionBalancer); err != nil {
 			return err
 		}
-
+		fmt.Println(emissionBalancer)
+		fmt.Println(newAddress)
 		// Generate transaction
 		if _, _, err = sendAndWait(ctx, nil, &actions.ModifyEmissionConfigParams{
 			MaxSupply:             supply,

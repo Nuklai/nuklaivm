@@ -36,6 +36,7 @@ func init() {
 		nconsts.ActionRegistry.Register((&actions.DelegateUserStake{}).GetTypeID(), actions.UnmarshalDelegateUserStake, false),
 		nconsts.ActionRegistry.Register((&actions.ClaimDelegationStakeRewards{}).GetTypeID(), actions.UnmarshalClaimDelegationStakeRewards, false),
 		nconsts.ActionRegistry.Register((&actions.UndelegateUserStake{}).GetTypeID(), actions.UnmarshalUndelegateUserStake, false),
+		nconsts.ActionRegistry.Register((&actions.ModifyEmissionConfigParams{}).GetTypeID(), actions.UnmarshalModifyEmissionConfigParams, false),
 
 		// When registering new auth, ALWAYS make sure to append at the end.
 		nconsts.AuthRegistry.Register((&auth.ED25519{}).GetTypeID(), auth.UnmarshalED25519, false),
