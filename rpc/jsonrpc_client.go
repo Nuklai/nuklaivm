@@ -226,6 +226,22 @@ func (cli *JSONRPCClient) UserStake(ctx context.Context, owner codec.Address, no
 	return resp.StakeStartBlock, resp.StakedAmount, resp.RewardAddress, resp.OwnerAddress, err
 }
 
+func (cli *JSONRPCClient) IsWhitelistedAddress(ctx context.Context, addr string) (bool, error) {
+	fmt.Println("JSON CLIENT IS WHITELISTED")
+	var resp bool
+	err := cli.requester.SendRequest(
+		ctx,
+		"isWhitelistedAddress",
+		addr,
+		resp,
+	)
+	if err != nil {
+		return false, err
+	}
+
+	return resp, nil
+}
+
 func (cli *JSONRPCClient) WaitForBalance(
 	ctx context.Context,
 	addr string,

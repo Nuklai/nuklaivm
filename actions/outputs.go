@@ -51,5 +51,5 @@ var (
 	OutputDelegateStakedAmountInvalid = []byte("staked amount must be at least 25 NAI")
 	OutputUserAlreadyStaked           = []byte("user already staked")
 	OutputValidatorNotYetRegistered   = []byte("validator not yet registered for staking")
-	OutputInvalidActorEmissionChange  = []byte("Failed to modify emission config: invalid actor")
+	OutputFailedEmissionChange        = []byte("Failed to modify emission config")
 )

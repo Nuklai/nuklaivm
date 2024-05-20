@@ -43,4 +43,5 @@ type Controller interface {
 		codec.Address, // OwnerAddress
 		error,
 	)
+	IsWhitelistedAddress(string) (bool, error)
 }

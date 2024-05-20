@@ -5,6 +5,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/trace"
@@ -60,6 +61,19 @@ func (c *Controller) GetLoanFromState(
 
 func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, uint64, uint64, emission.EmissionAccount, emission.EpochTracker, error) {
 	return c.emission.GetLastAcceptedBlockHeight(), c.emission.TotalSupply, c.emission.MaxSupply, c.emission.TotalStaked, c.emission.GetRewardsPerEpoch(), c.emission.EmissionAccount, c.emission.EpochTracker, nil
+}
+
+func (c *Controller) IsWhitelistedAddress(addr string) (whitelisted bool, err error) {
+	fmt.Println("CONTROLLER IS WHITELISTED ADDRESS")
+	fmt.Println(addr)
+	for _, alloc := range c.genesis.CustomAllocation {
+		fmt.Println(alloc.Address)
+		if alloc.Address == addr {
+			whitelisted = true
+			break
+		}
+	}
+	return whitelisted, err
 }
 
 func (c *Controller) GetValidators(ctx context.Context, staked bool) ([]*emission.Validator, error) {

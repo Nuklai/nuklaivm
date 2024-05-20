@@ -59,10 +59,6 @@ func (s *ModifyEmissionConfigParams) Execute(
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
 
-	if actor != emissionInstance.EmissionAccount.Address {
-		return false, 0, OutputInvalidActorEmissionChange, nil, nil
-	}
-
 	if s.MaxSupply > 0 && s.MaxSupply != emissionInstance.MaxSupply {
 		emissionInstance.ModifyMaxSupply(s.MaxSupply)
 	}
@@ -85,7 +81,6 @@ func (s *ModifyEmissionConfigParams) Execute(
 	}
 
 	sr := &ModifyEmissionConfigParamsResult{s}
-	// p = codec.NewWriter(4*hconsts.Uint64Len+codec.AddressLen, 4*hconsts.Uint64Len+codec.AddressLen)
 	output, err := sr.Marshal()
 	if err != nil {
 		return false, UndelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil

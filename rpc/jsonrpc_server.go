@@ -4,6 +4,7 @@
 package rpc
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -167,6 +168,17 @@ func (j *JSONRPCServer) EmissionInfo(req *http.Request, _ *struct{}, reply *Emis
 	reply.EmissionAccount = emissionAccount
 	reply.EpochTracker = epochTracker
 	return nil
+}
+
+func (j *JSONRPCServer) IsWhitelistedAddress(req *http.Request, addr string) (whitelisted bool, err error) {
+	_, span := j.c.Tracer().Start(req.Context(), "Server.CustomAllocationsAddresses")
+	defer span.End()
+	fmt.Println("JSON SERVER IS WHITELISTED")
+	whitelisted, err = j.c.IsWhitelistedAddress(addr)
+	if err != nil {
+		return false, err
+	}
+	return whitelisted, nil
 }
 
 type ValidatorsReply struct {

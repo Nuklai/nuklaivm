@@ -107,14 +107,20 @@ var emissionModifyCmd = &cobra.Command{
 				return err
 			}
 		}
-
 		g := genesis.Default()
 		ctx := context.Background()
-		_, _, factory, hcli, hws, ncli, err := handler.DefaultActor()
+		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
 		if err != nil {
 			return err
 		}
-		fmt.Println("MODIFY-2 cmd")
+
+		whitelisted, err := ncli.IsWhitelistedAddress(ctx, codec.MustAddressBech32(nconsts.HRP, priv.Address))
+		fmt.Println("WHITELISTED")
+		fmt.Println(whitelisted)
+		if !whitelisted {
+			return fmt.Errorf("Default actor is not whitelisted")
+		}
+
 		// Read emission balancer file
 		eb, err := os.ReadFile(args[0])
 		if err != nil {
@@ -151,8 +157,16 @@ var emissionModifyCmd = &cobra.Command{
 			return err
 		}
 
-		// modify emission balancer json
+		// modify emission balancer in genesis file
 		color.Green("modified genesis and saved to %s", genesisFile)
+
+		e, err := json.Marshal(emissionBalancer)
+		if err := os.WriteFile(args[0], e, fsModeWrite); err != nil {
+			return err
+		}
+
+		// modify emission balancer file
+		color.Green("modified emission balancer file and saved to %s", args[0])
 		return nil
 	},
 }
