@@ -5,6 +5,7 @@ package actions
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -32,7 +33,7 @@ func (*ModifyEmissionConfigParams) GetTypeID() uint8 {
 	return nconsts.ModifyEmissionConfigParamsID
 }
 
-func (s *ModifyEmissionConfigParams) StateKeys(actor codec.Address, _ ids.ID) []string {
+func (s *ModifyEmissionConfigParams) StateKeys(_ codec.Address, _ ids.ID) []string {
 	// TODO: How to better handle a case where the NodeID is invalid?
 	return []string{}
 }
@@ -46,9 +47,9 @@ func (*ModifyEmissionConfigParams) OutputsWarpMessage() bool {
 }
 
 func (s *ModifyEmissionConfigParams) Execute(
-	ctx context.Context,
+	_ context.Context,
 	_ chain.Rules,
-	mu state.Mutable,
+	_ state.Mutable,
 	_ int64,
 	actor codec.Address,
 	_ ids.ID,
@@ -78,7 +79,7 @@ func (s *ModifyEmissionConfigParams) Execute(
 		emissionInstance.ModifyEpochLength(s.TrackerEpochLength)
 	}
 
-	sr := &ModifyEmissionConfigParamsResult{s}
+	sr := &ModifyEmissionConfigParamsResult{Actor: actor, Config: s}
 	output, err := sr.Marshal()
 	if err != nil {
 		return false, ModifyEmissionConfigUnits, utils.ErrBytes(err), nil, nil
@@ -116,32 +117,43 @@ func UnmarshalModifyEmissionConfigParams(p *codec.Packer, _ *warp.Message) (chai
 }
 
 type ModifyEmissionConfigParamsResult struct {
-	*ModifyEmissionConfigParams
+	Actor  codec.Address
+	Config *ModifyEmissionConfigParams
 }
 
 func (s *ModifyEmissionConfigParamsResult) Marshal() ([]byte, error) {
-	p := codec.NewWriter(4*hconsts.Uint64Len+codec.AddressLen, 4*hconsts.Uint64Len+codec.AddressLen)
-	p.PackUint64(s.MaxSupply)
-	p.PackUint64(s.TrackerBaseAPR)
-	p.PackUint64(s.TrackerBaseValidators)
-	p.PackUint64(s.TrackerEpochLength)
-	p.PackAddress(s.AccountAddress)
+	p := codec.NewWriter(codec.AddressLen+4*hconsts.Uint64Len+codec.AddressLen, codec.AddressLen+4*hconsts.Uint64Len+codec.AddressLen)
+	p.PackAddress(s.Actor)
+	p.PackUint64(s.Config.MaxSupply)
+	p.PackUint64(s.Config.TrackerBaseAPR)
+	p.PackUint64(s.Config.TrackerBaseValidators)
+	p.PackUint64(s.Config.TrackerEpochLength)
+	p.PackAddress(s.Config.AccountAddress)
 	return p.Bytes(), p.Err()
 }
 
 func UnmarshalModifyEmissionConfigParamsResult(b []byte) (*ModifyEmissionConfigParamsResult, error) {
-	var config ModifyEmissionConfigParamsResult
-	p := codec.NewReader(b, 4*hconsts.Uint64Len+codec.AddressLen)
-	config.MaxSupply = p.UnpackUint64(false)
-	config.TrackerBaseAPR = p.UnpackUint64(false)
-	config.TrackerBaseValidators = p.UnpackUint64(false)
-	config.TrackerEpochLength = p.UnpackUint64(false)
+	p := codec.NewReader(b, codec.AddressLen+4*hconsts.Uint64Len+codec.AddressLen)
+	var result ModifyEmissionConfigParamsResult
+	var config ModifyEmissionConfigParams
+	fmt.Println("UnmarshalModifyEmissionConfigParamsResult -1")
+	fmt.Println(config)
+	p.UnpackAddress(&result.Actor)
+	config.MaxSupply = p.UnpackUint64(true)
+	fmt.Println(config.MaxSupply)
+	fmt.Println("UnmarshalModifyEmissionConfigParamsResult -2")
+	config.TrackerBaseAPR = p.UnpackUint64(true)
+	fmt.Println(config.TrackerBaseAPR)
+	config.TrackerBaseValidators = p.UnpackUint64(true)
+	fmt.Println(config.TrackerBaseValidators)
+	config.TrackerEpochLength = p.UnpackUint64(true)
+	fmt.Println(config.TrackerEpochLength)
 	p.UnpackAddress(&config.AccountAddress)
+	result.Config = &config
 	if err := p.Err(); err != nil {
 		return nil, err
 	}
-	return &config, nil
-
+	return &result, nil
 }
 
 func (*ModifyEmissionConfigParams) ValidRange(chain.Rules) (int64, int64) {

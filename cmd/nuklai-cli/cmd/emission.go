@@ -91,7 +91,7 @@ var emissionStakedValidatorsCmd = &cobra.Command{
 }
 
 var emissionModifyCmd = &cobra.Command{
-	Use:   "modify-config [emission balancer file] [options]",
+	Use:   "modify-config [tmp/ emission balancer file] [tmp/ genesis file] [options]",
 	Short: "Modify emission balancer configuration parameters",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
@@ -175,13 +175,19 @@ var emissionModifyCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(g)
+		fmt.Println(g.EmissionBalancer)
+		fmt.Println(genesisFile)
 		if err := os.WriteFile(genesisFile, b, fsModeWrite); err != nil {
 			return err
 		}
-
 		// modify emission balancer in genesis file
 		color.Green("modified genesis and saved to %s", genesisFile)
+
+		if err := os.WriteFile(args[1], b, fsModeWrite); err != nil {
+			return err
+		}
+		// modify emission balancer in genesis file
+		color.Green("modified genesis and saved to %s", args[1])
 
 		e, err := json.Marshal(emissionBalancer)
 		if err != nil {
@@ -193,6 +199,8 @@ var emissionModifyCmd = &cobra.Command{
 
 		// modify emission balancer file
 		color.Green("modified emission balancer file and saved to %s", args[0])
+
+		fmt.Println(handler.GetEmissionInfo(ctx, ncli))
 		return nil
 	},
 }

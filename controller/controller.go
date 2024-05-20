@@ -252,6 +252,15 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				c.metrics.claimStakingRewards.Inc()
 				c.metrics.undelegateUserStake.Inc()
 			case *actions.ModifyEmissionConfigParams:
+				result, err := actions.UnmarshalModifyEmissionConfigParamsResult(result.Output)
+				if err != nil {
+					// This should never happen
+					return err
+				}
+				whitelisted, err := c.IsWhitelistedAddress(codec.MustAddressBech32(nconsts.HRP, result.Actor))
+				if !whitelisted {
+					return fmt.Errorf("the signer is not allowed to modify the emission configuration")
+				}
 			}
 		}
 	}
