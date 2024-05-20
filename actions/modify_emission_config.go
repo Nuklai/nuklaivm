@@ -83,9 +83,9 @@ func (s *ModifyEmissionConfigParams) Execute(
 	sr := &ModifyEmissionConfigParamsResult{s}
 	output, err := sr.Marshal()
 	if err != nil {
-		return false, UndelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
+		return false, ModifyEmissionConfigUnits, utils.ErrBytes(err), nil, nil
 	}
-	return true, 0, output, nil, nil
+	return true, ModifyEmissionConfigUnits, output, nil, nil
 }
 
 func (*ModifyEmissionConfigParams) MaxComputeUnits(chain.Rules) uint64 {

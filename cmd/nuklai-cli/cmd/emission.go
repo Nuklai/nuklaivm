@@ -98,16 +98,19 @@ var emissionModifyCmd = &cobra.Command{
 		address, _ := cmd.Flags().GetString("address")
 		supply, _ := cmd.Flags().GetUint64("maxsupply")
 		apr, _ := cmd.Flags().GetUint64("base-apr")
-		validators, _ := cmd.Flags().GetUint64("base-validators")
+		baseValidators, _ := cmd.Flags().GetUint64("base-validators")
 		epoch, _ := cmd.Flags().GetUint64("epoch-length")
-		fmt.Println("MODIFY-1 cmd")
-		newAddress := codec.EmptyAddress
+
+		var newAddress codec.Address
 		if address != "" {
 			if newAddress, err = codec.ParseAddressBech32(nconsts.HRP, address); err != nil {
 				return err
 			}
 		}
-		g := genesis.Default()
+		if newAddress == codec.EmptyAddress {
+			return fmt.Errorf("Wrong Emission Account Address %s", address)
+		}
+
 		ctx := context.Background()
 		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
 		if err != nil {
@@ -115,8 +118,6 @@ var emissionModifyCmd = &cobra.Command{
 		}
 
 		whitelisted, err := ncli.IsWhitelistedAddress(ctx, codec.MustAddressBech32(nconsts.HRP, priv.Address))
-		fmt.Println("WHITELISTED")
-		fmt.Println(whitelisted)
 		if !whitelisted {
 			return fmt.Errorf("Default actor is not whitelisted")
 		}
@@ -126,33 +127,49 @@ var emissionModifyCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
+		g := genesis.Default()
 		emissionBalancer := genesis.EmissionBalancer{}
 		if err := json.Unmarshal(eb, &emissionBalancer); err != nil {
 			return err
 		}
-		fmt.Println(emissionBalancer)
-		fmt.Println(newAddress)
-		// Generate transaction
+
+		if supply > 0 && supply != emissionBalancer.MaxSupply {
+			emissionBalancer.MaxSupply = supply
+		}
+		if apr > 0 && apr != emissionBalancer.BaseAPR {
+			emissionBalancer.BaseAPR = apr
+		}
+		if baseValidators > 0 && baseValidators != emissionBalancer.BaseValidators {
+			emissionBalancer.BaseValidators = baseValidators
+		}
+		if epoch > 0 && epoch != emissionBalancer.EpochLength {
+			emissionBalancer.EpochLength = epoch
+		}
+
+		if address != emissionBalancer.EmissionAddress {
+			emissionBalancer.EmissionAddress = address
+		}
+		newAddress, err = codec.ParseAddressBech32(nconsts.HRP, emissionBalancer.EmissionAddress)
+
+		// Generate transacti
 		if _, _, err = sendAndWait(ctx, nil, &actions.ModifyEmissionConfigParams{
-			MaxSupply:             supply,
-			TrackerBaseAPR:        apr,
-			TrackerBaseValidators: validators,
-			TrackerEpochLength:    epoch,
+			MaxSupply:             emissionBalancer.MaxSupply,
+			TrackerBaseAPR:        emissionBalancer.BaseAPR,
+			TrackerBaseValidators: emissionBalancer.BaseValidators,
+			TrackerEpochLength:    emissionBalancer.EpochLength,
 			AccountAddress:        newAddress,
 		}, hcli, hws, ncli, factory, true); err != nil {
 			return err
 		}
-
-		emissionBalancer.MaxSupply = supply
-		emissionBalancer.BaseAPR = apr
-		emissionBalancer.BaseValidators = validators
-		emissionBalancer.EpochLength = epoch
+		fmt.Println("POST TRANSACTION")
 		g.EmissionBalancer = emissionBalancer
 
 		b, err := json.Marshal(g)
 		if err != nil {
 			return err
 		}
+		fmt.Println(g)
 		if err := os.WriteFile(genesisFile, b, fsModeWrite); err != nil {
 			return err
 		}
