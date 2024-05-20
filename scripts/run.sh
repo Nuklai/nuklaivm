@@ -134,7 +134,10 @@ echo "creating emission balancer file"
 cat <<EOF > "${TMPDIR}"/emission-balancer.json
 {
   "maxSupply":  10000000000000000000,
-  "emissionAddress":"${EMISSION_ADDRESS}"
+  "emissionAddress":"${EMISSION_ADDRESS}",
+  "baseAPR": 25,
+  "baseValidators": 100,
+  "epochLength": 10
 }
 EOF
 
