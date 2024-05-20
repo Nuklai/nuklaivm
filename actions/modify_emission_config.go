@@ -5,7 +5,6 @@ package actions
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -55,7 +54,6 @@ func (s *ModifyEmissionConfigParams) Execute(
 	_ ids.ID,
 	_ bool,
 ) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
-	fmt.Println("EXECUTE MODIFY EMISSION BALANCER")
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
 

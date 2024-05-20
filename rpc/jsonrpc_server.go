@@ -4,7 +4,6 @@
 package rpc
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -181,7 +180,6 @@ type WhitelistedReply struct {
 func (j *JSONRPCServer) IsWhitelistedAddress(req *http.Request, args *WhitelistedArgs, reply *WhitelistedReply) (err error) {
 	_, span := j.c.Tracer().Start(req.Context(), "Server.IsWhitelistedAddress")
 	defer span.End()
-	fmt.Println("JSON SERVER IS WHITELISTED")
 	whitelisted, err := j.c.IsWhitelistedAddress(args.Address)
 	if err != nil {
 		return err

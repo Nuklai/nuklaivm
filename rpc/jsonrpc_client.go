@@ -227,7 +227,6 @@ func (cli *JSONRPCClient) UserStake(ctx context.Context, owner codec.Address, no
 }
 
 func (cli *JSONRPCClient) IsWhitelistedAddress(ctx context.Context, addr string) (bool, error) {
-	fmt.Println("JSON CLIENT IS WHITELISTED")
 	resp := new(WhitelistedReply)
 	err := cli.requester.SendRequest(
 		ctx,

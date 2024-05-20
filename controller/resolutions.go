@@ -5,7 +5,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/trace"
@@ -64,10 +63,7 @@ func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, uint64, uint64, 
 }
 
 func (c *Controller) IsWhitelistedAddress(addr string) (whitelisted bool, err error) {
-	fmt.Println("CONTROLLER IS WHITELISTED ADDRESS")
-	fmt.Println(addr)
 	for _, alloc := range c.genesis.CustomAllocation {
-		fmt.Println(alloc.Address)
 		if alloc.Address == addr {
 			whitelisted = true
 			break
