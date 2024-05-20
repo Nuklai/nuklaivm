@@ -108,7 +108,7 @@ var emissionModifyCmd = &cobra.Command{
 			}
 		}
 		if newAddress == codec.EmptyAddress {
-			return fmt.Errorf("Wrong Emission Account Address %s", address)
+			return fmt.Errorf("invalid emission account address %s", address)
 		}
 
 		ctx := context.Background()
@@ -118,8 +118,11 @@ var emissionModifyCmd = &cobra.Command{
 		}
 
 		whitelisted, err := ncli.IsWhitelistedAddress(ctx, codec.MustAddressBech32(nconsts.HRP, priv.Address))
+		if err != nil {
+			return err
+		}
 		if !whitelisted {
-			return fmt.Errorf("Default actor is not whitelisted")
+			return fmt.Errorf("default actor is not whitelisted")
 		}
 
 		// Read emission balancer file
@@ -151,8 +154,11 @@ var emissionModifyCmd = &cobra.Command{
 			emissionBalancer.EmissionAddress = address
 		}
 		newAddress, err = codec.ParseAddressBech32(nconsts.HRP, emissionBalancer.EmissionAddress)
+		if err != nil {
+			return err
+		}
 
-		// Generate transacti
+		// Generate transaction
 		if _, _, err = sendAndWait(ctx, nil, &actions.ModifyEmissionConfigParams{
 			MaxSupply:             emissionBalancer.MaxSupply,
 			TrackerBaseAPR:        emissionBalancer.BaseAPR,
@@ -178,6 +184,9 @@ var emissionModifyCmd = &cobra.Command{
 		color.Green("modified genesis and saved to %s", genesisFile)
 
 		e, err := json.Marshal(emissionBalancer)
+		if err != nil {
+			return err
+		}
 		if err := os.WriteFile(args[0], e, fsModeWrite); err != nil {
 			return err
 		}
