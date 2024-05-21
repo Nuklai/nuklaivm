@@ -168,7 +168,7 @@ var emissionModifyCmd = &cobra.Command{
 		}, hcli, hws, ncli, factory, true); err != nil {
 			return err
 		}
-		fmt.Println("POST TRANSACTION")
+
 		g.EmissionBalancer = emissionBalancer
 
 		b, err := json.Marshal(g)
@@ -200,7 +200,7 @@ var emissionModifyCmd = &cobra.Command{
 		// modify emission balancer file
 		color.Green("modified emission balancer file and saved to %s", args[0])
 
-		fmt.Println(handler.GetEmissionInfo(ctx, ncli))
+		fmt.Sprint(handler.GetEmissionInfo(ctx, ncli))
 		return nil
 	},
 }
