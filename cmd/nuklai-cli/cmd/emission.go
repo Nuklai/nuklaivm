@@ -175,8 +175,6 @@ var emissionModifyCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(g.EmissionBalancer)
-		fmt.Println(genesisFile)
 		if err := os.WriteFile(genesisFile, b, fsModeWrite); err != nil {
 			return err
 		}

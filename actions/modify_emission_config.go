@@ -5,7 +5,6 @@ package actions
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -136,18 +135,11 @@ func UnmarshalModifyEmissionConfigParamsResult(b []byte) (*ModifyEmissionConfigP
 	p := codec.NewReader(b, codec.AddressLen+4*hconsts.Uint64Len+codec.AddressLen)
 	var result ModifyEmissionConfigParamsResult
 	var config ModifyEmissionConfigParams
-	fmt.Println("UnmarshalModifyEmissionConfigParamsResult -1")
-	fmt.Println(config)
 	p.UnpackAddress(&result.Actor)
 	config.MaxSupply = p.UnpackUint64(true)
-	fmt.Println(config.MaxSupply)
-	fmt.Println("UnmarshalModifyEmissionConfigParamsResult -2")
 	config.TrackerBaseAPR = p.UnpackUint64(true)
-	fmt.Println(config.TrackerBaseAPR)
 	config.TrackerBaseValidators = p.UnpackUint64(true)
-	fmt.Println(config.TrackerBaseValidators)
 	config.TrackerEpochLength = p.UnpackUint64(true)
-	fmt.Println(config.TrackerEpochLength)
 	p.UnpackAddress(&config.AccountAddress)
 	result.Config = &config
 	if err := p.Err(); err != nil {
