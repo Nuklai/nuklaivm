@@ -258,6 +258,9 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 					return err
 				}
 				whitelisted, err := c.IsWhitelistedAddress(codec.MustAddressBech32(nconsts.HRP, result.Actor))
+				if err != nil {
+					return err
+				}
 				if !whitelisted {
 					return fmt.Errorf("the signer is not allowed to modify the emission configuration")
 				}

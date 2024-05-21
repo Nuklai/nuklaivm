@@ -65,11 +65,10 @@ func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, uint64, uint64, 
 func (c *Controller) IsWhitelistedAddress(addr string) (whitelisted bool, err error) {
 	for _, alloc := range c.genesis.CustomAllocation {
 		if alloc.Address == addr {
-			whitelisted = true
-			break
+			return true, err
 		}
 	}
-	return whitelisted, err
+	return false, err
 }
 
 func (c *Controller) GetValidators(ctx context.Context, staked bool) ([]*emission.Validator, error) {
