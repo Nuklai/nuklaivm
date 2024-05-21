@@ -31,7 +31,6 @@ type CustomAllocation struct {
 }
 
 type EmissionBalancer struct {
-	TotalSupply     uint64 `json:"totalSupply"`     // Total supply of NAI
 	MaxSupply       uint64 `json:"maxSupply"`       // Max supply of NAI
 	EmissionAddress string `json:"emissionAddress"` // Emission address
 }
@@ -107,7 +106,6 @@ func Default() *Genesis {
 		StorageValueWriteUnits:    3,
 
 		EmissionBalancer: EmissionBalancer{
-			TotalSupply:     0,
 			MaxSupply:       emission.GetStakingConfig().RewardConfig.SupplyCap,       // 10 billion NAI,
 			EmissionAddress: emission.GetStakingConfig().RewardConfig.EmissionAddress, // NAI emission address(If you don't pass this address, it will be set to the default address)
 		},
