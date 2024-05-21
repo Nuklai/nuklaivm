@@ -32,7 +32,7 @@ func (*ModifyEmissionConfigParams) GetTypeID() uint8 {
 	return nconsts.ModifyEmissionConfigParamsID
 }
 
-func (_ *ModifyEmissionConfigParams) StateKeys(_ codec.Address, _ ids.ID) []string {
+func (*ModifyEmissionConfigParams) StateKeys(_ codec.Address, _ ids.ID) []string {
 	// TODO: How to better handle a case where the NodeID is invalid?
 	return []string{}
 }

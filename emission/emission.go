@@ -5,7 +5,6 @@ package emission
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -598,7 +597,6 @@ func (e *Emission) ModifyMaxSupply(supply uint64) {
 }
 
 func (e *Emission) ModifyAccountAddress(addr codec.Address) {
-	fmt.Println("EMISSION MODIFY ADDRESS ACCOUNT")
 	e.EmissionAccount.Address = addr
 }
 

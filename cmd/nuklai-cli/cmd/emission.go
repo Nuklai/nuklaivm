@@ -198,7 +198,7 @@ var emissionModifyCmd = &cobra.Command{
 		// modify emission balancer file
 		color.Green("modified emission balancer file and saved to %s", args[0])
 
-		fmt.Sprint(handler.GetEmissionInfo(ctx, ncli))
+		fmt.Println(handler.GetEmissionInfo(ctx, ncli))
 		return nil
 	},
 }
