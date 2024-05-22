@@ -593,8 +593,6 @@ func (e *Emission) GetLastAcceptedBlockHeight() uint64 {
 
 func (e *Emission) isWhitelistedAddress(signer codec.Address) (whitelisted bool, err error) {
 	for _, addr := range e.whiteListedAddresses {
-		fmt.Println(signer)
-		fmt.Println(addr)
 		if signer == addr {
 			return true, nil
 		}

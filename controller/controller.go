@@ -159,7 +159,7 @@ func (c *Controller) Initialize(
 	for _, alloc := range c.genesis.CustomAllocation {
 		totalSupply += alloc.Balance
 	}
-	c.emission = emission.New(c, c.inner, c.genesis.EmissionBalancer.TotalSupply, c.genesis.EmissionBalancer.MaxSupply, emissionAddr, c.genesis.EmissionBalancer.BaseAPR, c.genesis.EmissionBalancer.BaseValidators, c.genesis.EmissionBalancer.EpochLength, whitelisted)
+	c.emission = emission.New(c, c.inner, totalSupply, c.genesis.EmissionBalancer.MaxSupply, emissionAddr, c.genesis.EmissionBalancer.BaseAPR, c.genesis.EmissionBalancer.BaseValidators, c.genesis.EmissionBalancer.EpochLength, whitelisted)
 
 	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, nconsts.ActionRegistry, nconsts.AuthRegistry, auth.Engines(), nil
 }
