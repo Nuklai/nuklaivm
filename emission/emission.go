@@ -19,11 +19,11 @@ var (
 )
 
 type Delegator struct {
-	IsActive        bool   `json:"isActive"`     // Indicates if the delegator is currently active
-	StakedAmount    uint64 `json:"stakedAmount"` // Total amount staked by the delegator
-	stakeStartBlock uint64 // Start block of the stake
-	stakeEndBlock   uint64 // End block of the stake
-	alreadyClaimed  bool   // Indicates if the delegator has already claimed rewards
+	IsActive        bool   `json:"isActive"`        // Indicates if the delegator is currently active
+	StakedAmount    uint64 `json:"stakedAmount"`    // Total amount staked by the delegator
+	StakeStartBlock uint64 `json:"stakeStartBlock"` // Start block of the stake
+	StakeEndBlock   uint64 `json:"stakeEndBlock"`   // End block of the stake
+	AlreadyClaimed  bool   `json:"alreadyClaimed"`  // Indicates if the delegator has already claimed rewards
 }
 
 type Validator struct {
@@ -35,8 +35,8 @@ type Validator struct {
 	DelegationFeeRate        float64    `json:"delegationFeeRate"`        // Fee rate for delegations
 	DelegatedAmount          uint64     `json:"delegatedAmount"`          // Total amount delegated to the validator
 	UnclaimedDelegatedReward uint64     `json:"unclaimedDelegatedReward"` // Total rewards accumulated by the delegators
-	Delegators               map[codec.Address]*Delegator
 
+	delegators      map[codec.Address]*Delegator
 	epochRewards    map[uint64]uint64 // Rewards per epoch
 	stakeStartBlock uint64            // Start block of the stake
 	stakeEndBlock   uint64            // End block of the stake
@@ -53,6 +53,11 @@ type EpochTracker struct {
 	EpochLength    uint64  `json:"epochLength"`    // Number of blocks per reward epoch
 }
 
+type DelegatorEvent struct {
+	ValidatorNodeID ids.NodeID
+	Delegator       codec.Address
+}
+
 type Emission struct {
 	c        Controller
 	nuklaivm NuklaiVM
@@ -65,6 +70,10 @@ type Emission struct {
 	TotalStaked uint64 `json:"totalStaked"` // Total staked NAI
 
 	EpochTracker EpochTracker `json:"epochTracker"` // Epoch Tracker Info
+
+	activationEvents   map[uint64][]*Validator
+	deactivationEvents map[uint64][]*Validator
+	delegatorEvents    map[uint64][]*DelegatorEvent
 
 	lock sync.RWMutex
 }
@@ -95,6 +104,9 @@ func New(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emissionAddre
 				// TODO: Enable this in production
 				// EpochLength:    1200, // roughly 1 hour with 3 sec block time
 			},
+			activationEvents:   make(map[uint64][]*Validator),
+			deactivationEvents: make(map[uint64][]*Validator),
+			delegatorEvents:    make(map[uint64][]*DelegatorEvent),
 		}
 	})
 	return emission
@@ -119,54 +131,6 @@ func (e *Emission) AddToTotalSupply(amount uint64) uint64 {
 	return e.TotalSupply
 }
 
-// GetNumDelegators returns the total number of delegators across all validators.
-func (e *Emission) GetNumDelegators(nodeID ids.NodeID) int {
-	e.c.Logger().Info("fetching total number of delegators")
-
-	numDelegators := 0
-	// Get delegators for all validators
-	if nodeID == ids.EmptyNodeID {
-		for _, validator := range e.validators {
-			numDelegators += len(validator.Delegators)
-		}
-	} else {
-		// Get delegators for a specific validator
-		if validator, exists := e.validators[nodeID]; exists {
-			numDelegators = len(validator.Delegators)
-		}
-	}
-
-	return numDelegators
-}
-
-// GetAPRForValidators calculates the Annual Percentage Rate (APR) for validators
-// based on the number of validators.
-func (e *Emission) GetAPRForValidators() float64 {
-	e.c.Logger().Info("getting APR for validators")
-
-	apr := e.EpochTracker.BaseAPR // APR is expressed per year as a decimal, e.g., 0.25 for 25%
-	// Beyond baseValidators, APR decreases proportionately
-	baseValidators := int(e.EpochTracker.BaseValidators)
-	if len(e.validators) > baseValidators {
-		apr /= float64(len(e.validators)) / float64(baseValidators)
-	}
-	return apr
-}
-
-// GetRewardsPerEpoch calculates the rewards per epoch based on the total staked amount
-// and the APR for validators.
-func (e *Emission) GetRewardsPerEpoch() uint64 {
-	e.c.Logger().Info("getting rewards per epoch")
-
-	// Calculate total rewards for the epoch based on APR and staked amount
-	rewardsPerBlock := uint64((float64(e.TotalStaked) * e.GetAPRForValidators() / 365 / 24 / 60 / 60) * (float64(e.EpochTracker.EpochLength) * 3)) // 3 seconds per block
-
-	if e.TotalSupply+rewardsPerBlock > e.MaxSupply {
-		rewardsPerBlock = e.MaxSupply - e.TotalSupply // Adjust to not exceed max supply
-	}
-	return rewardsPerBlock
-}
-
 // CalculateUserDelegationRewards computes the rewards for a user's delegated stake to a
 // validator, factoring in the delegation duration and amount.
 func (e *Emission) CalculateUserDelegationRewards(nodeID ids.NodeID, actor codec.Address) (uint64, error) {
@@ -179,22 +143,22 @@ func (e *Emission) CalculateUserDelegationRewards(nodeID ids.NodeID, actor codec
 	}
 
 	// Check if the delegator exists and rewards haven't been claimed yet
-	if _, exists := validator.Delegators[actor]; !exists {
+	if _, exists := validator.delegators[actor]; !exists {
 		return 0, ErrDelegatorNotFound
 	}
-	if validator.Delegators[actor].alreadyClaimed {
+	if validator.delegators[actor].AlreadyClaimed {
 		return 0, nil // Rewards already claimed
 	}
 
 	// Iterate over each epoch within the stake period
-	startEpoch := validator.Delegators[actor].stakeStartBlock / e.EpochTracker.EpochLength
-	endEpoch := validator.Delegators[actor].stakeEndBlock / e.EpochTracker.EpochLength
+	startEpoch := validator.delegators[actor].StakeStartBlock / e.EpochTracker.EpochLength
+	endEpoch := validator.delegators[actor].StakeEndBlock / e.EpochTracker.EpochLength
 	totalReward := uint64(0)
 
 	for epoch := startEpoch; epoch < endEpoch; epoch++ {
 		if reward, ok := validator.epochRewards[epoch]; ok {
 			// Calculate reward for this epoch
-			delegatorShare := float64(validator.Delegators[actor].StakedAmount) / float64(validator.DelegatedAmount)
+			delegatorShare := float64(validator.delegators[actor].StakedAmount) / float64(validator.DelegatedAmount)
 			epochReward := delegatorShare * float64(reward)
 			totalReward += uint64(epochReward)
 		}
@@ -218,28 +182,43 @@ func (e *Emission) RegisterValidatorStake(nodeID ids.NodeID, nodePublicKey *bls.
 	}
 
 	if exists {
-		// If validator exists, it's a re-registration, update necessary fields
-		validator.PublicKey = bls.PublicKeyToBytes(nodePublicKey)        // Update public key if needed
-		validator.StakedAmount += stakedAmount                           // Adjust the staked amount
-		validator.DelegationFeeRate = float64(delegationFeeRate) / 100.0 // Update delegation fee rate if needed
+		validator.PublicKey = bls.PublicKeyToBytes(nodePublicKey)
+		validator.StakedAmount += stakedAmount
+		validator.DelegationFeeRate = float64(delegationFeeRate) / 100.0
 		validator.stakeStartBlock = stakeStartBlock
 		validator.stakeEndBlock = stakeEndBlock
-		// Note: We might want to keep some attributes unchanged, such as epochRewards, etc.
 	} else {
-		// If validator does not exist, create a new entry
-		e.validators[nodeID] = &Validator{
+		validator = &Validator{
 			NodeID:            nodeID,
 			PublicKey:         bls.PublicKeyToBytes(nodePublicKey),
 			StakedAmount:      stakedAmount,
-			DelegationFeeRate: float64(delegationFeeRate) / 100.0, // Convert to decimal
-			Delegators:        make(map[codec.Address]*Delegator),
+			DelegationFeeRate: float64(delegationFeeRate) / 100.0,
+			delegators:        make(map[codec.Address]*Delegator),
 			epochRewards:      make(map[uint64]uint64),
 			stakeStartBlock:   stakeStartBlock,
 			stakeEndBlock:     stakeEndBlock,
 		}
+		e.validators[nodeID] = validator
 	}
 
+	e.addActivationEvent(stakeStartBlock, validator)
+	e.addDeactivationEvent(stakeEndBlock, validator)
+
 	return nil
+}
+
+func (e *Emission) addActivationEvent(blockHeight uint64, validator *Validator) {
+	if _, exists := e.activationEvents[blockHeight]; !exists {
+		e.activationEvents[blockHeight] = []*Validator{}
+	}
+	e.activationEvents[blockHeight] = append(e.activationEvents[blockHeight], validator)
+}
+
+func (e *Emission) addDeactivationEvent(blockHeight uint64, validator *Validator) {
+	if _, exists := e.deactivationEvents[blockHeight]; !exists {
+		e.deactivationEvents[blockHeight] = []*Validator{}
+	}
+	e.deactivationEvents[blockHeight] = append(e.deactivationEvents[blockHeight], validator)
 }
 
 // WithdrawValidatorStake removes a validator from the heap and updates the total
@@ -259,19 +238,15 @@ func (e *Emission) WithdrawValidatorStake(nodeID ids.NodeID) (uint64, error) {
 	// Validator claiming their rewards and resetting unclaimed rewards
 	rewardAmount := validator.UnclaimedStakedReward
 	validator.UnclaimedStakedReward = 0
-
-	if validator.IsActive {
-		e.TotalStaked -= validator.StakedAmount
-	}
+	validator.StakedAmount = 0
 
 	// Mark the validator as inactive
 	validator.IsActive = false
 
 	// If there are no more delegators, get the rewards and remove the validator
-	if len(validator.Delegators) == 0 {
+	if len(validator.delegators) == 0 {
 		rewardAmount += validator.UnclaimedDelegatedReward
 		validator.UnclaimedDelegatedReward = 0
-		e.TotalStaked -= validator.DelegatedAmount
 		delete(e.validators, nodeID)
 	}
 
@@ -285,27 +260,39 @@ func (e *Emission) DelegateUserStake(nodeID ids.NodeID, delegatorAddress codec.A
 
 	e.c.Logger().Info("delegating user stake")
 
-	// Find the validator
 	validator, exists := e.validators[nodeID]
 	if !exists {
 		return ErrValidatorNotFound
 	}
 
-	// Check if the delegator was already staked
-	if _, exists := validator.Delegators[delegatorAddress]; exists {
+	if _, exists := validator.delegators[delegatorAddress]; exists {
 		return ErrDelegatorAlreadyStaked
 	}
 
-	// Add the delegator to the list
-	validator.Delegators[delegatorAddress] = &Delegator{
-		IsActive:        false, // this will be set to true automatically when stakeStartBlock is reached
+	delegator := &Delegator{
+		IsActive:        false,
 		StakedAmount:    stakeAmount,
-		stakeStartBlock: stakeStartBlock,
-		stakeEndBlock:   stakeEndBlock,
-		alreadyClaimed:  false,
+		StakeStartBlock: stakeStartBlock,
+		StakeEndBlock:   stakeEndBlock,
+		AlreadyClaimed:  false,
 	}
+	validator.delegators[delegatorAddress] = delegator
+
+	e.addDelegatorEvent(stakeStartBlock, nodeID, delegatorAddress)
+	e.addDelegatorEvent(stakeEndBlock, nodeID, delegatorAddress)
 
 	return nil
+}
+
+func (e *Emission) addDelegatorEvent(blockHeight uint64, nodeID ids.NodeID, delegatorAddress codec.Address) {
+	event := &DelegatorEvent{
+		ValidatorNodeID: nodeID,
+		Delegator:       delegatorAddress,
+	}
+	if _, exists := e.delegatorEvents[blockHeight]; !exists {
+		e.delegatorEvents[blockHeight] = []*DelegatorEvent{}
+	}
+	e.delegatorEvents[blockHeight] = append(e.delegatorEvents[blockHeight], event)
 }
 
 // UndelegateUserStake decreases the delegated stake for a validator and rebalances the heap.
@@ -322,7 +309,7 @@ func (e *Emission) UndelegateUserStake(nodeID ids.NodeID, actor codec.Address, s
 	}
 
 	// Check if the delegator exists
-	if _, exists := validator.Delegators[actor]; !exists {
+	if _, exists := validator.delegators[actor]; !exists {
 		return 0, ErrDelegatorNotFound
 	}
 
@@ -333,10 +320,10 @@ func (e *Emission) UndelegateUserStake(nodeID ids.NodeID, actor codec.Address, s
 	}
 	validator.UnclaimedDelegatedReward -= rewardAmount // Reset unclaimed rewards
 
-	delete(validator.Delegators, actor) // Remove the delegator from the list
+	delete(validator.delegators, actor) // Remove the delegator from the list
 
 	// If the validator is inactive and has no more delegators, remove the validator
-	if !validator.IsActive && len(validator.Delegators) == 0 {
+	if !validator.IsActive && len(validator.delegators) == 0 {
 		delete(e.validators, nodeID)
 	}
 
@@ -363,7 +350,7 @@ func (e *Emission) ClaimStakingRewards(nodeID ids.NodeID, actor codec.Address) (
 		validator.UnclaimedStakedReward = 0 // Reset unclaimed rewards
 
 		// If there are no more delegators, get the rewards
-		if len(validator.Delegators) == 0 {
+		if len(validator.delegators) == 0 {
 			rewardAmount += validator.UnclaimedDelegatedReward
 			validator.UnclaimedDelegatedReward = 0
 		}
@@ -374,11 +361,57 @@ func (e *Emission) ClaimStakingRewards(nodeID ids.NodeID, actor codec.Address) (
 			return 0, err
 		}
 		validator.UnclaimedDelegatedReward -= reward // Reset unclaimed rewards
-		validator.Delegators[actor].alreadyClaimed = true
+		validator.delegators[actor].AlreadyClaimed = true
 		rewardAmount = reward
 	}
 
 	return rewardAmount, nil
+}
+
+func (e *Emission) processEvents(blockHeight uint64) {
+	if validators, exists := e.activationEvents[blockHeight]; exists {
+		for _, validator := range validators {
+			if !validator.IsActive {
+				validator.IsActive = true
+				e.TotalStaked += validator.StakedAmount + validator.DelegatedAmount
+			}
+		}
+		delete(e.activationEvents, blockHeight)
+	}
+
+	if validators, exists := e.deactivationEvents[blockHeight]; exists {
+		for _, validator := range validators {
+			if validator.IsActive {
+				validator.IsActive = false
+				e.TotalStaked -= validator.StakedAmount + validator.DelegatedAmount
+			}
+		}
+		delete(e.deactivationEvents, blockHeight)
+	}
+
+	if events, exists := e.delegatorEvents[blockHeight]; exists {
+		for _, event := range events {
+			validator, exists := e.validators[event.ValidatorNodeID]
+			if !exists {
+				continue
+			}
+			delegator, exists := validator.delegators[event.Delegator]
+			if !exists {
+				continue
+			}
+			if blockHeight >= delegator.StakeStartBlock && blockHeight < delegator.StakeEndBlock && !delegator.IsActive {
+				delegator.IsActive = true
+				validator.DelegatedAmount += delegator.StakedAmount
+				e.TotalStaked += delegator.StakedAmount
+			}
+			if blockHeight >= delegator.StakeEndBlock && delegator.IsActive {
+				delegator.IsActive = false
+				validator.DelegatedAmount -= delegator.StakedAmount
+				e.TotalStaked -= delegator.StakedAmount
+			}
+		}
+		delete(e.delegatorEvents, blockHeight)
+	}
 }
 
 func (e *Emission) MintNewNAI() uint64 {
@@ -386,145 +419,69 @@ func (e *Emission) MintNewNAI() uint64 {
 	defer e.lock.Unlock()
 
 	currentBlockHeight := e.GetLastAcceptedBlockHeight()
+	e.processEvents(currentBlockHeight)
 
-	// Check if the current block is the end of an epoch
 	if currentBlockHeight%e.EpochTracker.EpochLength == 0 {
 		e.c.Logger().Info("minting new NAI tokens at the end of the epoch")
 
-		// Calculate total rewards for the epoch based on APR and staked amount
 		totalEpochRewards := e.GetRewardsPerEpoch()
-
-		// Calculate rewards per unit staked to minimize iterations
 		rewardsPerStakeUnit := float64(0)
 		if e.TotalStaked > 0 {
 			rewardsPerStakeUnit = float64(totalEpochRewards) / float64(e.TotalStaked)
 		}
 
 		actualRewards := uint64(0)
-
-		// Distribute rewards based on stake proportion
 		for _, validator := range e.validators {
-			lastBlockHeight := currentBlockHeight
-			// Mark validator active based on if stakeStartBlock has started
-			if lastBlockHeight > validator.stakeStartBlock && !validator.IsActive {
-				validator.IsActive = true
-				e.TotalStaked += (validator.StakedAmount + validator.DelegatedAmount)
-			}
 			if !validator.IsActive {
 				continue
-			}
-			// Mark validator inactive based on if stakeEndBlock has ended
-			if lastBlockHeight > validator.stakeEndBlock {
-				validator.IsActive = false
-				e.TotalStaked -= (validator.StakedAmount + validator.DelegatedAmount)
-				continue
-			}
-
-			// Update the number of delegators if the current block height is greater than the delegator's stakeStartBlock
-			for _, delegatorInfo := range validator.Delegators {
-				if lastBlockHeight > delegatorInfo.stakeStartBlock && !delegatorInfo.IsActive {
-					delegatorInfo.IsActive = true
-					validator.DelegatedAmount += delegatorInfo.StakedAmount
-					e.TotalStaked += delegatorInfo.StakedAmount
-				}
-				if !delegatorInfo.IsActive {
-					continue
-				}
-				// Mark delegator inactive based on if stakeEndBlock has ended
-				if lastBlockHeight > delegatorInfo.stakeEndBlock {
-					delegatorInfo.IsActive = false
-					validator.DelegatedAmount -= delegatorInfo.StakedAmount
-					e.TotalStaked -= delegatorInfo.StakedAmount
-				}
 			}
 
 			validatorStake := validator.StakedAmount + validator.DelegatedAmount
 			totalValidatorReward := uint64(float64(validatorStake) * rewardsPerStakeUnit)
 
-			// Calculate the rewards for the validator and for delegation
 			validatorReward, delegationReward := distributeValidatorRewards(totalValidatorReward, validator.DelegationFeeRate, validator.DelegatedAmount)
 
 			actualRewards += validatorReward + delegationReward
-
-			// Update validator's and delegators' rewards
 			validator.UnclaimedStakedReward += validatorReward
 			validator.UnclaimedDelegatedReward += delegationReward
 
-			// Track rewards per epoch for delegation
 			epochNumber := currentBlockHeight / e.EpochTracker.EpochLength
 			validator.epochRewards[epochNumber] = delegationReward
 		}
 
-		// Update the total supply with the new minted rewards
 		e.TotalSupply += actualRewards
-
-		// Return the total rewards distributed in this epoch
 		return actualRewards
 	}
 
-	// No rewards are distributed until the end of the epoch
 	return 0
 }
 
-// DistributeFees allocates transaction fees between the emission account and validators,
-// based on the total staked amount.
 func (e *Emission) DistributeFees(fee uint64) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
+	currentBlockHeight := e.GetLastAcceptedBlockHeight()
+	e.processEvents(currentBlockHeight)
+
 	e.c.Logger().Info("distributing transaction fees")
 
 	if e.TotalSupply+fee > e.MaxSupply {
-		fee = e.MaxSupply - e.TotalSupply // Adjust to not exceed max supply
+		fee = e.MaxSupply - e.TotalSupply
 	}
 
-	// Give 50% fees to Emission Account
 	feesForEmission := fee / 2
 	e.EmissionAccount.UnclaimedBalance += feesForEmission
 
-	// Give remaining to Validators
 	feesForValidators := fee - feesForEmission
 	if e.TotalStaked == 0 || feesForValidators == 0 {
-		return // No validators or no fees to distribute
+		return
 	}
 
-	// Calculate fees per unit staked to minimize iterations
 	feesPerStakeUnit := float64(feesForValidators) / float64(e.TotalStaked)
 
-	// Distribute fees based on stake proportion
 	for _, validator := range e.validators {
-		lastBlockHeight := e.GetLastAcceptedBlockHeight()
-		// Mark validator active based on if stakeStartBlock has started
-		if lastBlockHeight > validator.stakeStartBlock && !validator.IsActive {
-			validator.IsActive = true
-			e.TotalStaked += (validator.StakedAmount + validator.DelegatedAmount)
-		}
 		if !validator.IsActive {
 			continue
-		}
-		// Mark validator inactive based on if stakeEndBlock has ended
-		if lastBlockHeight > validator.stakeEndBlock {
-			validator.IsActive = false
-			e.TotalStaked -= (validator.StakedAmount + validator.DelegatedAmount)
-			continue
-		}
-
-		// Update the number of delegators if the current block height is greater than the delegator's stakeStartBlock
-		for _, delegatorInfo := range validator.Delegators {
-			if lastBlockHeight > delegatorInfo.stakeStartBlock && !delegatorInfo.IsActive {
-				delegatorInfo.IsActive = true
-				validator.DelegatedAmount += delegatorInfo.StakedAmount
-				e.TotalStaked += delegatorInfo.StakedAmount
-			}
-			if !delegatorInfo.IsActive {
-				continue
-			}
-			// Mark delegator inactive based on if stakeEndBlock has ended
-			if lastBlockHeight > delegatorInfo.stakeEndBlock {
-				delegatorInfo.IsActive = false
-				validator.DelegatedAmount -= delegatorInfo.StakedAmount
-				e.TotalStaked -= delegatorInfo.StakedAmount
-			}
 		}
 
 		validatorStake := validator.StakedAmount + validator.DelegatedAmount
@@ -583,11 +540,81 @@ func (e *Emission) GetAllValidators(ctx context.Context) []*Validator {
 			v.DelegationFeeRate = stakedValidator[0].DelegationFeeRate
 			v.DelegatedAmount = stakedValidator[0].DelegatedAmount
 			v.UnclaimedDelegatedReward = stakedValidator[0].UnclaimedDelegatedReward
+			v.delegators = stakedValidator[0].delegators
 			v.epochRewards = stakedValidator[0].epochRewards
 		}
 		validators = append(validators, &v)
 	}
 	return validators
+}
+
+// GetNumDelegators returns the total number of delegators across all validators.
+func (e *Emission) GetNumDelegators(nodeID ids.NodeID) int {
+	e.c.Logger().Info("fetching total number of delegators")
+
+	numDelegators := 0
+	// Get delegators for all validators
+	if nodeID == ids.EmptyNodeID {
+		for _, validator := range e.validators {
+			numDelegators += len(validator.delegators)
+		}
+	} else {
+		// Get delegators for a specific validator
+		if validator, exists := e.validators[nodeID]; exists {
+			numDelegators = len(validator.delegators)
+		}
+	}
+
+	return numDelegators
+}
+
+// GetDelegatorsForValidator retrieves all delegators for a specific validator by their NodeID.
+func (e *Emission) GetDelegatorsForValidator(nodeID ids.NodeID) ([]*Delegator, error) {
+	e.lock.RLock()
+	defer e.lock.RUnlock()
+
+	e.c.Logger().Info("fetching delegators for validator")
+
+	// Find the validator
+	validator, exists := e.validators[nodeID]
+	if !exists {
+		return nil, ErrValidatorNotFound
+	}
+
+	delegators := make([]*Delegator, 0, len(validator.delegators))
+	for _, delegator := range validator.delegators {
+		delegators = append(delegators, delegator)
+	}
+
+	return delegators, nil
+}
+
+// GetAPRForValidators calculates the Annual Percentage Rate (APR) for validators
+// based on the number of validators.
+func (e *Emission) GetAPRForValidators() float64 {
+	e.c.Logger().Info("getting APR for validators")
+
+	apr := e.EpochTracker.BaseAPR // APR is expressed per year as a decimal, e.g., 0.25 for 25%
+	// Beyond baseValidators, APR decreases proportionately
+	baseValidators := int(e.EpochTracker.BaseValidators)
+	if len(e.validators) > baseValidators {
+		apr /= float64(len(e.validators)) / float64(baseValidators)
+	}
+	return apr
+}
+
+// GetRewardsPerEpoch calculates the rewards per epoch based on the total staked amount
+// and the APR for validators.
+func (e *Emission) GetRewardsPerEpoch() uint64 {
+	e.c.Logger().Info("getting rewards per epoch")
+
+	// Calculate total rewards for the epoch based on APR and staked amount
+	rewardsPerBlock := uint64((float64(e.TotalStaked) * e.GetAPRForValidators() / 365 / 24 / 60 / 60) * (float64(e.EpochTracker.EpochLength) * 3)) // 3 seconds per block
+
+	if e.TotalSupply+rewardsPerBlock > e.MaxSupply {
+		rewardsPerBlock = e.MaxSupply - e.TotalSupply // Adjust to not exceed max supply
+	}
+	return rewardsPerBlock
 }
 
 // GetLastAcceptedBlockTimestamp retrieves the timestamp of the last accepted block from the VM.
