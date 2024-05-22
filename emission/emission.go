@@ -591,7 +591,7 @@ func (e *Emission) GetLastAcceptedBlockHeight() uint64 {
 	return e.nuklaivm.LastAcceptedBlock().Height()
 }
 
-func (e *Emission) isWhitelistedAddress(signer codec.Address) (whitelisted bool, err error) {
+func (e *Emission) isWhitelistedAddress(signer codec.Address) (bool, error) {
 	for _, addr := range e.whiteListedAddresses {
 		if signer == addr {
 			return true, nil
