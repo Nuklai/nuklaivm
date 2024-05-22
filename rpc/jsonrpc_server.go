@@ -169,25 +169,6 @@ func (j *JSONRPCServer) EmissionInfo(req *http.Request, _ *struct{}, reply *Emis
 	return nil
 }
 
-type WhitelistedArgs struct {
-	Address string `json:"addr"`
-}
-
-type WhitelistedReply struct {
-	IsWhitelisted bool `json:"is-whitelisted"`
-}
-
-func (j *JSONRPCServer) IsWhitelistedAddress(req *http.Request, args *WhitelistedArgs, reply *WhitelistedReply) (err error) {
-	_, span := j.c.Tracer().Start(req.Context(), "Server.IsWhitelistedAddress")
-	defer span.End()
-	whitelisted, err := j.c.IsWhitelistedAddress(args.Address)
-	if err != nil {
-		return err
-	}
-	reply.IsWhitelisted = whitelisted
-	return nil
-}
-
 type ValidatorsReply struct {
 	Validators []*emission.Validator `json:"validators"`
 }

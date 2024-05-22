@@ -5,6 +5,7 @@ package emission
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -60,12 +61,14 @@ type Emission struct {
 
 	EpochTracker EpochTracker `json:"epochTracker"` // Epoch Tracker Info
 
+	whiteListedAddresses []codec.Address
+
 	lock sync.RWMutex
 }
 
 // New initializes the Emission struct with initial parameters and sets up the validators heap
 // and indices map.
-func New(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emissionAddress codec.Address, baseAPR uint64, baseValidators uint64, epochLength uint64) *Emission {
+func New(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emissionAddress codec.Address, baseAPR uint64, baseValidators uint64, epochLength uint64, whiteListedAddresses []codec.Address) *Emission {
 	once.Do(func() {
 		c.Logger().Info("Initializing emission with max supply and rewards per block settings")
 
@@ -83,12 +86,13 @@ func New(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emissionAddre
 			},
 			validators: make(map[ids.NodeID]*Validator),
 			EpochTracker: EpochTracker{
-				BaseAPR:        float64(baseAPR / 100), // 25% APR
+				BaseAPR:        float64(baseAPR) / float64(100), // 25% APR
 				BaseValidators: baseValidators,
 				EpochLength:    epochLength,
 				// TODO: Enable this in production
 				// EpochLength:    1200, // roughly 1 hour with 3 sec block time
 			},
+			whiteListedAddresses: whiteListedAddresses,
 		}
 	})
 	return emission
@@ -592,22 +596,56 @@ func (e *Emission) GetLastAcceptedBlockHeight() uint64 {
 	return e.nuklaivm.LastAcceptedBlock().Height()
 }
 
-func (e *Emission) ModifyMaxSupply(supply uint64) {
+func (e *Emission) isWhitelistedAddress(signer codec.Address) (whitelisted bool, err error) {
+	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>IS WHITELISTED")
+	for _, addr := range e.whiteListedAddresses {
+		fmt.Println(signer)
+		fmt.Println(addr)
+		if signer == addr {
+			return true, nil
+		}
+	}
+	return false, fmt.Errorf("signer is not whitelisted for emission balancer")
+}
+
+func (e *Emission) ModifyMaxSupply(signer codec.Address, supply uint64) (err error) {
+	if _, err := e.isWhitelistedAddress(signer); err != nil {
+		return err
+	}
 	e.MaxSupply = supply
+	return nil
 }
 
-func (e *Emission) ModifyAccountAddress(addr codec.Address) {
+func (e *Emission) ModifyAccountAddress(signer codec.Address, addr codec.Address) (err error) {
+	if _, err := e.isWhitelistedAddress(signer); err != nil {
+		return err
+	}
 	e.EmissionAccount.Address = addr
+	return nil
 }
 
-func (e *Emission) ModifyBaseAPR(apr float64) {
+func (e *Emission) ModifyBaseAPR(signer codec.Address, apr float64) (err error) {
+	fmt.Println(">>>>>>>>MODIFY APR-1")
+	if _, err := e.isWhitelistedAddress(signer); err != nil {
+		return err
+	}
+	fmt.Println(">>>>>>>>MODIFY APR-2")
 	e.EpochTracker.BaseAPR = apr
+	return nil
 }
 
-func (e *Emission) ModifyBaseValidators(validators uint64) {
+func (e *Emission) ModifyBaseValidators(signer codec.Address, validators uint64) (err error) {
+	if _, err := e.isWhitelistedAddress(signer); err != nil {
+		return err
+	}
 	e.EpochTracker.BaseValidators = validators
+	return nil
 }
 
-func (e *Emission) ModifyEpochLength(length uint64) {
+func (e *Emission) ModifyEpochLength(signer codec.Address, length uint64) (err error) {
+	if _, err := e.isWhitelistedAddress(signer); err != nil {
+		return err
+	}
 	e.EpochTracker.EpochLength = length
+	return nil
 }

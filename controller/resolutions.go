@@ -62,15 +62,6 @@ func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, uint64, uint64, 
 	return c.emission.GetLastAcceptedBlockHeight(), c.emission.TotalSupply, c.emission.MaxSupply, c.emission.TotalStaked, c.emission.GetRewardsPerEpoch(), c.emission.EmissionAccount, c.emission.EpochTracker, nil
 }
 
-func (c *Controller) IsWhitelistedAddress(addr string) (whitelisted bool, err error) {
-	for _, alloc := range c.genesis.CustomAllocation {
-		if alloc.Address == addr {
-			return true, err
-		}
-	}
-	return false, err
-}
-
 func (c *Controller) GetValidators(ctx context.Context, staked bool) ([]*emission.Validator, error) {
 	if staked {
 		return c.emission.GetStakedValidator(ids.EmptyNodeID), nil

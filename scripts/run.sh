@@ -137,7 +137,8 @@ cat <<EOF > "${TMPDIR}"/emission-balancer.json
   "emissionAddress":"${EMISSION_ADDRESS}",
   "baseAPR": 25,
   "baseValidators": 100,
-  "epochLength": 10
+  "epochLength": 10,
+  "whiteListedAddresses": ["${INITIAL_OWNER_ADDRESS}"]
 }
 EOF
 

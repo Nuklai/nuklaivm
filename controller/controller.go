@@ -149,7 +149,15 @@ func (c *Controller) Initialize(
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
-	c.emission = emission.New(c, c.inner, c.genesis.EmissionBalancer.TotalSupply, c.genesis.EmissionBalancer.MaxSupply, emissionAddr, c.genesis.EmissionBalancer.BaseAPR, c.genesis.EmissionBalancer.BaseValidators, c.genesis.EmissionBalancer.EpochLength)
+	var whitelisted []codec.Address
+	for _, addr := range c.genesis.EmissionBalancer.WhiteListedAddresses {
+		w, err := codec.ParseAddressBech32(nconsts.HRP, addr)
+		if err != nil {
+			return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+		}
+		whitelisted = append(whitelisted, w)
+	}
+	c.emission = emission.New(c, c.inner, c.genesis.EmissionBalancer.TotalSupply, c.genesis.EmissionBalancer.MaxSupply, emissionAddr, c.genesis.EmissionBalancer.BaseAPR, c.genesis.EmissionBalancer.BaseValidators, c.genesis.EmissionBalancer.EpochLength, whitelisted)
 
 	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, nconsts.ActionRegistry, nconsts.AuthRegistry, auth.Engines(), nil
 }
@@ -252,17 +260,10 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				c.metrics.claimStakingRewards.Inc()
 				c.metrics.undelegateUserStake.Inc()
 			case *actions.ModifyEmissionConfigParams:
-				result, err := actions.UnmarshalModifyEmissionConfigParamsResult(result.Output)
+				_, err := actions.UnmarshalModifyEmissionConfigParamsResult(result.Output)
 				if err != nil {
 					// This should never happen
 					return err
-				}
-				whitelisted, err := c.IsWhitelistedAddress(codec.MustAddressBech32(nconsts.HRP, result.Actor))
-				if err != nil {
-					return err
-				}
-				if !whitelisted {
-					return fmt.Errorf("the signer is not allowed to modify the emission configuration")
 				}
 			}
 		}

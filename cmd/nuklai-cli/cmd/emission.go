@@ -91,10 +91,11 @@ var emissionStakedValidatorsCmd = &cobra.Command{
 }
 
 var emissionModifyCmd = &cobra.Command{
-	Use:   "modify-config [tmp/ emission balancer file] [tmp/ genesis file] [options]",
+	Use:   "modify-config [/tmp emission balancer file][options]",
 	Short: "Modify emission balancer configuration parameters",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
+		genesisFilePath, _ := cmd.Flags().GetString("update-genesis")
 		address, _ := cmd.Flags().GetString("address")
 		supply, _ := cmd.Flags().GetUint64("maxsupply")
 		apr, _ := cmd.Flags().GetUint64("base-apr")
@@ -106,23 +107,15 @@ var emissionModifyCmd = &cobra.Command{
 			if newAddress, err = codec.ParseAddressBech32(nconsts.HRP, address); err != nil {
 				return err
 			}
-		}
-		if newAddress == codec.EmptyAddress {
-			return fmt.Errorf("invalid emission account address %s", address)
+			if newAddress == codec.EmptyAddress {
+				return fmt.Errorf("invalid emission account address %s", address)
+			}
 		}
 
 		ctx := context.Background()
-		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
+		_, _, factory, hcli, hws, ncli, err := handler.DefaultActor()
 		if err != nil {
 			return err
-		}
-
-		whitelisted, err := ncli.IsWhitelistedAddress(ctx, codec.MustAddressBech32(nconsts.HRP, priv.Address))
-		if err != nil {
-			return err
-		}
-		if !whitelisted {
-			return fmt.Errorf("default actor is not whitelisted")
 		}
 
 		// Read emission balancer file
@@ -150,54 +143,58 @@ var emissionModifyCmd = &cobra.Command{
 			emissionBalancer.EpochLength = epoch
 		}
 
-		if address != emissionBalancer.EmissionAddress {
+		if address != "" && address != emissionBalancer.EmissionAddress {
 			emissionBalancer.EmissionAddress = address
 		}
 		newAddress, err = codec.ParseAddressBech32(nconsts.HRP, emissionBalancer.EmissionAddress)
 		if err != nil {
 			return err
 		}
-
+		fmt.Println("CLI MODIFY")
 		// Generate transaction
-		if _, _, err = sendAndWait(ctx, nil, &actions.ModifyEmissionConfigParams{
+		res, _, err := sendAndWait(ctx, nil, &actions.ModifyEmissionConfigParams{
 			MaxSupply:             emissionBalancer.MaxSupply,
 			TrackerBaseAPR:        emissionBalancer.BaseAPR,
 			TrackerBaseValidators: emissionBalancer.BaseValidators,
 			TrackerEpochLength:    emissionBalancer.EpochLength,
 			AccountAddress:        newAddress,
-		}, hcli, hws, ncli, factory, true); err != nil {
-			return err
-		}
+		}, hcli, hws, ncli, factory, true)
 
-		g.EmissionBalancer = emissionBalancer
-
-		b, err := json.Marshal(g)
 		if err != nil {
 			return err
 		}
-		if err := os.WriteFile(genesisFile, b, fsModeWrite); err != nil {
-			return err
-		}
-		// modify emission balancer in genesis file
-		color.Green("modified genesis and saved to %s", genesisFile)
+		if res {
+			e, err := json.Marshal(emissionBalancer)
+			if err != nil {
+				return err
+			}
+			if err := os.WriteFile(args[0], e, fsModeWrite); err != nil {
+				return err
+			}
 
-		if err := os.WriteFile(args[1], b, fsModeWrite); err != nil {
-			return err
-		}
-		// modify emission balancer in genesis file
-		color.Green("modified genesis and saved to %s", args[1])
+			// modify emission balancer file
+			color.Green("modified emission balancer file and saved to %s", args[0])
 
-		e, err := json.Marshal(emissionBalancer)
-		if err != nil {
-			return err
-		}
-		if err := os.WriteFile(args[0], e, fsModeWrite); err != nil {
-			return err
-		}
+			g.EmissionBalancer = emissionBalancer
 
-		// modify emission balancer file
-		color.Green("modified emission balancer file and saved to %s", args[0])
+			b, err := json.Marshal(g)
+			if err != nil {
+				return err
+			}
+			if err := os.WriteFile(genesisFile, b, fsModeWrite); err != nil {
+				return err
+			}
+			// modify emission balancer in genesis file
+			color.Green("modified genesis and saved to %s", genesisFile)
 
+			if genesisFilePath != "" {
+				if err := os.WriteFile(genesisFilePath, b, fsModeWrite); err != nil {
+					return err
+				}
+				// modify emission balancer in genesis file
+				color.Green("modified genesis and saved to %s", genesisFilePath)
+			}
+		}
 		fmt.Println(handler.GetEmissionInfo(ctx, ncli))
 		return nil
 	},
