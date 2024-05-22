@@ -5,15 +5,11 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/fatih/color"
 	"github.com/nuklai/nuklaivm/actions"
 	nconsts "github.com/nuklai/nuklaivm/consts"
-	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/spf13/cobra"
 )
 
@@ -95,20 +91,17 @@ var emissionModifyCmd = &cobra.Command{
 	Short: "Modify emission balancer configuration parameters",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var err error
-		genesisFilePath, _ := cmd.Flags().GetString("update-genesis")
+		// genesisFilePath, _ := cmd.Flags().GetString("update-genesis")
 		address, _ := cmd.Flags().GetString("address")
 		supply, _ := cmd.Flags().GetUint64("maxsupply")
 		apr, _ := cmd.Flags().GetUint64("base-apr")
 		baseValidators, _ := cmd.Flags().GetUint64("base-validators")
 		epoch, _ := cmd.Flags().GetUint64("epoch-length")
 
-		var newAddress codec.Address
+		newAddress := codec.EmptyAddress
 		if address != "" {
 			if newAddress, err = codec.ParseAddressBech32(nconsts.HRP, address); err != nil {
 				return err
-			}
-			if newAddress == codec.EmptyAddress {
-				return fmt.Errorf("invalid emission account address %s", address)
 			}
 		}
 
@@ -119,50 +112,58 @@ var emissionModifyCmd = &cobra.Command{
 		}
 
 		// Read emission balancer file
-		eb, err := os.ReadFile(args[0])
-		if err != nil {
-			return err
-		}
+		// eb, err := os.ReadFile(args[0])
+		// if err != nil {
+		// 	return err
+		// }
 
-		g := genesis.Default()
-		emissionBalancer := genesis.EmissionBalancer{}
-		if err := json.Unmarshal(eb, &emissionBalancer); err != nil {
-			return err
-		}
+		// g, err := os.ReadFile(genesisFile)
+		// if err != nil {
+		// 	return err
+		// }
 
-		if supply > 0 && supply != emissionBalancer.MaxSupply {
-			emissionBalancer.MaxSupply = supply
-		}
-		if apr > 0 && apr != emissionBalancer.BaseAPR {
-			emissionBalancer.BaseAPR = apr
-		}
-		if baseValidators > 0 && baseValidators != emissionBalancer.BaseValidators {
-			emissionBalancer.BaseValidators = baseValidators
-		}
-		if epoch > 0 && epoch != emissionBalancer.EpochLength {
-			emissionBalancer.EpochLength = epoch
-		}
+		// g := genesis.Default()
+		// emissionBalancer := genesis.EmissionBalancer{}
+		// genesis := genesis.Genesis{}
+		// if err := json.Unmarshal(g, &genesis); err != nil {
+		// 	return err
+		// }
+		// fmt.Println("GENESIS")
+		// fmt.Println(genesis)
+		// emissionBalancer := genesis.EmissionBalancer
+		// if supply > 0 && supply != emissionBalancer.MaxSupply {
+		// 	emissionBalancer.MaxSupply = supply
+		// }
+		// if apr > 0 && apr != emissionBalancer.BaseAPR {
+		// 	emissionBalancer.BaseAPR = apr
+		// }
+		// if baseValidators > 0 && baseValidators != emissionBalancer.BaseValidators {
+		// 	emissionBalancer.BaseValidators = baseValidators
+		// }
+		// if epoch > 0 && epoch != emissionBalancer.EpochLength {
+		// 	emissionBalancer.EpochLength = epoch
+		// }
 
-		if address != "" && address != emissionBalancer.EmissionAddress {
-			emissionBalancer.EmissionAddress = address
-		}
-		newAddress, err = codec.ParseAddressBech32(nconsts.HRP, emissionBalancer.EmissionAddress)
-		if err != nil {
-			return err
-		}
+		// if address != "" && address != emissionBalancer.EmissionAddress {
+		// 	emissionBalancer.EmissionAddress = address
+		// }
+		// newAddress, err = codec.ParseAddressBech32(nconsts.HRP, emissionBalancer.EmissionAddress)
+		// if err != nil {
+		// 	return err
+		// }
 		// Generate transaction
 		res, _, err := sendAndWait(ctx, nil, &actions.ModifyEmissionConfigParams{
-			MaxSupply:             emissionBalancer.MaxSupply,
-			TrackerBaseAPR:        emissionBalancer.BaseAPR,
-			TrackerBaseValidators: emissionBalancer.BaseValidators,
-			TrackerEpochLength:    emissionBalancer.EpochLength,
+			MaxSupply:             supply,
+			TrackerBaseAPR:        apr,
+			TrackerBaseValidators: baseValidators,
+			TrackerEpochLength:    epoch,
 			AccountAddress:        newAddress,
 		}, hcli, hws, ncli, factory, true)
-
+		fmt.Println(res)
 		if err != nil {
 			return err
 		}
-		if res {
+		/*if res && ebFilePath != "" {
 			e, err := json.Marshal(emissionBalancer)
 			if err != nil {
 				return err
@@ -174,7 +175,7 @@ var emissionModifyCmd = &cobra.Command{
 			// modify emission balancer file
 			color.Green("modified emission balancer file and saved to %s", args[0])
 
-			g.EmissionBalancer = emissionBalancer
+			genesis.EmissionBalancer = emissionBalancer
 
 			b, err := json.Marshal(g)
 			if err != nil {
@@ -193,7 +194,7 @@ var emissionModifyCmd = &cobra.Command{
 				// modify emission balancer in genesis file
 				color.Green("modified genesis and saved to %s", genesisFilePath)
 			}
-		}
+		}*/
 		fmt.Println(handler.GetEmissionInfo(ctx, ncli))
 		return nil
 	},
