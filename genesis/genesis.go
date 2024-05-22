@@ -38,7 +38,6 @@ type EmissionBalancer struct {
 	BaseValidators       uint64   `json:"baseValidators"`       // Emission base validators
 	EpochLength          uint64   `json:"epochLength"`          // Emission epoch length
 	WhiteListedAddresses []string `json:"whiteListedAddresses"` // Addresses allowed to modify the emission parameters
-
 }
 
 type Genesis struct {

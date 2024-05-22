@@ -123,7 +123,6 @@ var emissionModifyCmd = &cobra.Command{
 			TrackerEpochLength:    epoch,
 			AccountAddress:        newAddress,
 		}, hcli, hws, ncli, factory, true)
-
 		if err != nil {
 			return err
 		}

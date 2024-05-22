@@ -591,17 +591,17 @@ func (e *Emission) GetLastAcceptedBlockHeight() uint64 {
 	return e.nuklaivm.LastAcceptedBlock().Height()
 }
 
-func (e *Emission) isWhitelistedAddress(signer codec.Address) (bool, error) {
+func (e *Emission) isWhitelistedAddress(signer codec.Address) error {
 	for _, addr := range e.whiteListedAddresses {
 		if signer == addr {
-			return true, nil
+			return nil
 		}
 	}
-	return false, fmt.Errorf("signer is not whitelisted for emission balancer")
+	return fmt.Errorf("signer is not whitelisted for emission balancer")
 }
 
 func (e *Emission) ModifyMaxSupply(signer codec.Address, supply uint64) (err error) {
-	if _, err := e.isWhitelistedAddress(signer); err != nil {
+	if err := e.isWhitelistedAddress(signer); err != nil {
 		return err
 	}
 	e.MaxSupply = supply
@@ -609,7 +609,7 @@ func (e *Emission) ModifyMaxSupply(signer codec.Address, supply uint64) (err err
 }
 
 func (e *Emission) ModifyAccountAddress(signer codec.Address, addr codec.Address) (err error) {
-	if _, err := e.isWhitelistedAddress(signer); err != nil {
+	if err := e.isWhitelistedAddress(signer); err != nil {
 		return err
 	}
 	e.EmissionAccount.Address = addr
@@ -617,7 +617,7 @@ func (e *Emission) ModifyAccountAddress(signer codec.Address, addr codec.Address
 }
 
 func (e *Emission) ModifyBaseAPR(signer codec.Address, apr float64) (err error) {
-	if _, err := e.isWhitelistedAddress(signer); err != nil {
+	if err := e.isWhitelistedAddress(signer); err != nil {
 		return err
 	}
 	e.EpochTracker.BaseAPR = apr
@@ -625,7 +625,7 @@ func (e *Emission) ModifyBaseAPR(signer codec.Address, apr float64) (err error) 
 }
 
 func (e *Emission) ModifyBaseValidators(signer codec.Address, validators uint64) (err error) {
-	if _, err := e.isWhitelistedAddress(signer); err != nil {
+	if err := e.isWhitelistedAddress(signer); err != nil {
 		return err
 	}
 	e.EpochTracker.BaseValidators = validators
@@ -633,7 +633,7 @@ func (e *Emission) ModifyBaseValidators(signer codec.Address, validators uint64)
 }
 
 func (e *Emission) ModifyEpochLength(signer codec.Address, length uint64) (err error) {
-	if _, err := e.isWhitelistedAddress(signer); err != nil {
+	if err := e.isWhitelistedAddress(signer); err != nil {
 		return err
 	}
 	e.EpochTracker.EpochLength = length
