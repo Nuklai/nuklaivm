@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 
 	"github.com/fatih/color"
@@ -91,10 +90,6 @@ var genGenesisCmd = &cobra.Command{
 		if _, err := codec.ParseAddressBech32(nconsts.HRP, emissionBalancer.EmissionAddress); err != nil {
 			return err
 		}
-		if emissionBalancer.TotalSupply > 0 && totalSupply != emissionBalancer.TotalSupply {
-			return errors.New("total supply in emission balancer file does not match the sum of balances in custom allocates file")
-		}
-		emissionBalancer.TotalSupply = totalSupply
 		g.EmissionBalancer = emissionBalancer
 
 		b, err := json.Marshal(g)

@@ -124,7 +124,7 @@ func init() {
 		&numCores,
 		"num-cores",
 		4,
-		"number of cores to use when searching for faucet solutions",
+		"num-cores",
 	)
 	keyCmd.AddCommand(
 		genKeyCmd,
@@ -132,7 +132,6 @@ func init() {
 		setKeyCmd,
 		balanceKeyCmd,
 		vanityAddressCmd,
-		faucetKeyCmd,
 	)
 
 	// chain
@@ -145,7 +144,7 @@ func init() {
 	chainCmd.AddCommand(
 		importChainCmd,
 		importANRChainCmd,
-		importAvalancheOpsChainCmd,
+		importAvalancheCliChainCmd,
 		setChainCmd,
 		chainInfoCmd,
 		watchChainCmd,
@@ -153,8 +152,6 @@ func init() {
 
 	// actions
 	actionCmd.AddCommand(
-		fundFaucetCmd,
-
 		transferCmd,
 
 		createAssetCmd,

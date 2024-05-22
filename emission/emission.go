@@ -429,9 +429,9 @@ func (e *Emission) MintNewNAI() uint64 {
 
 		// Distribute rewards based on stake proportion
 		for _, validator := range e.validators {
-			lastBlockHeight := e.GetLastAcceptedBlockHeight()
+			lastBlockHeight := currentBlockHeight
 			// Mark validator active based on if stakeStartBlock has started
-			if lastBlockHeight > validator.stakeStartBlock {
+			if lastBlockHeight > validator.stakeStartBlock && !validator.IsActive {
 				validator.IsActive = true
 				e.TotalStaked += (validator.StakedAmount + validator.DelegatedAmount)
 			}
@@ -449,10 +449,7 @@ func (e *Emission) MintNewNAI() uint64 {
 			totalValidatorReward := uint64(float64(validatorStake) * rewardsPerStakeUnit)
 
 			// Calculate the rewards for the validator and for delegation
-			validatorReward, delegationReward := uint64(0), uint64(0)
-			if len(validator.delegatorsLastClaim) > 0 {
-				validatorReward, delegationReward = distributeValidatorRewards(totalValidatorReward, validator.DelegationFeeRate, validator.DelegatedAmount)
-			}
+			validatorReward, delegationReward := distributeValidatorRewards(totalValidatorReward, validator.DelegationFeeRate, validator.DelegatedAmount)
 
 			actualRewards += validatorReward + delegationReward
 
@@ -505,7 +502,7 @@ func (e *Emission) DistributeFees(fee uint64) {
 	for _, validator := range e.validators {
 		lastBlockHeight := e.GetLastAcceptedBlockHeight()
 		// Mark validator active based on if stakeStartBlock has started
-		if lastBlockHeight > validator.stakeStartBlock {
+		if lastBlockHeight > validator.stakeStartBlock && !validator.IsActive {
 			validator.IsActive = true
 			e.TotalStaked += (validator.StakedAmount + validator.DelegatedAmount)
 		}
@@ -522,10 +519,8 @@ func (e *Emission) DistributeFees(fee uint64) {
 		validatorStake := validator.StakedAmount + validator.DelegatedAmount
 		totalValidatorFee := uint64(float64(validatorStake) * feesPerStakeUnit)
 
-		validatorFee, delegationFee := uint64(0), uint64(0)
-		if len(validator.delegatorsLastClaim) > 0 {
-			validatorFee, delegationFee = distributeValidatorRewards(totalValidatorFee, validator.DelegationFeeRate, validator.DelegatedAmount)
-		}
+		validatorFee, delegationFee := distributeValidatorRewards(totalValidatorFee, validator.DelegationFeeRate, validator.DelegatedAmount)
+
 		validator.UnclaimedStakedReward += validatorFee
 		validator.UnclaimedDelegatedReward += delegationFee
 	}

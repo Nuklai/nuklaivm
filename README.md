@@ -362,25 +362,13 @@ Refer to [Tokens Demo](./docs/demos/tokens.md) to learn how to mint an asset, tr
 We have a native wallet for Nuklai network. This wallet integrates the following:
 
 - Local Wallet
+- Connect to other networks such as devnet, testnet, mainnet from the UI of the wallet
 - Blockchain Explorer
 - Faucet that you can use to request some test NAI to your local wallet
 - Mint page where you can create and mint tokens to any address
 - Feed page which is like a mini blog that lets you post a message and the url to the blockchain within a transaction memo
 
-To run the wallet, just do:
-
-```bash
-cd cmd/nuklai-wallet;
-./scripts/dev.sh
-```
-
-Note that when you run `dev.sh`, it does the following:
-
-- Start Nuklai Feed from cmd/nuklai-feed
-- Start Nuklai Faucet from cmd/nuklai-faucet
-- Run Nuklai Wallet app
-
-Then open [http://localhost:34115/](http://localhost:34115/) in your browser to interact with the wallet.
+Visit [https://github.com/nuklai/nuklai-wallet](https://github.com/nuklai/nuklai-wallet) for more info.
 
 ## Tests
 

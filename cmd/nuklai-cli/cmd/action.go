@@ -29,7 +29,6 @@ import (
 
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/auth"
-	frpc "github.com/nuklai/nuklaivm/cmd/nuklai-faucet/rpc"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
@@ -38,63 +37,6 @@ var actionCmd = &cobra.Command{
 	Use: "action",
 	RunE: func(*cobra.Command, []string) error {
 		return ErrMissingSubcommand
-	},
-}
-
-var fundFaucetCmd = &cobra.Command{
-	Use: "fund-faucet",
-	RunE: func(*cobra.Command, []string) error {
-		ctx := context.Background()
-
-		// Get faucet
-		faucetURI, err := handler.Root().PromptString("faucet URI", 0, hconsts.MaxInt)
-		if err != nil {
-			return err
-		}
-		fcli := frpc.NewJSONRPCClient(faucetURI)
-		faucetAddress, err := fcli.FaucetAddress(ctx)
-		if err != nil {
-			return err
-		}
-
-		// Get clients
-		_, priv, factory, cli, scli, tcli, err := handler.DefaultActor()
-		if err != nil {
-			return err
-		}
-
-		// Get balance
-		_, decimals, balance, _, err := handler.GetAssetInfo(ctx, tcli, priv.Address, ids.Empty, true)
-		if balance == 0 || err != nil {
-			return err
-		}
-
-		// Select amount
-		amount, err := handler.Root().PromptAmount("amount", decimals, balance, nil)
-		if err != nil {
-			return err
-		}
-
-		// Confirm action
-		cont, err := handler.Root().PromptContinue()
-		if !cont || err != nil {
-			return err
-		}
-
-		// Generate transaction
-		addr, err := codec.ParseAddressBech32(nconsts.HRP, faucetAddress)
-		if err != nil {
-			return err
-		}
-		if _, _, err = sendAndWait(ctx, nil, &actions.Transfer{
-			To:    addr,
-			Asset: ids.Empty,
-			Value: amount,
-		}, cli, scli, tcli, factory, true); err != nil {
-			return err
-		}
-		hutils.Outf("{{green}}funded faucet:{{/}} %s\n", faucetAddress)
-		return nil
 	},
 }
 
@@ -669,8 +611,8 @@ var registerValidatorStakeCmd = &cobra.Command{
 			return err
 		}
 
-		stakeStartBlock := currentBlockHeight + 20*2 // roughly 2 minutes from now
-		stakeEndBlock := currentBlockHeight + 20*15  // roughly 15 minutes from now
+		stakeStartBlock := currentBlockHeight + 20 // roughly 1 minute from now
+		stakeEndBlock := stakeStartBlock + 20*10   // roughly 10 minutes from stakeStartBlock
 		delegationFeeRate := 50
 		rewardAddress := priv.Address
 

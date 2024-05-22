@@ -38,6 +38,7 @@ type EmissionBalancer struct {
 	BaseValidators       uint64   `json:"baseValidators"`       // Emission base validators
 	EpochLength          uint64   `json:"epochLength"`          // Emission epoch length
 	WhiteListedAddresses []string `json:"whiteListedAddresses"` // Addresses allowed to modify the emission parameters
+
 }
 
 type Genesis struct {
@@ -111,7 +112,6 @@ func Default() *Genesis {
 		StorageValueWriteUnits:    3,
 
 		EmissionBalancer: EmissionBalancer{
-			TotalSupply:     0,
 			MaxSupply:       emission.GetStakingConfig().RewardConfig.SupplyCap,       // 10 billion NAI,
 			EmissionAddress: emission.GetStakingConfig().RewardConfig.EmissionAddress, // NAI emission address(If you don't pass this address, it will be set to the default address)
 		},
