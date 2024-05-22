@@ -116,7 +116,6 @@ func UnmarshalModifyEmissionConfigParams(p *codec.Packer, _ *warp.Message) (chai
 	config.TrackerBaseAPR = p.UnpackUint64(false)
 	config.TrackerBaseValidators = p.UnpackUint64(false)
 	config.TrackerEpochLength = p.UnpackUint64(false)
-	// p.UnpackAddress(&config.AccountAddress)
 	address := config.AccountAddress[:]
 	p.UnpackFixedBytes(codec.AddressLen, &address)
 	if err := p.Err(); err != nil {
@@ -146,7 +145,6 @@ func UnmarshalModifyEmissionConfigParamsResult(b []byte) (*ModifyEmissionConfigP
 	config.TrackerBaseAPR = p.UnpackUint64(false)
 	config.TrackerBaseValidators = p.UnpackUint64(false)
 	config.TrackerEpochLength = p.UnpackUint64(false)
-	// p.UnpackAddress(&config.AccountAddress)
 	address := config.AccountAddress[:]
 	p.UnpackFixedBytes(codec.AddressLen, &address)
 	if err := p.Err(); err != nil {
