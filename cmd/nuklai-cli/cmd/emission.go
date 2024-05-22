@@ -128,42 +128,41 @@ var emissionModifyCmd = &cobra.Command{
 			return err
 		}
 
-		if res {
+		if res && ebFilePath != "" {
 			emissionBalancer := genesis.EmissionBalancer{}
-			if ebFilePath != "" {
-				eb, err := os.ReadFile(ebFilePath)
-				if err != nil {
-					return err
-				}
-				if err := json.Unmarshal(eb, &emissionBalancer); err != nil {
-					return err
-				}
-				if supply > 0 && supply != emissionBalancer.MaxSupply {
-					emissionBalancer.MaxSupply = supply
-				}
-				if apr > 0 && apr != emissionBalancer.BaseAPR {
-					emissionBalancer.BaseAPR = apr
-				}
-				if baseValidators > 0 && baseValidators != emissionBalancer.BaseValidators {
-					emissionBalancer.BaseValidators = baseValidators
-				}
-				if epoch > 0 && epoch != emissionBalancer.EpochLength {
-					emissionBalancer.EpochLength = epoch
-				}
-				if address != "" && address != emissionBalancer.EmissionAddress {
-					emissionBalancer.EmissionAddress = address
-				}
-				e, err := json.Marshal(emissionBalancer)
-				if err != nil {
-					return err
-				}
-				if err := os.WriteFile(ebFilePath, e, fsModeWrite); err != nil {
-					return err
-				}
 
-				// modify emission balancer file
-				color.Green("modified emission balancer file and saved to %s", ebFilePath)
+			eb, err := os.ReadFile(ebFilePath)
+			if err != nil {
+				return err
 			}
+			if err := json.Unmarshal(eb, &emissionBalancer); err != nil {
+				return err
+			}
+			if supply > 0 && supply != emissionBalancer.MaxSupply {
+				emissionBalancer.MaxSupply = supply
+			}
+			if apr > 0 && apr != emissionBalancer.BaseAPR {
+				emissionBalancer.BaseAPR = apr
+			}
+			if baseValidators > 0 && baseValidators != emissionBalancer.BaseValidators {
+				emissionBalancer.BaseValidators = baseValidators
+			}
+			if epoch > 0 && epoch != emissionBalancer.EpochLength {
+				emissionBalancer.EpochLength = epoch
+			}
+			if address != "" && address != emissionBalancer.EmissionAddress {
+				emissionBalancer.EmissionAddress = address
+			}
+			e, err := json.Marshal(emissionBalancer)
+			if err != nil {
+				return err
+			}
+			if err := os.WriteFile(ebFilePath, e, fsModeWrite); err != nil {
+				return err
+			}
+			// modify emission balancer file
+			color.Green("modified emission balancer file and saved to %s", ebFilePath)
+
 		}
 		fmt.Println(handler.GetEmissionInfo(ctx, ncli))
 		return nil
