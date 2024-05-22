@@ -174,7 +174,7 @@ func init() {
 		undelegateUserStakeCmd,
 	)
 
-	emissionModifyCmd.Flags().String("update-genesis", "", "Update the nuklaivm.genesis file")
+	emissionModifyCmd.Flags().String("update-emission", "", "Update the tmp/emission-balancer file")
 	emissionModifyCmd.Flags().String("address", "", "New emission account address")
 	emissionModifyCmd.Flags().Uint64("maxsupply", 0, "New emission max supply")
 	emissionModifyCmd.Flags().Uint64("base-apr", 0, "New emission tracker base apr")
