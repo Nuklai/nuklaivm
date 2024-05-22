@@ -149,17 +149,26 @@ func (c *Controller) Initialize(
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
-	var whitelisted []codec.Address
-	for _, addr := range c.genesis.EmissionBalancer.WhiteListedAddresses {
-		w, err := codec.ParseAddressBech32(nconsts.HRP, addr)
-		if err != nil {
-			return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
-		}
-		whitelisted = append(whitelisted, w)
+
+	whitelisted, err := c.GetEmissionWhitelistedAddresses()
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
+
 	c.emission = emission.New(c, c.inner, c.genesis.EmissionBalancer.TotalSupply, c.genesis.EmissionBalancer.MaxSupply, emissionAddr, c.genesis.EmissionBalancer.BaseAPR, c.genesis.EmissionBalancer.BaseValidators, c.genesis.EmissionBalancer.EpochLength, whitelisted)
 
 	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, nconsts.ActionRegistry, nconsts.AuthRegistry, auth.Engines(), nil
+}
+
+func (c *Controller) GetEmissionWhitelistedAddresses() (whitelisted []codec.Address, err error) {
+	for _, addr := range c.genesis.EmissionBalancer.WhiteListedAddresses {
+		w, err := codec.ParseAddressBech32(nconsts.HRP, addr)
+		if err != nil {
+			return nil, err
+		}
+		whitelisted = append(whitelisted, w)
+	}
+	return whitelisted, nil
 }
 
 func (c *Controller) Rules(t int64) chain.Rules {
