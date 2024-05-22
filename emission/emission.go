@@ -296,7 +296,7 @@ func (e *Emission) addDelegatorEvent(blockHeight uint64, nodeID ids.NodeID, dele
 }
 
 // UndelegateUserStake decreases the delegated stake for a validator and rebalances the heap.
-func (e *Emission) UndelegateUserStake(nodeID ids.NodeID, actor codec.Address, stakeAmount uint64) (uint64, error) {
+func (e *Emission) UndelegateUserStake(nodeID ids.NodeID, actor codec.Address) (uint64, error) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 

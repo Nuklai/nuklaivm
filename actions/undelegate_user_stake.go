@@ -79,7 +79,7 @@ func (u *UndelegateUserStake) Execute(
 	}
 
 	// Undelegate in Emission Balancer
-	rewardAmount, err := emissionInstance.UndelegateUserStake(nodeID, actor, stakedAmount)
+	rewardAmount, err := emissionInstance.UndelegateUserStake(nodeID, actor)
 	if err != nil {
 		return false, UndelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
 	}
