@@ -150,7 +150,6 @@ var emissionModifyCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println("CLI MODIFY")
 		// Generate transaction
 		res, _, err := sendAndWait(ctx, nil, &actions.ModifyEmissionConfigParams{
 			MaxSupply:             emissionBalancer.MaxSupply,

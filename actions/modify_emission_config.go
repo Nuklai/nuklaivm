@@ -5,7 +5,6 @@ package actions
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -57,7 +56,6 @@ func (s *ModifyEmissionConfigParams) Execute(
 ) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
-	fmt.Println("EXECUTE MODIFY CONFIG PARAMS-1")
 
 	if s.MaxSupply > 0 && s.MaxSupply != emissionInstance.MaxSupply {
 		if err := emissionInstance.ModifyMaxSupply(actor, s.MaxSupply); err != nil {
@@ -65,35 +63,23 @@ func (s *ModifyEmissionConfigParams) Execute(
 		}
 	}
 
-	fmt.Println("EXECUTE MODIFY CONFIG PARAMS-2")
-
 	if s.AccountAddress != codec.EmptyAddress && s.AccountAddress != emissionInstance.EmissionAccount.Address {
 		if err := emissionInstance.ModifyAccountAddress(actor, s.AccountAddress); err != nil {
 			return false, ModifyEmissionConfigUnits, utils.ErrBytes(err), nil, nil
 		}
 	}
 
-	fmt.Println("EXECUTE MODIFY CONFIG PARAMS-3")
 	baseTracker := float64(s.TrackerBaseAPR) / float64(100)
-	fmt.Println(s.TrackerBaseAPR)
-	fmt.Println(baseTracker > 0)
-	fmt.Println(baseTracker != emissionInstance.EpochTracker.BaseAPR)
-	fmt.Println(baseTracker)
-	fmt.Println(emissionInstance.EpochTracker.BaseAPR)
 	if baseTracker > 0 && baseTracker != emissionInstance.EpochTracker.BaseAPR {
-		fmt.Println("MODIFY BASE APR")
 		if err := emissionInstance.ModifyBaseAPR(actor, baseTracker); err != nil {
 			return false, ModifyEmissionConfigUnits, utils.ErrBytes(err), nil, nil
 		}
 	}
-	fmt.Println("EXECUTE MODIFY CONFIG PARAMS-4")
 	if s.TrackerBaseValidators > 0 && s.TrackerBaseValidators != emissionInstance.EpochTracker.BaseValidators {
 		if err := emissionInstance.ModifyBaseValidators(actor, s.TrackerBaseValidators); err != nil {
 			return false, ModifyEmissionConfigUnits, utils.ErrBytes(err), nil, nil
 		}
 	}
-
-	fmt.Println("EXECUTE MODIFY CONFIG PARAMS-5")
 	if s.TrackerEpochLength > 0 && s.TrackerEpochLength != emissionInstance.EpochTracker.EpochLength {
 		if err := emissionInstance.ModifyEpochLength(actor, s.TrackerEpochLength); err != nil {
 			return false, ModifyEmissionConfigUnits, utils.ErrBytes(err), nil, nil

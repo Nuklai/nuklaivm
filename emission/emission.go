@@ -597,7 +597,6 @@ func (e *Emission) GetLastAcceptedBlockHeight() uint64 {
 }
 
 func (e *Emission) isWhitelistedAddress(signer codec.Address) (whitelisted bool, err error) {
-	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>IS WHITELISTED")
 	for _, addr := range e.whiteListedAddresses {
 		fmt.Println(signer)
 		fmt.Println(addr)
@@ -625,11 +624,9 @@ func (e *Emission) ModifyAccountAddress(signer codec.Address, addr codec.Address
 }
 
 func (e *Emission) ModifyBaseAPR(signer codec.Address, apr float64) (err error) {
-	fmt.Println(">>>>>>>>MODIFY APR-1")
 	if _, err := e.isWhitelistedAddress(signer); err != nil {
 		return err
 	}
-	fmt.Println(">>>>>>>>MODIFY APR-2")
 	e.EpochTracker.BaseAPR = apr
 	return nil
 }
