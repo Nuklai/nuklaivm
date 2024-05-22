@@ -14,6 +14,7 @@ var (
 	ErrStakeExpired               = errors.New("stake expired")
 	ErrDelegatorAlreadyStaked     = errors.New("delegator already staked")
 	ErrDelegatorNotFound          = errors.New("delegator not found")
+	ErrDelegatorAlreadyClaimed    = errors.New("delegator already claimed")
 	ErrInvalidBlockHeight         = errors.New("invalid block height")
 	ErrValidatorNotActive         = errors.New("validator not active")
 

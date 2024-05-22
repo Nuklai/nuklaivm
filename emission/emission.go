@@ -143,24 +143,30 @@ func (e *Emission) CalculateUserDelegationRewards(nodeID ids.NodeID, actor codec
 	}
 
 	// Check if the delegator exists and rewards haven't been claimed yet
-	if _, exists := validator.delegators[actor]; !exists {
+	delegator, exists := validator.delegators[actor]
+	if !exists {
 		return 0, ErrDelegatorNotFound
 	}
-	if validator.delegators[actor].AlreadyClaimed {
-		return 0, nil // Rewards already claimed
+	if delegator.AlreadyClaimed {
+		return 0, ErrDelegatorAlreadyClaimed // Rewards already claimed
 	}
 
-	// Iterate over each epoch within the stake period
-	startEpoch := validator.delegators[actor].StakeStartBlock / e.EpochTracker.EpochLength
-	endEpoch := validator.delegators[actor].StakeEndBlock / e.EpochTracker.EpochLength
+	// Calculate the total rewards for the delegator proportionally
+	startEpoch := delegator.StakeStartBlock / e.EpochTracker.EpochLength
+	endEpoch := delegator.StakeEndBlock / e.EpochTracker.EpochLength
 	totalReward := uint64(0)
 
-	for epoch := startEpoch; epoch < endEpoch; epoch++ {
+	// Ensure total delegation amount is greater than zero to avoid division by zero
+	if validator.DelegatedAmount == 0 {
+		return 0, nil
+	}
+
+	for epoch := startEpoch; epoch <= endEpoch; epoch++ {
 		if reward, ok := validator.epochRewards[epoch]; ok {
-			// Calculate reward for this epoch
-			delegatorShare := float64(validator.delegators[actor].StakedAmount) / float64(validator.DelegatedAmount)
-			epochReward := delegatorShare * float64(reward)
-			totalReward += uint64(epochReward)
+			// Calculate the reward proportion for this epoch
+			delegatorShare := float64(delegator.StakedAmount) / float64(validator.DelegatedAmount)
+			epochReward := uint64(float64(reward) * delegatorShare)
+			totalReward += epochReward
 		}
 	}
 
@@ -319,6 +325,7 @@ func (e *Emission) UndelegateUserStake(nodeID ids.NodeID, actor codec.Address) (
 		return 0, err
 	}
 	validator.UnclaimedDelegatedReward -= rewardAmount // Reset unclaimed rewards
+	validator.DelegatedAmount -= validator.delegators[actor].StakedAmount
 
 	delete(validator.delegators, actor) // Remove the delegator from the list
 
@@ -406,7 +413,6 @@ func (e *Emission) processEvents(blockHeight uint64) {
 			}
 			if blockHeight >= delegator.StakeEndBlock && delegator.IsActive {
 				delegator.IsActive = false
-				validator.DelegatedAmount -= delegator.StakedAmount
 				e.TotalStaked -= delegator.StakedAmount
 			}
 		}
