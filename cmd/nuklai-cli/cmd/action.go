@@ -932,14 +932,55 @@ var delegateUserStakeCmd = &cobra.Command{
 			return err
 		}
 
+		// Get current block
+		currentBlockHeight, _, _, _, _, _, _, err := ncli.EmissionInfo(ctx)
+		if err != nil {
+			return err
+		}
+
+		stakeStartBlock := currentBlockHeight + 20 // roughly 1 minute from now
+		stakeEndBlock := stakeStartBlock + 20*10   // roughly 10 minutes from stakeStartBlock
 		rewardAddress := priv.Address
 
 		if !autoRegister {
+			// Select stakeStartBlock
+			stakeStartBlockString, err := handler.Root().PromptString(
+				fmt.Sprintf("Staking Start Block(must be after %d)", currentBlockHeight),
+				1,
+				32,
+			)
+			if err != nil {
+				return err
+			}
+
+			stakeStartBlock, err = strconv.ParseUint(stakeStartBlockString, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			// Select stakeEndBlock
+			stakeEndBlockString, err := handler.Root().PromptString(
+				fmt.Sprintf("Staking End Block(must be after %s)", stakeStartBlockString),
+				1,
+				32,
+			)
+			if err != nil {
+				return err
+			}
+			stakeEndBlock, err = strconv.ParseUint(stakeEndBlockString, 10, 64)
+			if err != nil {
+				return err
+			}
+
 			// Select rewardAddress
 			rewardAddress, err = handler.Root().PromptAddress("Reward Address")
 			if err != nil {
 				return err
 			}
+		}
+
+		if stakeStartBlock < currentBlockHeight {
+			return fmt.Errorf("staking start block must be after the current block height (%d)", currentBlockHeight)
 		}
 
 		// Confirm action
@@ -950,9 +991,11 @@ var delegateUserStakeCmd = &cobra.Command{
 
 		// Generate transaction
 		_, _, err = sendAndWait(ctx, nil, &actions.DelegateUserStake{
-			NodeID:        nodeID.Bytes(),
-			StakedAmount:  stakedAmount,
-			RewardAddress: rewardAddress,
+			NodeID:          nodeID.Bytes(),
+			StakeStartBlock: stakeStartBlock,
+			StakeEndBlock:   stakeEndBlock,
+			StakedAmount:    stakedAmount,
+			RewardAddress:   rewardAddress,
 		}, hcli, hws, ncli, factory, true)
 		return err
 	},
@@ -1012,7 +1055,7 @@ var getUserStakeCmd = &cobra.Command{
 		nodeID := validatorChosen.NodeID
 
 		// Get user stake
-		_, _, _, _, err = handler.GetUserStake(ctx, ncli, address, nodeID)
+		_, _, _, _, _, err = handler.GetUserStake(ctx, ncli, address, nodeID)
 		if err != nil {
 			return err
 		}
@@ -1058,7 +1101,7 @@ var claimUserStakeRewardCmd = &cobra.Command{
 		nodeID := validatorChosen.NodeID
 
 		// Get stake info
-		_, stakedAmount, _, _, err := ncli.UserStake(ctx, priv.Address, nodeID)
+		_, _, stakedAmount, _, _, err := ncli.UserStake(ctx, priv.Address, nodeID)
 		if err != nil {
 			return err
 		}
@@ -1120,7 +1163,7 @@ var undelegateUserStakeCmd = &cobra.Command{
 		nodeID := validatorChosen.NodeID
 
 		// Get stake info
-		_, stakedAmount, _, _, err := ncli.UserStake(ctx, priv.Address, nodeID)
+		_, _, stakedAmount, _, _, err := ncli.UserStake(ctx, priv.Address, nodeID)
 		if err != nil {
 			return err
 		}

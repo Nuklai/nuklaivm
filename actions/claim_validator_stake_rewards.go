@@ -61,7 +61,7 @@ func (c *ClaimValidatorStakeRewards) Execute(
 	}
 
 	// Check whether a validator is trying to claim its reward
-	exists, stakeStartBlock, _, _, _, rewardAddress, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
+	exists, _, stakeEndBlock, _, _, rewardAddress, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
 	if !exists {
 		return false, ClaimStakingRewardComputeUnits, OutputStakeMissing, nil, nil
 	}
@@ -72,10 +72,8 @@ func (c *ClaimValidatorStakeRewards) Execute(
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
 
-	// Get last accepted block height
-	lastBlockHeight := emissionInstance.GetLastAcceptedBlockHeight()
-	// Check that lastBlockHeight is after stakeStartBlock
-	if lastBlockHeight < stakeStartBlock {
+	// Check that lastBlockHeight is after stakeEndBlock
+	if emissionInstance.GetLastAcceptedBlockHeight() < stakeEndBlock {
 		return false, ClaimStakingRewardComputeUnits, OutputStakeNotEnded, nil, nil
 	}
 
