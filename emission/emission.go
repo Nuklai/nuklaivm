@@ -1,3 +1,6 @@
+// Copyright (C) 2024, AllianceBlock. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 package emission
 
 import (
@@ -430,7 +433,6 @@ func (e *Emission) ClaimStakingRewards(nodeID ids.NodeID, actor codec.Address) (
 		}
 		rewardAmount = reward
 		validator.AccumulatedDelegatedReward -= rewardAmount
-
 	}
 
 	e.c.Logger().Info("staking rewards claimed", zap.Uint64("rewardAmount", rewardAmount))
