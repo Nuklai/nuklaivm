@@ -222,7 +222,7 @@ func (*Handler) GetEmissionInfo(
 	}
 
 	hutils.Outf(
-		"{{yellow}}emission info: {{/}}\nCurrentBlockHeight=%d TotalSupply=%d MaxSupply=%d TotalStaked=%d RewardsPerEpoch=%d NumBlocksInEpoch=%d EmissionAddress=%s EmissionUnclaimedBalance=%d\n",
+		"{{yellow}}emission info: {{/}}\nCurrentBlockHeight=%d TotalSupply=%d MaxSupply=%d TotalStaked=%d RewardsPerEpoch=%d NumBlocksInEpoch=%d EmissionAddress=%s EmissionAccumulatedReward=%d\n",
 		currentBlockHeight,
 		totalSupply,
 		maxSupply,
@@ -230,9 +230,9 @@ func (*Handler) GetEmissionInfo(
 		rewardsPerEpoch,
 		epochTracker.EpochLength,
 		emissionAddress,
-		emissionAccount.UnclaimedBalance,
+		emissionAccount.AccumulatedReward,
 	)
-	return currentBlockHeight, totalSupply, maxSupply, totalStaked, rewardsPerEpoch, epochTracker.EpochLength, emissionAddress, emissionAccount.UnclaimedBalance, err
+	return currentBlockHeight, totalSupply, maxSupply, totalStaked, rewardsPerEpoch, epochTracker.EpochLength, emissionAddress, emissionAccount.AccumulatedReward, err
 }
 
 func (*Handler) GetAllValidators(
@@ -249,15 +249,15 @@ func (*Handler) GetAllValidators(
 			return nil, err
 		}
 		hutils.Outf(
-			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s StakedAmount=%d UnclaimedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d UnclaimedDelegatedReward=%d\n",
+			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s StakedAmount=%d AccumulatedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d AccumulatedDelegatedReward=%d\n",
 			index,
 			validator.NodeID,
 			base64.StdEncoding.EncodeToString(publicKey.Compress()),
 			validator.StakedAmount,
-			validator.UnclaimedStakedReward,
+			validator.AccumulatedStakedReward,
 			validator.DelegationFeeRate,
 			validator.DelegatedAmount,
-			validator.UnclaimedDelegatedReward,
+			validator.AccumulatedDelegatedReward,
 		)
 	}
 	return validators, nil
@@ -277,16 +277,16 @@ func (*Handler) GetStakedValidators(
 			return nil, err
 		}
 		hutils.Outf(
-			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s Active=%t StakedAmount=%d UnclaimedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d UnclaimedDelegatedReward=%d\n",
+			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s Active=%t StakedAmount=%d AccumulatedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d AccumulatedDelegatedReward=%d\n",
 			index,
 			validator.NodeID,
 			base64.StdEncoding.EncodeToString(publicKey.Compress()),
 			validator.IsActive,
 			validator.StakedAmount,
-			validator.UnclaimedStakedReward,
+			validator.AccumulatedStakedReward,
 			validator.DelegationFeeRate,
 			validator.DelegatedAmount,
-			validator.UnclaimedDelegatedReward,
+			validator.AccumulatedDelegatedReward,
 		)
 	}
 	return validators, nil
@@ -346,7 +346,7 @@ func (*Handler) GetUserStake(ctx context.Context,
 	}
 
 	hutils.Outf(
-		"{{yellow}}validator stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
+		"{{yellow}}user stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
 		stakeStartBlock,
 		stakeEndBlock,
 		stakedAmount,

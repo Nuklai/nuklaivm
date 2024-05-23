@@ -61,7 +61,7 @@ func (c *ClaimDelegationStakeRewards) Execute(
 		return false, ClaimStakingRewardComputeUnits, OutputInvalidNodeID, nil, nil
 	}
 
-	exists, _, stakeEndBlock, _, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, mu, c.UserStakeAddress, nodeID)
+	exists, stakeStartBlock, _, _, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, mu, c.UserStakeAddress, nodeID)
 	if !exists {
 		return false, ClaimStakingRewardComputeUnits, OutputStakeMissing, nil, nil
 	}
@@ -72,8 +72,8 @@ func (c *ClaimDelegationStakeRewards) Execute(
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
 
-	// Check that lastBlockHeight is after stakeEndBlock
-	if emissionInstance.GetLastAcceptedBlockHeight() < stakeEndBlock {
+	// Check that lastBlockHeight is after stakeStartBlock
+	if emissionInstance.GetLastAcceptedBlockHeight() < stakeStartBlock {
 		return false, ClaimStakingRewardComputeUnits, OutputStakeNotEnded, nil, nil
 	}
 

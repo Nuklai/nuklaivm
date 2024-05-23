@@ -268,7 +268,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 		if err != nil {
 			return err // This should never happen
 		}
-		c.inner.Logger().Info("distributed fees to Emission and Validators", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("total fee", totalFee), zap.Uint64("total supply", c.emission.TotalSupply), zap.Uint64("max supply", c.emission.MaxSupply), zap.Uint64("rewards per epock", c.emission.GetRewardsPerEpoch()), zap.String("emission address", emissionAddress), zap.Uint64("emission address unclaimed balance", c.emission.EmissionAccount.UnclaimedBalance))
+		c.inner.Logger().Info("distributed fees to Emission and Validators", zap.Uint64("current block height", c.inner.LastAcceptedBlock().Height()), zap.Uint64("total fee", totalFee), zap.Uint64("total supply", c.emission.TotalSupply), zap.Uint64("max supply", c.emission.MaxSupply), zap.Uint64("rewards per epock", c.emission.GetRewardsPerEpoch()), zap.String("emission address", emissionAddress), zap.Uint64("emission address accumulated reward", c.emission.EmissionAccount.AccumulatedReward))
 		c.metrics.feesDistributed.Add(float64(totalFee))
 	}
 
