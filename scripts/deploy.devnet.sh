@@ -80,7 +80,8 @@ cd $pw
 MIN_BLOCK_GAP=250
 MIN_UNIT_PRICE="100,100,100,100,100"
 WINDOW_TARGET_UNITS="40000000,450000,450000,450000,450000"
-MAX_BLOCK_UNITS="1800000,1800000,1800000,1800000,1800000"
+MAX_UINT64=18446744073709551615
+MAX_BLOCK_UNITS="1800000,${MAX_UINT64},${MAX_UINT64},${MAX_UINT64},${MAX_UINT64}"
 
 INITIAL_OWNER_ADDRESS=${INITIAL_OWNER_ADDRESS:-nuklai1qpg4ecapjymddcde8sfq06dshzpxltqnl47tvfz0hnkesjz7t0p35d5fnr3}
 EMISSION_ADDRESS=${EMISSION_ADDRESS:-nuklai1qr4hhj8vfrnmzghgfnqjss0ns9tv7pjhhhggfm2zeagltnlmu4a6sgh6dqn}
@@ -165,8 +166,8 @@ cat <<EOF > "${TMPDIR}"/node.config
   "throttler-outbound-validator-alloc-size":"10737418240",
   "throttler-outbound-at-large-alloc-size":"10737418240",
   "throttler-outbound-node-max-at-large-bytes":"10737418240",
-  "consensus-on-accept-gossip-validator-size":"5",
-  "consensus-on-accept-gossip-peer-size":"5",
+  "consensus-on-accept-gossip-validator-size":"10",
+  "consensus-on-accept-gossip-peer-size":"10",
   "network-compression-type":"zstd",
   "consensus-app-concurrency":"128",
   "profile-continuous-enabled":true,
@@ -188,7 +189,7 @@ trap cleanup EXIT
 #
 # It is not recommended to use an instance with burstable network performance.
 echo -e "${YELLOW}creating devnet${NC}"
-$TMPDIR/avalanche node devnet wiz ${CLUSTER} ${VMID} --force-subnet-create=true --authorize-access=true --aws --node-type t4g.medium --num-apis 1 --num-validators 5 --region eu-west-1 --use-static-ip=true --enable-monitoring=true --default-validator-params --custom-avalanchego-version $AVALANCHEGO_VERSION --custom-vm-repo-url="https://www.github.com/nuklai/nuklaivm" --custom-vm-branch $VM_COMMIT --custom-vm-build-script="scripts/build.sh" --custom-subnet=true --subnet-genesis="${TMPDIR}/nuklaivm.genesis" --subnet-config="${TMPDIR}/nuklaivm.genesis" --chain-config="${TMPDIR}/nuklaivm.config" --node-config="${TMPDIR}/node.config" --config="${TMPDIR}/node.config" --remote-cli-version $REMOTE_CLI_COMMIT --add-grafana-dashboard="${TMPDIR}/nuklaivm/grafana.json" --log-level DEBUG
+$TMPDIR/avalanche node devnet wiz ${CLUSTER} ${VMID} --force-subnet-create=true --authorize-access=true --aws --node-type t4g.medium --num-apis 1 --num-validators 3 --region eu-west-1 --use-static-ip=true --enable-monitoring=true --default-validator-params --custom-avalanchego-version $AVALANCHEGO_VERSION --custom-vm-repo-url="https://www.github.com/nuklai/nuklaivm" --custom-vm-branch $VM_COMMIT --custom-vm-build-script="scripts/build.sh" --custom-subnet=true --subnet-genesis="${TMPDIR}/nuklaivm.genesis" --subnet-config="${TMPDIR}/nuklaivm.genesis" --chain-config="${TMPDIR}/nuklaivm.config" --node-config="${TMPDIR}/node.config" --config="${TMPDIR}/node.config" --remote-cli-version $REMOTE_CLI_COMMIT --add-grafana-dashboard="${TMPDIR}/nuklaivm/grafana.json" --log-level DEBUG
 
 # Import the cluster into nuklai-cli for local interaction
 $TMPDIR/nuklai-cli chain import-cli $HOME/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml
