@@ -25,6 +25,7 @@ import (
 	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/pubsub"
 	hrpc "github.com/ava-labs/hypersdk/rpc"
+	"github.com/ava-labs/hypersdk/utils"
 	hutils "github.com/ava-labs/hypersdk/utils"
 
 	"github.com/nuklai/nuklaivm/actions"
@@ -42,39 +43,80 @@ var actionCmd = &cobra.Command{
 
 var transferCmd = &cobra.Command{
 	Use: "transfer",
-	RunE: func(*cobra.Command, []string) error {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var (
+			assetID   ids.ID
+			recipient codec.Address
+			amount    uint64
+			err       error
+		)
+
 		ctx := context.Background()
 		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
 		if err != nil {
 			return err
 		}
 
-		// Select token to send
-		assetID, err := handler.Root().PromptAsset("assetID", true)
-		if err != nil {
-			return err
+		// Get assetID
+		assetIDStr, _ := cmd.Flags().GetString("assetID")
+		if assetIDStr == "" {
+			assetID, err = handler.Root().PromptAsset("assetID", true)
+			if err != nil {
+				return err
+			}
+		} else {
+			if assetIDStr == nconsts.Symbol {
+				assetID = ids.Empty
+			} else {
+				assetID, err = ids.FromString(assetIDStr)
+				if err != nil {
+					return err
+				}
+			}
 		}
+
 		_, decimals, balance, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, assetID, true)
 		if balance == 0 || err != nil {
 			return err
 		}
 
-		// Select recipient
-		recipient, err := handler.Root().PromptAddress("recipient")
-		if err != nil {
-			return err
+		// Get recipient
+		recipientStr, _ := cmd.Flags().GetString("recipient")
+		if recipientStr == "" {
+			recipient, err = handler.Root().PromptAddress("recipient")
+			if err != nil {
+				return err
+			}
+		} else {
+			recipient, err = codec.ParseAddressBech32(nconsts.HRP, recipientStr)
+			if err != nil {
+				return err
+			}
 		}
 
-		// Select amount
-		amount, err := handler.Root().PromptAmount("amount", decimals, balance, nil)
-		if err != nil {
-			return err
+		// Get amount
+		amountStr, _ := cmd.Flags().GetString("amount")
+		if amountStr == "" {
+			amount, err = handler.Root().PromptAmount("amount", decimals, balance, nil)
+			if err != nil {
+				return err
+			}
+		} else {
+			amount, err = utils.ParseBalance(amountStr, nconsts.Decimals)
+			if err != nil {
+				return err
+			}
 		}
 
 		// Confirm action
-		cont, err := handler.Root().PromptContinue()
-		if !cont || err != nil {
-			return err
+		if assetIDStr == "" || recipientStr == "" || amountStr == "" {
+			confirm, err := handler.Root().PromptContinue()
+			if !confirm || err != nil {
+				return errors.New("transfer not confirmed")
+			}
+		} else {
+			// Auto-confirm if all arguments are provided
+			hutils.Outf("All arguments provided, auto-confirming the transfer")
 		}
 
 		// Generate transaction
@@ -85,6 +127,14 @@ var transferCmd = &cobra.Command{
 		}, hcli, hws, ncli, factory, true)
 		return err
 	},
+}
+
+func init() {
+	rootCmd.AddCommand(transferCmd)
+	transferCmd.Flags().String("assetID", "", "Asset ID (use NAI for native token)")
+	transferCmd.Flags().String("recipient", "", "Recipient address")
+	transferCmd.Flags().String("amount", "", "Amount to transfer")
+	transferCmd.Flags().Bool("confirm", false, "Confirm the transfer")
 }
 
 var createAssetCmd = &cobra.Command{
