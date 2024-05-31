@@ -25,7 +25,6 @@ import (
 	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/pubsub"
 	hrpc "github.com/ava-labs/hypersdk/rpc"
-	"github.com/ava-labs/hypersdk/utils"
 	hutils "github.com/ava-labs/hypersdk/utils"
 
 	"github.com/nuklai/nuklaivm/actions"
@@ -102,7 +101,7 @@ var transferCmd = &cobra.Command{
 				return err
 			}
 		} else {
-			amount, err = utils.ParseBalance(amountStr, nconsts.Decimals)
+			amount, err = hutils.ParseBalance(amountStr, nconsts.Decimals)
 			if err != nil {
 				return err
 			}
