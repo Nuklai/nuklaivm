@@ -6,6 +6,7 @@ package cmd
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"os"
 
@@ -155,9 +156,14 @@ var genKeyCmd = &cobra.Command{
 			return err
 		}
 		hutils.Outf(
-			"{{green}}created address:{{/}} %s",
+			"{{green}}created address:{{/}} %s\n",
 			codec.MustAddressBech32(nconsts.HRP, priv.Address),
 		)
+
+		// Convert the private key bytes to a base64 encoded string
+		privKeyString := base64.StdEncoding.EncodeToString(priv.Bytes)
+		hutils.Outf("{{yellow}}Private Key String:{{/}} %s\n", privKeyString)
+
 		// Create the directory with permissions (if it doesn't exist)
 		err = os.MkdirAll("./test_accounts", 0o755)
 		if err != nil {

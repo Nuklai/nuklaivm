@@ -115,7 +115,7 @@ var transferCmd = &cobra.Command{
 			}
 		} else {
 			// Auto-confirm if all arguments are provided
-			hutils.Outf("All arguments provided, auto-confirming the transfer")
+			hutils.Outf("All arguments provided, auto-confirming the transfer\n")
 		}
 
 		// Generate transaction
@@ -126,14 +126,6 @@ var transferCmd = &cobra.Command{
 		}, hcli, hws, ncli, factory, true)
 		return err
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(transferCmd)
-	transferCmd.Flags().String("assetID", "", "Asset ID (use NAI for native token)")
-	transferCmd.Flags().String("recipient", "", "Recipient address")
-	transferCmd.Flags().String("amount", "", "Amount to transfer")
-	transferCmd.Flags().Bool("confirm", false, "Confirm the transfer")
 }
 
 var createAssetCmd = &cobra.Command{
