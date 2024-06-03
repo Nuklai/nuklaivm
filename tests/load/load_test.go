@@ -203,7 +203,6 @@ var _ = ginkgo.BeforeSuite(func() {
 		},
 	}
 	gen.EmissionBalancer = genesis.EmissionBalancer{
-		TotalSupply:     genesisBalance,
 		MaxSupply:       hconsts.MaxUint64,
 		EmissionAddress: sender,
 	}

@@ -91,6 +91,7 @@ func (c *Controller) GetValidatorStakeFromState(ctx context.Context, nodeID ids.
 func (c *Controller) GetDelegatedUserStakeFromState(ctx context.Context, owner codec.Address, nodeID ids.NodeID) (
 	bool, // exists
 	uint64, // StakeStartBlock
+	uint64, // StakeEndBlock
 	uint64, // StakedAmount
 	codec.Address, // RewardAddress
 	codec.Address, // OwnerAddress

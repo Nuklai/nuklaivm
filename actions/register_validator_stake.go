@@ -76,6 +76,7 @@ func (r *RegisterValidatorStake) Execute(
 	// Get the emission instance
 	emissionInstance := emission.GetEmission()
 	currentValidators := emissionInstance.GetAllValidators(ctx)
+
 	var nodePublicKey *bls.PublicKey
 	for _, validator := range currentValidators {
 		publicKey, err := bls.PublicKeyFromBytes(validator.PublicKey)
@@ -119,6 +120,7 @@ func (r *RegisterValidatorStake) Execute(
 
 	// Get last accepted block height
 	lastBlockHeight := emissionInstance.GetLastAcceptedBlockHeight()
+
 	// Check that stakeStartBlock is after lastBlockHeight
 	if stakeInfo.StakeStartBlock < lastBlockHeight {
 		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeStartBlock, nil, nil

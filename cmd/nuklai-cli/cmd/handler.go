@@ -222,7 +222,7 @@ func (*Handler) GetEmissionInfo(
 	}
 
 	hutils.Outf(
-		"{{yellow}}emission info: {{/}}\nCurrentBlockHeight=%d TotalSupply=%d MaxSupply=%d TotalStaked=%d RewardsPerEpoch=%d NumBlocksInEpoch=%d EmissionAddress=%s EmissionUnclaimedBalance=%d\n",
+		"{{yellow}}emission info: {{/}}\nCurrentBlockHeight=%d TotalSupply=%d MaxSupply=%d TotalStaked=%d RewardsPerEpoch=%d NumBlocksInEpoch=%d EmissionAddress=%s EmissionAccumulatedReward=%d\n",
 		currentBlockHeight,
 		totalSupply,
 		maxSupply,
@@ -230,9 +230,9 @@ func (*Handler) GetEmissionInfo(
 		rewardsPerEpoch,
 		epochTracker.EpochLength,
 		emissionAddress,
-		emissionAccount.UnclaimedBalance,
+		emissionAccount.AccumulatedReward,
 	)
-	return currentBlockHeight, totalSupply, maxSupply, totalStaked, rewardsPerEpoch, epochTracker.EpochLength, emissionAddress, emissionAccount.UnclaimedBalance, err
+	return currentBlockHeight, totalSupply, maxSupply, totalStaked, rewardsPerEpoch, epochTracker.EpochLength, emissionAddress, emissionAccount.AccumulatedReward, err
 }
 
 func (*Handler) GetAllValidators(
@@ -249,15 +249,15 @@ func (*Handler) GetAllValidators(
 			return nil, err
 		}
 		hutils.Outf(
-			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s StakedAmount=%d UnclaimedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d UnclaimedDelegatedReward=%d\n",
+			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s StakedAmount=%d AccumulatedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d AccumulatedDelegatedReward=%d\n",
 			index,
 			validator.NodeID,
 			base64.StdEncoding.EncodeToString(publicKey.Compress()),
 			validator.StakedAmount,
-			validator.UnclaimedStakedReward,
+			validator.AccumulatedStakedReward,
 			validator.DelegationFeeRate,
 			validator.DelegatedAmount,
-			validator.UnclaimedDelegatedReward,
+			validator.AccumulatedDelegatedReward,
 		)
 	}
 	return validators, nil
@@ -277,16 +277,16 @@ func (*Handler) GetStakedValidators(
 			return nil, err
 		}
 		hutils.Outf(
-			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s Active=%t StakedAmount=%d UnclaimedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d UnclaimedDelegatedReward=%d\n",
+			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s Active=%t StakedAmount=%d AccumulatedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d AccumulatedDelegatedReward=%d\n",
 			index,
 			validator.NodeID,
 			base64.StdEncoding.EncodeToString(publicKey.Compress()),
 			validator.IsActive,
 			validator.StakedAmount,
-			validator.UnclaimedStakedReward,
+			validator.AccumulatedStakedReward,
 			validator.DelegationFeeRate,
 			validator.DelegatedAmount,
-			validator.UnclaimedDelegatedReward,
+			validator.AccumulatedDelegatedReward,
 		)
 	}
 	return validators, nil
@@ -330,29 +330,31 @@ func (*Handler) GetValidatorStake(
 
 func (*Handler) GetUserStake(ctx context.Context,
 	cli *nrpc.JSONRPCClient, owner codec.Address, nodeID ids.NodeID,
-) (uint64, uint64, string, string, error) {
-	stakeStartBlock, stakedAmount, rewardAddress, ownerAddress, err := cli.UserStake(ctx, owner, nodeID)
+) (uint64, uint64, uint64, string, string, error) {
+	stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, ownerAddress, err := cli.UserStake(ctx, owner, nodeID)
 	if err != nil {
-		return 0, 0, "", "", err
+		return 0, 0, 0, "", "", err
 	}
 
 	rewardAddressString, err := codec.AddressBech32(nconsts.HRP, rewardAddress)
 	if err != nil {
-		return 0, 0, "", "", err
+		return 0, 0, 0, "", "", err
 	}
 	ownerAddressString, err := codec.AddressBech32(nconsts.HRP, ownerAddress)
 	if err != nil {
-		return 0, 0, "", "", err
+		return 0, 0, 0, "", "", err
 	}
 
 	hutils.Outf(
-		"{{yellow}}validator stake: {{/}}\nStakeStartBlock=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
+		"{{yellow}}user stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
 		stakeStartBlock,
+		stakeEndBlock,
 		stakedAmount,
 		rewardAddressString,
 		ownerAddressString,
 	)
 	return stakeStartBlock,
+		stakeEndBlock,
 		stakedAmount,
 		rewardAddressString,
 		ownerAddressString, err

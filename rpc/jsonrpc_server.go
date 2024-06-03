@@ -238,6 +238,7 @@ type UserStakeArgs struct {
 
 type UserStakeReply struct {
 	StakeStartBlock uint64        `json:"stakeStartBlock"` // Start block of the stake
+	StakeEndBlock   uint64        `json:"stakeEndBlock"`   // End block of the stake
 	StakedAmount    uint64        `json:"stakedAmount"`    // Amount of NAI staked
 	RewardAddress   codec.Address `json:"rewardAddress"`   // Address to receive rewards
 	OwnerAddress    codec.Address `json:"ownerAddress"`    // Address of the owner who delegated
@@ -247,7 +248,7 @@ func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply 
 	ctx, span := j.c.Tracer().Start(req.Context(), "Server.UserStake")
 	defer span.End()
 
-	exists, stakeStartBlock, stakedAmount, rewardAddress, ownerAddress, err := j.c.GetDelegatedUserStakeFromState(ctx, args.Owner, args.NodeID)
+	exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, ownerAddress, err := j.c.GetDelegatedUserStakeFromState(ctx, args.Owner, args.NodeID)
 	if err != nil {
 		return err
 	}
@@ -256,6 +257,7 @@ func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply 
 	}
 
 	reply.StakeStartBlock = stakeStartBlock
+	reply.StakeEndBlock = stakeEndBlock
 	reply.StakedAmount = stakedAmount
 	reply.RewardAddress = rewardAddress
 	reply.OwnerAddress = ownerAddress

@@ -31,7 +31,6 @@ type CustomAllocation struct {
 }
 
 type EmissionBalancer struct {
-	TotalSupply          uint64   `json:"totalSupply"`          // Total supply of NAI
 	MaxSupply            uint64   `json:"maxSupply"`            // Max supply of NAI
 	EmissionAddress      string   `json:"emissionAddress"`      // Emission address
 	BaseAPR              uint64   `json:"baseAPR"`              // Emission base APR

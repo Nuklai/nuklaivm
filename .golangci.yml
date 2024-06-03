@@ -1,4 +1,4 @@
-# Copyright (C) 2023, AllianceBlock. All rights reserved.
+# Copyright (C) 2023, Ava Labs, Inc. All rights reserved.
 # See the file LICENSE for licensing terms.
 
 # https://golangci-lint.run/usage/configuration/
@@ -45,11 +45,11 @@ linters:
     - whitespace
     - staticcheck
     - bodyclose
-    - structcheck
-      # - lll
-      # - gomnd
+    # - structcheck
+    # - lll
+    # - gomnd
     - goprintffuncname
-    - interfacer
+    # - interfacer
     - typecheck
       # - goerr113
     - noctx
@@ -98,7 +98,6 @@ linters-settings:
       - name: useless-break
         disabled: false
   staticcheck:
-    go: '1.20'
     # https://staticcheck.io/docs/options#checks
     checks:
       - 'all'
