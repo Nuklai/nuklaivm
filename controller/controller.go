@@ -150,14 +150,29 @@ func (c *Controller) Initialize(
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
 
+	whitelisted, err := c.GetEmissionWhitelistedAddresses()
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
 	// Get the total supply from the custom allocations
 	totalSupply := uint64(0)
 	for _, alloc := range c.genesis.CustomAllocation {
 		totalSupply += alloc.Balance
 	}
-	c.emission = emission.New(c, c.inner, totalSupply, c.genesis.EmissionBalancer.MaxSupply, emissionAddr)
+	c.emission = emission.New(c, c.inner, totalSupply, c.genesis.EmissionBalancer.MaxSupply, emissionAddr, c.genesis.EmissionBalancer.BaseAPR, c.genesis.EmissionBalancer.BaseValidators, c.genesis.EmissionBalancer.EpochLength, whitelisted)
 
 	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, nconsts.ActionRegistry, nconsts.AuthRegistry, auth.Engines(), nil
+}
+
+func (c *Controller) GetEmissionWhitelistedAddresses() (whitelisted []codec.Address, err error) {
+	for _, addr := range c.genesis.EmissionBalancer.WhiteListedAddresses {
+		w, err := codec.ParseAddressBech32(nconsts.HRP, addr)
+		if err != nil {
+			return nil, err
+		}
+		whitelisted = append(whitelisted, w)
+	}
+	return whitelisted, nil
 }
 
 func (c *Controller) Rules(t int64) chain.Rules {
@@ -257,6 +272,12 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				c.metrics.rewardAmount.Add(float64(stakeResult.RewardAmount))
 				c.metrics.claimStakingRewards.Inc()
 				c.metrics.undelegateUserStake.Inc()
+			case *actions.ModifyEmissionConfigParams:
+				_, err := actions.UnmarshalModifyEmissionConfigParamsResult(result.Output)
+				if err != nil {
+					// This should never happen
+					return err
+				}
 			}
 		}
 	}

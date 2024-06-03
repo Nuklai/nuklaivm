@@ -457,3 +457,11 @@ balance: 1000.172072743 NAI
 ```
 
 We got back our original staked amount and the validator staking rewards.
+
+To modify emission balancer configuration, you can use the following cli command:
+
+```
+./build/nuklai-cli emission modify --update-emission /tmp/nuklaivm/emission-balancer.json --address nuklai1qzg5tep6wlcw9566tvz2w9swh3su8ac2e0attehxc8nltd8enx7vqdugarx --base-validators 150
+```
+`update-emission`, `--address`, `--base-validators` `--base-apr`, `maxsupply` and `epoch-length` are optional flags.
+The `run.sh` script should also be updated accordingly.

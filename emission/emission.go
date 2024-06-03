@@ -5,6 +5,7 @@ package emission
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -73,6 +74,7 @@ type Emission struct {
 
 	EpochTracker EpochTracker `json:"epochTracker"` // Epoch Tracker Info
 
+	whiteListedAddresses        []codec.Address
 	activationEvents            map[uint64][]*Validator
 	deactivationEvents          map[uint64][]*Validator
 	delegatorActivationEvents   map[uint64][]*DelegatorEvent
@@ -83,7 +85,7 @@ type Emission struct {
 
 // New initializes the Emission struct with initial parameters and sets up the validators heap
 // and indices map.
-func New(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emissionAddress codec.Address) *Emission {
+func New(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emissionAddress codec.Address, baseAPR uint64, baseValidators uint64, epochLength uint64, whiteListedAddresses []codec.Address) *Emission {
 	once.Do(func() {
 		c.Logger().Info("Initializing emission with max supply and rewards per block settings")
 
@@ -101,12 +103,13 @@ func New(c Controller, vm NuklaiVM, totalSupply, maxSupply uint64, emissionAddre
 			},
 			validators: make(map[ids.NodeID]*Validator),
 			EpochTracker: EpochTracker{
-				BaseAPR:        0.25, // 25% APR
-				BaseValidators: 100,
-				EpochLength:    10,
+				BaseAPR:        float64(baseAPR) / float64(100), // 25% APR
+				BaseValidators: baseValidators,
+				EpochLength:    epochLength,
 				// TODO: Enable this in production
 				// EpochLength:    1200, // roughly 1 hour with 3 sec block time
 			},
+			whiteListedAddresses:        whiteListedAddresses,
 			activationEvents:            make(map[uint64][]*Validator),
 			deactivationEvents:          make(map[uint64][]*Validator),
 			delegatorActivationEvents:   make(map[uint64][]*DelegatorEvent),
@@ -710,4 +713,53 @@ func (e *Emission) GetLastAcceptedBlockTimestamp() time.Time {
 func (e *Emission) GetLastAcceptedBlockHeight() uint64 {
 	e.c.Logger().Info("fetching last accepted block height")
 	return e.nuklaivm.LastAcceptedBlock().Height()
+}
+
+func (e *Emission) isWhitelistedAddress(signer codec.Address) error {
+	for _, addr := range e.whiteListedAddresses {
+		if signer == addr {
+			return nil
+		}
+	}
+	return fmt.Errorf("signer is not whitelisted for emission balancer")
+}
+
+func (e *Emission) ModifyMaxSupply(signer codec.Address, supply uint64) (err error) {
+	if err := e.isWhitelistedAddress(signer); err != nil {
+		return err
+	}
+	e.MaxSupply = supply
+	return nil
+}
+
+func (e *Emission) ModifyAccountAddress(signer codec.Address, addr codec.Address) (err error) {
+	if err := e.isWhitelistedAddress(signer); err != nil {
+		return err
+	}
+	e.EmissionAccount.Address = addr
+	return nil
+}
+
+func (e *Emission) ModifyBaseAPR(signer codec.Address, apr float64) (err error) {
+	if err := e.isWhitelistedAddress(signer); err != nil {
+		return err
+	}
+	e.EpochTracker.BaseAPR = apr
+	return nil
+}
+
+func (e *Emission) ModifyBaseValidators(signer codec.Address, validators uint64) (err error) {
+	if err := e.isWhitelistedAddress(signer); err != nil {
+		return err
+	}
+	e.EpochTracker.BaseValidators = validators
+	return nil
+}
+
+func (e *Emission) ModifyEpochLength(signer codec.Address, length uint64) (err error) {
+	if err := e.isWhitelistedAddress(signer); err != nil {
+		return err
+	}
+	e.EpochTracker.EpochLength = length
+	return nil
 }
