@@ -20,7 +20,6 @@ runs:
       with:
         cache-dependency-path: |
           go.sum
-          examples/${{ inputs.vm-name }}/go.sum
     - name: Set up arm64 cross compiler
       shell: bash
       run: |
@@ -49,7 +48,7 @@ runs:
         distribution: goreleaser
         version: latest
         args: release
-        workdir: ./examples/${{ inputs.vm-name }}/
+        workdir: ./${{ inputs.vm-name }}/
       env:
         # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#about-the-github_token-secret
         GITHUB_TOKEN: ${{ inputs.github-token }}
