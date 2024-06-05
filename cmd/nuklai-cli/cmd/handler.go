@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
 	"github.com/ava-labs/hypersdk/pubsub"
 	"github.com/ava-labs/hypersdk/rpc"
-	hrpc "github.com/ava-labs/hypersdk/rpc"
 	hutils "github.com/ava-labs/hypersdk/utils"
 
 	"github.com/nuklai/nuklaivm/auth"
@@ -163,7 +162,7 @@ func (h *Handler) DefaultNuklaiVMJSONRPCClient(checkAllChains bool) ([]*nrpc.JSO
 		max = 1
 	}
 	for _, uri := range uris[:max] {
-		hcli := hrpc.NewJSONRPCClient(uris[0])
+		hcli := rpc.NewJSONRPCClient(uris[0])
 		networkID, _, _, err := hcli.Network(context.TODO())
 		if err != nil {
 			return nil, err

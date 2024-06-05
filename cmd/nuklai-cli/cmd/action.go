@@ -20,7 +20,6 @@ import (
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/crypto/bls"
-	"github.com/ava-labs/hypersdk/utils"
 	hutils "github.com/ava-labs/hypersdk/utils"
 
 	frpc "github.com/nuklai/nuklai-faucet/rpc"
@@ -89,7 +88,7 @@ var fundFaucetCmd = &cobra.Command{
 		}}, cli, scli, tcli, factory, true); err != nil {
 			return err
 		}
-		utils.Outf("{{green}}funded faucet:{{/}} %s\n", faucetAddress)
+		hutils.Outf("{{green}}funded faucet:{{/}} %s\n", faucetAddress)
 		return nil
 	},
 }
@@ -227,7 +226,7 @@ var createAssetCmd = &cobra.Command{
 
 		// Print assetID
 		assetID := chain.CreateActionID(txID, 0)
-		utils.Outf("{{green}}assetID:{{/}} %s\n", assetID)
+		hutils.Outf("{{green}}assetID:{{/}} %s\n", assetID)
 		return nil
 	},
 }
@@ -251,16 +250,16 @@ var mintAssetCmd = &cobra.Command{
 			return err
 		}
 		if !exists {
-			utils.Outf("{{red}}%s does not exist{{/}}\n", assetID)
-			utils.Outf("{{red}}exiting...{{/}}\n")
+			hutils.Outf("{{red}}%s does not exist{{/}}\n", assetID)
+			hutils.Outf("{{red}}exiting...{{/}}\n")
 			return nil
 		}
 		if owner != codec.MustAddressBech32(nconsts.HRP, priv.Address) {
-			utils.Outf("{{red}}%s is the owner of %s, you are not{{/}}\n", owner, assetID)
-			utils.Outf("{{red}}exiting...{{/}}\n")
+			hutils.Outf("{{red}}%s is the owner of %s, you are not{{/}}\n", owner, assetID)
+			hutils.Outf("{{red}}exiting...{{/}}\n")
 			return nil
 		}
-		utils.Outf(
+		hutils.Outf(
 			"{{yellow}}symbol:{{/}} %s {{yellow}}decimals:{{/}} %d {{yellow}}metadata:{{/}} %s {{yellow}}supply:{{/}} %d\n",
 			string(symbol),
 			decimals,
