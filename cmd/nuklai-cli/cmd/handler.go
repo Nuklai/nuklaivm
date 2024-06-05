@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
+	"github.com/ava-labs/hypersdk/crypto/secp256r1"
 	"github.com/ava-labs/hypersdk/pubsub"
 	"github.com/ava-labs/hypersdk/rpc"
 	hutils "github.com/ava-labs/hypersdk/utils"
@@ -124,17 +125,34 @@ func (h *Handler) DefaultActor() (
 	if err != nil {
 		return ids.Empty, nil, nil, nil, nil, nil, err
 	}
+
+	var factory chain.AuthFactory
+	switch addr[0] {
+	case nconsts.ED25519ID:
+		factory = auth.NewED25519Factory(ed25519.PrivateKey(priv))
+	case nconsts.SECP256R1ID:
+		factory = auth.NewSECP256R1Factory(secp256r1.PrivateKey(priv))
+	case nconsts.BLSID:
+		p, err := bls.PrivateKeyFromBytes(priv)
+		if err != nil {
+			return ids.Empty, nil, nil, nil, nil, nil, err
+		}
+		factory = auth.NewBLSFactory(p)
+	default:
+		return ids.Empty, nil, nil, nil, nil, nil, ErrInvalidAddress
+	}
+
 	chainID, uris, err := h.h.GetDefaultChain(true)
 	if err != nil {
 		return ids.Empty, nil, nil, nil, nil, nil, err
 	}
 	// For [defaultActor], we always send requests to the first returned URI.
-	jcli := rpc.NewJSONRPCClient(uris[0])
-	networkID, _, _, err := jcli.Network(context.TODO())
+	hcli := rpc.NewJSONRPCClient(uris[0])
+	networkID, _, _, err := hcli.Network(context.TODO())
 	if err != nil {
 		return ids.Empty, nil, nil, nil, nil, nil, err
 	}
-	scli, err := rpc.NewWebSocketClient(
+	hws, err := rpc.NewWebSocketClient(
 		uris[0],
 		rpc.DefaultHandshakeTimeout,
 		pubsub.MaxPendingMessages,
@@ -143,7 +161,8 @@ func (h *Handler) DefaultActor() (
 	if err != nil {
 		return ids.Empty, nil, nil, nil, nil, nil, err
 	}
-	return chainID, &cli.PrivateKey{Address: addr, Bytes: priv}, auth.NewED25519Factory(ed25519.PrivateKey(priv)), jcli, scli,
+
+	return chainID, &cli.PrivateKey{Address: addr, Bytes: priv}, factory, hcli, hws,
 		nrpc.NewJSONRPCClient(
 			uris[0],
 			networkID,

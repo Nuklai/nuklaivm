@@ -45,6 +45,7 @@ const (
 )
 
 func TestE2e(t *testing.T) {
+	gomega.RegisterFailHandler(ginkgo.Fail)
 	ginkgo.RunSpecs(t, "nuklaivm e2e test suites")
 }
 
@@ -814,8 +815,8 @@ func acceptTransaction(cli *hrpc.JSONRPCClient, ncli *nrpc.JSONRPCClient) {
 // copyNodeInfo handles the entire process of copying signer.key & staking.* files from the source directory
 // to the destination directory, after stripping out "/db" from the source path.
 func copyNodeInfo(sourceLogPath, destDir string) error {
-	// Step 1: Strip out "/db" from the source path
-	basePath := strings.TrimSuffix(sourceLogPath, "/db")
+	// Step 1: Strip out "/db" from the source path and add /staking
+	basePath := strings.Join(append(strings.Split(sourceLogPath, "/")[:len(strings.Split(sourceLogPath, "/"))-1], "staking"), "/")
 
 	// Ensure the destination directory exists, create it if it doesn't
 	if err := os.MkdirAll(destDir, 0o755); err != nil {

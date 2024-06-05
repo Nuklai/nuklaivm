@@ -444,7 +444,7 @@ func (e *Emission) processEvents(blockHeight uint64) {
 		for _, validator := range validators {
 			if !validator.IsActive {
 				validator.IsActive = true
-				e.TotalStaked += validator.StakedAmount + validator.DelegatedAmount
+				e.TotalStaked += validator.StakedAmount
 			}
 		}
 		delete(e.activationEvents, blockHeight)
@@ -454,7 +454,7 @@ func (e *Emission) processEvents(blockHeight uint64) {
 		for _, validator := range validators {
 			if validator.IsActive {
 				validator.IsActive = false
-				e.TotalStaked -= (validator.StakedAmount + validator.DelegatedAmount)
+				e.TotalStaked -= validator.StakedAmount
 			}
 		}
 		delete(e.deactivationEvents, blockHeight)

@@ -183,16 +183,11 @@ If `nuklai-cli` is able to connect to ANR, it will emit the following logs:
 
 ```
 database: .nuklai-cli
-stored chainID: QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD uri: http://127.0.0.1:36133/ext/bc/QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD
-stored chainID: QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD uri: http://127.0.0.1:46813/ext/bc/QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD
-stored chainID: QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD uri: http://127.0.0.1:33441/ext/bc/QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD
-stored chainID: QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD uri: http://127.0.0.1:33917/ext/bc/QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD
-stored chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX uri: http://127.0.0.1:39387/ext/bc/277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-stored chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX uri: http://127.0.0.1:42111/ext/bc/277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-stored chainID: QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD uri: http://127.0.0.1:37135/ext/bc/QXRg1vtkJe4rPF2ShjHBj3ocyrRhW8A24aSM3qCsK35DKV5iD
-stored chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX uri: http://127.0.0.1:44089/ext/bc/277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-stored chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX uri: http://127.0.0.1:36167/ext/bc/277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
-stored chainID: 277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX uri: http://127.0.0.1:38297/ext/bc/277DehNDB9szuxsiMgAfQBaJhW7JuE9CP6bdW5Up9D3qNeipZX
+stored chainID: 2JJEMRDZ3Bw2qf62PHxVGP2NV2QVDMJvz33CY62vgrr3kuiGXb uri: http://127.0.0.1:9656/ext/bc/2JJEMRDZ3Bw2qf62PHxVGP2NV2QVDMJvz33CY62vgrr3kuiGXb
+stored chainID: 2JJEMRDZ3Bw2qf62PHxVGP2NV2QVDMJvz33CY62vgrr3kuiGXb uri: http://127.0.0.1:9658/ext/bc/2JJEMRDZ3Bw2qf62PHxVGP2NV2QVDMJvz33CY62vgrr3kuiGXb
+stored chainID: 2JJEMRDZ3Bw2qf62PHxVGP2NV2QVDMJvz33CY62vgrr3kuiGXb uri: http://127.0.0.1:9650/ext/bc/2JJEMRDZ3Bw2qf62PHxVGP2NV2QVDMJvz33CY62vgrr3kuiGXb
+stored chainID: 2JJEMRDZ3Bw2qf62PHxVGP2NV2QVDMJvz33CY62vgrr3kuiGXb uri: http://127.0.0.1:9652/ext/bc/2JJEMRDZ3Bw2qf62PHxVGP2NV2QVDMJvz33CY62vgrr3kuiGXb
+stored chainID: 2JJEMRDZ3Bw2qf62PHxVGP2NV2QVDMJvz33CY62vgrr3kuiGXb uri: http://127.0.0.1:9654/ext/bc/2JJEMRDZ3Bw2qf62PHxVGP2NV2QVDMJvz33CY62vgrr3kuiGXb
 ```
 
 _`./build/nuklai-cli chain import-anr` connects to the Avalanche Network Runner server running in
@@ -378,18 +373,6 @@ You can run the integration tests by doing
 
 ```bash
 ./scripts/tests.integration.sh
-```
-
-### Running a Load Test
-
-_Before running this demo, make sure to stop the network you started using
-`killall avalanche-network-runner`._
-
-The `nuklaivm` load test will provision 5 `nuklaivms` and process 500k transfers
-on each between 10k different accounts.
-
-```bash
-./scripts/tests.load.sh
 ```
 
 _This test SOLELY tests the speed of the `nuklaivm`. It does not include any

@@ -330,10 +330,11 @@ var registerValidatorStakeCmd = &cobra.Command{
 
 		if autoRegister {
 			hutils.Outf("{{yellow}}Loading private key for %s{{/}}\n", nodeNumber)
-			validatorSignerKey, err := loadPrivateKey("bls", fmt.Sprintf("/tmp/nuklaivm/nodes/%s-bls/signer.key", nodeNumber))
+			validatorSignerKey, err := loadPrivateKey("bls", fmt.Sprintf("/tmp/nuklaivm/nodes/%s/signer.key", nodeNumber))
 			if err != nil {
 				return err
 			}
+			hutils.Outf("{{yellow}}Validator Signer Address: %s\n", codec.MustAddressBech32(nconsts.HRP, validatorSignerKey.Address))
 			validatorSignerAddress := codec.MustAddressBech32(nconsts.HRP, validatorSignerKey.Address)
 			nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
 			if err != nil {
