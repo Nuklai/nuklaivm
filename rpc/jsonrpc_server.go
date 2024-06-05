@@ -8,8 +8,8 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 
-	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
+	"github.com/ava-labs/hypersdk/fees"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
@@ -38,10 +38,10 @@ type TxArgs struct {
 }
 
 type TxReply struct {
-	Timestamp int64            `json:"timestamp"`
-	Success   bool             `json:"success"`
-	Units     chain.Dimensions `json:"units"`
-	Fee       uint64           `json:"fee"`
+	Timestamp int64           `json:"timestamp"`
+	Success   bool            `json:"success"`
+	Units     fees.Dimensions `json:"units"`
+	Fee       uint64          `json:"fee"`
 }
 
 func (j *JSONRPCServer) Tx(req *http.Request, args *TxArgs, reply *TxReply) error {
@@ -72,14 +72,13 @@ type AssetReply struct {
 	Metadata []byte `json:"metadata"`
 	Supply   uint64 `json:"supply"`
 	Owner    string `json:"owner"`
-	Warp     bool   `json:"warp"`
 }
 
 func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetReply) error {
 	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Asset")
 	defer span.End()
 
-	exists, symbol, decimals, metadata, supply, owner, warp, err := j.c.GetAssetFromState(ctx, args.Asset)
+	exists, symbol, decimals, metadata, supply, owner, err := j.c.GetAssetFromState(ctx, args.Asset)
 	if err != nil {
 		return err
 	}
@@ -91,7 +90,6 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 	reply.Metadata = metadata
 	reply.Supply = supply
 	reply.Owner = codec.MustAddressBech32(nconsts.HRP, owner)
-	reply.Warp = warp
 	return err
 }
 
@@ -118,27 +116,6 @@ func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *Bal
 	}
 	reply.Amount = balance
 	return err
-}
-
-type LoanArgs struct {
-	Destination ids.ID `json:"destination"`
-	Asset       ids.ID `json:"asset"`
-}
-
-type LoanReply struct {
-	Amount uint64 `json:"amount"`
-}
-
-func (j *JSONRPCServer) Loan(req *http.Request, args *LoanArgs, reply *LoanReply) error {
-	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Loan")
-	defer span.End()
-
-	amount, err := j.c.GetLoanFromState(ctx, args.Asset, args.Destination)
-	if err != nil {
-		return err
-	}
-	reply.Amount = amount
-	return nil
 }
 
 type EmissionReply struct {

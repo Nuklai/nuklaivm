@@ -7,12 +7,10 @@ import (
 	"context"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	hconsts "github.com/ava-labs/hypersdk/consts"
+	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
-	"github.com/ava-labs/hypersdk/utils"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/storage"
 
@@ -33,21 +31,17 @@ func (*DelegateUserStake) GetTypeID() uint8 {
 	return nconsts.DelegateUserStakeID
 }
 
-func (s *DelegateUserStake) StateKeys(actor codec.Address, _ ids.ID) []string {
+func (s *DelegateUserStake) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
 	nodeID, _ := ids.ToNodeID(s.NodeID)
-	return []string{
-		string(storage.BalanceKey(actor, ids.Empty)),
-		string(storage.DelegateUserStakeKey(actor, nodeID)),
-		string(storage.RegisterValidatorStakeKey(nodeID)),
+	return state.Keys{
+		string(storage.BalanceKey(actor, ids.Empty)):        state.Read | state.Write,
+		string(storage.DelegateUserStakeKey(actor, nodeID)): state.Allocate | state.Write,
+		string(storage.RegisterValidatorStakeKey(nodeID)):   state.Read,
 	}
 }
 
 func (*DelegateUserStake) StateKeysMaxChunks() []uint16 {
 	return []uint16{storage.BalanceChunks, storage.DelegateUserStakeChunks, storage.RegisterValidatorStakeChunks}
-}
-
-func (*DelegateUserStake) OutputsWarpMessage() bool {
-	return false
 }
 
 func (s *DelegateUserStake) Execute(
@@ -57,35 +51,34 @@ func (s *DelegateUserStake) Execute(
 	_ int64,
 	actor codec.Address,
 	_ ids.ID,
-	_ bool,
-) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
+) ([][]byte, error) {
 	nodeID, err := ids.ToNodeID(s.NodeID)
 	if err != nil {
-		return false, DelegateUserStakeComputeUnits, OutputInvalidNodeID, nil, nil
+		return nil, ErrInvalidNodeID
 	}
 
 	// Check if the validator the user is trying to delegate to is registered for staking
 	exists, _, _, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
 	if !exists {
-		return false, RegisterValidatorStakeComputeUnits, OutputValidatorNotYetRegistered, nil, nil
+		return nil, ErrValidatorNotYetRegistered
 	}
 
 	// Check if the user has already delegated to this validator node before
 	exists, _, _, _, _, _, _ = storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
 	if exists {
-		return false, DelegateUserStakeComputeUnits, OutputUserAlreadyStaked, nil, nil
+		return nil, ErrUserAlreadyStaked
 	}
 
 	stakingConfig := emission.GetStakingConfig()
 
 	// Check if the staked amount is a valid amount
 	if s.StakedAmount < stakingConfig.MinDelegatorStake {
-		return false, DelegateUserStakeComputeUnits, OutputDelegateStakedAmountInvalid, nil, nil
+		return nil, ErrDelegateStakedAmountInvalid
 	}
 
 	// Check if stakeEndBlock is greater than stakeStartBlock
 	if s.StakeEndBlock <= s.StakeStartBlock {
-		return false, DelegateUserStakeComputeUnits, OutputInvalidStakeEndBlock, nil, nil
+		return nil, ErrInvalidStakeEndBlock
 	}
 
 	// Get the emission instance
@@ -93,30 +86,30 @@ func (s *DelegateUserStake) Execute(
 
 	// Check if stakeStartBlock is smaller than the current block height
 	if s.StakeStartBlock < emissionInstance.GetLastAcceptedBlockHeight() {
-		return false, DelegateUserStakeComputeUnits, OutputInvalidStakeStartBlock, nil, nil
+		return nil, ErrInvalidStakeStartBlock
 	}
 
 	// Delegate in Emission Balancer
 	err = emissionInstance.DelegateUserStake(nodeID, actor, s.StakeStartBlock, s.StakeEndBlock, s.StakedAmount)
 	if err != nil {
-		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
 
 	if err := storage.SubBalance(ctx, mu, actor, ids.Empty, s.StakedAmount); err != nil {
-		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
 	if err := storage.SetDelegateUserStake(ctx, mu, actor, nodeID, s.StakeStartBlock, s.StakeEndBlock, s.StakedAmount, s.RewardAddress); err != nil {
-		return false, DelegateUserStakeComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
-	return true, DelegateUserStakeComputeUnits, nil, nil, nil
+	return nil, nil
 }
 
-func (*DelegateUserStake) MaxComputeUnits(chain.Rules) uint64 {
+func (*DelegateUserStake) ComputeUnits(chain.Rules) uint64 {
 	return DelegateUserStakeComputeUnits
 }
 
 func (*DelegateUserStake) Size() int {
-	return hconsts.NodeIDLen + 3*hconsts.Uint64Len + codec.AddressLen
+	return ids.NodeIDLen + 3*consts.Uint64Len + codec.AddressLen
 }
 
 func (s *DelegateUserStake) Marshal(p *codec.Packer) {
@@ -127,9 +120,9 @@ func (s *DelegateUserStake) Marshal(p *codec.Packer) {
 	p.PackAddress(s.RewardAddress)
 }
 
-func UnmarshalDelegateUserStake(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
+func UnmarshalDelegateUserStake(p *codec.Packer) (chain.Action, error) {
 	var stake DelegateUserStake
-	p.UnpackBytes(hconsts.NodeIDLen, true, &stake.NodeID)
+	p.UnpackBytes(ids.NodeIDLen, true, &stake.NodeID)
 	stake.StakeStartBlock = p.UnpackUint64(true)
 	stake.StakeEndBlock = p.UnpackUint64(true)
 	stake.StakedAmount = p.UnpackUint64(true)

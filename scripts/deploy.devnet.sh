@@ -166,8 +166,8 @@ cat <<EOF > "${TMPDIR}"/node.config
   "throttler-outbound-validator-alloc-size":"10737418240",
   "throttler-outbound-at-large-alloc-size":"10737418240",
   "throttler-outbound-node-max-at-large-bytes":"10737418240",
-  "consensus-on-accept-gossip-validator-size":"3",
-  "consensus-on-accept-gossip-peer-size":"3",
+  "consensus-on-accept-gossip-validator-size":"10",
+  "consensus-on-accept-gossip-peer-size":"10",
   "network-compression-type":"zstd",
   "consensus-app-concurrency":"128",
   "profile-continuous-enabled":true,
@@ -189,10 +189,32 @@ trap cleanup EXIT
 #
 # It is not recommended to use an instance with burstable network performance.
 echo -e "${YELLOW}creating devnet${NC}"
-$TMPDIR/avalanche node devnet wiz ${CLUSTER} ${VMID} --force-subnet-create=true --authorize-access=true --aws --node-type t4g.medium --num-apis 2 --num-validators 3 --region eu-west-1 --use-static-ip=true --enable-monitoring=true --default-validator-params --custom-avalanchego-version $AVALANCHEGO_VERSION --custom-vm-repo-url="https://www.github.com/nuklai/nuklaivm" --custom-vm-branch $VM_COMMIT --custom-vm-build-script="scripts/build.sh" --custom-subnet=true --subnet-genesis="${TMPDIR}/nuklaivm.genesis" --subnet-config="${TMPDIR}/nuklaivm.genesis" --chain-config="${TMPDIR}/nuklaivm.config" --node-config="${TMPDIR}/node.config" --config="${TMPDIR}/node.config" --remote-cli-version $REMOTE_CLI_COMMIT --add-grafana-dashboard="${TMPDIR}/nuklaivm/grafana.json" --log-level DEBUG
+$TMPDIR/avalanche node devnet wiz ${CLUSTER} ${VMID} --force-subnet-create=true --authorize-access=true --aws --node-type t4g.medium --num-apis 0 --num-validators 10 --region eu-west-1 --use-static-ip=false --enable-monitoring=false --default-validator-params --custom-avalanchego-version $AVALANCHEGO_VERSION --custom-vm-repo-url="https://www.github.com/nuklai/nuklaivm" --custom-vm-branch $VM_COMMIT --custom-vm-build-script="scripts/build.sh" --custom-subnet=true --subnet-genesis="${TMPDIR}/nuklaivm.genesis" --subnet-config="${TMPDIR}/nuklaivm.genesis" --chain-config="${TMPDIR}/nuklaivm.config" --node-config="${TMPDIR}/node.config" --config="${TMPDIR}/node.config" --remote-cli-version $REMOTE_CLI_COMMIT --add-grafana-dashboard="${TMPDIR}/nuklaivm/grafana.json" --log-level DEBUG
 
 # Import the cluster into nuklai-cli for local interaction
 $TMPDIR/nuklai-cli chain import-cli $HOME/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml
+
+# Extract Subnet ID, Chain ID, Validator IPs, and API IPs
+SUBNET_ID=$(yq e '.SUBNET_ID' $HOME/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml)
+CHAIN_ID=$(yq e '.CHAIN_ID' $HOME/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml)
+VALIDATOR_IPS=($(yq e '.VALIDATOR[].IP' $HOME/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml))
+API_IPS=($(yq e '.API[].IP' $HOME/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml))
+
+# Print Subnet ID and Chain ID
+echo -e "\n${CYAN}Subnet ID:${NC} $SUBNET_ID"
+echo -e "${CYAN}Chain ID:${NC} $CHAIN_ID"
+
+# Print Validator and API IPs in required format
+echo -e "${CYAN}RPC URLs:${NC}"
+echo "RPC_URLS=("
+for ip in "${VALIDATOR_IPS[@]}"; do
+  echo "  $ip"
+done
+for ip in "${API_IPS[@]}"; do
+  echo "  $ip"
+done
+echo ")"
+
 
 # Start load test on dedicated machine
 # sleep 30

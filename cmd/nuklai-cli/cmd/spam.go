@@ -16,7 +16,7 @@ import (
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
 	"github.com/ava-labs/hypersdk/crypto/secp256r1"
 	"github.com/ava-labs/hypersdk/pubsub"
-	hrpc "github.com/ava-labs/hypersdk/rpc"
+	"github.com/ava-labs/hypersdk/rpc"
 	hutils "github.com/ava-labs/hypersdk/utils"
 
 	"github.com/nuklai/nuklaivm/actions"
@@ -58,8 +58,8 @@ var runSpamCmd = &cobra.Command{
 		return checkKeyType(args[0])
 	},
 	RunE: func(_ *cobra.Command, args []string) error {
-		var hws *hrpc.WebSocketClient
-		var ncli *nrpc.JSONRPCClient
+		var bclient *nrpc.JSONRPCClient
+		var wclient *rpc.WebSocketClient
 		var maxFeeParsed *uint64
 		if maxFee >= 0 {
 			v := uint64(maxFee)
@@ -67,12 +67,12 @@ var runSpamCmd = &cobra.Command{
 		}
 		return handler.Root().Spam(maxTxBacklog, maxFeeParsed, randomRecipient,
 			func(uri string, networkID uint32, chainID ids.ID) error { // createClient
-				ncli = nrpc.NewJSONRPCClient(uri, networkID, chainID)
-				ws, err := hrpc.NewWebSocketClient(uri, hrpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
+				bclient = nrpc.NewJSONRPCClient(uri, networkID, chainID)
+				ws, err := rpc.NewWebSocketClient(uri, rpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
 				if err != nil {
 					return err
 				}
-				hws = ws
+				wclient = ws
 				return nil
 			},
 			getFactory,
@@ -80,7 +80,7 @@ var runSpamCmd = &cobra.Command{
 				return generatePrivateKey(args[0])
 			},
 			func(choice int, address string) (uint64, error) { // lookupBalance
-				balance, err := ncli.Balance(context.TODO(), address, ids.Empty)
+				balance, err := bclient.Balance(context.TODO(), address, ids.Empty)
 				if err != nil {
 					return 0, err
 				}
@@ -94,25 +94,20 @@ var runSpamCmd = &cobra.Command{
 				return balance, err
 			},
 			func(ctx context.Context, chainID ids.ID) (chain.Parser, error) { // getParser
-				return ncli.Parser(ctx)
+				return bclient.Parser(ctx)
 			},
-			func(addr codec.Address, amount uint64) chain.Action { // getTransfer
-				return &actions.Transfer{
+			func(addr codec.Address, amount uint64) []chain.Action { // getTransfer
+				return []chain.Action{&actions.Transfer{
 					To:    addr,
-					Asset: ids.Empty,
 					Value: amount,
-				}
+				}}
 			},
-			func(hcli *hrpc.JSONRPCClient, priv *cli.PrivateKey) func(context.Context, uint64) error { // submitDummy
+			func(cli *rpc.JSONRPCClient, priv *cli.PrivateKey) func(context.Context, uint64) error { // submitDummy
 				return func(ictx context.Context, count uint64) error {
-					factory, err := getFactory(priv)
-					if err != nil {
-						return err
-					}
-					_, _, err = sendAndWait(ictx, nil, &actions.Transfer{
+					_, err := sendAndWait(ictx, []chain.Action{&actions.Transfer{
 						To:    priv.Address,
 						Value: count, // prevent duplicate txs
-					}, hcli, hws, ncli, factory, false)
+					}}, cli, wclient, bclient, auth.NewED25519Factory(ed25519.PrivateKey(priv.Bytes)), false)
 					return err
 				}
 			},

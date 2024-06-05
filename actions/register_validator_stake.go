@@ -7,13 +7,11 @@ import (
 	"context"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	hconsts "github.com/ava-labs/hypersdk/consts"
+	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/state"
-	"github.com/ava-labs/hypersdk/utils"
 
 	"github.com/nuklai/nuklaivm/auth"
 	nconsts "github.com/nuklai/nuklaivm/consts"
@@ -32,22 +30,18 @@ func (*RegisterValidatorStake) GetTypeID() uint8 {
 	return nconsts.RegisterValidatorStakeID
 }
 
-func (r *RegisterValidatorStake) StateKeys(actor codec.Address, _ ids.ID) []string {
+func (r *RegisterValidatorStake) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
 	// TODO: How to better handle a case where the NodeID is invalid?
 	stakeInfo, _ := UnmarshalValidatorStakeInfo(r.StakeInfo)
 	nodeID, _ := ids.ToNodeID(stakeInfo.NodeID)
-	return []string{
-		string(storage.BalanceKey(actor, ids.Empty)),
-		string(storage.RegisterValidatorStakeKey(nodeID)),
+	return state.Keys{
+		string(storage.BalanceKey(actor, ids.Empty)):      state.Read | state.Write,
+		string(storage.RegisterValidatorStakeKey(nodeID)): state.Allocate | state.Write,
 	}
 }
 
 func (*RegisterValidatorStake) StateKeysMaxChunks() []uint16 {
 	return []uint16{storage.BalanceChunks, storage.RegisterValidatorStakeChunks}
-}
-
-func (*RegisterValidatorStake) OutputsWarpMessage() bool {
-	return false
 }
 
 func (r *RegisterValidatorStake) Execute(
@@ -57,17 +51,16 @@ func (r *RegisterValidatorStake) Execute(
 	_ int64,
 	actor codec.Address,
 	_ ids.ID,
-	_ bool,
-) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
+) ([][]byte, error) {
 	// Check if it's a valid signature
 	signer, err := VerifyAuthSignature(r.StakeInfo, r.AuthSignature)
 	if err != nil {
-		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
 	// Check whether the actor is the same as the one who signed the message
 	actorAddress := codec.MustAddressBech32(nconsts.HRP, actor)
 	if actorAddress != codec.MustAddressBech32(nconsts.HRP, signer) {
-		return false, RegisterValidatorStakeComputeUnits, OutputDifferentSignerThanActor, nil, nil
+		return nil, ErrDifferentSignerThanActor
 	}
 
 	// Check if the tx actor has signing permission for this NodeID
@@ -81,7 +74,7 @@ func (r *RegisterValidatorStake) Execute(
 	for _, validator := range currentValidators {
 		publicKey, err := bls.PublicKeyFromBytes(validator.PublicKey)
 		if err != nil {
-			return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
+			return nil, err
 		}
 		signer := auth.NewBLSAddress(publicKey)
 		if actorAddress == codec.MustAddressBech32(nconsts.HRP, signer) {
@@ -91,31 +84,31 @@ func (r *RegisterValidatorStake) Execute(
 		}
 	}
 	if !isValidatorOwner {
-		return false, RegisterValidatorStakeComputeUnits, OutputUnauthorized, nil, nil
+		return nil, ErrUnauthorized
 	}
 
 	// Unmarshal the stake info
 	stakeInfo, err := UnmarshalValidatorStakeInfo(r.StakeInfo)
 	if err != nil {
-		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
 	// Check if it's a valid nodeID
 	nodeID, err := ids.ToNodeID(stakeInfo.NodeID)
 	if err != nil {
-		return false, RegisterValidatorStakeComputeUnits, OutputInvalidNodeID, nil, nil
+		return nil, ErrInvalidNodeID
 	}
 
 	// Check if the validator was already registered
 	exists, _, _, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
 	if exists {
-		return false, RegisterValidatorStakeComputeUnits, OutputValidatorAlreadyRegistered, nil, nil
+		return nil, ErrValidatorAlreadyRegistered
 	}
 
 	stakingConfig := emission.GetStakingConfig()
 
 	// Check if the staked amount is a valid amount
 	if stakeInfo.StakedAmount < stakingConfig.MinValidatorStake || stakeInfo.StakedAmount > stakingConfig.MaxValidatorStake {
-		return false, RegisterValidatorStakeComputeUnits, OutputValidatorStakedAmountInvalid, nil, nil
+		return nil, ErrValidatorStakedAmountInvalid
 	}
 
 	// Get last accepted block height
@@ -123,45 +116,45 @@ func (r *RegisterValidatorStake) Execute(
 
 	// Check that stakeStartBlock is after lastBlockHeight
 	if stakeInfo.StakeStartBlock < lastBlockHeight {
-		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeStartBlock, nil, nil
+		return nil, ErrInvalidStakeStartBlock
 	}
 	// Check that stakeEndBlock is after stakeStartBlock
 	if stakeInfo.StakeEndBlock < stakeInfo.StakeStartBlock {
-		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeEndBlock, nil, nil
+		return nil, ErrInvalidStakeEndBlock
 	}
 
 	// Check that the total staking period is at least the minimum staking period
 	stakeDuration := stakeInfo.StakeEndBlock - stakeInfo.StakeStartBlock
 	if stakeDuration < stakingConfig.MinValidatorStakeDuration || stakeDuration > stakingConfig.MaxValidatorStakeDuration {
-		return false, RegisterValidatorStakeComputeUnits, OutputInvalidStakeDuration, nil, nil
+		return nil, ErrInvalidStakeDuration
 	}
 
 	// Check if the delegation fee rate is valid
 	if stakeInfo.DelegationFeeRate < stakingConfig.MinDelegationFee || stakeInfo.DelegationFeeRate > 100 {
-		return false, RegisterValidatorStakeComputeUnits, OutputInvalidDelegationFeeRate, nil, nil
+		return nil, ErrInvalidDelegationFeeRate
 	}
 
 	// Register in Emission Balancer
 	err = emissionInstance.RegisterValidatorStake(nodeID, nodePublicKey, stakeInfo.StakeStartBlock, stakeInfo.StakeEndBlock, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate)
 	if err != nil {
-		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
 
 	if err := storage.SubBalance(ctx, mu, actor, ids.Empty, stakeInfo.StakedAmount); err != nil {
-		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
 	if err := storage.SetRegisterValidatorStake(ctx, mu, nodeID, stakeInfo.StakeStartBlock, stakeInfo.StakeEndBlock, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate, stakeInfo.RewardAddress, actor); err != nil {
-		return false, RegisterValidatorStakeComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
-	return true, RegisterValidatorStakeComputeUnits, nil, nil, nil
+	return nil, nil
 }
 
-func (*RegisterValidatorStake) MaxComputeUnits(chain.Rules) uint64 {
+func (*RegisterValidatorStake) ComputeUnits(chain.Rules) uint64 {
 	return RegisterValidatorStakeComputeUnits
 }
 
 func (*RegisterValidatorStake) Size() int {
-	return hconsts.NodeIDLen + 4*hconsts.Uint64Len + codec.AddressLen + bls.PublicKeyLen + bls.SignatureLen
+	return ids.NodeIDLen + 4*consts.Uint64Len + codec.AddressLen + bls.PublicKeyLen + bls.SignatureLen
 }
 
 func (r *RegisterValidatorStake) Marshal(p *codec.Packer) {
@@ -169,9 +162,9 @@ func (r *RegisterValidatorStake) Marshal(p *codec.Packer) {
 	p.PackBytes(r.AuthSignature)
 }
 
-func UnmarshalRegisterValidatorStake(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
+func UnmarshalRegisterValidatorStake(p *codec.Packer) (chain.Action, error) {
 	var stake RegisterValidatorStake
-	p.UnpackBytes(hconsts.NodeIDLen+4*hconsts.Uint64Len+codec.AddressLen, true, &stake.StakeInfo)
+	p.UnpackBytes(ids.NodeIDLen+4*consts.Uint64Len+codec.AddressLen, true, &stake.StakeInfo)
 	p.UnpackBytes(bls.PublicKeyLen+bls.SignatureLen, true, &stake.AuthSignature)
 	return &stake, p.Err()
 }
@@ -183,7 +176,7 @@ func (*RegisterValidatorStake) ValidRange(chain.Rules) (int64, int64) {
 
 func VerifyAuthSignature(content, authSignature []byte) (codec.Address, error) {
 	p := codec.NewReader(authSignature, len(authSignature))
-	sig, err := auth.UnmarshalBLS(p, nil)
+	sig, err := auth.UnmarshalBLS(p)
 	if err != nil {
 		return codec.EmptyAddress, err
 	}
@@ -200,10 +193,10 @@ type ValidatorStakeInfo struct {
 }
 
 func UnmarshalValidatorStakeInfo(stakeInfo []byte) (*ValidatorStakeInfo, error) {
-	p := codec.NewReader(stakeInfo, hconsts.NodeIDLen+4*hconsts.Uint64Len+codec.AddressLen)
+	p := codec.NewReader(stakeInfo, ids.NodeIDLen+4*consts.Uint64Len+codec.AddressLen)
 	var result ValidatorStakeInfo
-	result.NodeID = make([]byte, hconsts.NodeIDLen)
-	p.UnpackFixedBytes(hconsts.NodeIDLen, &result.NodeID)
+	result.NodeID = make([]byte, ids.NodeIDLen)
+	p.UnpackFixedBytes(ids.NodeIDLen, &result.NodeID)
 	result.StakeStartBlock = p.UnpackUint64(true)
 	result.StakeEndBlock = p.UnpackUint64(true)
 	result.StakedAmount = p.UnpackUint64(true)
@@ -213,7 +206,7 @@ func UnmarshalValidatorStakeInfo(stakeInfo []byte) (*ValidatorStakeInfo, error) 
 }
 
 func (s *ValidatorStakeInfo) Marshal() ([]byte, error) {
-	p := codec.NewWriter(hconsts.NodeIDLen+4*hconsts.Uint64Len+codec.AddressLen, hconsts.NodeIDLen+4*hconsts.Uint64Len+codec.AddressLen)
+	p := codec.NewWriter(ids.NodeIDLen+4*consts.Uint64Len+codec.AddressLen, ids.NodeIDLen+4*consts.Uint64Len+codec.AddressLen)
 	p.PackFixedBytes(s.NodeID)
 	p.PackUint64(s.StakeStartBlock)
 	p.PackUint64(s.StakeEndBlock)

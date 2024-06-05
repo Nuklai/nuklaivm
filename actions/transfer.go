@@ -7,22 +7,16 @@ import (
 	"context"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	hconsts "github.com/ava-labs/hypersdk/consts"
+	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
-	"github.com/ava-labs/hypersdk/utils"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/storage"
 )
 
 var _ chain.Action = (*Transfer)(nil)
-
-const (
-	MaxMemoSize = 256
-)
 
 type Transfer struct {
 	// To is the recipient of the [Value].
@@ -36,25 +30,24 @@ type Transfer struct {
 
 	// Optional message to accompany transaction.
 	Memo []byte `json:"memo"`
+
+	// TODO: add boolean to indicate whether sender will
+	// create recipient account
 }
 
 func (*Transfer) GetTypeID() uint8 {
 	return nconsts.TransferID
 }
 
-func (t *Transfer) StateKeys(actor codec.Address, _ ids.ID) []string {
-	return []string{
-		string(storage.BalanceKey(actor, t.Asset)),
-		string(storage.BalanceKey(t.To, t.Asset)),
+func (t *Transfer) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+	return state.Keys{
+		string(storage.BalanceKey(actor, t.Asset)): state.Read | state.Write,
+		string(storage.BalanceKey(t.To, t.Asset)):  state.All,
 	}
 }
 
 func (*Transfer) StateKeysMaxChunks() []uint16 {
 	return []uint16{storage.BalanceChunks, storage.BalanceChunks}
-}
-
-func (*Transfer) OutputsWarpMessage() bool {
-	return false
 }
 
 func (t *Transfer) Execute(
@@ -64,30 +57,29 @@ func (t *Transfer) Execute(
 	_ int64,
 	actor codec.Address,
 	_ ids.ID,
-	_ bool,
-) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
+) ([][]byte, error) {
 	if t.Value == 0 {
-		return false, TransferComputeUnits, OutputValueZero, nil, nil
+		return nil, ErrOutputValueZero
 	}
 	if len(t.Memo) > MaxMemoSize {
-		return false, CreateAssetComputeUnits, OutputMemoTooLarge, nil, nil
+		return nil, ErrOutputMemoTooLarge
 	}
 	if err := storage.SubBalance(ctx, mu, actor, t.Asset, t.Value); err != nil {
-		return false, TransferComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
 	// TODO: allow sender to configure whether they will pay to create
 	if err := storage.AddBalance(ctx, mu, t.To, t.Asset, t.Value, true); err != nil {
-		return false, TransferComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
-	return true, TransferComputeUnits, nil, nil, nil
+	return nil, nil
 }
 
-func (*Transfer) MaxComputeUnits(chain.Rules) uint64 {
+func (*Transfer) ComputeUnits(chain.Rules) uint64 {
 	return TransferComputeUnits
 }
 
 func (t *Transfer) Size() int {
-	return codec.AddressLen + hconsts.IDLen + hconsts.Uint64Len + codec.BytesLen(t.Memo)
+	return codec.AddressLen + ids.IDLen + consts.Uint64Len + codec.BytesLen(t.Memo)
 }
 
 func (t *Transfer) Marshal(p *codec.Packer) {
@@ -97,7 +89,7 @@ func (t *Transfer) Marshal(p *codec.Packer) {
 	p.PackBytes(t.Memo)
 }
 
-func UnmarshalTransfer(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
+func UnmarshalTransfer(p *codec.Packer) (chain.Action, error) {
 	var transfer Transfer
 	p.UnpackAddress(&transfer.To)
 	p.UnpackID(false, &transfer.Asset) // empty ID is the native asset

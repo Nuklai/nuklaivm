@@ -6,6 +6,7 @@ package genesis
 import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/chain"
+	"github.com/ava-labs/hypersdk/fees"
 	"github.com/nuklai/nuklaivm/storage"
 )
 
@@ -21,14 +22,6 @@ type Rules struct {
 // TODO: use upgradeBytes
 func (g *Genesis) Rules(_ int64, networkID uint32, chainID ids.ID) *Rules {
 	return &Rules{g, networkID, chainID}
-}
-
-func (*Rules) GetWarpConfig(ids.ID) (bool, uint64, uint64) {
-	// We allow inbound transfers from all sources as long as 80% of stake has
-	// signed a message.
-	//
-	// This is safe because the nuklaivm scopes all assets by their source chain.
-	return true, 4, 5
 }
 
 func (r *Rules) NetworkID() uint32 {
@@ -51,24 +44,20 @@ func (r *Rules) GetValidityWindow() int64 {
 	return r.g.ValidityWindow
 }
 
-func (r *Rules) GetMaxBlockUnits() chain.Dimensions {
+func (r *Rules) GetMaxActionsPerTx() uint8 {
+	return r.g.MaxActionsPerTx
+}
+
+func (r *Rules) GetMaxOutputsPerAction() uint8 {
+	return r.g.MaxOutputsPerAction
+}
+
+func (r *Rules) GetMaxBlockUnits() fees.Dimensions {
 	return r.g.MaxBlockUnits
 }
 
 func (r *Rules) GetBaseComputeUnits() uint64 {
 	return r.g.BaseComputeUnits
-}
-
-func (r *Rules) GetBaseWarpComputeUnits() uint64 {
-	return r.g.BaseWarpComputeUnits
-}
-
-func (r *Rules) GetWarpComputeUnitsPerSigner() uint64 {
-	return r.g.WarpComputeUnitsPerSigner
-}
-
-func (r *Rules) GetOutgoingWarpComputeUnits() uint64 {
-	return r.g.OutgoingWarpComputeUnits
 }
 
 func (*Rules) GetSponsorStateKeysMaxChunks() []uint16 {
@@ -99,15 +88,15 @@ func (r *Rules) GetStorageValueWriteUnits() uint64 {
 	return r.g.StorageValueWriteUnits
 }
 
-func (r *Rules) GetMinUnitPrice() chain.Dimensions {
+func (r *Rules) GetMinUnitPrice() fees.Dimensions {
 	return r.g.MinUnitPrice
 }
 
-func (r *Rules) GetUnitPriceChangeDenominator() chain.Dimensions {
+func (r *Rules) GetUnitPriceChangeDenominator() fees.Dimensions {
 	return r.g.UnitPriceChangeDenominator
 }
 
-func (r *Rules) GetWindowTargetUnits() chain.Dimensions {
+func (r *Rules) GetWindowTargetUnits() fees.Dimensions {
 	return r.g.WindowTargetUnits
 }
 

@@ -12,10 +12,10 @@ import (
 
 	"github.com/ava-labs/avalanchego/database"
 	"github.com/ava-labs/avalanchego/ids"
-	hmath "github.com/ava-labs/avalanchego/utils/math"
-	"github.com/ava-labs/hypersdk/chain"
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	"github.com/ava-labs/hypersdk/codec"
-	hconsts "github.com/ava-labs/hypersdk/consts"
+	"github.com/ava-labs/hypersdk/consts"
+	"github.com/ava-labs/hypersdk/fees"
 	"github.com/ava-labs/hypersdk/state"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
@@ -43,12 +43,10 @@ type ReadState func(context.Context, [][]byte) ([][]byte, []error)
 
 // 0x6/ (assets)
 //   -> [asset] => metadataLen|metadata|supply|owner|warp
-// 0x7/ (loans)
-//   -> [assetID|destination] => amount
 
-// 0x8/ (stake)
+// 0x7/ (stake)
 //   -> [nodeID] => stakeStartBlock|stakeEndBlock|stakedAmount|delegationFeeRate|rewardAddress|ownerAddress
-// 0x9/ (delegate)
+// 0x8/ (delegate)
 //   -> [owner|nodeID] => stakeStartBlock|stakedAmount|rewardAddress|ownerAddress
 
 const (
@@ -66,10 +64,9 @@ const (
 	outgoingWarpPrefix = 0x5
 
 	assetPrefix = 0x6
-	loanPrefix  = 0x7
 
-	registerValidatorStakePrefix = 0x8
-	delegateUserStakePrefix      = 0x9
+	registerValidatorStakePrefix = 0x7
+	delegateUserStakePrefix      = 0x8
 )
 
 const (
@@ -89,14 +86,14 @@ var (
 
 	balanceKeyPool = sync.Pool{
 		New: func() any {
-			return make([]byte, 1+codec.AddressLen+hconsts.IDLen+hconsts.Uint16Len)
+			return make([]byte, 1+codec.AddressLen+ids.IDLen+consts.Uint16Len)
 		},
 	}
 )
 
 // [txPrefix] + [txID]
 func TxKey(id ids.ID) (k []byte) {
-	k = make([]byte, 1+hconsts.IDLen)
+	k = make([]byte, 1+ids.IDLen)
 	k[0] = txPrefix
 	copy(k[1:], id[:])
 	return
@@ -108,19 +105,19 @@ func StoreTransaction(
 	id ids.ID,
 	t int64,
 	success bool,
-	units chain.Dimensions,
+	units fees.Dimensions,
 	fee uint64,
 ) error {
 	k := TxKey(id)
-	v := make([]byte, hconsts.Uint64Len+1+chain.DimensionsLen+hconsts.Uint64Len)
+	v := make([]byte, consts.Uint64Len+1+fees.DimensionsLen+consts.Uint64Len)
 	binary.BigEndian.PutUint64(v, uint64(t))
 	if success {
-		v[hconsts.Uint64Len] = successByte
+		v[consts.Uint64Len] = successByte
 	} else {
-		v[hconsts.Uint64Len] = failureByte
+		v[consts.Uint64Len] = failureByte
 	}
-	copy(v[hconsts.Uint64Len+1:], units.Bytes())
-	binary.BigEndian.PutUint64(v[hconsts.Uint64Len+1+chain.DimensionsLen:], fee)
+	copy(v[consts.Uint64Len+1:], units.Bytes())
+	binary.BigEndian.PutUint64(v[consts.Uint64Len+1+fees.DimensionsLen:], fee)
 	return db.Put(k, v)
 }
 
@@ -128,25 +125,25 @@ func GetTransaction(
 	_ context.Context,
 	db database.KeyValueReader,
 	id ids.ID,
-) (bool, int64, bool, chain.Dimensions, uint64, error) {
+) (bool, int64, bool, fees.Dimensions, uint64, error) {
 	k := TxKey(id)
 	v, err := db.Get(k)
 	if errors.Is(err, database.ErrNotFound) {
-		return false, 0, false, chain.Dimensions{}, 0, nil
+		return false, 0, false, fees.Dimensions{}, 0, nil
 	}
 	if err != nil {
-		return false, 0, false, chain.Dimensions{}, 0, err
+		return false, 0, false, fees.Dimensions{}, 0, err
 	}
 	t := int64(binary.BigEndian.Uint64(v))
 	success := true
-	if v[hconsts.Uint64Len] == failureByte {
+	if v[consts.Uint64Len] == failureByte {
 		success = false
 	}
-	d, err := chain.UnpackDimensions(v[hconsts.Uint64Len+1 : hconsts.Uint64Len+1+chain.DimensionsLen])
+	d, err := fees.UnpackDimensions(v[consts.Uint64Len+1 : consts.Uint64Len+1+fees.DimensionsLen])
 	if err != nil {
-		return false, 0, false, chain.Dimensions{}, 0, err
+		return false, 0, false, fees.Dimensions{}, 0, err
 	}
-	fee := binary.BigEndian.Uint64(v[hconsts.Uint64Len+1+chain.DimensionsLen:])
+	fee := binary.BigEndian.Uint64(v[consts.Uint64Len+1+fees.DimensionsLen:])
 	return true, t, success, d, fee, nil
 }
 
@@ -156,7 +153,7 @@ func BalanceKey(addr codec.Address, asset ids.ID) (k []byte) {
 	k[0] = balancePrefix
 	copy(k[1:], addr[:])
 	copy(k[1+codec.AddressLen:], asset[:])
-	binary.BigEndian.PutUint16(k[1+codec.AddressLen+hconsts.IDLen:], BalanceChunks)
+	binary.BigEndian.PutUint16(k[1+codec.AddressLen+ids.IDLen:], BalanceChunks)
 	return
 }
 
@@ -256,7 +253,7 @@ func AddBalance(
 	if !exists && !create {
 		return nil
 	}
-	nbal, err := hmath.Add64(bal, amount)
+	nbal, err := smath.Add64(bal, amount)
 	if err != nil {
 		return fmt.Errorf(
 			"%w: could not add balance (asset=%s, bal=%d, addr=%v, amount=%d)",
@@ -281,7 +278,7 @@ func SubBalance(
 	if err != nil {
 		return err
 	}
-	nbal, err := hmath.Sub(bal, amount)
+	nbal, err := smath.Sub(bal, amount)
 	if err != nil {
 		return fmt.Errorf(
 			"%w: could not subtract balance (asset=%s, bal=%d, addr=%v, amount=%d)",
@@ -302,10 +299,10 @@ func SubBalance(
 
 // [assetPrefix] + [address]
 func AssetKey(asset ids.ID) (k []byte) {
-	k = make([]byte, 1+hconsts.IDLen+hconsts.Uint16Len)
+	k = make([]byte, 1+ids.IDLen+consts.Uint16Len)
 	k[0] = assetPrefix
 	copy(k[1:], asset[:])
-	binary.BigEndian.PutUint16(k[1+hconsts.IDLen:], AssetChunks)
+	binary.BigEndian.PutUint16(k[1+ids.IDLen:], AssetChunks)
 	return
 }
 
@@ -314,7 +311,7 @@ func GetAssetFromState(
 	ctx context.Context,
 	f ReadState,
 	asset ids.ID,
-) (bool, []byte, uint8, []byte, uint64, codec.Address, bool, error) {
+) (bool, []byte, uint8, []byte, uint64, codec.Address, error) {
 	values, errs := f(ctx, [][]byte{AssetKey(asset)})
 	return innerGetAsset(values[0], errs[0])
 }
@@ -323,7 +320,7 @@ func GetAsset(
 	ctx context.Context,
 	im state.Immutable,
 	asset ids.ID,
-) (bool, []byte, uint8, []byte, uint64, codec.Address, bool, error) {
+) (bool, []byte, uint8, []byte, uint64, codec.Address, error) {
 	k := AssetKey(asset)
 	return innerGetAsset(im.GetValue(ctx, k))
 }
@@ -331,23 +328,22 @@ func GetAsset(
 func innerGetAsset(
 	v []byte,
 	err error,
-) (bool, []byte, uint8, []byte, uint64, codec.Address, bool, error) {
+) (bool, []byte, uint8, []byte, uint64, codec.Address, error) {
 	if errors.Is(err, database.ErrNotFound) {
-		return false, nil, 0, nil, 0, codec.EmptyAddress, false, nil
+		return false, nil, 0, nil, 0, codec.EmptyAddress, nil
 	}
 	if err != nil {
-		return false, nil, 0, nil, 0, codec.EmptyAddress, false, err
+		return false, nil, 0, nil, 0, codec.EmptyAddress, err
 	}
 	symbolLen := binary.BigEndian.Uint16(v)
-	symbol := v[hconsts.Uint16Len : hconsts.Uint16Len+symbolLen]
-	decimals := v[hconsts.Uint16Len+symbolLen]
-	metadataLen := binary.BigEndian.Uint16(v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len:])
-	metadata := v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len : hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen]
-	supply := binary.BigEndian.Uint64(v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen:])
+	symbol := v[consts.Uint16Len : consts.Uint16Len+symbolLen]
+	decimals := v[consts.Uint16Len+symbolLen]
+	metadataLen := binary.BigEndian.Uint16(v[consts.Uint16Len+symbolLen+consts.Uint8Len:])
+	metadata := v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len : consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen]
+	supply := binary.BigEndian.Uint64(v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen:])
 	var addr codec.Address
-	copy(addr[:], v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen+hconsts.Uint64Len:])
-	warp := v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen+hconsts.Uint64Len+codec.AddressLen] == 0x1
-	return true, symbol, decimals, metadata, supply, addr, warp, nil
+	copy(addr[:], v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len:])
+	return true, symbol, decimals, metadata, supply, addr, nil
 }
 
 func SetAsset(
@@ -359,24 +355,18 @@ func SetAsset(
 	metadata []byte,
 	supply uint64,
 	owner codec.Address,
-	warp bool,
 ) error {
 	k := AssetKey(asset)
 	symbolLen := len(symbol)
 	metadataLen := len(metadata)
-	v := make([]byte, hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen+hconsts.Uint64Len+codec.AddressLen+1)
+	v := make([]byte, consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len+codec.AddressLen)
 	binary.BigEndian.PutUint16(v, uint16(symbolLen))
-	copy(v[hconsts.Uint16Len:], symbol)
-	v[hconsts.Uint16Len+symbolLen] = decimals
-	binary.BigEndian.PutUint16(v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len:], uint16(metadataLen))
-	copy(v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len:], metadata)
-	binary.BigEndian.PutUint64(v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen:], supply)
-	copy(v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen+hconsts.Uint64Len:], owner[:])
-	b := byte(0x0)
-	if warp {
-		b = 0x1
-	}
-	v[hconsts.Uint16Len+symbolLen+hconsts.Uint8Len+hconsts.Uint16Len+metadataLen+hconsts.Uint64Len+codec.AddressLen] = b
+	copy(v[consts.Uint16Len:], symbol)
+	v[consts.Uint16Len+symbolLen] = decimals
+	binary.BigEndian.PutUint16(v[consts.Uint16Len+symbolLen+consts.Uint8Len:], uint16(metadataLen))
+	copy(v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len:], metadata)
+	binary.BigEndian.PutUint64(v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen:], supply)
+	copy(v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len:], owner[:])
 	return mu.Insert(ctx, k, v)
 }
 
@@ -385,118 +375,12 @@ func DeleteAsset(ctx context.Context, mu state.Mutable, asset ids.ID) error {
 	return mu.Remove(ctx, k)
 }
 
-// [loanPrefix] + [asset] + [destination]
-func LoanKey(asset ids.ID, destination ids.ID) (k []byte) {
-	k = make([]byte, 1+hconsts.IDLen*2+hconsts.Uint16Len)
-	k[0] = loanPrefix
-	copy(k[1:], asset[:])
-	copy(k[1+hconsts.IDLen:], destination[:])
-	binary.BigEndian.PutUint16(k[1+hconsts.IDLen*2:], LoanChunks)
-	return
-}
-
-// Used to serve RPC queries
-func GetLoanFromState(
-	ctx context.Context,
-	f ReadState,
-	asset ids.ID,
-	destination ids.ID,
-) (uint64, error) {
-	values, errs := f(ctx, [][]byte{LoanKey(asset, destination)})
-	return innerGetLoan(values[0], errs[0])
-}
-
-func innerGetLoan(v []byte, err error) (uint64, error) {
-	if errors.Is(err, database.ErrNotFound) {
-		return 0, nil
-	}
-	if err != nil {
-		return 0, err
-	}
-	return binary.BigEndian.Uint64(v), nil
-}
-
-func GetLoan(
-	ctx context.Context,
-	im state.Immutable,
-	asset ids.ID,
-	destination ids.ID,
-) (uint64, error) {
-	k := LoanKey(asset, destination)
-	v, err := im.GetValue(ctx, k)
-	return innerGetLoan(v, err)
-}
-
-func SetLoan(
-	ctx context.Context,
-	mu state.Mutable,
-	asset ids.ID,
-	destination ids.ID,
-	amount uint64,
-) error {
-	k := LoanKey(asset, destination)
-	return mu.Insert(ctx, k, binary.BigEndian.AppendUint64(nil, amount))
-}
-
-func AddLoan(
-	ctx context.Context,
-	mu state.Mutable,
-	asset ids.ID,
-	destination ids.ID,
-	amount uint64,
-) error {
-	loan, err := GetLoan(ctx, mu, asset, destination)
-	if err != nil {
-		return err
-	}
-	nloan, err := hmath.Add64(loan, amount)
-	if err != nil {
-		return fmt.Errorf(
-			"%w: could not add loan (asset=%s, destination=%s, amount=%d)",
-			ErrInvalidBalance,
-			asset,
-			destination,
-			amount,
-		)
-	}
-	return SetLoan(ctx, mu, asset, destination, nloan)
-}
-
-func SubLoan(
-	ctx context.Context,
-	mu state.Mutable,
-	asset ids.ID,
-	destination ids.ID,
-	amount uint64,
-) error {
-	loan, err := GetLoan(ctx, mu, asset, destination)
-	if err != nil {
-		return err
-	}
-	nloan, err := hmath.Sub(loan, amount)
-	if err != nil {
-		return fmt.Errorf(
-			"%w: could not subtract loan (asset=%s, destination=%s, amount=%d)",
-			ErrInvalidBalance,
-			asset,
-			destination,
-			amount,
-		)
-	}
-	if nloan == 0 {
-		// If there is no balance left, we should delete the record instead of
-		// setting it to 0.
-		return mu.Remove(ctx, LoanKey(asset, destination))
-	}
-	return SetLoan(ctx, mu, asset, destination, nloan)
-}
-
 // [registerValidatorStakePrefix] + [nodeID]
 func RegisterValidatorStakeKey(nodeID ids.NodeID) (k []byte) {
-	k = make([]byte, 1+hconsts.NodeIDLen+hconsts.Uint16Len) // Length of prefix + nodeID + RegisterValidatorStakeChunks
-	k[0] = registerValidatorStakePrefix                     // registerValidatorStakePrefix is a constant representing the registerValidatorStake category
+	k = make([]byte, 1+ids.NodeIDLen+consts.Uint16Len) // Length of prefix + nodeID + RegisterValidatorStakeChunks
+	k[0] = registerValidatorStakePrefix                // registerValidatorStakePrefix is a constant representing the registerValidatorStake category
 	copy(k[1:], nodeID[:])
-	binary.BigEndian.PutUint16(k[1+hconsts.NodeIDLen:], RegisterValidatorStakeChunks) // Adding RegisterValidatorStakeChunks
+	binary.BigEndian.PutUint16(k[1+ids.NodeIDLen:], RegisterValidatorStakeChunks) // Adding RegisterValidatorStakeChunks
 	return
 }
 
@@ -512,17 +396,17 @@ func SetRegisterValidatorStake(
 	ownerAddress codec.Address,
 ) error {
 	key := RegisterValidatorStakeKey(nodeID)
-	v := make([]byte, (4*hconsts.Uint64Len)+(2*codec.AddressLen)) // Calculate the length of the encoded data
+	v := make([]byte, (4*consts.Uint64Len)+(2*codec.AddressLen)) // Calculate the length of the encoded data
 
 	offset := 0
 	binary.BigEndian.PutUint64(v[offset:], stakeStartBlock)
-	offset += hconsts.Uint64Len
+	offset += consts.Uint64Len
 	binary.BigEndian.PutUint64(v[offset:], stakeEndBlock)
-	offset += hconsts.Uint64Len
+	offset += consts.Uint64Len
 	binary.BigEndian.PutUint64(v[offset:], stakedAmount)
-	offset += hconsts.Uint64Len
+	offset += consts.Uint64Len
 	binary.BigEndian.PutUint64(v[offset:], delegationFeeRate)
-	offset += hconsts.Uint64Len
+	offset += consts.Uint64Len
 
 	copy(v[offset:], rewardAddress[:])
 	offset += codec.AddressLen
@@ -586,14 +470,14 @@ func innerGetRegisterValidatorStake(v []byte, err error) (
 	}
 
 	offset := 0
-	stakeStartBlock := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
-	offset += hconsts.Uint64Len
-	stakeEndBlock := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
-	offset += hconsts.Uint64Len
-	stakedAmount := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
-	offset += hconsts.Uint64Len
-	delegationFeeRate := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
-	offset += hconsts.Uint64Len
+	stakeStartBlock := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
+	offset += consts.Uint64Len
+	stakeEndBlock := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
+	offset += consts.Uint64Len
+	stakedAmount := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
+	offset += consts.Uint64Len
+	delegationFeeRate := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
+	offset += consts.Uint64Len
 
 	var rewardAddress codec.Address
 	copy(rewardAddress[:], v[offset:offset+codec.AddressLen])
@@ -615,11 +499,11 @@ func DeleteRegisterValidatorStake(
 
 // [delegateUserStakePrefix] + [txID]
 func DelegateUserStakeKey(owner codec.Address, nodeID ids.NodeID) (k []byte) {
-	k = make([]byte, 1+codec.AddressLen+hconsts.NodeIDLen+hconsts.Uint16Len) // Length of prefix + owner + nodeID + DelegateUserStakeChunks
-	k[0] = delegateUserStakePrefix                                           // delegateUserStakePrefix is a constant representing the staking category
+	k = make([]byte, 1+codec.AddressLen+ids.NodeIDLen+consts.Uint16Len) // Length of prefix + owner + nodeID + DelegateUserStakeChunks
+	k[0] = delegateUserStakePrefix                                      // delegateUserStakePrefix is a constant representing the staking category
 	copy(k[1:], owner[:])
 	copy(k[1+codec.AddressLen:], nodeID[:])
-	binary.BigEndian.PutUint16(k[1+codec.AddressLen+hconsts.NodeIDLen:], DelegateUserStakeChunks) // Adding DelegateUserStakeChunks
+	binary.BigEndian.PutUint16(k[1+codec.AddressLen+ids.NodeIDLen:], DelegateUserStakeChunks) // Adding DelegateUserStakeChunks
 	return
 }
 
@@ -634,16 +518,16 @@ func SetDelegateUserStake(
 	rewardAddress codec.Address,
 ) error {
 	key := DelegateUserStakeKey(owner, nodeID)
-	v := make([]byte, 3*hconsts.Uint64Len+2*codec.AddressLen) // Calculate the length of the encoded data
+	v := make([]byte, 3*consts.Uint64Len+2*codec.AddressLen) // Calculate the length of the encoded data
 
 	offset := 0
 
 	binary.BigEndian.PutUint64(v[offset:], stakeStartBlock)
-	offset += hconsts.Uint64Len
+	offset += consts.Uint64Len
 	binary.BigEndian.PutUint64(v[offset:], stakeEndBlock)
-	offset += hconsts.Uint64Len
+	offset += consts.Uint64Len
 	binary.BigEndian.PutUint64(v[offset:], stakedAmount)
-	offset += hconsts.Uint64Len
+	offset += consts.Uint64Len
 
 	copy(v[offset:], rewardAddress[:])
 	offset += codec.AddressLen
@@ -706,12 +590,12 @@ func innerGetDelegateUserStake(v []byte, err error) (
 
 	offset := 0
 
-	stakeStartBlock := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
-	offset += hconsts.Uint64Len
-	stakeEndBlock := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
-	offset += hconsts.Uint64Len
-	stakedAmount := binary.BigEndian.Uint64(v[offset : offset+hconsts.Uint64Len])
-	offset += hconsts.Uint64Len
+	stakeStartBlock := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
+	offset += consts.Uint64Len
+	stakeEndBlock := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
+	offset += consts.Uint64Len
+	stakedAmount := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
+	offset += consts.Uint64Len
 
 	var rewardAddress codec.Address
 	copy(rewardAddress[:], v[offset:offset+codec.AddressLen])
@@ -744,15 +628,15 @@ func FeeKey() (k []byte) {
 }
 
 func IncomingWarpKeyPrefix(sourceChainID ids.ID, msgID ids.ID) (k []byte) {
-	k = make([]byte, 1+hconsts.IDLen*2)
+	k = make([]byte, 1+ids.IDLen*2)
 	k[0] = incomingWarpPrefix
 	copy(k[1:], sourceChainID[:])
-	copy(k[1+hconsts.IDLen:], msgID[:])
+	copy(k[1+ids.IDLen:], msgID[:])
 	return k
 }
 
 func OutgoingWarpKeyPrefix(txID ids.ID) (k []byte) {
-	k = make([]byte, 1+hconsts.IDLen)
+	k = make([]byte, 1+ids.IDLen)
 	k[0] = outgoingWarpPrefix
 	copy(k[1:], txID[:])
 	return k

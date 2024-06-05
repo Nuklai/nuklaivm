@@ -17,11 +17,12 @@ if ! [[ "$0" =~ scripts/run.sh ]]; then
   exit 255
 fi
 
-VERSION=v1.10.18
+VERSION=v1.11.6
 MAX_UINT64=18446744073709551615
 MODE=${MODE:-run}
-AGO_LOGLEVEL=${AGO_LOGLEVEL:-info}
 LOGLEVEL=${LOGLEVEL:-info}
+AGO_LOGLEVEL=${AGO_LOGLEVEL:-info}
+AGO_LOG_DISPLAY_LEVEL=${AGO_LOG_DISPLAY_LEVEL:-INFO}
 STATESYNC_DELAY=${STATESYNC_DELAY:-0}
 MIN_BLOCK_GAP=${MIN_BLOCK_GAP:-100}
 STORE_TXS=${STORE_TXS:-false}
@@ -29,7 +30,8 @@ UNLIMITED_USAGE=${UNLIMITED_USAGE:-false}
 INITIAL_OWNER_ADDRESS=${INITIAL_OWNER_ADDRESS:-nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx}
 EMISSION_ADDRESS=${EMISSION_ADDRESS:-nuklai1qqmzlnnredketlj3cu20v56nt5ken6thchra7nylwcrmz77td654w2jmpt9}
 if [[ ${MODE} != "run" ]]; then
-  LOGLEVEL=debug
+  LOGLEVEL=DEBUG
+    AGO_LOG_DISPLAY_LEVEL=INFO
   STATESYNC_DELAY=100000000 # 100ms
   MIN_BLOCK_GAP=250 #ms
   STORE_TXS=true
@@ -45,16 +47,16 @@ if ${UNLIMITED_USAGE}; then
 fi
 
 echo "Running with:"
-echo AGO_LOGLEVEL: "${AGO_LOGLEVEL}"
-echo LOGLEVEL: "${LOGLEVEL}"
-echo VERSION: ${VERSION}
+echo LOG_LEVEL: "${LOG_LEVEL}"
+echo AGO_LOG_LEVEL: "${AGO_LOG_LEVEL}"
+echo AGO_LOG_DISPLAY_LEVEL: "${AGO_LOG_DISPLAY_LEVEL}"
+echo VERSION: "${VERSION}"
 echo MODE: "${MODE}"
-echo LOG LEVEL: "${LOGLEVEL}"
 echo STATESYNC_DELAY \(ns\): "${STATESYNC_DELAY}"
 echo MIN_BLOCK_GAP \(ms\): "${MIN_BLOCK_GAP}"
 echo STORE_TXS: "${STORE_TXS}"
-echo WINDOW_TARGET_UNITS: ${WINDOW_TARGET_UNITS}
-echo MAX_BLOCK_UNITS: ${MAX_BLOCK_UNITS}
+echo WINDOW_TARGET_UNITS: "${WINDOW_TARGET_UNITS}"
+echo MAX_BLOCK_UNITS: "${MAX_BLOCK_UNITS}"
 echo INITIAL_OWNER_ADDRESS: "${INITIAL_OWNER_ADDRESS}"
 echo EMISSION_ADDRESS: "${EMISSION_ADDRESS}"
 
@@ -93,8 +95,8 @@ if [ ! -f "$AVALANCHEGO_PATH" ]; then
   CWD=$(pwd)
 
   # Clear old folders
-  rm -rf "${TMPDIR}"/avalanchego-${VERSION}
-  mkdir -p "${TMPDIR}"/avalanchego-${VERSION}
+  rm -rf "${TMPDIR}"/avalanchego-"${VERSION}"
+  mkdir -p "${TMPDIR}"/avalanchego-"${VERSION}"
   rm -rf "${TMPDIR}"/avalanchego-src
   mkdir -p "${TMPDIR}"/avalanchego-src
 
@@ -102,11 +104,11 @@ if [ ! -f "$AVALANCHEGO_PATH" ]; then
   cd "${TMPDIR}"/avalanchego-src
   git clone https://github.com/ava-labs/avalanchego.git
   cd avalanchego
-  git checkout ${VERSION}
+  git checkout "${VERSION}"
 
   # Build avalanchego
   ./scripts/build.sh
-  mv build/avalanchego "${TMPDIR}"/avalanchego-${VERSION}
+  mv build/avalanchego "${TMPDIR}"/avalanchego-"${VERSION}"
 
   cd "${CWD}"
 else
@@ -232,7 +234,7 @@ ACK_GINKGO_RC=true ginkgo build ./tests/e2e
 # download avalanche-network-runner
 # https://github.com/ava-labs/avalanche-network-runner
 ANR_REPO_PATH=github.com/ava-labs/avalanche-network-runner
-ANR_VERSION=90aa9ae77845665b7638404a2a5e6a4dcce6d489
+ANR_VERSION=v1.8.0
 # version set
 go install -v ${ANR_REPO_PATH}@${ANR_VERSION}
 
@@ -283,6 +285,7 @@ echo "running e2e tests"
 "${OPTIONS[@]}" \
 --network-runner-log-level verbo \
 --avalanchego-log-level "${AGO_LOGLEVEL}" \
+--avalanchego-log-display-level "${AGO_LOG_DISPLAY_LEVEL}" \
 --network-runner-grpc-endpoint="0.0.0.0:12352" \
 --network-runner-grpc-gateway-endpoint="0.0.0.0:12353" \
 --avalanchego-path="${AVALANCHEGO_PATH}" \

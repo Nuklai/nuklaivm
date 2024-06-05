@@ -27,20 +27,12 @@ func (*StateManager) TimestampKey() []byte {
 }
 
 func (*StateManager) FeeKey() []byte {
-	return storage.HeightKey()
+	return storage.FeeKey()
 }
 
-func (*StateManager) IncomingWarpKeyPrefix(sourceChainID ids.ID, msgID ids.ID) []byte {
-	return storage.IncomingWarpKeyPrefix(sourceChainID, msgID)
-}
-
-func (*StateManager) OutgoingWarpKeyPrefix(txID ids.ID) []byte {
-	return storage.OutgoingWarpKeyPrefix(txID)
-}
-
-func (*StateManager) SponsorStateKeys(addr codec.Address) []string {
-	return []string{
-		string(storage.BalanceKey(addr, ids.Empty)),
+func (*StateManager) SponsorStateKeys(addr codec.Address) state.Keys {
+	return state.Keys{
+		string(storage.BalanceKey(addr, ids.Empty)): state.Read | state.Write,
 	}
 }
 
@@ -67,14 +59,4 @@ func (*StateManager) Deduct(
 	amount uint64,
 ) error {
 	return storage.SubBalance(ctx, mu, addr, ids.Empty, amount)
-}
-
-func (*StateManager) Refund(
-	ctx context.Context,
-	addr codec.Address,
-	mu state.Mutable,
-	amount uint64,
-) error {
-	// Don't create account if it doesn't exist (may have sent all funds).
-	return storage.AddBalance(ctx, mu, addr, ids.Empty, amount, false)
 }

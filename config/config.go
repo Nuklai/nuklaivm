@@ -18,7 +18,7 @@ import (
 	"github.com/ava-labs/hypersdk/trace"
 	"github.com/ava-labs/hypersdk/vm"
 
-	nconsts "github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/version"
 )
 
@@ -37,6 +37,7 @@ type Config struct {
 	AuthVerificationCores     int `json:"authVerificationCores"`
 	RootGenerationCores       int `json:"rootGenerationCores"`
 	TransactionExecutionCores int `json:"transactionExecutionCores"`
+	StateFetchConcurrency     int `json:"stateFetchConcurrency"`
 
 	// Gossip
 	GossipMaxSize       int   `json:"gossipMaxSize"`
@@ -88,7 +89,7 @@ func New(nodeID ids.NodeID, b []byte) (*Config, error) {
 	// broadcasting many txs at once)
 	c.parsedExemptSponsors = make([]codec.Address, len(c.MempoolExemptSponsors))
 	for i, sponsor := range c.MempoolExemptSponsors {
-		p, err := codec.ParseAddressBech32(nconsts.HRP, sponsor)
+		p, err := codec.ParseAddressBech32(consts.HRP, sponsor)
 		if err != nil {
 			return nil, err
 		}
@@ -108,6 +109,7 @@ func (c *Config) setDefault() {
 	c.AuthVerificationCores = c.Config.GetAuthVerificationCores()
 	c.RootGenerationCores = c.Config.GetRootGenerationCores()
 	c.TransactionExecutionCores = c.Config.GetTransactionExecutionCores()
+	c.StateFetchConcurrency = c.Config.GetStateFetchConcurrency()
 	c.MempoolSize = c.Config.GetMempoolSize()
 	c.MempoolSponsorSize = c.Config.GetMempoolSponsorSize()
 	c.StateSyncServerDelay = c.Config.GetStateSyncServerDelay()
@@ -121,6 +123,7 @@ func (c *Config) GetTestMode() bool                         { return c.TestMode 
 func (c *Config) GetAuthVerificationCores() int             { return c.AuthVerificationCores }
 func (c *Config) GetRootGenerationCores() int               { return c.RootGenerationCores }
 func (c *Config) GetTransactionExecutionCores() int         { return c.TransactionExecutionCores }
+func (c *Config) GetStateFetchConcurrency() int             { return c.StateFetchConcurrency }
 func (c *Config) GetMempoolSize() int                       { return c.MempoolSize }
 func (c *Config) GetMempoolSponsorSize() int                { return c.MempoolSponsorSize }
 func (c *Config) GetMempoolExemptSponsors() []codec.Address { return c.parsedExemptSponsors }
@@ -128,7 +131,7 @@ func (c *Config) GetTraceConfig() *trace.Config {
 	return &trace.Config{
 		Enabled:         c.TraceEnabled,
 		TraceSampleRate: c.TraceSampleRate,
-		AppName:         nconsts.Name,
+		AppName:         consts.Name,
 		Agent:           c.nodeID.String(),
 		Version:         version.Version.String(),
 	}
@@ -140,7 +143,7 @@ func (c *Config) GetContinuousProfilerConfig() *profiler.Config {
 		return &profiler.Config{Enabled: false}
 	}
 	// Replace all instances of "*" with nodeID. This is useful when
-	// running multiple instances of nuklaivm on the same machine.
+	// running multiple instances of tokenvm on the same machine.
 	c.ContinuousProfilerDir = strings.ReplaceAll(c.ContinuousProfilerDir, "*", c.nodeID.String())
 	return &profiler.Config{
 		Enabled:     true,

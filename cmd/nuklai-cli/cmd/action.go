@@ -11,32 +11,86 @@ import (
 	"math"
 	"regexp"
 	"strconv"
-	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/set"
-	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/hypersdk/chain"
 	hyperCli "github.com/ava-labs/hypersdk/cli"
 	"github.com/ava-labs/hypersdk/codec"
-	hconsts "github.com/ava-labs/hypersdk/consts"
+	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/crypto/bls"
-	"github.com/ava-labs/hypersdk/pubsub"
-	hrpc "github.com/ava-labs/hypersdk/rpc"
+	"github.com/ava-labs/hypersdk/utils"
 	hutils "github.com/ava-labs/hypersdk/utils"
+
+	frpc "github.com/nuklai/nuklai-faucet/rpc"
 
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/auth"
 	nconsts "github.com/nuklai/nuklaivm/consts"
-	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
 
 var actionCmd = &cobra.Command{
 	Use: "action",
 	RunE: func(*cobra.Command, []string) error {
 		return ErrMissingSubcommand
+	},
+}
+
+var fundFaucetCmd = &cobra.Command{
+	Use: "fund-faucet",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+
+		// Get faucet
+		faucetURI, err := handler.Root().PromptString("faucet URI", 0, consts.MaxInt)
+		if err != nil {
+			return err
+		}
+		fcli := frpc.NewJSONRPCClient(faucetURI)
+		faucetAddress, err := fcli.FaucetAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		// Get clients
+		_, priv, factory, cli, scli, tcli, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+
+		// Get balance
+		_, decimals, balance, _, err := handler.GetAssetInfo(ctx, tcli, priv.Address, ids.Empty, true)
+		if balance == 0 || err != nil {
+			return err
+		}
+
+		// Select amount
+		amount, err := handler.Root().PromptAmount("amount", decimals, balance, nil)
+		if err != nil {
+			return err
+		}
+
+		// Confirm action
+		cont, err := handler.Root().PromptContinue()
+		if !cont || err != nil {
+			return err
+		}
+
+		// Generate transaction
+		addr, err := codec.ParseAddressBech32(nconsts.HRP, faucetAddress)
+		if err != nil {
+			return err
+		}
+		if _, err = sendAndWait(ctx, []chain.Action{&actions.Transfer{
+			To:    addr,
+			Asset: ids.Empty,
+			Value: amount,
+		}}, cli, scli, tcli, factory, true); err != nil {
+			return err
+		}
+		utils.Outf("{{green}}funded faucet:{{/}} %s\n", faucetAddress)
+		return nil
 	},
 }
 
@@ -119,11 +173,11 @@ var transferCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, nil, &actions.Transfer{
+		_, err = sendAndWait(ctx, []chain.Action{&actions.Transfer{
 			To:    recipient,
 			Asset: assetID,
 			Value: amount,
-		}, hcli, hws, ncli, factory, true)
+		}}, hcli, hws, ncli, factory, true)
 		return err
 	},
 }
@@ -132,7 +186,7 @@ var createAssetCmd = &cobra.Command{
 	Use: "create-asset",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, _, factory, hcli, hws, ncli, err := handler.DefaultActor()
+		_, _, factory, cli, scli, tcli, err := handler.DefaultActor()
 		if err != nil {
 			return err
 		}
@@ -162,12 +216,19 @@ var createAssetCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, nil, &actions.CreateAsset{
+		txID, err := sendAndWait(ctx, []chain.Action{&actions.CreateAsset{
 			Symbol:   []byte(symbol),
 			Decimals: uint8(decimals), // already constrain above to prevent overflow
 			Metadata: []byte(metadata),
-		}, hcli, hws, ncli, factory, true)
-		return err
+		}}, cli, scli, tcli, factory, true)
+		if err != nil {
+			return err
+		}
+
+		// Print assetID
+		assetID := chain.CreateActionID(txID, 0)
+		utils.Outf("{{green}}assetID:{{/}} %s\n", assetID)
+		return nil
 	},
 }
 
@@ -175,7 +236,7 @@ var mintAssetCmd = &cobra.Command{
 	Use: "mint-asset",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
+		_, priv, factory, cli, scli, tcli, err := handler.DefaultActor()
 		if err != nil {
 			return err
 		}
@@ -185,26 +246,21 @@ var mintAssetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		exists, symbol, decimals, metadata, supply, owner, warp, err := ncli.Asset(ctx, assetID, false)
+		exists, symbol, decimals, metadata, supply, owner, err := tcli.Asset(ctx, assetID, false)
 		if err != nil {
 			return err
 		}
 		if !exists {
-			hutils.Outf("{{red}}%s does not exist{{/}}\n", assetID)
-			hutils.Outf("{{red}}exiting...{{/}}\n")
-			return nil
-		}
-		if warp {
-			hutils.Outf("{{red}}cannot mint a warped asset{{/}}\n", assetID)
-			hutils.Outf("{{red}}exiting...{{/}}\n")
+			utils.Outf("{{red}}%s does not exist{{/}}\n", assetID)
+			utils.Outf("{{red}}exiting...{{/}}\n")
 			return nil
 		}
 		if owner != codec.MustAddressBech32(nconsts.HRP, priv.Address) {
-			hutils.Outf("{{red}}%s is the owner of %s, you are not{{/}}\n", owner, assetID)
-			hutils.Outf("{{red}}exiting...{{/}}\n")
+			utils.Outf("{{red}}%s is the owner of %s, you are not{{/}}\n", owner, assetID)
+			utils.Outf("{{red}}exiting...{{/}}\n")
 			return nil
 		}
-		hutils.Outf(
+		utils.Outf(
 			"{{yellow}}symbol:{{/}} %s {{yellow}}decimals:{{/}} %d {{yellow}}metadata:{{/}} %s {{yellow}}supply:{{/}} %d\n",
 			string(symbol),
 			decimals,
@@ -219,7 +275,7 @@ var mintAssetCmd = &cobra.Command{
 		}
 
 		// Select amount
-		amount, err := handler.Root().PromptAmount("amount", decimals, hconsts.MaxUint64-supply, nil)
+		amount, err := handler.Root().PromptAmount("amount", decimals, consts.MaxUint64-supply, nil)
 		if err != nil {
 			return err
 		}
@@ -231,300 +287,12 @@ var mintAssetCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, nil, &actions.MintAsset{
+		_, err = sendAndWait(ctx, []chain.Action{&actions.MintAsset{
 			Asset: assetID,
 			To:    recipient,
 			Value: amount,
-		}, hcli, hws, ncli, factory, true)
+		}}, cli, scli, tcli, factory, true)
 		return err
-	},
-}
-
-func performImport(
-	ctx context.Context,
-	hscli *hrpc.JSONRPCClient,
-	hdcli *hrpc.JSONRPCClient,
-	hws *hrpc.WebSocketClient,
-	ncli *nrpc.JSONRPCClient,
-	exportTxID ids.ID,
-	factory chain.AuthFactory,
-) error {
-	// Select TxID (if not provided)
-	var err error
-	if exportTxID == ids.Empty {
-		exportTxID, err = handler.Root().PromptID("export txID")
-		if err != nil {
-			return err
-		}
-	}
-
-	// Generate warp signature (as long as >= 80% stake)
-	var (
-		msg                     *warp.Message
-		subnetWeight, sigWeight uint64
-	)
-	for ctx.Err() == nil {
-		msg, subnetWeight, sigWeight, err = hscli.GenerateAggregateWarpSignature(ctx, exportTxID)
-		if sigWeight >= (subnetWeight*4)/5 && err == nil {
-			break
-		}
-		if err == nil {
-			hutils.Outf(
-				"{{yellow}}waiting for signature weight:{{/}} %d {{yellow}}observed:{{/}} %d\n",
-				subnetWeight,
-				sigWeight,
-			)
-		} else {
-			hutils.Outf("{{red}}encountered error:{{/}} %v\n", err)
-		}
-		cont, err := handler.Root().PromptBool("try again")
-		if err != nil {
-			return err
-		}
-		if !cont {
-			hutils.Outf("{{red}}exiting...{{/}}\n")
-			return nil
-		}
-	}
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	wt, err := actions.UnmarshalWarpTransfer(msg.UnsignedMessage.Payload)
-	if err != nil {
-		return err
-	}
-	outputAssetID := wt.Asset
-	if !wt.Return {
-		outputAssetID = actions.ImportedAssetID(wt.Asset, msg.SourceChainID)
-	}
-	hutils.Outf(
-		"%s {{yellow}}to:{{/}} %s {{yellow}}source assetID:{{/}} %s {{yellow}}source symbol:{{/}} %s {{yellow}}output assetID:{{/}} %s {{yellow}}value:{{/}} %s {{yellow}}reward:{{/}} %s {{yellow}}return:{{/}} %t\n",
-		hutils.ToID(
-			msg.UnsignedMessage.Payload,
-		),
-		codec.MustAddressBech32(nconsts.HRP, wt.To),
-		wt.Asset,
-		wt.Symbol,
-		outputAssetID,
-		hutils.FormatBalance(wt.Value, wt.Decimals),
-		hutils.FormatBalance(wt.Reward, wt.Decimals),
-		wt.Return,
-	)
-	if wt.SwapIn > 0 {
-		_, outSymbol, outDecimals, _, _, _, _, err := ncli.Asset(ctx, wt.AssetOut, false)
-		if err != nil {
-			return err
-		}
-		hutils.Outf(
-			"{{yellow}}asset in:{{/}} %s {{yellow}}swap in:{{/}} %s {{yellow}}asset out:{{/}} %s {{yellow}}symbol out:{{/}} %s {{yellow}}swap out:{{/}} %s {{yellow}}swap expiry:{{/}} %d\n",
-			outputAssetID,
-			hutils.FormatBalance(wt.SwapIn, wt.Decimals),
-			wt.AssetOut,
-			outSymbol,
-			hutils.FormatBalance(wt.SwapOut, outDecimals),
-			wt.SwapExpiry,
-		)
-	}
-
-	// Select fill
-	var fill bool
-	if wt.SwapIn > 0 {
-		fill, err = handler.Root().PromptBool("fill")
-		if err != nil {
-			return err
-		}
-	}
-	if !fill && wt.SwapExpiry > time.Now().UnixMilli() {
-		return ErrMustFill
-	}
-
-	// Generate transaction
-	_, _, err = sendAndWait(ctx, msg, &actions.ImportAsset{
-		Fill: fill,
-	}, hdcli, hws, ncli, factory, true)
-	return err
-}
-
-var importAssetCmd = &cobra.Command{
-	Use: "import-asset",
-	RunE: func(*cobra.Command, []string) error {
-		ctx := context.Background()
-
-		currentChainID, _, factory, hdcli, hws, ncli, err := handler.DefaultActor()
-		if err != nil {
-			return err
-		}
-
-		// Select source
-		_, uris, err := handler.Root().PromptChain("sourceChainID", set.Of(currentChainID))
-		if err != nil {
-			return err
-		}
-		hscli := hrpc.NewJSONRPCClient(uris[0])
-
-		// Perform import
-		return performImport(ctx, hscli, hdcli, hws, ncli, ids.Empty, factory)
-	},
-}
-
-var exportAssetCmd = &cobra.Command{
-	Use: "export-asset",
-	RunE: func(*cobra.Command, []string) error {
-		ctx := context.Background()
-		currentChainID, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
-		if err != nil {
-			return err
-		}
-
-		// Select token to send
-		assetID, err := handler.Root().PromptAsset("assetID", true)
-		if err != nil {
-			return err
-		}
-		_, decimals, balance, sourceChainID, err := handler.GetAssetInfo(ctx, ncli, priv.Address, assetID, true)
-		if balance == 0 || err != nil {
-			return err
-		}
-
-		// Select recipient
-		recipient, err := handler.Root().PromptAddress("recipient")
-		if err != nil {
-			return err
-		}
-
-		// Select amount
-		amount, err := handler.Root().PromptAmount("amount", decimals, balance, nil)
-		if err != nil {
-			return err
-		}
-
-		// Determine return
-		var ret bool
-		if sourceChainID != ids.Empty {
-			ret = true
-		}
-
-		// Select reward
-		reward, err := handler.Root().PromptAmount("reward", decimals, balance-amount, nil)
-		if err != nil {
-			return err
-		}
-
-		// Determine destination
-		destination := sourceChainID
-		if !ret {
-			destination, _, err = handler.Root().PromptChain("destination", set.Of(currentChainID))
-			if err != nil {
-				return err
-			}
-		}
-
-		// Determine if swap in
-		swap, err := handler.Root().PromptBool("swap on import")
-		if err != nil {
-			return err
-		}
-		var (
-			swapIn     uint64
-			assetOut   ids.ID
-			swapOut    uint64
-			swapExpiry int64
-		)
-		if swap {
-			swapIn, err = handler.Root().PromptAmount("swap in", decimals, amount, nil)
-			if err != nil {
-				return err
-			}
-			assetOut, err = handler.Root().PromptAsset("asset out (on destination)", true)
-			if err != nil {
-				return err
-			}
-			uris, err := handler.Root().GetChain(destination)
-			if err != nil {
-				return err
-			}
-			networkID, _, _, err := hcli.Network(ctx)
-			if err != nil {
-				return err
-			}
-			dcli := nrpc.NewJSONRPCClient(uris[0], networkID, destination)
-			_, decimals, _, _, err := handler.GetAssetInfo(ctx, dcli, priv.Address, assetOut, false)
-			if err != nil {
-				return err
-			}
-			swapOut, err = handler.Root().PromptAmount(
-				"swap out (on destination, no decimals)",
-				decimals,
-				hconsts.MaxUint64,
-				nil,
-			)
-			if err != nil {
-				return err
-			}
-			swapExpiry, err = handler.Root().PromptTime("swap expiry")
-			if err != nil {
-				return err
-			}
-		}
-
-		// Confirm action
-		cont, err := handler.Root().PromptContinue()
-		if !cont || err != nil {
-			return err
-		}
-
-		// Generate transaction
-		success, txID, err := sendAndWait(ctx, nil, &actions.ExportAsset{
-			To:          recipient,
-			Asset:       assetID,
-			Value:       amount,
-			Return:      ret,
-			Reward:      reward,
-			SwapIn:      swapIn,
-			AssetOut:    assetOut,
-			SwapOut:     swapOut,
-			SwapExpiry:  swapExpiry,
-			Destination: destination,
-		}, hcli, hws, ncli, factory, true)
-		if err != nil {
-			return err
-		}
-		if !success {
-			return errors.New("not successful")
-		}
-
-		// Perform import
-		imp, err := handler.Root().PromptBool("perform import on destination")
-		if err != nil {
-			return err
-		}
-		if imp {
-			uris, err := handler.Root().GetChain(destination)
-			if err != nil {
-				return err
-			}
-			networkID, _, _, err := hcli.Network(ctx)
-			if err != nil {
-				return err
-			}
-			hdcli, err := hrpc.NewWebSocketClient(uris[0], hrpc.DefaultHandshakeTimeout, pubsub.MaxPendingMessages, pubsub.MaxReadMessageSize)
-			if err != nil {
-				return err
-			}
-			if err := performImport(ctx, hcli, hrpc.NewJSONRPCClient(uris[0]), hdcli, nrpc.NewJSONRPCClient(uris[0], networkID, destination), txID, factory); err != nil {
-				return err
-			}
-		}
-
-		// Ask if user would like to switch to destination chain
-		sw, err := handler.Root().PromptBool("switch default chain to destination")
-		if err != nil {
-			return err
-		}
-		if !sw {
-			return nil
-		}
-		return handler.Root().StoreDefaultChain(destination)
 	},
 }
 
@@ -740,10 +508,10 @@ var registerValidatorStakeCmd = &cobra.Command{
 		authSignature := signaturePacker.Bytes()
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, nil, &actions.RegisterValidatorStake{
+		_, err = sendAndWait(ctx, []chain.Action{&actions.RegisterValidatorStake{
 			StakeInfo:     stakeInfoBytes,
 			AuthSignature: authSignature,
-		}, hcli, hws, ncli, factory, true)
+		}}, hcli, hws, ncli, factory, true)
 		return err
 	},
 }
@@ -850,9 +618,9 @@ var claimValidatorStakeRewardCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, nil, &actions.ClaimValidatorStakeRewards{
+		_, err = sendAndWait(ctx, []chain.Action{&actions.ClaimValidatorStakeRewards{
 			NodeID: nodeID.Bytes(),
-		}, hcli, hws, ncli, factory, true)
+		}}, hcli, hws, ncli, factory, true)
 		return err
 	},
 }
@@ -911,10 +679,10 @@ var withdrawValidatorStakeCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, nil, &actions.WithdrawValidatorStake{
+		_, err = sendAndWait(ctx, []chain.Action{&actions.WithdrawValidatorStake{
 			NodeID:        nodeID.Bytes(),
 			RewardAddress: priv.Address,
-		}, hcli, hws, ncli, factory, true)
+		}}, hcli, hws, ncli, factory, true)
 		return err
 	},
 }
@@ -1031,13 +799,13 @@ var delegateUserStakeCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, nil, &actions.DelegateUserStake{
+		_, err = sendAndWait(ctx, []chain.Action{&actions.DelegateUserStake{
 			NodeID:          nodeID.Bytes(),
 			StakeStartBlock: stakeStartBlock,
 			StakeEndBlock:   stakeEndBlock,
 			StakedAmount:    stakedAmount,
 			RewardAddress:   rewardAddress,
-		}, hcli, hws, ncli, factory, true)
+		}}, hcli, hws, ncli, factory, true)
 		return err
 	},
 }
@@ -1159,10 +927,10 @@ var claimUserStakeRewardCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, nil, &actions.ClaimDelegationStakeRewards{
+		_, err = sendAndWait(ctx, []chain.Action{&actions.ClaimDelegationStakeRewards{
 			NodeID:           nodeID.Bytes(),
 			UserStakeAddress: priv.Address,
-		}, hcli, hws, ncli, factory, true)
+		}}, hcli, hws, ncli, factory, true)
 		return err
 	},
 }
@@ -1221,10 +989,10 @@ var undelegateUserStakeCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, nil, &actions.UndelegateUserStake{
+		_, err = sendAndWait(ctx, []chain.Action{&actions.UndelegateUserStake{
 			NodeID:        nodeID.Bytes(),
 			RewardAddress: priv.Address,
-		}, hcli, hws, ncli, factory, true)
+		}}, hcli, hws, ncli, factory, true)
 		return err
 	},
 }

@@ -7,12 +7,9 @@ import (
 	"context"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	hconsts "github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
-	"github.com/ava-labs/hypersdk/utils"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
@@ -30,12 +27,12 @@ func (*ClaimDelegationStakeRewards) GetTypeID() uint8 {
 	return nconsts.ClaimDelegationStakeRewards
 }
 
-func (c *ClaimDelegationStakeRewards) StateKeys(actor codec.Address, _ ids.ID) []string {
+func (c *ClaimDelegationStakeRewards) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
 	// TODO: How to better handle a case where the NodeID is invalid?
 	nodeID, _ := ids.ToNodeID(c.NodeID)
-	return []string{
-		string(storage.BalanceKey(actor, ids.Empty)),
-		string(storage.DelegateUserStakeKey(actor, nodeID)),
+	return state.Keys{
+		string(storage.BalanceKey(actor, ids.Empty)):        state.All,
+		string(storage.DelegateUserStakeKey(actor, nodeID)): state.Read,
 	}
 }
 
@@ -54,19 +51,18 @@ func (c *ClaimDelegationStakeRewards) Execute(
 	_ int64,
 	actor codec.Address,
 	_ ids.ID,
-	_ bool,
-) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
+) ([][]byte, error) {
 	nodeID, err := ids.ToNodeID(c.NodeID)
 	if err != nil {
-		return false, ClaimStakingRewardComputeUnits, OutputInvalidNodeID, nil, nil
+		return nil, ErrInvalidNodeID
 	}
 
 	exists, stakeStartBlock, _, _, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, mu, c.UserStakeAddress, nodeID)
 	if !exists {
-		return false, ClaimStakingRewardComputeUnits, OutputStakeMissing, nil, nil
+		return nil, ErrStakeMissing
 	}
 	if rewardAddress != actor {
-		return false, ClaimStakingRewardComputeUnits, OutputUnauthorized, nil, nil
+		return nil, ErrUnauthorized
 	}
 
 	// Get the emission instance
@@ -74,33 +70,33 @@ func (c *ClaimDelegationStakeRewards) Execute(
 
 	// Check that lastBlockHeight is after stakeStartBlock
 	if emissionInstance.GetLastAcceptedBlockHeight() < stakeStartBlock {
-		return false, ClaimStakingRewardComputeUnits, OutputStakeNotEnded, nil, nil
+		return nil, ErrStakeNotEnded
 	}
 
 	// Claim rewards in Emission Balancer
 	rewardAmount, err := emissionInstance.ClaimStakingRewards(nodeID, c.UserStakeAddress)
 	if err != nil {
-		return false, ClaimStakingRewardComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
 
 	if err := storage.AddBalance(ctx, mu, rewardAddress, ids.Empty, rewardAmount, true); err != nil {
-		return false, ClaimStakingRewardComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
 
 	sr := &ClaimRewardsResult{rewardAmount}
 	output, err := sr.Marshal()
 	if err != nil {
-		return false, ClaimStakingRewardComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
-	return true, ClaimStakingRewardComputeUnits, output, nil, nil
+	return [][]byte{output}, nil
 }
 
-func (*ClaimDelegationStakeRewards) MaxComputeUnits(chain.Rules) uint64 {
+func (*ClaimDelegationStakeRewards) ComputeUnits(chain.Rules) uint64 {
 	return ClaimStakingRewardComputeUnits
 }
 
 func (*ClaimDelegationStakeRewards) Size() int {
-	return hconsts.NodeIDLen + codec.AddressLen
+	return ids.NodeIDLen + codec.AddressLen
 }
 
 func (c *ClaimDelegationStakeRewards) Marshal(p *codec.Packer) {
@@ -108,9 +104,9 @@ func (c *ClaimDelegationStakeRewards) Marshal(p *codec.Packer) {
 	p.PackAddress(c.UserStakeAddress)
 }
 
-func UnmarshalClaimDelegationStakeRewards(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
+func UnmarshalClaimDelegationStakeRewards(p *codec.Packer) (chain.Action, error) {
 	var claimRewards ClaimDelegationStakeRewards
-	p.UnpackBytes(hconsts.NodeIDLen, true, &claimRewards.NodeID)
+	p.UnpackBytes(ids.NodeIDLen, true, &claimRewards.NodeID)
 	p.UnpackAddress(&claimRewards.UserStakeAddress)
 	return &claimRewards, p.Err()
 }
