@@ -40,7 +40,7 @@ if ! aws sts get-caller-identity >/dev/null 2>&1 ; then
 fi
 
 # Set AvalancheGo Build (should have canPop disabled)
-AVALANCHEGO_VERSION=v1.10.18
+AVALANCHEGO_VERSION=v1.11.6
 
 # Create temporary directory for the deployment
 TMPDIR=/tmp/nuklaivm-deploy
@@ -59,7 +59,7 @@ mv ./bin/avalanche "${TMPDIR}/avalanche"
 cd $pw
 
 # Install nuklai-cli
-NUKLAI_VM_COMMIT=main
+NUKLAI_VM_COMMIT=hypersdk-parity
 echo -e "${YELLOW}building nuklai-cli${NC}"
 echo "set working directory: $TMPDIR"
 cd $TMPDIR
@@ -144,7 +144,7 @@ EOF
 cat <<EOF > "${TMPDIR}"/nuklaivm.subnet
 {
   "proposerMinBlockDelay": 0,
-  "proposerNumHistoricalBlocks": 512
+  "proposerNumHistoricalBlocks": 50000
 }
 EOF
 
@@ -189,7 +189,7 @@ trap cleanup EXIT
 #
 # It is not recommended to use an instance with burstable network performance.
 echo -e "${YELLOW}creating devnet${NC}"
-$TMPDIR/avalanche node devnet wiz ${CLUSTER} ${VMID} --force-subnet-create=true --authorize-access=true --aws --node-type t4g.medium --num-apis 0 --num-validators 10 --region eu-west-1 --use-static-ip=false --enable-monitoring=false --default-validator-params --custom-avalanchego-version $AVALANCHEGO_VERSION --custom-vm-repo-url="https://www.github.com/nuklai/nuklaivm" --custom-vm-branch $VM_COMMIT --custom-vm-build-script="scripts/build.sh" --custom-subnet=true --subnet-genesis="${TMPDIR}/nuklaivm.genesis" --subnet-config="${TMPDIR}/nuklaivm.genesis" --chain-config="${TMPDIR}/nuklaivm.config" --node-config="${TMPDIR}/node.config" --config="${TMPDIR}/node.config" --remote-cli-version $REMOTE_CLI_COMMIT --add-grafana-dashboard="${TMPDIR}/nuklaivm/grafana.json" --log-level DEBUG
+$TMPDIR/avalanche node devnet wiz ${CLUSTER} ${VMID} --force-subnet-create=true --authorize-access=true --aws --node-type t4g.medium --num-apis 1 --num-validators 5 --region eu-west-1 --use-static-ip=false --enable-monitoring=false --default-validator-params --custom-avalanchego-version $AVALANCHEGO_VERSION --custom-vm-repo-url="https://www.github.com/nuklai/nuklaivm" --custom-vm-branch $VM_COMMIT --custom-vm-build-script="scripts/build.sh" --custom-subnet=true --subnet-genesis="${TMPDIR}/nuklaivm.genesis" --subnet-config="${TMPDIR}/nuklaivm.genesis" --chain-config="${TMPDIR}/nuklaivm.config" --node-config="${TMPDIR}/node.config" --config="${TMPDIR}/node.config" --remote-cli-version $REMOTE_CLI_COMMIT --add-grafana-dashboard="${TMPDIR}/nuklaivm/grafana.json" --log-level DEBUG
 
 # Import the cluster into nuklai-cli for local interaction
 $TMPDIR/nuklai-cli chain import-cli $HOME/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml
