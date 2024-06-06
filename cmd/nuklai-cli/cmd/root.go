@@ -132,7 +132,6 @@ func init() {
 		setKeyCmd,
 		balanceKeyCmd,
 		vanityAddressCmd,
-		faucetKeyCmd,
 	)
 
 	// chain
@@ -153,7 +152,6 @@ func init() {
 
 	// actions
 	actionCmd.AddCommand(
-		fundFaucetCmd,
 		transferCmd,
 
 		createAssetCmd,

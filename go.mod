@@ -8,7 +8,6 @@ require (
 	github.com/ava-labs/hypersdk v0.0.17-0.20240604174603-2f5aad459975
 	github.com/btcsuite/btcd/btcutil v1.1.3
 	github.com/fatih/color v1.13.0
-	github.com/nuklai/nuklai-faucet v0.1.0
 	github.com/onsi/ginkgo/v2 v2.16.0
 	github.com/onsi/gomega v1.30.0
 	github.com/prometheus/client_golang v1.16.0
