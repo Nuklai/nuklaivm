@@ -59,15 +59,15 @@ func (u *UndelegateUserStake) Execute(
 ) ([][]byte, error) {
 	nodeID, err := ids.ToNodeID(u.NodeID)
 	if err != nil {
-		return nil, ErrInvalidNodeID
+		return nil, ErrOutputInvalidNodeID
 	}
 
 	exists, _, stakeEndBlock, stakedAmount, _, ownerAddress, _ := storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
 	if !exists {
-		return nil, ErrStakeMissing
+		return nil, ErrOutputStakeMissing
 	}
 	if ownerAddress != actor {
-		return nil, ErrUnauthorized
+		return nil, ErrOutputUnauthorized
 	}
 
 	// Get the emission instance
@@ -75,7 +75,7 @@ func (u *UndelegateUserStake) Execute(
 
 	// Check that lastBlockHeight is after stakeEndBlock
 	if emissionInstance.GetLastAcceptedBlockHeight() < stakeEndBlock {
-		return nil, ErrStakeNotEnded
+		return nil, ErrOutputStakeNotEnded
 	}
 
 	// Undelegate in Emission Balancer

@@ -54,31 +54,31 @@ func (s *DelegateUserStake) Execute(
 ) ([][]byte, error) {
 	nodeID, err := ids.ToNodeID(s.NodeID)
 	if err != nil {
-		return nil, ErrInvalidNodeID
+		return nil, ErrOutputInvalidNodeID
 	}
 
 	// Check if the validator the user is trying to delegate to is registered for staking
 	exists, _, _, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
 	if !exists {
-		return nil, ErrValidatorNotYetRegistered
+		return nil, ErrOutputValidatorNotYetRegistered
 	}
 
 	// Check if the user has already delegated to this validator node before
 	exists, _, _, _, _, _, _ = storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
 	if exists {
-		return nil, ErrUserAlreadyStaked
+		return nil, ErrOutputUserAlreadyStaked
 	}
 
 	stakingConfig := emission.GetStakingConfig()
 
 	// Check if the staked amount is a valid amount
 	if s.StakedAmount < stakingConfig.MinDelegatorStake {
-		return nil, ErrDelegateStakedAmountInvalid
+		return nil, ErrOutputDelegateStakedAmountInvalid
 	}
 
 	// Check if stakeEndBlock is greater than stakeStartBlock
 	if s.StakeEndBlock <= s.StakeStartBlock {
-		return nil, ErrInvalidStakeEndBlock
+		return nil, ErrOutputInvalidStakeEndBlock
 	}
 
 	// Get the emission instance
@@ -86,7 +86,7 @@ func (s *DelegateUserStake) Execute(
 
 	// Check if stakeStartBlock is smaller than the current block height
 	if s.StakeStartBlock < emissionInstance.GetLastAcceptedBlockHeight() {
-		return nil, ErrInvalidStakeStartBlock
+		return nil, ErrOutputInvalidStakeStartBlock
 	}
 
 	// Delegate in Emission Balancer

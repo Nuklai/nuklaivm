@@ -60,7 +60,7 @@ func (r *RegisterValidatorStake) Execute(
 	// Check whether the actor is the same as the one who signed the message
 	actorAddress := codec.MustAddressBech32(nconsts.HRP, actor)
 	if actorAddress != codec.MustAddressBech32(nconsts.HRP, signer) {
-		return nil, ErrDifferentSignerThanActor
+		return nil, ErrOutputDifferentSignerThanActor
 	}
 
 	// Check if the tx actor has signing permission for this NodeID
@@ -84,7 +84,7 @@ func (r *RegisterValidatorStake) Execute(
 		}
 	}
 	if !isValidatorOwner {
-		return nil, ErrUnauthorized
+		return nil, ErrOutputUnauthorized
 	}
 
 	// Unmarshal the stake info
@@ -95,20 +95,20 @@ func (r *RegisterValidatorStake) Execute(
 	// Check if it's a valid nodeID
 	nodeID, err := ids.ToNodeID(stakeInfo.NodeID)
 	if err != nil {
-		return nil, ErrInvalidNodeID
+		return nil, ErrOutputInvalidNodeID
 	}
 
 	// Check if the validator was already registered
 	exists, _, _, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
 	if exists {
-		return nil, ErrValidatorAlreadyRegistered
+		return nil, ErrOutputValidatorAlreadyRegistered
 	}
 
 	stakingConfig := emission.GetStakingConfig()
 
 	// Check if the staked amount is a valid amount
 	if stakeInfo.StakedAmount < stakingConfig.MinValidatorStake || stakeInfo.StakedAmount > stakingConfig.MaxValidatorStake {
-		return nil, ErrValidatorStakedAmountInvalid
+		return nil, ErrOutputValidatorStakedAmountInvalid
 	}
 
 	// Get last accepted block height
@@ -116,22 +116,22 @@ func (r *RegisterValidatorStake) Execute(
 
 	// Check that stakeStartBlock is after lastBlockHeight
 	if stakeInfo.StakeStartBlock < lastBlockHeight {
-		return nil, ErrInvalidStakeStartBlock
+		return nil, ErrOutputInvalidStakeStartBlock
 	}
 	// Check that stakeEndBlock is after stakeStartBlock
 	if stakeInfo.StakeEndBlock < stakeInfo.StakeStartBlock {
-		return nil, ErrInvalidStakeEndBlock
+		return nil, ErrOutputInvalidStakeEndBlock
 	}
 
 	// Check that the total staking period is at least the minimum staking period
 	stakeDuration := stakeInfo.StakeEndBlock - stakeInfo.StakeStartBlock
 	if stakeDuration < stakingConfig.MinValidatorStakeDuration || stakeDuration > stakingConfig.MaxValidatorStakeDuration {
-		return nil, ErrInvalidStakeDuration
+		return nil, ErrOutputInvalidStakeDuration
 	}
 
 	// Check if the delegation fee rate is valid
 	if stakeInfo.DelegationFeeRate < stakingConfig.MinDelegationFee || stakeInfo.DelegationFeeRate > 100 {
-		return nil, ErrInvalidDelegationFeeRate
+		return nil, ErrOutputInvalidDelegationFeeRate
 	}
 
 	// Register in Emission Balancer

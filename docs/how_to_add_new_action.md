@@ -2,7 +2,7 @@
 
 ![How actions are executed](./how_actions_are_executed.png)
 
-Let's go through the process of adding a new action to a hypervm by implementing a "unstake_validator" action. We need to add functionality to both the core vm code and also include it as part of RPC API so external users can interact with the VM easily.
+Let's go through the process of adding a new action to a hypervm by implementing a "Withdraw Validator Stake" action. We need to add functionality to both the core vm code and also include it as part of RPC API so external users can interact with the VM easily.
 
 ## HyperVM
 
@@ -13,37 +13,27 @@ Since we are going to define our action as part of the VM itself, we need to mak
 Register the new action to our registry
 
 ```go
-consts.ActionRegistry.Register((&actions.UnstakeValidator{}).GetTypeID(), actions.UnmarshalUnstakeValidator, false),
+  consts.ActionRegistry.Register((&actions.UndelegateUserStake{}).GetTypeID(), actions.UnmarshalUndelegateUserStake, false),
 ```
 
-### 2. actions/unstake_validator.go
+### 2. actions/undelegate_user_stake.go
 
-- Create a new file called "unstake_validator.go". Here, we need to define some functions that complies with the Action interface defined at [https://github.com/ava-labs/hypersdk/blob/main/chain/dependencies.go#L171C1-L171C1](https://github.com/ava-labs/hypersdk/blob/main/chain/dependencies.go#L171C1-L171C1)
+- Create a new file called `undelegate_user_stake.go`. Here, we need to define some functions that complies with the Action interface defined at [https://github.com/ava-labs/hypersdk/blob/main/chain/dependencies.go#L206](https://github.com/ava-labs/hypersdk/blob/main/chain/dependencies.go#L206)
 
 - We need to define the following functions:
 
 ```go
 type Action interface {
- // GetTypeID uniquely identifies each supported [Action]. We use IDs to avoid
- // reflection.
- GetTypeID() uint8
+ Object
 
- // ValidRange is the timestamp range (in ms) that this [Action] is considered valid.
- //
- // -1 means no start/end
- ValidRange(Rules) (start int64, end int64)
+ // ComputeUnits is the amount of compute required to call [Execute]. This is used to determine
+ // whether the [Action] can be included in a given block and to compute the required fee to execute.
+ ComputeUnits(Rules) uint64
 
- // MaxComputeUnits is the maximum amount of compute a given [Action] could use. This is
- // used to determine whether the [Action] can be included in a given block and to compute
- // the required fee to execute.
- //
- // Developers should make every effort to bound this as tightly to the actual max so that
- // users don't need to have a large balance to call an [Action] (must prepay fee before execution).
- MaxComputeUnits(Rules) uint64
-
- // OutputsWarpMessage indicates whether an [Action] will produce a warp message. The max size
- // of any warp message is [MaxOutgoingWarpChunks].
- OutputsWarpMessage() bool
+ // StateKeysMaxChunks is used to estimate the fee a transaction should pay. It includes the max
+ // chunks each state key could use without requiring the state keys to actually be provided (may
+ // not be known until execution).
+ StateKeysMaxChunks() []uint16
 
  // StateKeys is a full enumeration of all database keys that could be touched during execution
  // of an [Action]. This is used to prefetch state and will be used to parallelize execution (making
@@ -53,12 +43,7 @@ type Action interface {
  // key (formatted as a big-endian uint16). This is used to automatically calculate storage usage.
  //
  // If any key is removed and then re-created, this will count as a creation instead of a modification.
- StateKeys(auth Auth, txID ids.ID) []string
-
- // StateKeysMaxChunks is used to estimate the fee a transaction should pay. It includes the max
- // chunks each state key could use without requiring the state keys to actually be provided (may
- // not be known until execution).
- StateKeysMaxChunks() []uint16
+ StateKeys(actor codec.Address, actionID ids.ID) state.Keys
 
  // Execute actually runs the [Action]. Any state changes that the [Action] performs should
  // be done here.
@@ -66,28 +51,19 @@ type Action interface {
  // If any keys are touched during [Execute] that are not specified in [StateKeys], the transaction
  // will revert and the max fee will be charged.
  //
- // An error should only be returned if a fatal error was encountered, otherwise [success] should
- // be marked as false and fees will still be charged.
+ // If [Execute] returns an error, execution will halt and any state changes will revert.
  Execute(
   ctx context.Context,
   r Rules,
   mu state.Mutable,
   timestamp int64,
-  auth Auth,
-  txID ids.ID,
-  warpVerified bool,
- ) (success bool, computeUnits uint64, output []byte, warpMessage *warp.UnsignedMessage, err error)
-
- // Marshal encodes an [Action] as bytes.
- Marshal(p *codec.Packer)
-
- // Size is the number of bytes it takes to represent this [Action]. This is used to preallocate
- // memory during encoding and to charge bandwidth fees.
- Size() int
+  actor codec.Address,
+  actionID ids.ID,
+ ) (outputs [][]byte, err error)
 }
 ```
 
-- Our actions/unstake_validator.go now looks like this:
+- Our actions/undelegate_user_stake.go now looks like this:
 
 ```go
 // Copyright (C) 2024, AllianceBlock. All rights reserved.
@@ -96,123 +72,175 @@ type Action interface {
 package actions
 
 import (
- "bytes"
  "context"
 
  "github.com/ava-labs/avalanchego/ids"
- "github.com/ava-labs/avalanchego/vms/platformvm/warp"
  "github.com/ava-labs/hypersdk/chain"
  "github.com/ava-labs/hypersdk/codec"
  "github.com/ava-labs/hypersdk/consts"
  "github.com/ava-labs/hypersdk/state"
- "github.com/ava-labs/hypersdk/utils"
- "github.com/nuklai/nuklaivm/storage"
 
- mconsts "github.com/nuklai/nuklaivm/consts"
+ nconsts "github.com/nuklai/nuklaivm/consts"
+ "github.com/nuklai/nuklaivm/emission"
+ "github.com/nuklai/nuklaivm/storage"
 )
 
-var _ chain.Action = (*UnstakeValidator)(nil)
+var _ chain.Action = (*UndelegateUserStake)(nil)
 
-type UnstakeValidator struct {
- Stake  ids.ID `json:"stake"`
- NodeID []byte `json:"nodeID"`
+type UndelegateUserStake struct {
+ NodeID        []byte        `json:"nodeID"`        // Node ID of the validator where NAI is staked
+ RewardAddress codec.Address `json:"rewardAddress"` // Address to receive rewards
+
+ // TODO: add boolean to indicate whether sender will
+ // create recipient account
 }
 
-func (*UnstakeValidator) GetTypeID() uint8 {
- return mconsts.UnstakeValidatorID
+func (*UndelegateUserStake) GetTypeID() uint8 {
+ return nconsts.UndelegateUserStakeID
 }
 
-func (u *UnstakeValidator) StateKeys(auth chain.Auth, _ ids.ID) []string {
- return []string{
-  string(storage.BalanceKey(auth.Actor())),
-  string(storage.StakeKey(u.Stake)),
+func (u *UndelegateUserStake) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+ // TODO: How to better handle a case where the NodeID is invalid?
+ nodeID, _ := ids.ToNodeID(u.NodeID)
+ return state.Keys{
+  string(storage.BalanceKey(actor, ids.Empty)):           state.Read | state.Write,
+  string(storage.BalanceKey(u.RewardAddress, ids.Empty)): state.All,
+  string(storage.DelegateUserStakeKey(actor, nodeID)):    state.Read | state.Write,
  }
 }
 
-func (*UnstakeValidator) StateKeysMaxChunks() []uint16 {
- return []uint16{storage.BalanceChunks, storage.StakeChunks}
+func (*UndelegateUserStake) StateKeysMaxChunks() []uint16 {
+ return []uint16{storage.BalanceChunks, storage.DelegateUserStakeChunks}
 }
 
-func (*UnstakeValidator) OutputsWarpMessage() bool {
+func (*UndelegateUserStake) OutputsWarpMessage() bool {
  return false
 }
 
-func (u *UnstakeValidator) Execute(
+func (u *UndelegateUserStake) Execute(
  ctx context.Context,
  _ chain.Rules,
  mu state.Mutable,
  _ int64,
- auth chain.Auth,
+ actor codec.Address,
  _ ids.ID,
- _ bool,
-) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
- exists, nodeIDStaked, _, _, owner, err := storage.GetStake(ctx, mu, u.Stake)
+) ([][]byte, error) {
+ nodeID, err := ids.ToNodeID(u.NodeID)
  if err != nil {
-  return false, UnstakeValidatorComputeUnits, utils.ErrBytes(err), nil, nil
+  return nil, ErrOutputInvalidNodeID
  }
+
+ exists, _, stakeEndBlock, stakedAmount, _, ownerAddress, _ := storage.GetDelegateUserStake(ctx, mu, actor, nodeID)
  if !exists {
-  return false, UnstakeValidatorComputeUnits, OutputStakeMissing, nil, nil
+  return nil, ErrOutputStakeMissing
  }
- if owner != auth.Actor() {
-  return false, UnstakeValidatorComputeUnits, OutputUnauthorized, nil, nil
+ if ownerAddress != actor {
+  return nil, ErrOutputUnauthorized
  }
- if !bytes.Equal(nodeIDStaked.Bytes(), u.NodeID) {
-  return false, UnstakeValidatorComputeUnits, OutputDifferentNodeIDThanStaked, nil, nil
+
+ // Get the emission instance
+ emissionInstance := emission.GetEmission()
+
+ // Check that lastBlockHeight is after stakeEndBlock
+ if emissionInstance.GetLastAcceptedBlockHeight() < stakeEndBlock {
+  return nil, ErrOutputStakeNotEnded
  }
- return true, UnstakeValidatorComputeUnits, nil, nil, nil
+
+ // Undelegate in Emission Balancer
+ rewardAmount, err := emissionInstance.UndelegateUserStake(nodeID, actor)
+ if err != nil {
+  return nil, err
+ }
+ if err := storage.AddBalance(ctx, mu, u.RewardAddress, ids.Empty, rewardAmount, true); err != nil {
+  return nil, err
+ }
+
+ if err := storage.DeleteDelegateUserStake(ctx, mu, ownerAddress, nodeID); err != nil {
+  return nil, err
+ }
+ if err := storage.AddBalance(ctx, mu, ownerAddress, ids.Empty, stakedAmount, true); err != nil {
+  return nil, err
+ }
+
+ sr := &UndelegateUserStakeResult{stakedAmount, rewardAmount}
+ output, err := sr.Marshal()
+ if err != nil {
+  return nil, err
+ }
+ return [][]byte{output}, nil
 }
 
-func (*UnstakeValidator) MaxComputeUnits(chain.Rules) uint64 {
- return UnstakeValidatorComputeUnits
+func (*UndelegateUserStake) ComputeUnits(chain.Rules) uint64 {
+ return UndelegateUserStakeComputeUnits
 }
 
-func (*UnstakeValidator) Size() int {
- return consts.IDLen
+func (*UndelegateUserStake) Size() int {
+ return ids.NodeIDLen + codec.AddressLen
 }
 
-func (u *UnstakeValidator) Marshal(p *codec.Packer) {
- p.PackID(u.Stake)
+func (u *UndelegateUserStake) Marshal(p *codec.Packer) {
  p.PackBytes(u.NodeID)
+ p.PackAddress(u.RewardAddress)
 }
 
-func UnmarshalUnstakeValidator(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
- var unstake UnstakeValidator
- p.UnpackID(true, &unstake.Stake)
- p.UnpackBytes(consts.NodeIDLen, false, &unstake.NodeID)
+func UnmarshalUndelegateUserStake(p *codec.Packer) (chain.Action, error) {
+ var unstake UndelegateUserStake
+ p.UnpackBytes(ids.NodeIDLen, true, &unstake.NodeID)
+ p.UnpackAddress(&unstake.RewardAddress)
  return &unstake, p.Err()
 }
 
-func (*UnstakeValidator) ValidRange(chain.Rules) (int64, int64) {
+func (*UndelegateUserStake) ValidRange(chain.Rules) (int64, int64) {
  // Returning -1, -1 means that the action is always valid.
  return -1, -1
+}
+
+type UndelegateUserStakeResult struct {
+ StakedAmount uint64
+ RewardAmount uint64
+}
+
+func UnmarshalUndelegateUserStakeResult(b []byte) (*UndelegateUserStakeResult, error) {
+ p := codec.NewReader(b, 2*consts.Uint64Len)
+ var result UndelegateUserStakeResult
+ result.StakedAmount = p.UnpackUint64(true)
+ result.RewardAmount = p.UnpackUint64(false)
+ return &result, p.Err()
+}
+
+func (s *UndelegateUserStakeResult) Marshal() ([]byte, error) {
+ p := codec.NewWriter(2*consts.Uint64Len, 2*consts.Uint64Len)
+ p.PackUint64(s.StakedAmount)
+ p.PackUint64(s.RewardAmount)
+ return p.Bytes(), p.Err()
 }
 ```
 
 ### 3. consts/types.go
 
-We need to add a new ID for this new action which we are referencing on actions/unstake_validator.go. We can define this ID on consts/types.go:
+We need to add a new ID for this new action which we are referencing on actions/undelegate_user_stake.go. We can define this ID on consts/types.go:
 
 ```go
-UnstakeValidatorID uint8 = 2
+UndelegateUserStakeID        uint8 = 11
 ```
 
 ### 4. actions/consts.go
 
-We need to add a new variable called "UnstakeValidatorComputeUnits" that we referenced on actions/unstake_validator.go that defines the compute units it's going to cost the user to perform this action. We can define this on actions/consts.go:
+We need to add a new variable called "UnstakeValidatorComputeUnits" that we referenced on actions/undelegate_user_stake.go that defines the compute units it's going to cost the user to perform this action. We can define this on actions/consts.go:
 
 ```go
-UnstakeValidatorComputeUnits = 5
+UndelegateUserStakeComputeUnits    = 1
 ```
 
 ### 5. actions/outputs.go
 
-We also need to add some error definitions which were referenced on actions/unstake_validator.go. We can define these on actions/outputs.go:
+We also need to add some error definitions which were referenced on actions/undelegate_user_stake.go. We can define these on actions/outputs.go:
 
 ```go
- OutputStakeMissing              = []byte("stake is missing")
- OutputUnauthorized              = []byte("unauthorized")
- OutputInvalidNodeID             = []byte("invalid node ID")
- OutputDifferentNodeIDThanStaked = []byte("node ID is different than staked")
+ErrOutputInvalidNodeID = errors.New("invalid node ID")
+ErrOutputStakeMissing  = errors.New("stake is missing")
+ErrOutputUnauthorized       = errors.New("unauthorized")
+ErrOutputStakeNotEnded = errors.New("stake not ended")
 ```
 
 ### 6. controller/controller.go
@@ -224,31 +252,20 @@ Let's make sure to handle additional logic needed for our unstake validator acti
 Under `Accepted` function right after tx is successful, let's call `UnstakeFromValidator` from our Emission Balancer so it calculates the staked amount from the validator accordingly.
 
 ```go
-      case *actions.UnstakeValidator:
-    c.metrics.unstake.Inc()
-    // Check to make sure the unstake is valid
-    _, _, stakedAmount, endLockUp, owner, _ := storage.GetStake(ctx, mu, action.Stake)
-    if currentHeight > endLockUp {
-     if err := c.emission.UnstakeFromValidator(owner, action); err != nil {
-      c.inner.Logger().Error("failed to unstake from validator", zap.Error(err))
-      // We exit early if it's an error that must never happen
-      // Otherwise, we move on because while the stake may be  removed from Emission Balancer,
-      // it may not have been removed from the blockchain state yet
-      if err == emission.ErrInvalidNodeID {
-       break
+    case *actions.UndelegateUserStake:
+     c.metrics.claimStakingRewards.Inc()
+     c.metrics.undelegateUserStake.Inc()
+     outputs := result.Outputs[i]
+     for _, output := range outputs {
+      stakeResult, err := actions.UnmarshalUndelegateUserStakeResult(output)
+      if err != nil {
+       // This should never happen
+       return err
       }
+      c.metrics.delegatorStakeAmount.Sub(float64(stakeResult.StakedAmount))
+      c.metrics.mintedNAI.Add(float64(stakeResult.RewardAmount))
+      c.metrics.rewardAmount.Add(float64(stakeResult.RewardAmount))
      }
-     // We exit early if the stake cannot be deleted from the state
-     if err := storage.DeleteStake(ctx, mu, action.Stake); err != nil {
-      c.inner.Logger().Error("failed to delete stake from blockchain state", zap.Error(err))
-      break
-     }
-     // We exit early if the staked amount cannot be added to the user balance
-     if err := storage.AddBalance(ctx, mu, owner, stakedAmount, true); err != nil {
-      c.inner.Logger().Error("failed to add the staked amount to the user balance", zap.Error(err))
-      break
-     }
-    }
 ```
 
 ### 7. controller/metrics.go
@@ -265,16 +282,16 @@ type metrics struct {
 func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
   m := &metrics{
     ...
-  unstake: prometheus.NewCounter(prometheus.CounterOpts{
+  undelegateUserStake: prometheus.NewCounter(prometheus.CounterOpts{
    Namespace: "actions",
-   Name:      "unstake",
-   Help:      "number of unstake actions",
+   Name:      "undelegate_user_stake",
+   Help:      "number of undelegate user stake actions",
   }),
  }
  ...
  errs.Add(
   ...
-  r.Register(m.unstake),
+  r.Register(m.undelegateUserStake),
     ...
  )
  ...
@@ -286,40 +303,54 @@ func newMetrics(gatherer ametrics.MultiGatherer) (*metrics, error) {
 We now need to define a new function called `UnstakeFromValidator` that will unstake the NAI tokens from the given validator
 
 ```go
-func (e *Emission) UnstakeFromValidator(actor codec.Address, action *actions.UnstakeValidator) error {
+// UndelegateUserStake decreases the delegated stake for a validator and rebalances the heap.
+func (e *Emission) UndelegateUserStake(nodeID ids.NodeID, actor codec.Address) (uint64, error) {
  e.lock.Lock()
  defer e.lock.Unlock()
 
- nodeID, err := ids.ToNodeID(action.NodeID)
+ e.c.Logger().Info("undelegating user stake",
+  zap.String("nodeID", nodeID.String()))
+
+ // Find the validator
+ validator, exists := e.validators[nodeID]
+ if !exists {
+  return 0, ErrValidatorNotFound
+ }
+
+ // Check if the delegator exists
+ _, exists = validator.delegators[actor]
+ if !exists {
+  e.c.Logger().Error("delegator not found")
+  return 0, ErrDelegatorNotFound
+ }
+
+ // Calculate rewards while undelegating
+ rewardAmount, err := e.CalculateUserDelegationRewards(nodeID, actor)
  if err != nil {
-  return ErrInvalidNodeID // Invalid NodeID
+  e.c.Logger().Error("error calculating rewards", zap.Error(err))
+  return 0, err
+ }
+ // Ensure AccumulatedDelegatedReward does not become negative
+ if rewardAmount > validator.AccumulatedDelegatedReward {
+  rewardAmount = validator.AccumulatedDelegatedReward
+ }
+ validator.AccumulatedDelegatedReward -= rewardAmount
+
+ // Remove the delegator from the list
+ delete(validator.delegators, actor)
+
+ // If the validator is inactive and has withdrawn and has no more delegators, remove the validator
+ if !validator.IsActive && validator.StakedAmount == 0 && len(validator.delegators) == 0 {
+  e.c.Logger().Info("removing validator",
+   zap.String("nodeID", nodeID.String()))
+  delete(e.validators, nodeID)
  }
 
- stakeOwner := codec.MustAddressBech32(consts.HRP, actor)
- validator, ok := e.validators[nodeID]
- if !ok {
-  return ErrNotAValidator // Not a validator
- }
- userStake, ok := validator.UserStake[stakeOwner]
- if !ok {
-  return ErrUserNotStaked // User is not staked
- }
- stakeInfo, ok := userStake.StakeInfo[action.Stake]
- if !ok {
-  return ErrStakeNotFound // Stake not found
- }
+ e.c.Logger().Info("undelegated user stake",
+  zap.String("nodeID", nodeID.String()),
+  zap.Uint64("rewardAmount", rewardAmount))
 
- // Reduce the staked amount from the userstake
- userStake.StakedAmount -= stakeInfo.Amount
- // Reduce the staked amount from the validator
- validator.StakedAmount -= stakeInfo.Amount
- // Remove the stake info
- delete(userStake.StakeInfo, action.Stake)
- // Remove the user stake if there are no more stakes
- if len(userStake.StakeInfo) == 0 {
-  delete(validator.UserStake, stakeOwner)
- }
- return nil
+ return rewardAmount, nil
 }
 ```
 
@@ -328,13 +359,13 @@ func (e *Emission) UnstakeFromValidator(actor codec.Address, action *actions.Uns
 We need to add some error definitions which were referenced on emission/emission.go. We can define these on emission/errors.go:
 
 ```go
- ErrNotAValidatorOwner       = errors.New("not a validator owner")
- ErrUserNotStaked            = errors.New("user not staked")
+ ErrValidatorNotFound          = errors.New("validator not found")
+ ErrDelegatorNotFound          = errors.New("delegator not found")
 ```
 
 ## RPC API
 
-We technically do not need to define any logic for our RPC API if all we want is for users to call this action we defined above however, if you want to add additional helper functions, we can define them easily via RPC API. An example could be if you wanted to define an RPC API to get the current user stake of the user or maybe you want to add an API to let validator owners to claim their rewards.
+We technically do not need to define any logic for our RPC API if all we want is for users to call this action we defined above however, if you want to add additional helper functions, we can define them easily via RPC API. An example could be if you wanted to define an RPC API to get the currently staked validators info such as the total amount staked, delegated amount, etc. and also to check out the stake of a delegator.
 
 ### 1. rpc/dependencies.go
 
@@ -343,7 +374,16 @@ Let's define the function definitions we want exposed to external users via our 
 ```go
 type Controller interface {
   ...
-  GetUserStake(nodeID ids.NodeID, owner string) (*emission.UserStake, error)
+  GetStakedValidatorInfo(nodeID ids.NodeID) (*emission.Validator, error)
+  GetDelegatedUserStakeFromState(ctx context.Context, owner codec.Address, nodeID ids.NodeID) (
+  bool, // exists
+  uint64, // StakeStartBlock
+  uint64, // StakeEndBlock
+  uint64, // StakedAmount
+  codec.Address, // RewardAddress
+  codec.Address, // OwnerAddress
+  error,
+ )
   ...
 }
 ```
@@ -353,8 +393,20 @@ type Controller interface {
 Now, it's time to implement the functions we defined on rpc/dependencies.go.
 
 ```go
-func (c *Controller) GetUserStake(nodeID ids.NodeID, owner string) (*emission.UserStake, error) {
- return c.emission.GetUserStake(nodeID, owner), nil
+func (c *Controller) GetStakedValidatorInfo(nodeID ids.NodeID) (*emission.Validator, error) {
+ validators := c.emission.GetStakedValidator(nodeID)
+ return validators[0], nil
+}
+func (c *Controller) GetDelegatedUserStakeFromState(ctx context.Context, owner codec.Address, nodeID ids.NodeID) (
+ bool, // exists
+ uint64, // StakeStartBlock
+ uint64, // StakeEndBlock
+ uint64, // StakedAmount
+ codec.Address, // RewardAddress
+ codec.Address, // OwnerAddress
+ error,
+) {
+ return storage.GetDelegateUserStakeFromState(ctx, c.inner.ReadState, owner, nodeID)
 }
 ```
 
@@ -363,20 +415,23 @@ func (c *Controller) GetUserStake(nodeID ids.NodeID, owner string) (*emission.Us
 Let's implement the function `GetUserStake` on our Emission Balancer.
 
 ```go
-func (e *Emission) GetUserStake(nodeID ids.NodeID, owner string) *UserStake {
- e.lock.RLock()
- defer e.lock.RUnlock()
+// GetStakedValidator retrieves the details of a specific validator by their NodeID.
+func (e *Emission) GetStakedValidator(nodeID ids.NodeID) []*Validator {
+ e.c.Logger().Info("fetching staked validator")
 
- validator, ok := e.validators[nodeID]
- if !ok {
-  return &UserStake{}
+ if nodeID == ids.EmptyNodeID {
+  validators := make([]*Validator, 0, len(e.validators))
+  for _, validator := range e.validators {
+   validators = append(validators, validator)
+  }
+  return validators
  }
 
- userStake, ok := validator.UserStake[owner]
- if !ok {
-  return &UserStake{}
+ // Find the validator
+ if validator, exists := e.validators[nodeID]; exists {
+  return []*Validator{validator}
  }
- return userStake
+ return []*Validator{}
 }
 ```
 
@@ -385,21 +440,35 @@ func (e *Emission) GetUserStake(nodeID ids.NodeID, owner string) *UserStake {
 We need to define a new function on our RPC Client so users can call this API via external tools like curl, POSTMAN, or third party applications. We can do this on rpc/jsonrpc_client.go:
 
 ```go
-func (cli *JSONRPCClient) UserStakeInfo(ctx context.Context, nodeID ids.NodeID, owner string) (*emission.UserStake, error) {
- resp := new(StakeReply)
+func (cli *JSONRPCClient) StakedValidators(ctx context.Context) ([]*emission.Validator, error) {
+ resp := new(ValidatorsReply)
  err := cli.requester.SendRequest(
   ctx,
-  "userStakeInfo",
-  &StakeArgs{
-   NodeID: nodeID,
+  "stakedValidators",
+  nil,
+  resp,
+ )
+ if err != nil {
+  return []*emission.Validator{}, err
+ }
+ return resp.Validators, err
+}
+
+func (cli *JSONRPCClient) UserStake(ctx context.Context, owner codec.Address, nodeID ids.NodeID) (uint64, uint64, uint64, codec.Address, codec.Address, error) {
+ resp := new(UserStakeReply)
+ err := cli.requester.SendRequest(
+  ctx,
+  "userStake",
+  &UserStakeArgs{
    Owner:  owner,
+   NodeID: nodeID,
   },
   resp,
  )
  if err != nil {
-  return &emission.UserStake{}, err
+  return 0, 0, 0, codec.EmptyAddress, codec.EmptyAddress, err
  }
- return resp.UserStake, err
+ return resp.StakeStartBlock, resp.StakeEndBlock, resp.StakedAmount, resp.RewardAddress, resp.OwnerAddress, err
 }
 ```
 
@@ -408,15 +477,52 @@ func (cli *JSONRPCClient) UserStakeInfo(ctx context.Context, nodeID ids.NodeID, 
 We need to also define a corresponding function on our RPC server so whenever users interact with the API from their client, it talks to this server function which in turn calls the function defined in controller/resolutions.go. We can do this on rpc/jsonrpc_server.go:
 
 ```go
-func (j *JSONRPCServer) UserStakeInfo(req *http.Request, args *StakeArgs, reply *StakeReply) (err error) {
- _, span := j.c.Tracer().Start(req.Context(), "Server.UserStakeInfo")
+type ValidatorsReply struct {
+ Validators []*emission.Validator `json:"validators"`
+}
+
+func (j *JSONRPCServer) StakedValidators(req *http.Request, _ *struct{}, reply *ValidatorsReply) (err error) {
+ ctx, span := j.c.Tracer().Start(req.Context(), "Server.StakedValidators")
  defer span.End()
 
- userStake, err := j.c.GetUserStake(args.NodeID, args.Owner)
+ validators, err := j.c.GetValidators(ctx, true)
  if err != nil {
   return err
  }
- reply.UserStake = userStake
+ reply.Validators = validators
+ return nil
+}
+
+type UserStakeArgs struct {
+ Owner  codec.Address `json:"owner"`
+ NodeID ids.NodeID    `json:"nodeID"`
+}
+
+type UserStakeReply struct {
+ StakeStartBlock uint64        `json:"stakeStartBlock"` // Start block of the stake
+ StakeEndBlock   uint64        `json:"stakeEndBlock"`   // End block of the stake
+ StakedAmount    uint64        `json:"stakedAmount"`    // Amount of NAI staked
+ RewardAddress   codec.Address `json:"rewardAddress"`   // Address to receive rewards
+ OwnerAddress    codec.Address `json:"ownerAddress"`    // Address of the owner who delegated
+}
+
+func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply *UserStakeReply) (err error) {
+ ctx, span := j.c.Tracer().Start(req.Context(), "Server.UserStake")
+ defer span.End()
+
+ exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, ownerAddress, err := j.c.GetDelegatedUserStakeFromState(ctx, args.Owner, args.NodeID)
+ if err != nil {
+  return err
+ }
+ if !exists {
+  return ErrUserStakeNotFound
+ }
+
+ reply.StakeStartBlock = stakeStartBlock
+ reply.StakeEndBlock = stakeEndBlock
+ reply.StakedAmount = stakedAmount
+ reply.RewardAddress = rewardAddress
+ reply.OwnerAddress = ownerAddress
  return nil
 }
 ```
@@ -430,33 +536,32 @@ In order to easily test the capability of our new action and our new RPC API, we
 Let's define a new command to let users unstake their NAI tokens from the validator they have staked to in the past.
 
 ```go
-var unstakeValidatorCmd = &cobra.Command{
- Use: "unstake-validator",
+var undelegateUserStakeCmd = &cobra.Command{
+ Use: "undelegate-user-stake",
  RunE: func(*cobra.Command, []string) error {
   ctx := context.Background()
-  _, priv, factory, cli, bcli, ws, err := handler.DefaultActor()
+  _, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
   if err != nil {
    return err
   }
 
   // Get current list of validators
-  validators, err := bcli.Validators(ctx)
+  validators, err := ncli.StakedValidators(ctx)
   if err != nil {
    return err
   }
   if len(validators) == 0 {
-   utils.Outf("{{red}}no validators{{/}}\n")
+   hutils.Outf("{{red}}no validators{{/}}\n")
    return nil
   }
 
   // Show validators to the user
-  utils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
+  hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
   for i := 0; i < len(validators); i++ {
-   utils.Outf(
-    "{{yellow}}%d:{{/}} NodeID=%s NodePublicKey=%s\n",
+   hutils.Outf(
+    "{{yellow}}%d:{{/}} NodeID=%s\n",
     i,
     validators[i].NodeID,
-    validators[i].NodePublicKey,
    )
   }
   // Select validator
@@ -468,55 +573,15 @@ var unstakeValidatorCmd = &cobra.Command{
   nodeID := validatorChosen.NodeID
 
   // Get stake info
-  owner, err := codec.AddressBech32(consts.HRP, priv.Address)
-  if err != nil {
-   return err
-  }
-  stake, err := bcli.UserStakeInfo(ctx, nodeID, owner)
+  _, _, stakedAmount, _, _, err := ncli.UserStake(ctx, priv.Address, nodeID)
   if err != nil {
    return err
   }
 
-  if len(stake.StakeInfo) == 0 {
-   utils.Outf("{{red}}user is not staked to this validator{{/}}\n")
+  if stakedAmount == 0 {
+   hutils.Outf("{{red}}user has not yet delegated to this validator{{/}}\n")
    return nil
   }
-  // Get current height
-  _, currentHeight, _, err := cli.Accepted(ctx)
-  if err != nil {
-   return err
-  }
-  // Make sure to iterate over the stake info map in the same order every time
-  keys := make([]ids.ID, 0, len(stake.StakeInfo))
-  for k := range stake.StakeInfo {
-   keys = append(keys, k)
-  }
-  // Sorting based on string representation
-  sort.Slice(keys, func(i, j int) bool {
-   return keys[i].String() < keys[j].String()
-  })
-
-  // Show stake info to the user
-  utils.Outf("{{cyan}}stake info:{{/}}\n")
-  for index, txID := range keys {
-   stakeInfo := stake.StakeInfo[txID]
-   utils.Outf(
-    "{{yellow}}%d:{{/}} TxID=%s StakedAmount=%d StartLockUpHeight=%d CurrentHeight=%d\n",
-    index,
-    txID.String(),
-    stakeInfo.Amount,
-    stakeInfo.StartLockUp,
-    currentHeight,
-   )
-  }
-
-  // Select the stake Id to unstake
-  stakeIndex, err := handler.Root().PromptChoice("stake ID to unstake", len(stake.StakeInfo))
-  if err != nil {
-   return err
-  }
-  stakeChosen := stake.StakeInfo[keys[stakeIndex]]
-  stakeID := stakeChosen.TxID
 
   // Confirm action
   cont, err := handler.Root().PromptContinue()
@@ -525,10 +590,10 @@ var unstakeValidatorCmd = &cobra.Command{
   }
 
   // Generate transaction
-  _, _, err = sendAndWait(ctx, nil, &actions.UnstakeValidator{
-   Stake:  stakeID,
-   NodeID: nodeID.Bytes(),
-  }, cli, bcli, ws, factory, true)
+  _, err = sendAndWait(ctx, []chain.Action{&actions.UndelegateUserStake{
+   NodeID:        nodeID.Bytes(),
+   RewardAddress: priv.Address,
+  }}, hcli, hws, ncli, factory, true)
   return err
  },
 }
@@ -539,51 +604,20 @@ var unstakeValidatorCmd = &cobra.Command{
 Let's now define a new command to let users easily check their current stake on a chosen validator. We can do this on cmd/nuklai-cli/cmd/emission.go:
 
 ```go
-var emissionStakeCmd = &cobra.Command{
- Use: "user-stake-info",
+var emissionStakedValidatorsCmd = &cobra.Command{
+ Use: "staked-validators",
  RunE: func(_ *cobra.Command, args []string) error {
   ctx := context.Background()
 
   // Get clients
-  clients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
+  nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
   if err != nil {
    return err
   }
+  ncli := nclients[0]
 
-  // Get current list of validators
-  validators, err := clients[0].Validators(ctx)
-  if err != nil {
-   return err
-  }
-  if len(validators) == 0 {
-   utils.Outf("{{red}}no validators{{/}}\n")
-   return nil
-  }
-
-  utils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
-  for i := 0; i < len(validators); i++ {
-   utils.Outf(
-    "{{yellow}}%d:{{/}} NodeID=%s NodePublicKey=%s\n",
-    i,
-    validators[i].NodeID,
-    validators[i].NodePublicKey,
-   )
-  }
-  // Select validator
-  keyIndex, err := handler.Root().PromptChoice("choose validator whom you have staked to", len(validators))
-  if err != nil {
-   return err
-  }
-  validatorChosen := validators[keyIndex]
-
-  // Get the address to look up
-  stakeOwner, err := handler.Root().PromptAddress("address to get staking info for")
-  if err != nil {
-   return err
-  }
-
-  // Get user stake info
-  _, err = handler.GetUserStake(ctx, clients[0], validatorChosen.NodeID, stakeOwner)
+  // Get validators info
+  _, err = handler.GetStakedValidators(ctx, ncli)
   if err != nil {
    return err
   }
@@ -600,12 +634,12 @@ We need to add these two new commands to root.go so it's available when users in
 ```go
 actionCmd.AddCommand(
   ...
-  unstakeValidatorCmd,
+  undelegateUserStakeCmd,
  )
 ...
 emissionCmd.AddCommand(
   ...
-  emissionStakeCmd,
+  emissionStakedValidatorsCmd,
  )
 ```
 
@@ -614,40 +648,65 @@ emissionCmd.AddCommand(
 There is nothing left to do for our unstake validator action however, for the RPC API to get user stake, we need to define this function on handler.go so any other functions can call this function if need be. This is not needed but this is good practice so that multiple functions can reuse the same function.
 
 ```go
-func (*Handler) GetUserStake(ctx context.Context,
- cli *brpc.JSONRPCClient, nodeID ids.NodeID, owner codec.Address,
-) (*emission.UserStake, error) {
- saddr, err := codec.AddressBech32(consts.HRP, owner)
+func (*Handler) GetStakedValidators(
+ ctx context.Context,
+ cli *nrpc.JSONRPCClient,
+) ([]*emission.Validator, error) {
+ validators, err := cli.StakedValidators(ctx)
  if err != nil {
   return nil, err
  }
- userStake, err := cli.UserStakeInfo(ctx, nodeID, saddr)
- if err != nil {
-  return nil, err
- }
-
- if userStake.Owner == "" {
-  utils.Outf("{{yellow}}user stake: {{/}} Not staked yet\n")
- } else {
-  utils.Outf(
-   "{{yellow}}user stake: {{/}} Owner=%s StakedAmount=%d\n",
-   userStake.Owner,
-   userStake.StakedAmount,
-  )
- }
-
- index := 1
- for txID, stakeInfo := range userStake.StakeInfo {
-  utils.Outf(
-   "{{yellow}}stake #%d:{{/}} TxID=%s Amount=%d StartLockUp=%d\n",
+ for index, validator := range validators {
+  publicKey, err := bls.PublicKeyFromBytes(validator.PublicKey)
+  if err != nil {
+   return nil, err
+  }
+  hutils.Outf(
+   "{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s Active=%t StakedAmount=%d AccumulatedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d AccumulatedDelegatedReward=%d\n",
    index,
-   txID,
-   stakeInfo.Amount,
-   stakeInfo.StartLockUp,
+   validator.NodeID,
+   base64.StdEncoding.EncodeToString(publicKey.Compress()),
+   validator.IsActive,
+   validator.StakedAmount,
+   validator.AccumulatedStakedReward,
+   validator.DelegationFeeRate,
+   validator.DelegatedAmount,
+   validator.AccumulatedDelegatedReward,
   )
-  index++
  }
- return userStake, err
+ return validators, nil
+}
+
+func (*Handler) GetUserStake(ctx context.Context,
+ cli *nrpc.JSONRPCClient, owner codec.Address, nodeID ids.NodeID,
+) (uint64, uint64, uint64, string, string, error) {
+ stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, ownerAddress, err := cli.UserStake(ctx, owner, nodeID)
+ if err != nil {
+  return 0, 0, 0, "", "", err
+ }
+
+ rewardAddressString, err := codec.AddressBech32(nconsts.HRP, rewardAddress)
+ if err != nil {
+  return 0, 0, 0, "", "", err
+ }
+ ownerAddressString, err := codec.AddressBech32(nconsts.HRP, ownerAddress)
+ if err != nil {
+  return 0, 0, 0, "", "", err
+ }
+
+ hutils.Outf(
+  "{{yellow}}user stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
+  stakeStartBlock,
+  stakeEndBlock,
+  stakedAmount,
+  rewardAddressString,
+  ownerAddressString,
+ )
+ return stakeStartBlock,
+  stakeEndBlock,
+  stakedAmount,
+  rewardAddressString,
+  ownerAddressString, err
 }
 ```
 
@@ -720,27 +779,19 @@ created._
 We can stake to a validator of our choice
 
 ```bash
-./build/nuklai-cli action stake-validator
+./build/nuklai-cli action delegate-user-stake [auto | manual]
 ```
 
-If successful, the output should be:
+If successful, the output should be something like:
 
 ```
-database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: GgbXLiBzd8j98CkrcEfsf13sbCTfwonTVMuFKgVVu4GpDNwJF
-validators: 5
-0: NodeID=NodeID-wGVvYo7jBvtmnfUTaay2vcL8j8GJyokb NodePublicKey=rnp1CCGFvbni4bjFRFCJo7b3SxdnBIJ8qzOPPbB6HPR8VK8hvHaO37lZGNLJs30S
-1: NodeID=NodeID-NuCwBadeuYbzntFJgBAS8Ut9pwo52XrT6 NodePublicKey=syBPqN0eU9nCBJDyFOVynneq/nia8lM0apG/DpboYtc7CJdm0hXlKGNZF5fwyjWp
-2: NodeID=NodeID-3yxghtfwRdYcG69FjoxZrwjUkSXJAGhY9 NodePublicKey=kvFhrcEVW5Ooann3NaqqE2nANL/XS86AnCUFgrdyBQa2z+xAlCFcwuPHPDnvHyZp
-3: NodeID=NodeID-6dvn9WTA4i7qG2pT3GKUXP46xa2SVY7Po NodePublicKey=oXMYzibvB7gHaGVAKVEB5z0+IFEPcWb0TxjrIz26p3eVjmaHkmKK41S64HDg8paD
-4: NodeID=NodeID-423bGHFH5exxQfuNiRFUqxDquWD9svj6E NodePublicKey=rC9RaeHAUs4mSMw4YoAKBQaWecfrkLHEgKSq/JnfU2EnTXHjYuZu94aDQSTh1M7b
-validator to stake to: 3
-balance: 852999899.999972820 NAI
-✔ Staked amount: 100█
-End LockUp Height: 70
+validators: 2
+0: NodeID=NodeID-9aaVYT33M2GPAws7eSjHor5c3zLhkngy9
+1: NodeID=NodeID-JV548bkici8bBx1SzvSCUKZdgP3RY3iXs
+validator to delegate to: 0
+balance: 1000000.000000000 NAI
 ✔ continue (y/n): y█
-✅ txID: EYnnHR9jtJvfAAE9UE5tkV9BDvajBhZ25YqJUD82LrRsJrZTo
+✅ txID: 2RosZKQY3K74Q9i1yJfm6DdvMPMsSbZCLFke9v2oFQEEBFAMT5
 ```
 
 ### 5. Get user staking info
@@ -748,82 +799,35 @@ End LockUp Height: 70
 We can retrieve our staking info by passing in which validator we have staked to and the address to look up staking for using the new RPC API we defined as part of this exercise.
 
 ```bash
-./build/nuklai-cli emission user-stake-info
+./build/nuklai-cli action get-user-stake
 ```
 
-If successful, the output should be:
+If successful, the output should be something like:
 
 ```
-database: .nuklai-cli
-chainID: GgbXLiBzd8j98CkrcEfsf13sbCTfwonTVMuFKgVVu4GpDNwJF
-validators: 5
-0: NodeID=NodeID-NuCwBadeuYbzntFJgBAS8Ut9pwo52XrT6 NodePublicKey=syBPqN0eU9nCBJDyFOVynneq/nia8lM0apG/DpboYtc7CJdm0hXlKGNZF5fwyjWp
-1: NodeID=NodeID-3yxghtfwRdYcG69FjoxZrwjUkSXJAGhY9 NodePublicKey=kvFhrcEVW5Ooann3NaqqE2nANL/XS86AnCUFgrdyBQa2z+xAlCFcwuPHPDnvHyZp
-2: NodeID=NodeID-6dvn9WTA4i7qG2pT3GKUXP46xa2SVY7Po NodePublicKey=oXMYzibvB7gHaGVAKVEB5z0+IFEPcWb0TxjrIz26p3eVjmaHkmKK41S64HDg8paD
-3: NodeID=NodeID-423bGHFH5exxQfuNiRFUqxDquWD9svj6E NodePublicKey=rC9RaeHAUs4mSMw4YoAKBQaWecfrkLHEgKSq/JnfU2EnTXHjYuZu94aDQSTh1M7b
-4: NodeID=NodeID-wGVvYo7jBvtmnfUTaay2vcL8j8GJyokb NodePublicKey=rnp1CCGFvbni4bjFRFCJo7b3SxdnBIJ8qzOPPbB6HPR8VK8hvHaO37lZGNLJs30S
-✔ choose validator whom you have staked to: 2█
-address to get staking info for: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-user stake:  Owner=nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx StakedAmount=100000000000
-stake #1: TxID=EYnnHR9jtJvfAAE9UE5tkV9BDvajBhZ25YqJUD82LrRsJrZTo Amount=100000000000 StartLockUp=53
+validators: 2
+0: NodeID=NodeID-9aaVYT33M2GPAws7eSjHor5c3zLhkngy9
+1: NodeID=NodeID-JV548bkici8bBx1SzvSCUKZdgP3RY3iXs
+validator to get staking info for: 0
+validator stake:
+StakeStartBlock=100 StakedAmount=100000000000000 RewardAddress=nuklai1qgtvmjhh5xkjh5tf993s05fptc2l0mzn6j8yw72pmrqpa947xsp5scqsrma OwnerAddress=nuklai1qgtvmjhh5xkjh5tf993s05fptc2l0mzn6j8yw72pmrqpa947xsp5scqsrma
 ```
 
 ### 6. Unstake from a validator
 
-Let's first check the balance on our account:
-
-```bash
-./build/nuklai-cli key balance
-```
-
-Which should produce a result like:
-
-```
-database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: GgbXLiBzd8j98CkrcEfsf13sbCTfwonTVMuFKgVVu4GpDNwJF
-uri: http://127.0.0.1:41743/ext/bc/GgbXLiBzd8j98CkrcEfsf13sbCTfwonTVMuFKgVVu4GpDNwJF
-balance: 852999799.999945203 NAI
-```
-
 We can unstake specific stake from a chosen validator.
 
 ```bash
-./build/nuklai-cli action unstake-validator
+./build/nuklai-cli action undelegate-user-stake
 ```
 
-Which produces result:
+If successful, the output should be something like:
 
 ```
-database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: GgbXLiBzd8j98CkrcEfsf13sbCTfwonTVMuFKgVVu4GpDNwJF
-validators: 5
-0: NodeID=NodeID-wGVvYo7jBvtmnfUTaay2vcL8j8GJyokb NodePublicKey=rnp1CCGFvbni4bjFRFCJo7b3SxdnBIJ8qzOPPbB6HPR8VK8hvHaO37lZGNLJs30S
-1: NodeID=NodeID-NuCwBadeuYbzntFJgBAS8Ut9pwo52XrT6 NodePublicKey=syBPqN0eU9nCBJDyFOVynneq/nia8lM0apG/DpboYtc7CJdm0hXlKGNZF5fwyjWp
-2: NodeID=NodeID-3yxghtfwRdYcG69FjoxZrwjUkSXJAGhY9 NodePublicKey=kvFhrcEVW5Ooann3NaqqE2nANL/XS86AnCUFgrdyBQa2z+xAlCFcwuPHPDnvHyZp
-3: NodeID=NodeID-6dvn9WTA4i7qG2pT3GKUXP46xa2SVY7Po NodePublicKey=oXMYzibvB7gHaGVAKVEB5z0+IFEPcWb0TxjrIz26p3eVjmaHkmKK41S64HDg8paD
-4: NodeID=NodeID-423bGHFH5exxQfuNiRFUqxDquWD9svj6E NodePublicKey=rC9RaeHAUs4mSMw4YoAKBQaWecfrkLHEgKSq/JnfU2EnTXHjYuZu94aDQSTh1M7b
-validator to unstake from: 3
-stake info:
-0: TxID=EYnnHR9jtJvfAAE9UE5tkV9BDvajBhZ25YqJUD82LrRsJrZTo StakedAmount=100000000000 StartLockUpHeight=53 CurrentHeight=200
-stake ID to unstake: 0 [auto-selected]
+validators: 2
+0: NodeID=NodeID-JV548bkici8bBx1SzvSCUKZdgP3RY3iXs
+1: NodeID=NodeID-9aaVYT33M2GPAws7eSjHor5c3zLhkngy9
+✔ validator to unstake from: 1█
 continue (y/n): y
-✅ txID: 2eSkTRQa4KqHDXidoeoQ8XSsjeSbga3x5B52hetwhGw68enbHt
-```
-
-Now, if we check the balance again, we should have our 100 NAI back to our account:
-
-```bash
-./build/nuklai-cli key balance
-```
-
-Which should produce a result like:
-
-```
-database: .nuklai-cli
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: GgbXLiBzd8j98CkrcEfsf13sbCTfwonTVMuFKgVVu4GpDNwJF
-uri: http://127.0.0.1:41743/ext/bc/GgbXLiBzd8j98CkrcEfsf13sbCTfwonTVMuFKgVVu4GpDNwJF
-balance: 852999899.999896407 NAI
+✅ txID: bTFRsFwyMJT4sESishFHeAihL9SnBFvirrSExp95eJTFVLyLz
 ```

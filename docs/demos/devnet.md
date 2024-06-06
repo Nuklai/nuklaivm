@@ -2,7 +2,7 @@
 
 _In the world of Avalanche, we refer to short-lived, test-focused Subnets as devnets._
 
-Using [avalanche-ops](https://github.com/ava-labs/avalanche-ops), we can create a private devnet (running on a
+Using [avalanche-cli](https://github.com/ava-labs/avalanche-cli), we can create a private devnet (running on a
 custom Primary Network with traffic scoped to the deployer IP) across any number of regions and nodes
 in ~30 minutes with a single script.
 
@@ -40,11 +40,3 @@ Once all dependencies are installed, we can create our devnet using a single scr
 
 _When devnet creation is complete, this script will emit commands that can be used to interact
 with the devnet (i.e. tx load test) and to tear it down._
-
-#### Configuration Options
-
-- `--arch-type`: `avalanche-ops` supports deployment to both `amd64` and `arm64` architectures
-- `--anchor-nodes`/`--non-anchor-nodes`: `anchor-nodes` + `non-anchor-nodes` is the number of validators that will be on the Subnet, split equally between `--regions` (`anchor-nodes` serve as bootstrappers on the custom Primary Network, whereas `non-anchor-nodes` are just validators)
-- `--regions`: `avalanche-ops` will automatically deploy validators across these regions
-- `--instance-types`: `avalanche-ops` allows instance types to be configured by region (make sure it is compatible with `arch-type`)
-- `--upload-artifacts-avalanchego-local-bin`: `avalanche-ops` allows a custom AvalancheGo binary to be provided for validators to run

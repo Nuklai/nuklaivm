@@ -11,7 +11,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/crypto/bls"
-	"github.com/ava-labs/hypersdk/utils"
 	"go.uber.org/zap"
 )
 
@@ -295,13 +294,11 @@ func (e *Emission) DelegateUserStake(nodeID ids.NodeID, delegatorAddress codec.A
 	e.c.Logger().Info("delegating user stake")
 
 	validator, exists := e.validators[nodeID]
-	utils.Outf("=============DelegateUserStake - validator exists: ", exists)
 	if !exists {
 		return ErrValidatorNotFound
 	}
 
 	_, exists = validator.delegators[delegatorAddress]
-	utils.Outf("=============DelegateUserStake - delegator exists: ", exists)
 	if exists {
 		return ErrDelegatorAlreadyStaked
 	}
@@ -382,15 +379,8 @@ func (e *Emission) UndelegateUserStake(nodeID ids.NodeID, actor codec.Address) (
 	}
 	validator.AccumulatedDelegatedReward -= rewardAmount
 
-	e.c.Logger().Info("removing delegator from validator",
-		zap.String("nodeID", nodeID.String()))
-
 	// Remove the delegator from the list
 	delete(validator.delegators, actor)
-
-	e.c.Logger().Info("checking validator status",
-		zap.String("nodeID", nodeID.String()),
-		zap.Int("remainingDelegators", len(validator.delegators)))
 
 	// If the validator is inactive and has withdrawn and has no more delegators, remove the validator
 	if !validator.IsActive && validator.StakedAmount == 0 && len(validator.delegators) == 0 {

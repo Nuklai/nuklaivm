@@ -54,15 +54,15 @@ func (c *ClaimDelegationStakeRewards) Execute(
 ) ([][]byte, error) {
 	nodeID, err := ids.ToNodeID(c.NodeID)
 	if err != nil {
-		return nil, ErrInvalidNodeID
+		return nil, ErrOutputInvalidNodeID
 	}
 
 	exists, stakeStartBlock, _, _, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, mu, c.UserStakeAddress, nodeID)
 	if !exists {
-		return nil, ErrStakeMissing
+		return nil, ErrOutputStakeMissing
 	}
 	if rewardAddress != actor {
-		return nil, ErrUnauthorized
+		return nil, ErrOutputUnauthorized
 	}
 
 	// Get the emission instance
@@ -70,7 +70,7 @@ func (c *ClaimDelegationStakeRewards) Execute(
 
 	// Check that lastBlockHeight is after stakeStartBlock
 	if emissionInstance.GetLastAcceptedBlockHeight() < stakeStartBlock {
-		return nil, ErrStakeNotEnded
+		return nil, ErrOutputStakeNotEnded
 	}
 
 	// Claim rewards in Emission Balancer

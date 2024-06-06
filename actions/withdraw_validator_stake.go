@@ -56,16 +56,16 @@ func (u *WithdrawValidatorStake) Execute(
 	// Check if it's a valid nodeID
 	nodeID, err := ids.ToNodeID(u.NodeID)
 	if err != nil {
-		return nil, ErrInvalidNodeID
+		return nil, ErrOutputInvalidNodeID
 	}
 
 	// Check if the validator was already registered
 	exists, _, stakeEndBlock, stakedAmount, _, _, ownerAddress, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
 	if !exists {
-		return nil, ErrNotValidator
+		return nil, ErrOutputNotValidator
 	}
 	if ownerAddress != actor {
-		return nil, ErrUnauthorized
+		return nil, ErrOutputUnauthorized
 	}
 
 	// Get the emission instance
@@ -75,7 +75,7 @@ func (u *WithdrawValidatorStake) Execute(
 	lastBlockHeight := emissionInstance.GetLastAcceptedBlockHeight()
 	// Check that lastBlockTime is after stakeStartBlock
 	if lastBlockHeight < stakeEndBlock {
-		return nil, ErrStakeNotStarted
+		return nil, ErrOutputStakeNotStarted
 	}
 
 	// Withdraw in Emission Balancer

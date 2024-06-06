@@ -50,16 +50,16 @@ func (c *ClaimValidatorStakeRewards) Execute(
 ) ([][]byte, error) {
 	nodeID, err := ids.ToNodeID(c.NodeID)
 	if err != nil {
-		return nil, ErrInvalidNodeID
+		return nil, ErrOutputInvalidNodeID
 	}
 
 	// Check whether a validator is trying to claim its reward
 	exists, _, stakeEndBlock, _, _, rewardAddress, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
 	if !exists {
-		return nil, ErrStakeMissing
+		return nil, ErrOutputStakeMissing
 	}
 	if rewardAddress != actor {
-		return nil, ErrUnauthorized
+		return nil, ErrOutputUnauthorized
 	}
 
 	// Get the emission instance
@@ -67,7 +67,7 @@ func (c *ClaimValidatorStakeRewards) Execute(
 
 	// Check that lastBlockHeight is after stakeEndBlock
 	if emissionInstance.GetLastAcceptedBlockHeight() < stakeEndBlock {
-		return nil, ErrStakeNotEnded
+		return nil, ErrOutputStakeNotEnded
 	}
 
 	// Claim rewards in Emission Balancer

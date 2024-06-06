@@ -3,7 +3,7 @@ module github.com/nuklai/nuklaivm
 go 1.21.10
 
 require (
-	github.com/ava-labs/avalanche-network-runner v1.8.0
+	github.com/ava-labs/avalanche-network-runner v1.7.4-rc.0
 	github.com/ava-labs/avalanchego v1.11.6
 	github.com/ava-labs/hypersdk v0.0.17-0.20240604174603-2f5aad459975
 	github.com/btcsuite/btcd/btcutil v1.1.3

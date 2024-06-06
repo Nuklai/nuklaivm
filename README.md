@@ -17,13 +17,10 @@ audited.
 
 ### Actions
 
-- ☑ Transfer both the native asset `NAI` and any other token created by users within the same subnet
-- ☑ Transfer both the native asset `NAI` and any other token created by users to another subnet using Avalanche Warp Messaging(AWM)
+- ☑ Transfer both the native asset `NAI` and any other token created by users
 - ☑ Create a token
 - ☑ Mint a token
 - ☑ Burn a token
-- ☑ Export both the native asset `NAI` and any other user tokens to another subnet that is also a `nuklaivm`
-- ☑ Import both the native asset `NAI` and any other user tokens from another subnet that is also a `nuklaivm`
 - ☑ Register validator for staking
 - ☑ Unregister validator from staking
 - ☑ Delegate NAI to any currently staked validator
@@ -60,42 +57,6 @@ storage format makes it possible to parallelize the execution of any transfers
 that don't touch the same accounts. This parallelism will take effect as soon
 as it is re-added upstream by the `hypersdk` (no action required in the
 `nuklaivm`).
-
-#### Avalanche Warp Support
-
-We take advantage of the Avalanche Warp Messaging (AWM) support provided by the
-`hypersdk` to enable any `nuklaivm` to send assets to any other `nuklaivm` without
-relying on a trusted relayer or bridge (just the validators of the `nuklaivm`
-sending the message).
-
-By default, a `nuklaivm` will accept a message from another `nuklaivm` if 80% of
-the stake weight of the source has signed it. Because each imported asset is
-given a unique `AssetID` (hash of `sourceChainID + sourceAssetID`), it is not
-possible for a malicious/rogue Subnet to corrupt token balances imported from
-other Subnets with this default import setting. `nuklaivms` also track the
-amount of assets exported to all other `nuklaivms` and ensure that more assets
-can't be brought back from a `nuklaivm` than were exported to it (prevents
-infinite minting).
-
-To limit "contagion" in the case of a `nuklaivm` failure, we ONLY allow the
-export of natively minted assets to another `nuklaivm`. This means you can
-transfer an asset between two `nuklaivms` A and B but you can't export from
-`nuklaivm` A to `nuklaivm` B to `nuklaivm` C. This ensures that the import policy
-for an external `nuklaivm` is always transparent and is never inherited
-implicitly by the transfers between other `nuklaivms`. The ability to impose
-this restriction (without massively driving up the cost of each transfer) is
-possible because AWM does not impose an additional overhead per Subnet
-connection (no "per connection" state to maintain). This means it is just as
-cheap/scalable to communicate with every other `nuklaivm` as it is to only
-communicate with one.
-
-Lastly, the `nuklaivm` allows users to both tip relayers (whoever sends
-a transaction that imports their message) and to swap for another asset when
-their message is imported (so they can acquire fee-paying tokens right when
-they arrive).
-
-You can see how this works by checking out the [E2E test suite](./tests/e2e/e2e_test.go)
-that runs through these flows.
 
 #### Emission Balancer and Staking Mechanism
 
@@ -423,3 +384,10 @@ docker-compose -f trace/zipkin.yml down
 Refer to [Creating Devnet Demo](./docs/demos/devnet.md) to learn how to create a private devnet (running on a
 custom Primary Network with traffic scoped to the deployer IP) across any number of regions and nodes
 in ~30 minutes with a single script.
+
+/home/ubuntu/avalanche-node/avalanchego --config-file=/home/ubuntu/.avalanchego/configs/node.json
+ubuntu@ip-172-31-39-145:~$ ps -p 10411 -o cmd
+CMD
+/home/ubuntu/.avalanchego/plugins/Nke3kc2vJZWmoVv3hewi3NYUCHa42wTvFuaX4j1sgNp8WCRX4
+
+34.243.81.202
