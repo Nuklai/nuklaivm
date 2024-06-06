@@ -420,8 +420,8 @@ var registerValidatorStakeCmd = &cobra.Command{
 			return err
 		}
 
-		stakeStartBlock := currentBlockHeight + 20 // roughly 1 minute from now
-		stakeEndBlock := stakeStartBlock + 20*2    // roughly 10 minutes from stakeStartBlock
+		stakeStartBlock := currentBlockHeight + 15 // roughly 30 seconds from now
+		stakeEndBlock := stakeStartBlock + 30*5    // roughly 5 minutes from now
 		delegationFeeRate := 50
 		rewardAddress := priv.Address
 
@@ -747,8 +747,9 @@ var delegateUserStakeCmd = &cobra.Command{
 			return err
 		}
 
-		stakeStartBlock := currentBlockHeight + 20 // roughly 1 minute from now
-		stakeEndBlock := stakeStartBlock + 20*2    // roughly 10 minutes from stakeStartBlock
+		stakeStartBlock := currentBlockHeight + 15 // roughly 30 seconds from now
+		stakeEndBlock := stakeStartBlock + 30*5    // roughly 5 minutes
+
 		rewardAddress := priv.Address
 
 		if !autoRegister {

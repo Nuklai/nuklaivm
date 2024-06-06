@@ -51,7 +51,8 @@ func (c *Controller) GetBalanceFromState(
 }
 
 func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, uint64, uint64, emission.EmissionAccount, emission.EpochTracker, error) {
-	return c.emission.GetLastAcceptedBlockHeight(), c.emission.TotalSupply, c.emission.MaxSupply, c.emission.TotalStaked, c.emission.GetRewardsPerEpoch(), c.emission.EmissionAccount, c.emission.EpochTracker, nil
+	emissionAccount, totalSupply, maxSupply, totalStaked, epochTracker := c.emission.GetInfo()
+	return c.emission.GetLastAcceptedBlockHeight(), totalSupply, maxSupply, totalStaked, c.emission.GetRewardsPerEpoch(), emissionAccount, epochTracker, nil
 }
 
 func (c *Controller) GetValidators(ctx context.Context, staked bool) ([]*emission.Validator, error) {

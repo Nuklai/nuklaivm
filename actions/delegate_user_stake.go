@@ -58,7 +58,7 @@ func (s *DelegateUserStake) Execute(
 	}
 
 	// Check if the validator the user is trying to delegate to is registered for staking
-	exists, _, _, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
+	exists, stakeStartBlock, stakeEndBlock, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
 	if !exists {
 		return nil, ErrOutputValidatorNotYetRegistered
 	}
@@ -76,8 +76,8 @@ func (s *DelegateUserStake) Execute(
 		return nil, ErrOutputDelegateStakedAmountInvalid
 	}
 
-	// Check if stakeEndBlock is greater than stakeStartBlock
-	if s.StakeEndBlock <= s.StakeStartBlock {
+	// Check if stakeStartBlock is greater than stakeEndBlock
+	if s.StakeStartBlock >= s.StakeEndBlock {
 		return nil, ErrOutputInvalidStakeEndBlock
 	}
 
@@ -85,8 +85,18 @@ func (s *DelegateUserStake) Execute(
 	emissionInstance := emission.GetEmission()
 
 	// Check if stakeStartBlock is smaller than the current block height
-	if s.StakeStartBlock < emissionInstance.GetLastAcceptedBlockHeight() {
+	if s.StakeStartBlock < emissionInstance.GetLastAcceptedBlockHeight() || s.StakeStartBlock >= stakeEndBlock {
 		return nil, ErrOutputInvalidStakeStartBlock
+	}
+
+	// Check if the delegator stakeStartBlock is smaller than the validator stakeStartBlock and if so, set the delegator stakeStartBlock to the validator stakeStartBlock
+	if s.StakeStartBlock < stakeStartBlock {
+		s.StakeStartBlock = stakeStartBlock
+	}
+
+	// Check if the delegator stakeEndBlock is greater than the validator stakeEndBlock
+	if s.StakeEndBlock > stakeEndBlock {
+		s.StakeEndBlock = stakeEndBlock
 	}
 
 	// Delegate in Emission Balancer
