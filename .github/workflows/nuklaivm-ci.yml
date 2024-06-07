@@ -41,7 +41,7 @@ jobs:
       - name: Run static analysis tests
         shell: bash
         run: scripts/tests.lint.sh
-      - name: Build vm, cli, faucet, feed
+      - name: Build vm and cli
         shell: bash
         run: scripts/build.sh
 
@@ -62,16 +62,6 @@ jobs:
       - name: Run integration tests
         shell: bash
         run: scripts/tests.integration.sh
-      # - name: Archive code coverage results (text)
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: code-coverage-out
-      #     path: ./integration.coverage.out
-      # - name: Archive code coverage results (html)
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: code-coverage-html
-      #     path: ./integration.coverage.html
       - name: Run e2e tests
         shell: bash
         run: scripts/run.sh
@@ -85,27 +75,8 @@ jobs:
       - name: Finished NuklaiVM tests
         run: echo "Finished NuklaiVM tests"
 
-  nuklaivm-load-tests:
-    needs: [nuklaivm-unit-tests]
-    strategy:
-      matrix:
-        level: [v1, v2, v3] # v4 is not supported
-    runs-on: ubuntu-20.04-32
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Go
-        uses: ./.github/actions/install-go
-        with:
-          cache-dependency-path: |
-            go.sum
-      - name: Run load tests
-        shell: bash
-        run: GOAMD64=${{ matrix.level }} scripts/tests.load.sh
-
   nuklaivm-sync-tests:
-    needs: [nuklaivm-unit-tests]
+    needs: [nuklaivm-lint, nuklaivm-unit-tests]
     runs-on: ubuntu-20.04-32
     timeout-minutes: 25
     steps:
@@ -123,7 +94,7 @@ jobs:
           MODE: 'full-test'
 
   nuklaivm-release:
-    needs: [nuklaivm-load-tests, nuklaivm-sync-tests]
+    needs: [nuklaivm-sync-tests]
     # We build with 20.04 to maintain max compatibility: https://github.com/golang/go/issues/57328
     runs-on: ubuntu-20.04-32
     steps:

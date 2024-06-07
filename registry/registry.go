@@ -5,7 +5,6 @@ package registry
 
 import (
 	"github.com/ava-labs/avalanchego/utils/wrappers"
-	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 
@@ -16,8 +15,8 @@ import (
 
 // Setup types
 func init() {
-	nconsts.ActionRegistry = codec.NewTypeParser[chain.Action, *warp.Message]()
-	nconsts.AuthRegistry = codec.NewTypeParser[chain.Auth, *warp.Message]()
+	nconsts.ActionRegistry = codec.NewTypeParser[chain.Action]()
+	nconsts.AuthRegistry = codec.NewTypeParser[chain.Auth]()
 
 	errs := &wrappers.Errs{}
 	errs.Add(
@@ -27,8 +26,6 @@ func init() {
 		nconsts.ActionRegistry.Register((&actions.CreateAsset{}).GetTypeID(), actions.UnmarshalCreateAsset, false),
 		nconsts.ActionRegistry.Register((&actions.MintAsset{}).GetTypeID(), actions.UnmarshalMintAsset, false),
 		nconsts.ActionRegistry.Register((&actions.BurnAsset{}).GetTypeID(), actions.UnmarshalBurnAsset, false),
-		nconsts.ActionRegistry.Register((&actions.ImportAsset{}).GetTypeID(), actions.UnmarshalImportAsset, true),
-		nconsts.ActionRegistry.Register((&actions.ExportAsset{}).GetTypeID(), actions.UnmarshalExportAsset, false),
 
 		nconsts.ActionRegistry.Register((&actions.RegisterValidatorStake{}).GetTypeID(), actions.UnmarshalRegisterValidatorStake, false),
 		nconsts.ActionRegistry.Register((&actions.ClaimValidatorStakeRewards{}).GetTypeID(), actions.UnmarshalClaimValidatorStakeRewards, false),

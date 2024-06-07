@@ -9,8 +9,8 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/trace"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
+	"github.com/ava-labs/hypersdk/fees"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/storage"
@@ -31,14 +31,14 @@ func (c *Controller) Tracer() trace.Tracer {
 func (c *Controller) GetTransaction(
 	ctx context.Context,
 	txID ids.ID,
-) (bool, int64, bool, chain.Dimensions, uint64, error) {
+) (bool, int64, bool, fees.Dimensions, uint64, error) {
 	return storage.GetTransaction(ctx, c.metaDB, txID)
 }
 
 func (c *Controller) GetAssetFromState(
 	ctx context.Context,
 	asset ids.ID,
-) (bool, []byte, uint8, []byte, uint64, codec.Address, bool, error) {
+) (bool, []byte, uint8, []byte, uint64, codec.Address, error) {
 	return storage.GetAssetFromState(ctx, c.inner.ReadState, asset)
 }
 
@@ -50,16 +50,9 @@ func (c *Controller) GetBalanceFromState(
 	return storage.GetBalanceFromState(ctx, c.inner.ReadState, addr, asset)
 }
 
-func (c *Controller) GetLoanFromState(
-	ctx context.Context,
-	asset ids.ID,
-	destination ids.ID,
-) (uint64, error) {
-	return storage.GetLoanFromState(ctx, c.inner.ReadState, asset, destination)
-}
-
 func (c *Controller) GetEmissionInfo() (uint64, uint64, uint64, uint64, uint64, emission.EmissionAccount, emission.EpochTracker, error) {
-	return c.emission.GetLastAcceptedBlockHeight(), c.emission.TotalSupply, c.emission.MaxSupply, c.emission.TotalStaked, c.emission.GetRewardsPerEpoch(), c.emission.EmissionAccount, c.emission.EpochTracker, nil
+	emissionAccount, totalSupply, maxSupply, totalStaked, epochTracker := c.emission.GetInfo()
+	return c.emission.GetLastAcceptedBlockHeight(), totalSupply, maxSupply, totalStaked, c.emission.GetRewardsPerEpoch(), emissionAccount, epochTracker, nil
 }
 
 func (c *Controller) GetValidators(ctx context.Context, staked bool) ([]*emission.Validator, error) {

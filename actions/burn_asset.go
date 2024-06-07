@@ -7,14 +7,12 @@ import (
 	"context"
 
 	"github.com/ava-labs/avalanchego/ids"
-	hmath "github.com/ava-labs/avalanchego/utils/math"
-	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
+	smath "github.com/ava-labs/avalanchego/utils/math"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	hconsts "github.com/ava-labs/hypersdk/consts"
+	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
-	"github.com/ava-labs/hypersdk/utils"
 	"github.com/nuklai/nuklaivm/storage"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
@@ -34,19 +32,15 @@ func (*BurnAsset) GetTypeID() uint8 {
 	return nconsts.BurnAssetID
 }
 
-func (b *BurnAsset) StateKeys(actor codec.Address, _ ids.ID) []string {
-	return []string{
-		string(storage.AssetKey(b.Asset)),
-		string(storage.BalanceKey(actor, b.Asset)),
+func (b *BurnAsset) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+	return state.Keys{
+		string(storage.AssetKey(b.Asset)):          state.Read | state.Write,
+		string(storage.BalanceKey(actor, b.Asset)): state.Read | state.Write,
 	}
 }
 
 func (*BurnAsset) StateKeysMaxChunks() []uint16 {
 	return []uint16{storage.AssetChunks, storage.BalanceChunks}
-}
-
-func (*BurnAsset) OutputsWarpMessage() bool {
-	return false
 }
 
 func (b *BurnAsset) Execute(
@@ -56,37 +50,36 @@ func (b *BurnAsset) Execute(
 	_ int64,
 	actor codec.Address,
 	_ ids.ID,
-	_ bool,
-) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
+) ([][]byte, error) {
 	if b.Value == 0 {
-		return false, BurnAssetComputeUnits, OutputValueZero, nil, nil
+		return nil, ErrOutputValueZero
 	}
 	if err := storage.SubBalance(ctx, mu, actor, b.Asset, b.Value); err != nil {
-		return false, BurnAssetComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
-	exists, symbol, decimals, metadata, supply, owner, warp, err := storage.GetAsset(ctx, mu, b.Asset)
+	exists, symbol, decimals, metadata, supply, owner, err := storage.GetAsset(ctx, mu, b.Asset)
 	if err != nil {
-		return false, BurnAssetComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
 	if !exists {
-		return false, BurnAssetComputeUnits, OutputAssetMissing, nil, nil
+		return nil, ErrOutputAssetMissing
 	}
-	newSupply, err := hmath.Sub(supply, b.Value)
+	newSupply, err := smath.Sub(supply, b.Value)
 	if err != nil {
-		return false, BurnAssetComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
-	if err := storage.SetAsset(ctx, mu, b.Asset, symbol, decimals, metadata, newSupply, owner, warp); err != nil {
-		return false, BurnAssetComputeUnits, utils.ErrBytes(err), nil, nil
+	if err := storage.SetAsset(ctx, mu, b.Asset, symbol, decimals, metadata, newSupply, owner); err != nil {
+		return nil, err
 	}
-	return true, BurnAssetComputeUnits, nil, nil, nil
+	return nil, nil
 }
 
-func (*BurnAsset) MaxComputeUnits(chain.Rules) uint64 {
+func (*BurnAsset) ComputeUnits(chain.Rules) uint64 {
 	return BurnAssetComputeUnits
 }
 
 func (*BurnAsset) Size() int {
-	return hconsts.IDLen + hconsts.Uint64Len
+	return ids.IDLen + consts.Uint64Len
 }
 
 func (b *BurnAsset) Marshal(p *codec.Packer) {
@@ -94,7 +87,7 @@ func (b *BurnAsset) Marshal(p *codec.Packer) {
 	p.PackUint64(b.Value)
 }
 
-func UnmarshalBurnAsset(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
+func UnmarshalBurnAsset(p *codec.Packer) (chain.Action, error) {
 	var burn BurnAsset
 	p.UnpackID(false, &burn.Asset) // can burn native asset
 	burn.Value = p.UnpackUint64(true)

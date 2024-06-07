@@ -7,12 +7,10 @@ import (
 	"context"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	hconsts "github.com/ava-labs/hypersdk/consts"
+	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
-	"github.com/ava-labs/hypersdk/utils"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
@@ -29,21 +27,17 @@ func (*ClaimValidatorStakeRewards) GetTypeID() uint8 {
 	return nconsts.ClaimValidatorStakeRewardsID
 }
 
-func (c *ClaimValidatorStakeRewards) StateKeys(actor codec.Address, _ ids.ID) []string {
+func (c *ClaimValidatorStakeRewards) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
 	// TODO: How to better handle a case where the NodeID is invalid?
 	nodeID, _ := ids.ToNodeID(c.NodeID)
-	return []string{
-		string(storage.BalanceKey(actor, ids.Empty)),
-		string(storage.RegisterValidatorStakeKey(nodeID)),
+	return state.Keys{
+		string(storage.BalanceKey(actor, ids.Empty)):      state.All,
+		string(storage.RegisterValidatorStakeKey(nodeID)): state.Read,
 	}
 }
 
 func (*ClaimValidatorStakeRewards) StateKeysMaxChunks() []uint16 {
 	return []uint16{storage.BalanceChunks, storage.RegisterValidatorStakeChunks}
-}
-
-func (*ClaimValidatorStakeRewards) OutputsWarpMessage() bool {
-	return false
 }
 
 func (c *ClaimValidatorStakeRewards) Execute(
@@ -53,20 +47,19 @@ func (c *ClaimValidatorStakeRewards) Execute(
 	_ int64,
 	actor codec.Address,
 	_ ids.ID,
-	_ bool,
-) (bool, uint64, []byte, *warp.UnsignedMessage, error) {
+) ([][]byte, error) {
 	nodeID, err := ids.ToNodeID(c.NodeID)
 	if err != nil {
-		return false, ClaimStakingRewardComputeUnits, OutputInvalidNodeID, nil, nil
+		return nil, ErrOutputInvalidNodeID
 	}
 
 	// Check whether a validator is trying to claim its reward
 	exists, _, stakeEndBlock, _, _, rewardAddress, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
 	if !exists {
-		return false, ClaimStakingRewardComputeUnits, OutputStakeMissing, nil, nil
+		return nil, ErrOutputStakeMissing
 	}
 	if rewardAddress != actor {
-		return false, ClaimStakingRewardComputeUnits, OutputUnauthorized, nil, nil
+		return nil, ErrOutputUnauthorized
 	}
 
 	// Get the emission instance
@@ -74,42 +67,42 @@ func (c *ClaimValidatorStakeRewards) Execute(
 
 	// Check that lastBlockHeight is after stakeEndBlock
 	if emissionInstance.GetLastAcceptedBlockHeight() < stakeEndBlock {
-		return false, ClaimStakingRewardComputeUnits, OutputStakeNotEnded, nil, nil
+		return nil, ErrOutputStakeNotEnded
 	}
 
 	// Claim rewards in Emission Balancer
 	rewardAmount, err := emissionInstance.ClaimStakingRewards(nodeID, codec.EmptyAddress)
 	if err != nil {
-		return false, ClaimStakingRewardComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
 
 	if err := storage.AddBalance(ctx, mu, rewardAddress, ids.Empty, rewardAmount, true); err != nil {
-		return false, ClaimStakingRewardComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
 
 	sr := &ClaimRewardsResult{rewardAmount}
 	output, err := sr.Marshal()
 	if err != nil {
-		return false, ClaimStakingRewardComputeUnits, utils.ErrBytes(err), nil, nil
+		return nil, err
 	}
-	return true, ClaimStakingRewardComputeUnits, output, nil, nil
+	return [][]byte{output}, nil
 }
 
-func (*ClaimValidatorStakeRewards) MaxComputeUnits(chain.Rules) uint64 {
+func (*ClaimValidatorStakeRewards) ComputeUnits(chain.Rules) uint64 {
 	return ClaimStakingRewardComputeUnits
 }
 
 func (*ClaimValidatorStakeRewards) Size() int {
-	return hconsts.NodeIDLen
+	return ids.NodeIDLen
 }
 
 func (c *ClaimValidatorStakeRewards) Marshal(p *codec.Packer) {
 	p.PackBytes(c.NodeID)
 }
 
-func UnmarshalClaimValidatorStakeRewards(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
+func UnmarshalClaimValidatorStakeRewards(p *codec.Packer) (chain.Action, error) {
 	var claimRewards ClaimValidatorStakeRewards
-	p.UnpackBytes(hconsts.NodeIDLen, true, &claimRewards.NodeID)
+	p.UnpackBytes(ids.NodeIDLen, true, &claimRewards.NodeID)
 	return &claimRewards, p.Err()
 }
 
@@ -123,14 +116,14 @@ type ClaimRewardsResult struct {
 }
 
 func UnmarshalClaimRewardsResult(b []byte) (*ClaimRewardsResult, error) {
-	p := codec.NewReader(b, hconsts.Uint64Len)
+	p := codec.NewReader(b, consts.Uint64Len)
 	var result ClaimRewardsResult
 	result.RewardAmount = p.UnpackUint64(false)
 	return &result, p.Err()
 }
 
 func (s *ClaimRewardsResult) Marshal() ([]byte, error) {
-	p := codec.NewWriter(hconsts.Uint64Len, hconsts.Uint64Len)
+	p := codec.NewWriter(consts.Uint64Len, consts.Uint64Len)
 	p.PackUint64(s.RewardAmount)
 	return p.Bytes(), p.Err()
 }

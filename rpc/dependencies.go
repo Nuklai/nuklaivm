@@ -8,8 +8,8 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/trace"
-	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
+	"github.com/ava-labs/hypersdk/fees"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 )
@@ -17,10 +17,9 @@ import (
 type Controller interface {
 	Genesis() *genesis.Genesis
 	Tracer() trace.Tracer
-	GetTransaction(context.Context, ids.ID) (bool, int64, bool, chain.Dimensions, uint64, error)
-	GetAssetFromState(context.Context, ids.ID) (bool, []byte, uint8, []byte, uint64, codec.Address, bool, error)
+	GetTransaction(context.Context, ids.ID) (bool, int64, bool, fees.Dimensions, uint64, error)
+	GetAssetFromState(context.Context, ids.ID) (bool, []byte, uint8, []byte, uint64, codec.Address, error)
 	GetBalanceFromState(context.Context, codec.Address, ids.ID) (uint64, error)
-	GetLoanFromState(context.Context, ids.ID, ids.ID) (uint64, error)
 
 	GetEmissionInfo() (uint64, uint64, uint64, uint64, uint64, emission.EmissionAccount, emission.EpochTracker, error)
 	GetValidators(ctx context.Context, staked bool) ([]*emission.Validator, error)

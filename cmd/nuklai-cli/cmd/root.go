@@ -157,8 +157,6 @@ func init() {
 		createAssetCmd,
 		mintAssetCmd,
 		// burnAssetCmd,
-		importAssetCmd,
-		exportAssetCmd,
 
 		registerValidatorStakeCmd,
 		getValidatorStakeCmd,
