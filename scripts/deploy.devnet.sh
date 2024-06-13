@@ -77,7 +77,7 @@ mv ./build/nuklai-cli "${TMPDIR}/nuklai-cli"
 cd $pw
 
 # Generate genesis file and configs
-MIN_BLOCK_GAP=500
+MIN_BLOCK_GAP=250
 MIN_UNIT_PRICE="100,100,100,100,100"
 WINDOW_TARGET_UNITS="40000000,450000,450000,450000,450000"
 MAX_UINT64=18446744073709551615
@@ -112,7 +112,7 @@ cat <<EOF > "${TMPDIR}"/nuklaivm.config
 {
   "chunkBuildFrequency": 250,
   "targetChunkBuildDuration": 250,
-  "blockBuildFrequency": 100,
+  "blockBuildFrequency": 250,
   "mempoolSize": 2147483648,
   "mempoolSponsorSize": 10000000,
   "authExecutionCores": 2,
@@ -143,8 +143,8 @@ EOF
 
 cat <<EOF > "${TMPDIR}"/nuklaivm.subnet
 {
-  "proposerMinBlockDelay": 0,
-  "proposerNumHistoricalBlocks": 50000
+  "proposerMinBlockDelay": 50,
+  "proposerNumHistoricalBlocks": 1000000
 }
 EOF
 
@@ -189,7 +189,7 @@ trap cleanup EXIT
 #
 # It is not recommended to use an instance with burstable network performance.
 echo -e "${YELLOW}creating devnet${NC}"
-$TMPDIR/avalanche node devnet wiz ${CLUSTER} ${VMID} --force-subnet-create=true --authorize-access=true --aws --node-type t4g.medium --num-apis 0 --num-validators 10 --region eu-west-1 --use-static-ip=false --enable-monitoring=false --default-validator-params --custom-avalanchego-version $AVALANCHEGO_VERSION --custom-vm-repo-url="https://www.github.com/nuklai/nuklaivm" --custom-vm-branch $VM_COMMIT --custom-vm-build-script="scripts/build.sh" --custom-subnet=true --subnet-genesis="${TMPDIR}/nuklaivm.genesis" --subnet-config="${TMPDIR}/nuklaivm.subnet" --chain-config="${TMPDIR}/nuklaivm.config" --node-config="${TMPDIR}/node.config" --config="${TMPDIR}/node.config" --remote-cli-version $REMOTE_CLI_COMMIT --add-grafana-dashboard="${TMPDIR}/nuklaivm/grafana.json" --log-level DEBUG
+$TMPDIR/avalanche node devnet wiz ${CLUSTER} ${VMID} --force-subnet-create=true --authorize-access=true --aws --node-type t4g.medium --num-apis 0 --num-validators 10 --region eu-west-1 --use-static-ip=false --enable-monitoring=false --default-validator-params=true --custom-avalanchego-version $AVALANCHEGO_VERSION --custom-vm-repo-url="https://www.github.com/nuklai/nuklaivm" --custom-vm-branch $VM_COMMIT --custom-vm-build-script="scripts/build.sh" --custom-subnet=true --subnet-genesis="${TMPDIR}/nuklaivm.genesis" --subnet-config="${TMPDIR}/nuklaivm.subnet" --chain-config="${TMPDIR}/nuklaivm.config" --node-config="${TMPDIR}/node.config" --config="${TMPDIR}/node.config" --remote-cli-version $REMOTE_CLI_COMMIT --add-grafana-dashboard="${TMPDIR}/nuklaivm/grafana.json" --log-level DEBUG
 
 # Import the cluster into nuklai-cli for local interaction
 $TMPDIR/nuklai-cli chain import-cli $HOME/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml
@@ -200,7 +200,10 @@ CHAIN_ID=$(yq e '.CHAIN_ID' $HOME/.avalanche-cli/nodes/inventories/$CLUSTER/clus
 VALIDATOR_IPS=($(yq e '.VALIDATOR[].IP' $HOME/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml))
 API_IPS=($(yq e '.API[].IP' $HOME/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml))
 
-# Print Subnet ID and Chain ID
+# Print some info
+echo -e "\n${CYAN}Cluster:${NC} $CLUSTER"
+echo -e "\n${CYAN}VM ID:${NC} $VMID"
+echo -e "\n${CYAN}VM Commit:${NC} $VM_COMMIT"
 echo -e "\n${CYAN}Subnet ID:${NC} $SUBNET_ID"
 echo -e "${CYAN}Chain ID:${NC} $CHAIN_ID"
 
@@ -220,7 +223,7 @@ echo ")"
 # sleep 30
 # Zipf parameters expected to lead to ~1M active accounts per 60s
 #echo -e "\n${YELLOW}starting load test...${NC}"
-#$TMPDIR/avalanche node loadtest start "default" ${CLUSTER} ${VMID} --region eu-west-1 --aws --node-type c7gn.8xlarge --load-test-repo="https://github.com/nuklai/nuklaivm" --load-test-branch=$VM_COMMIT --load-test-build-cmd="cd /home/ubuntu/nuklai/nuklaivm; CGO_CFLAGS=\"-O -D__BLST_PORTABLE__\" go build -o ~/simulator ./cmd/nuklai-cli" --load-test-cmd="/home/ubuntu/simulator spam run ed25519 --accounts=10000000 --txs-per-second=100000 --min-capacity=15000 --step-size=1000 --s-zipf=1.0001 --v-zipf=2.7 --conns-per-host=10 --cluster-info=/home/ubuntu/clusterInfo.yaml --private-key=eef3a4b4f3ab5e277d2ea90952bd59300f849ad339bca5e499d1474ac7aa1e836de59563045c6b2792f12b2d0301b73db650c0291f739205afeea8e44000cf75"
+#$TMPDIR/avalanche node loadtest start "default" ${CLUSTER} ${VMID} --region eu-west-1 --aws --node-type t4g.medium --load-test-repo="https://github.com/nuklai/nuklaivm" --load-test-branch=$VM_COMMIT --load-test-build-cmd="cd /home/ubuntu/nuklai/nuklaivm; CGO_CFLAGS=\"-O -D__BLST_PORTABLE__\" go build -o ~/simulator ./cmd/nuklai-cli" --load-test-cmd="/home/ubuntu/simulator spam run ed25519 --accounts=10000000 --txs-per-second=100000 --min-capacity=15000 --step-size=1000 --s-zipf=1.0001 --v-zipf=2.7 --conns-per-host=10 --cluster-info=/home/ubuntu/clusterInfo.yaml --private-key=eef3a4b4f3ab5e277d2ea90952bd59300f849ad339bca5e499d1474ac7aa1e836de59563045c6b2792f12b2d0301b73db650c0291f739205afeea8e44000cf75"
 
 # Log dashboard information
 echo -e "\n\n${CYAN}dashboards:${NC} (username: admin, password: admin)"
