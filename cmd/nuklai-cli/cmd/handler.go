@@ -200,11 +200,6 @@ func (*Handler) GetEmissionInfo(
 		return 0, 0, 0, 0, 0, 0, "", 0, err
 	}
 
-	emissionAddress, err := codec.AddressBech32(nconsts.HRP, emissionAccount.Address)
-	if err != nil {
-		return 0, 0, 0, 0, 0, 0, "", 0, err
-	}
-
 	hutils.Outf(
 		"{{yellow}}emission info: {{/}}\nCurrentBlockHeight=%d TotalSupply=%d MaxSupply=%d TotalStaked=%d RewardsPerEpoch=%d NumBlocksInEpoch=%d EmissionAddress=%s EmissionAccumulatedReward=%d\n",
 		currentBlockHeight,
@@ -213,10 +208,10 @@ func (*Handler) GetEmissionInfo(
 		totalStaked,
 		rewardsPerEpoch,
 		epochTracker.EpochLength,
-		emissionAddress,
+		emissionAccount.Address,
 		emissionAccount.AccumulatedReward,
 	)
-	return currentBlockHeight, totalSupply, maxSupply, totalStaked, rewardsPerEpoch, epochTracker.EpochLength, emissionAddress, emissionAccount.AccumulatedReward, err
+	return currentBlockHeight, totalSupply, maxSupply, totalStaked, rewardsPerEpoch, epochTracker.EpochLength, emissionAccount.Address, emissionAccount.AccumulatedReward, err
 }
 
 func (*Handler) GetAllValidators(

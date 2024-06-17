@@ -95,6 +95,8 @@ func (cli *JSONRPCClient) Asset(
 	if ok && useCache {
 		return true, r.Symbol, r.Decimals, r.Metadata, r.Supply, r.Owner, nil
 	}
+
+	// Check if it's the native asset
 	resp := new(AssetReply)
 	err := cli.requester.SendRequest(
 		ctx,
@@ -132,7 +134,7 @@ func (cli *JSONRPCClient) Balance(ctx context.Context, addr string, asset ids.ID
 	return resp.Amount, err
 }
 
-func (cli *JSONRPCClient) EmissionInfo(ctx context.Context) (uint64, uint64, uint64, uint64, uint64, emission.EmissionAccount, emission.EpochTracker, error) {
+func (cli *JSONRPCClient) EmissionInfo(ctx context.Context) (uint64, uint64, uint64, uint64, uint64, EmissionAccount, emission.EpochTracker, error) {
 	resp := new(EmissionReply)
 	err := cli.requester.SendRequest(
 		ctx,
@@ -141,7 +143,7 @@ func (cli *JSONRPCClient) EmissionInfo(ctx context.Context) (uint64, uint64, uin
 		resp,
 	)
 	if err != nil {
-		return 0, 0, 0, 0, 0, emission.EmissionAccount{}, emission.EpochTracker{}, err
+		return 0, 0, 0, 0, 0, EmissionAccount{}, emission.EpochTracker{}, err
 	}
 
 	return resp.CurrentBlockHeight, resp.TotalSupply, resp.MaxSupply, resp.TotalStaked, resp.RewardsPerEpoch, resp.EmissionAccount, resp.EpochTracker, err

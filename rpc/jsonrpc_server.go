@@ -118,14 +118,19 @@ func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *Bal
 	return err
 }
 
+type EmissionAccount struct {
+	Address           string `json:"address"`
+	AccumulatedReward uint64 `json:"accumulatedReward"`
+}
+
 type EmissionReply struct {
-	CurrentBlockHeight uint64                   `json:"currentBlockHeight"`
-	TotalSupply        uint64                   `json:"totalSupply"`
-	MaxSupply          uint64                   `json:"maxSupply"`
-	TotalStaked        uint64                   `json:"totalStaked"`
-	RewardsPerEpoch    uint64                   `json:"rewardsPerEpoch"`
-	EmissionAccount    emission.EmissionAccount `json:"emissionAccount"`
-	EpochTracker       emission.EpochTracker    `json:"epochTracker"`
+	CurrentBlockHeight uint64                `json:"currentBlockHeight"`
+	TotalSupply        uint64                `json:"totalSupply"`
+	MaxSupply          uint64                `json:"maxSupply"`
+	TotalStaked        uint64                `json:"totalStaked"`
+	RewardsPerEpoch    uint64                `json:"rewardsPerEpoch"`
+	EmissionAccount    EmissionAccount       `json:"emissionAccount"`
+	EpochTracker       emission.EpochTracker `json:"epochTracker"`
 }
 
 func (j *JSONRPCServer) EmissionInfo(req *http.Request, _ *struct{}, reply *EmissionReply) (err error) {
@@ -141,7 +146,8 @@ func (j *JSONRPCServer) EmissionInfo(req *http.Request, _ *struct{}, reply *Emis
 	reply.MaxSupply = maxSupply
 	reply.TotalStaked = totalStaked
 	reply.RewardsPerEpoch = rewardsPerEpoch
-	reply.EmissionAccount = emissionAccount
+	reply.EmissionAccount.Address = codec.MustAddressBech32(nconsts.HRP, emissionAccount.Address)
+	reply.EmissionAccount.AccumulatedReward = emissionAccount.AccumulatedReward
 	reply.EpochTracker = epochTracker
 	return nil
 }

@@ -552,6 +552,7 @@ func (e *Emission) GetAllValidators(ctx context.Context) []*Validator {
 		}
 		stakedValidator := e.GetStakedValidator(nodeID)
 		if len(stakedValidator) > 0 {
+			v.IsActive = stakedValidator[0].IsActive
 			v.StakedAmount = stakedValidator[0].StakedAmount
 			v.AccumulatedStakedReward = stakedValidator[0].AccumulatedStakedReward
 			v.DelegationFeeRate = stakedValidator[0].DelegationFeeRate

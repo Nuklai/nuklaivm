@@ -136,7 +136,7 @@ cat <<EOF > "${TMPDIR}"/nuklaivm.config
   "authVerificationCores": 2,
   "rootGenerationCores": 2,
   "transactionExecutionCores": 2,
-  "storeTransactions": false,
+  "storeTransactions": true,
   "stateSyncServerDelay": 0
 }
 EOF
