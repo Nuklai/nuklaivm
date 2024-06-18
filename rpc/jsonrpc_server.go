@@ -5,6 +5,7 @@ package rpc
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/ava-labs/avalanchego/ids"
 
@@ -63,13 +64,13 @@ func (j *JSONRPCServer) Tx(req *http.Request, args *TxArgs, reply *TxReply) erro
 }
 
 type AssetArgs struct {
-	Asset ids.ID `json:"asset"`
+	Asset string `json:"asset"`
 }
 
 type AssetReply struct {
-	Symbol   []byte `json:"symbol"`
+	Symbol   string `json:"symbol"`
 	Decimals uint8  `json:"decimals"`
-	Metadata []byte `json:"metadata"`
+	Metadata string `json:"metadata"`
 	Supply   uint64 `json:"supply"`
 	Owner    string `json:"owner"`
 }
@@ -78,16 +79,20 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Asset")
 	defer span.End()
 
-	exists, symbol, decimals, metadata, supply, owner, err := j.c.GetAssetFromState(ctx, args.Asset)
+	assetID, err := j.getAssetIDBySymbol(args.Asset)
+	if err != nil {
+		return err
+	}
+	exists, symbol, decimals, metadata, supply, owner, err := j.c.GetAssetFromState(ctx, assetID)
 	if err != nil {
 		return err
 	}
 	if !exists {
 		return ErrAssetNotFound
 	}
-	reply.Symbol = symbol
+	reply.Symbol = string(symbol)
 	reply.Decimals = decimals
-	reply.Metadata = metadata
+	reply.Metadata = string(metadata)
 	reply.Supply = supply
 	reply.Owner = codec.MustAddressBech32(nconsts.HRP, owner)
 	return err
@@ -95,7 +100,7 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 
 type BalanceArgs struct {
 	Address string `json:"address"`
-	Asset   ids.ID `json:"asset"`
+	Asset   string `json:"asset"`
 }
 
 type BalanceReply struct {
@@ -110,12 +115,23 @@ func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *Bal
 	if err != nil {
 		return err
 	}
-	balance, err := j.c.GetBalanceFromState(ctx, addr, args.Asset)
+	assetID, err := j.getAssetIDBySymbol(args.Asset)
+	if err != nil {
+		return err
+	}
+	balance, err := j.c.GetBalanceFromState(ctx, addr, assetID)
 	if err != nil {
 		return err
 	}
 	reply.Amount = balance
 	return err
+}
+
+func (j *JSONRPCServer) getAssetIDBySymbol(symbol string) (ids.ID, error) {
+	if strings.TrimSpace(symbol) == "" || strings.EqualFold(symbol, nconsts.Symbol) {
+		return ids.Empty, nil
+	}
+	return ids.FromString(symbol)
 }
 
 type EmissionAccount struct {
@@ -185,12 +201,12 @@ type ValidatorStakeArgs struct {
 }
 
 type ValidatorStakeReply struct {
-	StakeStartBlock   uint64        `json:"stakeStartBlock"`   // Start block of the stake
-	StakeEndBlock     uint64        `json:"stakeEndBlock"`     // End block of the stake
-	StakedAmount      uint64        `json:"stakedAmount"`      // Amount of NAI staked
-	DelegationFeeRate uint64        `json:"delegationFeeRate"` // Delegation fee rate
-	RewardAddress     codec.Address `json:"rewardAddress"`     // Address to receive rewards
-	OwnerAddress      codec.Address `json:"ownerAddress"`      // Address of the owner who registered the validator
+	StakeStartBlock   uint64 `json:"stakeStartBlock"`   // Start block of the stake
+	StakeEndBlock     uint64 `json:"stakeEndBlock"`     // End block of the stake
+	StakedAmount      uint64 `json:"stakedAmount"`      // Amount of NAI staked
+	DelegationFeeRate uint64 `json:"delegationFeeRate"` // Delegation fee rate
+	RewardAddress     string `json:"rewardAddress"`     // Address to receive rewards
+	OwnerAddress      string `json:"ownerAddress"`      // Address of the owner who registered the validator
 }
 
 func (j *JSONRPCServer) ValidatorStake(req *http.Request, args *ValidatorStakeArgs, reply *ValidatorStakeReply) (err error) {
@@ -209,8 +225,8 @@ func (j *JSONRPCServer) ValidatorStake(req *http.Request, args *ValidatorStakeAr
 	reply.StakeEndBlock = stakeEndBlock
 	reply.StakedAmount = stakedAmount
 	reply.DelegationFeeRate = delegationFeeRate
-	reply.RewardAddress = rewardAddress
-	reply.OwnerAddress = ownerAddress
+	reply.RewardAddress = codec.MustAddressBech32(nconsts.HRP, rewardAddress)
+	reply.OwnerAddress = codec.MustAddressBech32(nconsts.HRP, ownerAddress)
 	return nil
 }
 

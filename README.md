@@ -99,7 +99,7 @@ Or you can also pass in the root directory for where all the subnet files will b
 You can also choose to skip tests by doing
 
 ```bash
-./scripts/run.sh --ginkgo.skip
+MODE=run ./scripts/run.sh
 ```
 
 When the Subnet is running, you'll see the following logs emitted:

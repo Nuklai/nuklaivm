@@ -282,12 +282,12 @@ var _ = ginkgo.BeforeSuite(func() {
 
 		csupply := uint64(0)
 		for _, alloc := range g.CustomAllocation {
-			balance, err := cli.Balance(context.Background(), alloc.Address, ids.Empty)
+			balance, err := cli.Balance(context.Background(), alloc.Address, nconsts.Symbol)
 			require.NoError(err)
 			require.Equal(balance, alloc.Balance)
 			csupply += alloc.Balance
 		}
-		exists, symbol, decimals, metadata, supply, owner, err := cli.Asset(context.Background(), ids.Empty, false)
+		exists, symbol, decimals, metadata, supply, owner, err := cli.Asset(context.Background(), nconsts.Symbol, false)
 		require.NoError(err)
 		require.True(exists)
 		require.Equal(string(symbol), nconsts.Symbol)
@@ -465,10 +465,10 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		})
 
 		ginkgo.By("ensure balance is updated", func() {
-			balance, err := instances[1].ncli.Balance(context.Background(), sender, ids.Empty)
+			balance, err := instances[1].ncli.Balance(context.Background(), sender, nconsts.Symbol)
 			require.NoError(err)
 			require.Equal(balance, uint64(9_899_679))
-			balance2, err := instances[1].ncli.Balance(context.Background(), sender2, ids.Empty)
+			balance2, err := instances[1].ncli.Balance(context.Background(), sender2, nconsts.Symbol)
 			require.NoError(err)
 			require.Equal(balance2, uint64(100_000))
 		})
@@ -495,7 +495,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			require.Len(results, 1)
 			require.True(results[0].Success)
 
-			balance2, err := instances[1].ncli.Balance(context.Background(), sender2, ids.Empty)
+			balance2, err := instances[1].ncli.Balance(context.Background(), sender2, nconsts.Symbol)
 			require.NoError(err)
 			require.Equal(balance2, uint64(100_101))
 		})
@@ -638,7 +638,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		time.Sleep(2 * pubsub.MaxMessageWait)
 
 		// Fetch balances
-		balance, err := instances[0].ncli.Balance(context.TODO(), sender, ids.Empty)
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
 		require.NoError(err)
 
 		// Send tx
@@ -676,7 +676,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal(prices, fees.Dimensions{1, 1, 1, 1, 1})
 
 		// Check balance modifications are correct
-		balancea, err := instances[0].ncli.Balance(context.TODO(), sender, ids.Empty)
+		balancea, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
 		require.NoError(err)
 		require.Equal(balance, balancea+lresults[0].Fee+1)
 
@@ -819,7 +819,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.False(result.Success)
 		require.Contains(string(result.Error), "asset missing")
 
-		exists, _, _, _, _, _, err := instances[0].ncli.Asset(context.TODO(), assetID, false)
+		exists, _, _, _, _, _, err := instances[0].ncli.Asset(context.TODO(), assetID.String(), false)
 		require.NoError(err)
 		require.False(exists)
 	})
@@ -936,16 +936,16 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.True(results[0].Success)
 
 		asset1ID = chain.CreateActionID(tx.ID(), 0)
-		balance, err := instances[0].ncli.Balance(context.TODO(), sender, asset1ID)
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
 		require.NoError(err)
 		require.Zero(balance)
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID, false)
+		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
-		require.Equal(symbol, asset1Symbol)
+		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
-		require.Equal(metadata, asset1)
+		require.Equal([]byte(metadata), asset1)
 		require.Zero(supply)
 		require.Equal(owner, sender)
 	})
@@ -971,19 +971,19 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Len(results, 1)
 		require.True(results[0].Success)
 
-		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID)
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID.String())
 		require.NoError(err)
 		require.Equal(balance, uint64(15))
-		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset1ID)
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
 		require.NoError(err)
 		require.Zero(balance)
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID, false)
+		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
-		require.Equal(symbol, asset1Symbol)
+		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
-		require.Equal(metadata, asset1)
+		require.Equal([]byte(metadata), asset1)
 		require.Equal(supply, uint64(15))
 		require.Equal(owner, sender)
 	})
@@ -1014,12 +1014,12 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.False(result.Success)
 		require.Contains(string(result.Error), "wrong owner")
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID, false)
+		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
-		require.Equal(symbol, asset1Symbol)
+		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
-		require.Equal(metadata, asset1)
+		require.Equal([]byte(metadata), asset1)
 		require.Equal(supply, uint64(15))
 		require.Equal(owner, sender)
 	})
@@ -1044,19 +1044,19 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Len(results, 1)
 		require.True(results[0].Success)
 
-		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID)
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID.String())
 		require.NoError(err)
 		require.Equal(balance, uint64(10))
-		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset1ID)
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
 		require.NoError(err)
 		require.Zero(balance)
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID, false)
+		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
-		require.Equal(symbol, asset1Symbol)
+		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
-		require.Equal(metadata, asset1)
+		require.Equal([]byte(metadata), asset1)
 		require.Equal(supply, uint64(10))
 		require.Equal(owner, sender)
 	})
@@ -1083,12 +1083,12 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.False(result.Success)
 		require.Contains(string(result.Error), "invalid balance")
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID, false)
+		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
-		require.Equal(symbol, asset1Symbol)
+		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
-		require.Equal(metadata, asset1)
+		require.Equal([]byte(metadata), asset1)
 		require.Equal(supply, uint64(10))
 		require.Equal(owner, sender)
 	})
@@ -1147,19 +1147,19 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.False(result.Success)
 		require.Contains(string(result.Error), "overflow")
 
-		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID)
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID.String())
 		require.NoError(err)
 		require.Equal(balance, uint64(10))
-		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset1ID)
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
 		require.NoError(err)
 		require.Zero(balance)
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID, false)
+		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
-		require.Equal(symbol, asset1Symbol)
+		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
-		require.Equal(metadata, asset1)
+		require.Equal([]byte(metadata), asset1)
 		require.Equal(supply, uint64(10))
 		require.Equal(owner, sender)
 	})
@@ -1235,7 +1235,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Len(results, 1)
 		require.True(results[0].Success)
 
-		balance, err := instances[0].ncli.Balance(context.TODO(), sender, asset2ID)
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender, asset2ID.String())
 		require.NoError(err)
 		require.Equal(balance, uint64(10))
 	})
@@ -1280,7 +1280,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Len(results, 1)
 		require.True(results[0].Success)
 
-		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset3ID)
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset3ID.String())
 		require.NoError(err)
 		require.Equal(balance, uint64(10))
 	})
@@ -1314,11 +1314,11 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Len(results, 1)
 		require.True(results[0].Success)
 
-		balance2, err := instances[3].ncli.Balance(context.Background(), sender2, ids.Empty)
+		balance2, err := instances[3].ncli.Balance(context.Background(), sender2, nconsts.Symbol)
 		require.NoError(err)
 		require.Equal(balance2, uint64(10000))
 
-		balance3, err := instances[3].ncli.Balance(context.Background(), sender3, ids.Empty)
+		balance3, err := instances[3].ncli.Balance(context.Background(), sender3, nconsts.Symbol)
 		require.NoError(err)
 		require.Equal(balance3, uint64(5000))
 	})
@@ -1424,19 +1424,19 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.True(results[0].Success)
 
 		// check sender2 assets
-		balance1, err := instances[3].ncli.Balance(context.TODO(), sender2, asset1ID)
+		balance1, err := instances[3].ncli.Balance(context.TODO(), sender2, asset1ID.String())
 		require.NoError(err)
 		require.Equal(balance1, uint64(10))
 
-		balance2, err := instances[3].ncli.Balance(context.TODO(), sender2, asset2ID)
+		balance2, err := instances[3].ncli.Balance(context.TODO(), sender2, asset2ID.String())
 		require.NoError(err)
 		require.Equal(balance2, uint64(10))
 
-		balance3, err := instances[3].ncli.Balance(context.TODO(), sender2, asset3ID)
+		balance3, err := instances[3].ncli.Balance(context.TODO(), sender2, asset3ID.String())
 		require.NoError(err)
 		require.Equal(balance3, uint64(10))
 
-		balance4, err := instances[3].ncli.Balance(context.TODO(), sender2, asset4ID)
+		balance4, err := instances[3].ncli.Balance(context.TODO(), sender2, asset4ID.String())
 		require.NoError(err)
 		require.Equal(balance4, uint64(10))
 	})

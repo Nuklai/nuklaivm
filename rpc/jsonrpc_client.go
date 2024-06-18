@@ -30,7 +30,7 @@ type JSONRPCClient struct {
 	chainID   ids.ID
 	g         *genesis.Genesis
 	assetsL   sync.Mutex
-	assets    map[ids.ID]*AssetReply
+	assets    map[string]*AssetReply
 }
 
 // New creates a new client object.
@@ -42,7 +42,7 @@ func NewJSONRPCClient(uri string, networkID uint32, chainID ids.ID) *JSONRPCClie
 		requester: req,
 		networkID: networkID,
 		chainID:   chainID,
-		assets:    map[ids.ID]*AssetReply{},
+		assets:    map[string]*AssetReply{},
 	}
 }
 
@@ -86,9 +86,9 @@ func (cli *JSONRPCClient) Tx(ctx context.Context, id ids.ID) (bool, bool, int64,
 
 func (cli *JSONRPCClient) Asset(
 	ctx context.Context,
-	asset ids.ID,
+	asset string,
 	useCache bool,
-) (bool, []byte, uint8, []byte, uint64, string, error) {
+) (bool, string, uint8, string, uint64, string, error) {
 	cli.assetsL.Lock()
 	r, ok := cli.assets[asset]
 	cli.assetsL.Unlock()
@@ -110,9 +110,9 @@ func (cli *JSONRPCClient) Asset(
 	// We use string parsing here because the JSON-RPC library we use may not
 	// allows us to perform errors.Is.
 	case err != nil && strings.Contains(err.Error(), ErrAssetNotFound.Error()):
-		return false, nil, 0, nil, 0, "", nil
+		return false, "", 0, "", 0, "", nil
 	case err != nil:
-		return false, nil, 0, nil, 0, "", err
+		return false, "", 0, "", 0, "", err
 	}
 	cli.assetsL.Lock()
 	cli.assets[asset] = resp
@@ -120,7 +120,7 @@ func (cli *JSONRPCClient) Asset(
 	return true, resp.Symbol, resp.Decimals, resp.Metadata, resp.Supply, resp.Owner, nil
 }
 
-func (cli *JSONRPCClient) Balance(ctx context.Context, addr string, asset ids.ID) (uint64, error) {
+func (cli *JSONRPCClient) Balance(ctx context.Context, addr string, asset string) (uint64, error) {
 	resp := new(BalanceReply)
 	err := cli.requester.SendRequest(
 		ctx,
@@ -177,7 +177,7 @@ func (cli *JSONRPCClient) StakedValidators(ctx context.Context) ([]*emission.Val
 	return resp.Validators, err
 }
 
-func (cli *JSONRPCClient) ValidatorStake(ctx context.Context, nodeID ids.NodeID) (uint64, uint64, uint64, uint64, codec.Address, codec.Address, error) {
+func (cli *JSONRPCClient) ValidatorStake(ctx context.Context, nodeID ids.NodeID) (uint64, uint64, uint64, uint64, string, string, error) {
 	resp := new(ValidatorStakeReply)
 	err := cli.requester.SendRequest(
 		ctx,
@@ -188,7 +188,7 @@ func (cli *JSONRPCClient) ValidatorStake(ctx context.Context, nodeID ids.NodeID)
 		resp,
 	)
 	if err != nil {
-		return 0, 0, 0, 0, codec.EmptyAddress, codec.EmptyAddress, err
+		return 0, 0, 0, 0, "", "", err
 	}
 	return resp.StakeStartBlock, resp.StakeEndBlock, resp.StakedAmount, resp.DelegationFeeRate, resp.RewardAddress, resp.OwnerAddress, err
 }
@@ -216,7 +216,7 @@ func (cli *JSONRPCClient) WaitForBalance(
 	asset ids.ID,
 	min uint64,
 ) error {
-	exists, symbol, decimals, _, _, _, err := cli.Asset(ctx, asset, true)
+	exists, symbol, decimals, _, _, _, err := cli.Asset(ctx, asset.String(), true)
 	if err != nil {
 		return err
 	}
@@ -225,7 +225,7 @@ func (cli *JSONRPCClient) WaitForBalance(
 	}
 
 	return rpc.Wait(ctx, func(ctx context.Context) (bool, error) {
-		balance, err := cli.Balance(ctx, addr, asset)
+		balance, err := cli.Balance(ctx, addr, asset.String())
 		if err != nil {
 			return false, err
 		}

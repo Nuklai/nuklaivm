@@ -186,7 +186,7 @@ var mintAssetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		exists, symbol, decimals, metadata, supply, owner, err := tcli.Asset(ctx, assetID, false)
+		exists, symbol, decimals, metadata, supply, owner, err := tcli.Asset(ctx, assetID.String(), false)
 		if err != nil {
 			return err
 		}

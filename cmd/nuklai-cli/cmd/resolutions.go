@@ -83,7 +83,7 @@ func handleTx(c *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Result
 		case *actions.CreateAsset:
 			summaryStr = fmt.Sprintf("assetID: %s symbol: %s decimals: %d metadata: %s", actionID, action.Symbol, action.Decimals, action.Metadata)
 		case *actions.MintAsset:
-			_, symbol, decimals, _, _, _, err := c.Asset(context.TODO(), action.Asset, true)
+			_, symbol, decimals, _, _, _, err := c.Asset(context.TODO(), action.Asset.String(), true)
 			if err != nil {
 				utils.Outf("{{red}}could not fetch asset info:{{/}} %v", err)
 				return
@@ -93,7 +93,7 @@ func handleTx(c *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Result
 		case *actions.BurnAsset:
 			summaryStr = fmt.Sprintf("%d %s -> 🔥", action.Value, action.Asset)
 		case *actions.Transfer:
-			_, symbol, decimals, _, _, _, err := c.Asset(context.TODO(), action.Asset, true)
+			_, symbol, decimals, _, _, _, err := c.Asset(context.TODO(), action.Asset.String(), true)
 			if err != nil {
 				utils.Outf("{{red}}could not fetch asset info:{{/}} %v", err)
 				return

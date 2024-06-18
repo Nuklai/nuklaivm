@@ -80,7 +80,7 @@ var runSpamCmd = &cobra.Command{
 				return generatePrivateKey(args[0])
 			},
 			func(choice int, address string) (uint64, error) { // lookupBalance
-				balance, err := bclient.Balance(context.TODO(), address, ids.Empty)
+				balance, err := bclient.Balance(context.TODO(), address, nconsts.Symbol)
 				if err != nil {
 					return 0, err
 				}

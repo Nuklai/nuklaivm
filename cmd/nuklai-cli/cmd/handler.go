@@ -72,17 +72,17 @@ func (*Handler) GetAssetInfo(
 	addr codec.Address,
 	assetID ids.ID,
 	checkBalance bool,
-) ([]byte, uint8, uint64, ids.ID, error) {
+) (string, uint8, uint64, string, error) {
 	var sourceChainID ids.ID
-	exists, symbol, decimals, metadata, supply, _, err := cli.Asset(ctx, assetID, false)
+	exists, symbol, decimals, metadata, supply, _, err := cli.Asset(ctx, assetID.String(), false)
 	if err != nil {
-		return nil, 0, 0, ids.Empty, err
+		return "", 0, 0, "", err
 	}
 	if assetID != ids.Empty {
 		if !exists {
 			hutils.Outf("{{red}}%s does not exist{{/}}\n", assetID)
 			hutils.Outf("{{red}}exiting...{{/}}\n")
-			return nil, 0, 0, ids.Empty, nil
+			return "", 0, 0, "", nil
 		}
 		hutils.Outf(
 			"{{yellow}}symbol:{{/}} %s {{yellow}}decimals:{{/}} %d {{yellow}}metadata:{{/}} %s {{yellow}}supply:{{/}} %d\n",
@@ -93,15 +93,15 @@ func (*Handler) GetAssetInfo(
 		)
 	}
 	if !checkBalance {
-		return symbol, decimals, 0, sourceChainID, nil
+		return symbol, decimals, 0, sourceChainID.String(), nil
 	}
 	saddr, err := codec.AddressBech32(nconsts.HRP, addr)
 	if err != nil {
-		return nil, 0, 0, ids.Empty, err
+		return "", 0, 0, "", err
 	}
-	balance, err := cli.Balance(ctx, saddr, assetID)
+	balance, err := cli.Balance(ctx, saddr, assetID.String())
 	if err != nil {
-		return nil, 0, 0, ids.Empty, err
+		return "", 0, 0, "", err
 	}
 	if balance == 0 {
 		hutils.Outf("{{red}}balance:{{/}} 0 %s\n", assetID)
@@ -114,7 +114,7 @@ func (*Handler) GetAssetInfo(
 			symbol,
 		)
 	}
-	return symbol, decimals, balance, sourceChainID, nil
+	return symbol, decimals, balance, sourceChainID.String(), nil
 }
 
 func (h *Handler) DefaultActor() (
@@ -281,30 +281,22 @@ func (*Handler) GetValidatorStake(
 		return 0, 0, 0, 0, "", "", err
 	}
 
-	rewardAddressString, err := codec.AddressBech32(nconsts.HRP, rewardAddress)
-	if err != nil {
-		return 0, 0, 0, 0, "", "", err
-	}
-	ownerAddressString, err := codec.AddressBech32(nconsts.HRP, ownerAddress)
-	if err != nil {
-		return 0, 0, 0, 0, "", "", err
-	}
-
 	hutils.Outf(
 		"{{yellow}}validator stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d DelegationFeeRate=%d RewardAddress=%s OwnerAddress=%s\n",
 		stakeStartBlock,
 		stakeEndBlock,
 		stakedAmount,
 		delegationFeeRate,
-		rewardAddressString,
-		ownerAddressString,
+		rewardAddress,
+		ownerAddress,
 	)
 	return stakeStartBlock,
 		stakeEndBlock,
 		stakedAmount,
 		delegationFeeRate,
-		rewardAddressString,
-		ownerAddressString, err
+		rewardAddress,
+		ownerAddress,
+		err
 }
 
 func (*Handler) GetUserStake(ctx context.Context,

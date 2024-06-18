@@ -210,7 +210,7 @@ var importKeyCmd = &cobra.Command{
 func lookupSetKeyBalance(choice int, address string, uri string, networkID uint32, chainID ids.ID) error {
 	// TODO: just load once
 	ncli := nrpc.NewJSONRPCClient(uri, networkID, chainID)
-	balance, err := ncli.Balance(context.TODO(), address, ids.Empty)
+	balance, err := ncli.Balance(context.TODO(), address, nconsts.Symbol)
 	if err != nil {
 		return err
 	}
