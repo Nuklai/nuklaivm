@@ -231,23 +231,32 @@ func (j *JSONRPCServer) ValidatorStake(req *http.Request, args *ValidatorStakeAr
 }
 
 type UserStakeArgs struct {
-	Owner  codec.Address `json:"owner"`
-	NodeID ids.NodeID    `json:"nodeID"`
+	Owner  string `json:"owner"`
+	NodeID string `json:"nodeID"`
 }
 
 type UserStakeReply struct {
-	StakeStartBlock uint64        `json:"stakeStartBlock"` // Start block of the stake
-	StakeEndBlock   uint64        `json:"stakeEndBlock"`   // End block of the stake
-	StakedAmount    uint64        `json:"stakedAmount"`    // Amount of NAI staked
-	RewardAddress   codec.Address `json:"rewardAddress"`   // Address to receive rewards
-	OwnerAddress    codec.Address `json:"ownerAddress"`    // Address of the owner who delegated
+	StakeStartBlock uint64 `json:"stakeStartBlock"` // Start block of the stake
+	StakeEndBlock   uint64 `json:"stakeEndBlock"`   // End block of the stake
+	StakedAmount    uint64 `json:"stakedAmount"`    // Amount of NAI staked
+	RewardAddress   string `json:"rewardAddress"`   // Address to receive rewards
+	OwnerAddress    string `json:"ownerAddress"`    // Address of the owner who delegated
 }
 
 func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply *UserStakeReply) (err error) {
 	ctx, span := j.c.Tracer().Start(req.Context(), "Server.UserStake")
 	defer span.End()
 
-	exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, ownerAddress, err := j.c.GetDelegatedUserStakeFromState(ctx, args.Owner, args.NodeID)
+	ownerID, err := codec.ParseAddressBech32(nconsts.HRP, args.Owner)
+	if err != nil {
+		return err
+	}
+	nodeID, err := ids.NodeIDFromString(args.NodeID)
+	if err != nil {
+		return err
+	}
+
+	exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, ownerAddress, err := j.c.GetDelegatedUserStakeFromState(ctx, ownerID, nodeID)
 	if err != nil {
 		return err
 	}
@@ -258,7 +267,7 @@ func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply 
 	reply.StakeStartBlock = stakeStartBlock
 	reply.StakeEndBlock = stakeEndBlock
 	reply.StakedAmount = stakedAmount
-	reply.RewardAddress = rewardAddress
-	reply.OwnerAddress = ownerAddress
+	reply.RewardAddress = codec.MustAddressBech32(nconsts.HRP, rewardAddress)
+	reply.OwnerAddress = codec.MustAddressBech32(nconsts.HRP, ownerAddress)
 	return nil
 }

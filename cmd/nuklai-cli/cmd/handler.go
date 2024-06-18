@@ -302,33 +302,24 @@ func (*Handler) GetValidatorStake(
 func (*Handler) GetUserStake(ctx context.Context,
 	cli *nrpc.JSONRPCClient, owner codec.Address, nodeID ids.NodeID,
 ) (uint64, uint64, uint64, string, string, error) {
-	stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, ownerAddress, err := cli.UserStake(ctx, owner, nodeID)
+	stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, ownerAddress, err := cli.UserStake(ctx, codec.MustAddressBech32(nconsts.HRP, owner), nodeID.String())
 	if err != nil {
 		return 0, 0, 0, "", "", err
 	}
-
-	rewardAddressString, err := codec.AddressBech32(nconsts.HRP, rewardAddress)
-	if err != nil {
-		return 0, 0, 0, "", "", err
-	}
-	ownerAddressString, err := codec.AddressBech32(nconsts.HRP, ownerAddress)
-	if err != nil {
-		return 0, 0, 0, "", "", err
-	}
-
 	hutils.Outf(
 		"{{yellow}}user stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
 		stakeStartBlock,
 		stakeEndBlock,
 		stakedAmount,
-		rewardAddressString,
-		ownerAddressString,
+		rewardAddress,
+		ownerAddress,
 	)
 	return stakeStartBlock,
 		stakeEndBlock,
 		stakedAmount,
-		rewardAddressString,
-		ownerAddressString, err
+		rewardAddress,
+		ownerAddress,
+		err
 }
 
 type Controller struct {

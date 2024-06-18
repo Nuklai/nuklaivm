@@ -852,7 +852,8 @@ var claimUserStakeRewardCmd = &cobra.Command{
 		nodeID := validatorChosen.NodeID
 
 		// Get stake info
-		_, _, stakedAmount, _, _, err := ncli.UserStake(ctx, priv.Address, nodeID)
+		privAddress, _ := codec.AddressBech32(nconsts.HRP, priv.Address)
+		_, _, stakedAmount, _, _, err := ncli.UserStake(ctx, privAddress, nodeID.String())
 		if err != nil {
 			return err
 		}
@@ -914,7 +915,8 @@ var undelegateUserStakeCmd = &cobra.Command{
 		nodeID := validatorChosen.NodeID
 
 		// Get stake info
-		_, _, stakedAmount, _, _, err := ncli.UserStake(ctx, priv.Address, nodeID)
+		privAddress, _ := codec.AddressBech32(nconsts.HRP, priv.Address)
+		_, _, stakedAmount, _, _, err := ncli.UserStake(ctx, privAddress, nodeID.String())
 		if err != nil {
 			return err
 		}
