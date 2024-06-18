@@ -290,9 +290,9 @@ var _ = ginkgo.BeforeSuite(func() {
 		exists, symbol, decimals, metadata, supply, owner, err := cli.Asset(context.Background(), nconsts.Symbol, false)
 		require.NoError(err)
 		require.True(exists)
-		require.Equal(string(symbol), nconsts.Symbol)
+		require.Equal(symbol, nconsts.Symbol)
 		require.Equal(decimals, uint8(nconsts.Decimals))
-		require.Equal(string(metadata), nconsts.Name)
+		require.Equal(metadata, nconsts.Name)
 		require.Equal(supply, csupply)
 		require.Equal(owner, codec.MustAddressBech32(nconsts.HRP, codec.EmptyAddress))
 	}

@@ -202,9 +202,9 @@ var mintAssetCmd = &cobra.Command{
 		}
 		hutils.Outf(
 			"{{yellow}}symbol:{{/}} %s {{yellow}}decimals:{{/}} %d {{yellow}}metadata:{{/}} %s {{yellow}}supply:{{/}} %d\n",
-			string(symbol),
+			symbol,
 			decimals,
-			string(metadata),
+			metadata,
 			supply,
 		)
 

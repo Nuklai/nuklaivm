@@ -79,7 +79,7 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Asset")
 	defer span.End()
 
-	assetID, err := j.getAssetIDBySymbol(args.Asset)
+	assetID, err := getAssetIDBySymbol(args.Asset)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *Bal
 	if err != nil {
 		return err
 	}
-	assetID, err := j.getAssetIDBySymbol(args.Asset)
+	assetID, err := getAssetIDBySymbol(args.Asset)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *Bal
 	return err
 }
 
-func (j *JSONRPCServer) getAssetIDBySymbol(symbol string) (ids.ID, error) {
+func getAssetIDBySymbol(symbol string) (ids.ID, error) {
 	if strings.TrimSpace(symbol) == "" || strings.EqualFold(symbol, nconsts.Symbol) {
 		return ids.Empty, nil
 	}
