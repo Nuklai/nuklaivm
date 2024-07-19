@@ -48,8 +48,8 @@ rm -rf $TMPDIR && mkdir -p $TMPDIR
 echo -e "${YELLOW}set working directory:${NC} $TMPDIR"
 
 # Install avalanche-cli
-LOCAL_CLI_COMMIT=v1.6.0
-REMOTE_CLI_COMMIT=v1.6.0
+LOCAL_CLI_COMMIT=bd174d7620be44dc91dee9415c71142f59fa9df2
+REMOTE_CLI_COMMIT=v1.6.3
 cd $TMPDIR
 git clone https://github.com/ava-labs/avalanche-cli
 cd avalanche-cli
@@ -77,8 +77,8 @@ mv ./build/nuklai-cli "${TMPDIR}/nuklai-cli"
 cd $pw
 
 # Generate genesis file and configs
-MIN_BLOCK_GAP=250
-MIN_UNIT_PRICE="100,100,100,100,100"
+MIN_BLOCK_GAP=1000
+MIN_UNIT_PRICE="1,1,1,1,1"
 WINDOW_TARGET_UNITS="40000000,450000,450000,450000,450000"
 MAX_UINT64=18446744073709551615
 MAX_BLOCK_UNITS="1800000,${MAX_UINT64},${MAX_UINT64},${MAX_UINT64},${MAX_UINT64}"
@@ -112,13 +112,13 @@ cat <<EOF > "${TMPDIR}"/nuklaivm.config
 {
   "chunkBuildFrequency": 250,
   "targetChunkBuildDuration": 250,
-  "blockBuildFrequency": 250,
+  "blockBuildFrequency": 100,
   "mempoolSize": 2147483648,
   "mempoolSponsorSize": 10000000,
   "authExecutionCores": 2,
   "precheckCores": 2,
   "actionExecutionCores": 2,
-  "missingChunkFetchers": 48,
+  "missingChunkFetchers": 2,
   "verifyAuth": true,
   "authRPCCores": 2,
   "authRPCBacklog": 10000000,
@@ -136,15 +136,15 @@ cat <<EOF > "${TMPDIR}"/nuklaivm.config
   "authVerificationCores": 2,
   "rootGenerationCores": 2,
   "transactionExecutionCores": 2,
-  "storeTransactions": true,
-  "stateSyncServerDelay": 0
+  "storeTransactions": true
 }
 EOF
+# "stateSyncServerDelay": 100
 
 cat <<EOF > "${TMPDIR}"/nuklaivm.subnet
 {
-  "proposerMinBlockDelay": 250,
-  "proposerNumHistoricalBlocks": 10000000
+  "proposerMinBlockDelay": 0,
+  "proposerNumHistoricalBlocks": 100000000
 }
 EOF
 
@@ -156,7 +156,7 @@ cat <<EOF > "${TMPDIR}"/node.config
   "throttler-inbound-validator-alloc-size":"10737418240",
   "throttler-inbound-at-large-alloc-size":"10737418240",
   "throttler-inbound-node-max-processing-msgs":"1000000",
-	"throttler-inbound-node-max-at-large-bytes":"10737418240",
+  "throttler-inbound-node-max-at-large-bytes":"10737418240",
   "throttler-inbound-bandwidth-refill-rate":"1073741824",
   "throttler-inbound-bandwidth-max-burst-size":"1073741824",
   "throttler-inbound-cpu-validator-alloc":"100000",
@@ -180,16 +180,29 @@ EOF
 
 # Setup devnet
 CLUSTER="nuklai-$(date +%s)"
-function cleanup {
-  echo -e "\n\n${RED}run this command to destroy the devnet:${NC} ${TMPDIR}/avalanche node destroy ${CLUSTER}\n"
+
+interrupted=false
+function showcleanup {
+   if [ "$interrupted" = false ]; then
+        echo -e "\n\n${RED}run this command to destroy the devnet:${NC} ${TMPDIR}/avalanche node destroy ${CLUSTER}\n"
+   fi
 }
-trap cleanup EXIT
+
+function cleanup {
+  interrupted=true
+  echo -e "\n\n${RED}destroying the devnet, running:${NC} ${TMPDIR}/avalanche node destroy ${CLUSTER}\n"
+  ${TMPDIR}/avalanche node destroy ${CLUSTER} -y
+}
+
+trap showcleanup EXIT
+trap cleanup SIGINT
 
 # List of supported instances in each AWS region: https://docs.aws.amazon.com/ec2/latest/instancetypes/ec2-instance-regions.html
 #
 # It is not recommended to use an instance with burstable network performance.
 echo -e "${YELLOW}creating devnet${NC}"
-$TMPDIR/avalanche node devnet wiz ${CLUSTER} ${VMID} --force-subnet-create=true --authorize-access=true --aws --node-type t4g.medium --num-apis 0 --num-validators 12 --region eu-west-1 --use-static-ip=false --enable-monitoring=false --default-validator-params=true --custom-avalanchego-version $AVALANCHEGO_VERSION --custom-vm-repo-url="https://www.github.com/nuklai/nuklaivm" --custom-vm-branch $VM_COMMIT --custom-vm-build-script="scripts/build.sh" --custom-subnet=true --subnet-genesis="${TMPDIR}/nuklaivm.genesis" --subnet-config="${TMPDIR}/nuklaivm.subnet" --chain-config="${TMPDIR}/nuklaivm.config" --node-config="${TMPDIR}/node.config" --config="${TMPDIR}/node.config" --remote-cli-version $REMOTE_CLI_COMMIT --add-grafana-dashboard="${TMPDIR}/nuklaivm/grafana.json" --log-level DEBUG
+$TMPDIR/avalanche node devnet wiz ${CLUSTER} ${VMID} --force-subnet-create=true --authorize-access=true --aws --node-type t4g.medium --num-apis 0 --num-validators 10 --region eu-west-1 --use-static-ip=false --enable-monitoring=false --auto-replace-keypair --default-validator-params=true --custom-avalanchego-version $AVALANCHEGO_VERSION --custom-vm-repo-url="https://www.github.com/nuklai/nuklaivm" --custom-vm-branch $VM_COMMIT --custom-vm-build-script="scripts/build.sh" --custom-subnet=true --subnet-genesis="${TMPDIR}/nuklaivm.genesis" --subnet-config="${TMPDIR}/nuklaivm.subnet" --chain-config="${TMPDIR}/nuklaivm.config" --node-config="${TMPDIR}/node.config" --config="${TMPDIR}/node.config" --remote-cli-version $REMOTE_CLI_COMMIT --add-grafana-dashboard="${TMPDIR}/nuklaivm/grafana.json"
+
 
 # Import the cluster into nuklai-cli for local interaction
 $TMPDIR/nuklai-cli chain import-cli $HOME/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml

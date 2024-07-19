@@ -72,7 +72,6 @@ const (
 const (
 	BalanceChunks                uint16 = 1
 	AssetChunks                  uint16 = 5
-	LoanChunks                   uint16 = 1
 	RegisterValidatorStakeChunks uint16 = 5
 	DelegateUserStakeChunks      uint16 = 3
 )
