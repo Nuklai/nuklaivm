@@ -77,7 +77,7 @@ mv ./build/nuklai-cli "${TMPDIR}/nuklai-cli"
 cd $pw
 
 # Generate genesis file and configs
-MIN_BLOCK_GAP=1000
+MIN_BLOCK_GAP=3000
 MIN_UNIT_PRICE="1,1,1,1,1"
 WINDOW_TARGET_UNITS="40000000,450000,450000,450000,450000"
 MAX_UINT64=18446744073709551615
@@ -143,7 +143,7 @@ EOF
 
 cat <<EOF > "${TMPDIR}"/nuklaivm.subnet
 {
-  "proposerMinBlockDelay": 0,
+  "proposerMinBlockDelay": 1000,
   "proposerNumHistoricalBlocks": 100000000
 }
 EOF
