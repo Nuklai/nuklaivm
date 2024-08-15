@@ -26,7 +26,7 @@ var (
 
 	ErrOutputAssetTypeIncorrect     = errors.New("asset type is incorrect. It must be fungible, non-fungible, fractionalized-fungible or fractionalized-non-fungible")
 	ErrOutputNameInvalid            = errors.New("name is empty or too large")
-	ErrOutputUriInvalid             = errors.New("uri is empty or too large")
+	ErrOutputURIInvalid             = errors.New("uri is empty or too large")
 	ErrOutputSymbolInvalid          = errors.New("symbol is empty or too large")
 	ErrOutputDecimalsInvalid        = errors.New("decimal is incorrect or too large")
 	ErrOutputMaxSupplyReached       = errors.New("max supply reached")
@@ -34,7 +34,7 @@ var (
 	ErrOutputWrongMintActor         = errors.New("wrong mint actor")
 	ErrOutputNFTAlreadyExists       = errors.New("NFT already exists")
 	ErrOutputIDGreaterThanMaxSupply = errors.New("ID is greater than max supply")
-	ErrOutputNFTValueGreaterThanOne = errors.New("NFT value is greater than one")
+	ErrOutputNFTValueGreaterThanOne = errors.New("NFT value must be 1")
 
 	ErrOutputSameInOut          = errors.New("same asset used for in and out")
 	ErrOutputWrongDestination   = errors.New("wrong destination")

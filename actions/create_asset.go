@@ -72,7 +72,7 @@ func (c *CreateAsset) Execute(
 	_ chain.Rules,
 	mu state.Mutable,
 	_ int64,
-	actor codec.Address,
+	_ codec.Address,
 	actionID ids.ID,
 ) ([][]byte, error) {
 	if len(c.Name) == 0 || len(c.Name) > MaxTextSize {

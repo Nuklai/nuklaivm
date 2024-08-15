@@ -57,7 +57,7 @@ func (m *MintAssetNFT) Execute(
 	ctx context.Context,
 	_ chain.Rules,
 	mu state.Mutable,
-	timestamp int64,
+	_ int64,
 	actor codec.Address,
 	_ ids.ID,
 ) ([][]byte, error) {
@@ -65,7 +65,7 @@ func (m *MintAssetNFT) Execute(
 		return nil, ErrOutputAssetIsNative
 	}
 	if len(m.Uri) == 0 || len(m.Uri) > MaxTextSize {
-		return nil, ErrOutputUriInvalid
+		return nil, ErrOutputURIInvalid
 	}
 
 	// Check if the unique ID already exists
@@ -75,7 +75,6 @@ func (m *MintAssetNFT) Execute(
 	}
 
 	exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := storage.GetAsset(ctx, mu, m.Asset)
-
 	if err != nil {
 		return nil, err
 	}

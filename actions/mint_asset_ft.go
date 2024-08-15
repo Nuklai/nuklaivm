@@ -53,7 +53,7 @@ func (m *MintAssetFT) Execute(
 	ctx context.Context,
 	_ chain.Rules,
 	mu state.Mutable,
-	timestamp int64,
+	_ int64,
 	actor codec.Address,
 	_ ids.ID,
 ) ([][]byte, error) {
