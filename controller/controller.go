@@ -199,7 +199,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 					c.metrics.transfer.Inc()
 				case *actions.CreateAsset:
 					c.metrics.createAsset.Inc()
-				case *actions.MintAsset:
+				case *actions.MintAssetFT:
 					c.metrics.mintAsset.Inc()
 				case *actions.BurnAsset:
 					c.metrics.burnAsset.Inc()

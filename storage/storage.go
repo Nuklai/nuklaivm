@@ -63,17 +63,19 @@ const (
 	incomingWarpPrefix = 0x4
 	outgoingWarpPrefix = 0x5
 
-	assetPrefix = 0x6
+	assetPrefix    = 0x6
+	assetNFTPrefix = 0x7
 
-	registerValidatorStakePrefix = 0x7
-	delegateUserStakePrefix      = 0x8
+	registerValidatorStakePrefix = 0x8
+	delegateUserStakePrefix      = 0x9
 )
 
 const (
 	BalanceChunks                uint16 = 1
-	AssetChunks                  uint16 = 5
-	RegisterValidatorStakeChunks uint16 = 5
-	DelegateUserStakeChunks      uint16 = 3
+	AssetChunks                  uint16 = 9
+	AssetNFTChunks               uint16 = 2
+	RegisterValidatorStakeChunks uint16 = 4
+	DelegateUserStakeChunks      uint16 = 2
 )
 
 var (
@@ -296,12 +298,12 @@ func SubBalance(
 	return setBalance(ctx, mu, key, nbal)
 }
 
-// [assetPrefix] + [address]
+// [assetID]
 func AssetKey(asset ids.ID) (k []byte) {
-	k = make([]byte, 1+ids.IDLen+consts.Uint16Len)
-	k[0] = assetPrefix
-	copy(k[1:], asset[:])
-	binary.BigEndian.PutUint16(k[1+ids.IDLen:], AssetChunks)
+	k = make([]byte, 1+ids.IDLen+consts.Uint16Len)           // Length of prefix + assetID + AssetChunks
+	k[0] = assetPrefix                                       // assetPrefix is a constant representing the asset category
+	copy(k[1:], asset[:])                                    // Copy the assetID
+	binary.BigEndian.PutUint16(k[1+ids.IDLen:], AssetChunks) // Adding AssetChunks
 	return
 }
 
@@ -310,7 +312,7 @@ func GetAssetFromState(
 	ctx context.Context,
 	f ReadState,
 	asset ids.ID,
-) (bool, []byte, uint8, []byte, uint64, codec.Address, error) {
+) (bool, []byte, []byte, uint8, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
 	values, errs := f(ctx, [][]byte{AssetKey(asset)})
 	return innerGetAsset(values[0], errs[0])
 }
@@ -319,7 +321,7 @@ func GetAsset(
 	ctx context.Context,
 	im state.Immutable,
 	asset ids.ID,
-) (bool, []byte, uint8, []byte, uint64, codec.Address, error) {
+) (bool, []byte, []byte, uint8, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
 	k := AssetKey(asset)
 	return innerGetAsset(im.GetValue(ctx, k))
 }
@@ -327,50 +329,155 @@ func GetAsset(
 func innerGetAsset(
 	v []byte,
 	err error,
-) (bool, []byte, uint8, []byte, uint64, codec.Address, error) {
+) (bool, []byte, []byte, uint8, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
 	if errors.Is(err, database.ErrNotFound) {
-		return false, nil, 0, nil, 0, codec.EmptyAddress, nil
+		return false, nil, nil, 0, nil, 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, nil
 	}
 	if err != nil {
-		return false, nil, 0, nil, 0, codec.EmptyAddress, err
+		return false, nil, nil, 0, nil, 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, err
 	}
-	symbolLen := binary.BigEndian.Uint16(v)
-	symbol := v[consts.Uint16Len : consts.Uint16Len+symbolLen]
-	decimals := v[consts.Uint16Len+symbolLen]
-	metadataLen := binary.BigEndian.Uint16(v[consts.Uint16Len+symbolLen+consts.Uint8Len:])
-	metadata := v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len : consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen]
-	supply := binary.BigEndian.Uint64(v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen:])
-	var addr codec.Address
-	copy(addr[:], v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len:])
-	return true, symbol, decimals, metadata, supply, addr, nil
+
+	nameLen := binary.BigEndian.Uint16(v)
+	name := v[consts.Uint16Len : consts.Uint16Len+nameLen]
+	symbolLen := binary.BigEndian.Uint16(v[consts.Uint16Len+nameLen:])
+	symbol := v[consts.Uint16Len+nameLen+consts.Uint16Len : consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen]
+	decimals := v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen]
+	metadataLen := binary.BigEndian.Uint16(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len:])
+	metadata := v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len : +consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen]
+
+	totalSupply := binary.BigEndian.Uint64(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen:])
+	maxSupply := binary.BigEndian.Uint64(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len:])
+
+	var updateAssetActor codec.Address
+	copy(updateAssetActor[:], v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2:])
+	var mintActor codec.Address
+	copy(mintActor[:], v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen:])
+	var pauseUnpauseActor codec.Address
+	copy(pauseUnpauseActor[:], v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*2:])
+	var freezeUnfreezeActor codec.Address
+	copy(freezeUnfreezeActor[:], v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*3:])
+	var enableDisableKYCAccountActor codec.Address
+	copy(enableDisableKYCAccountActor[:], v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*4:])
+	var deleteActor codec.Address
+	copy(deleteActor[:], v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*5:])
+
+	return true, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, nil
 }
 
 func SetAsset(
 	ctx context.Context,
 	mu state.Mutable,
 	asset ids.ID,
+	name []byte,
 	symbol []byte,
 	decimals uint8,
 	metadata []byte,
-	supply uint64,
-	owner codec.Address,
+	totalSupply uint64,
+	maxSupply uint64,
+	updateAssetActor codec.Address,
+	mintActor codec.Address,
+	pauseUnpauseActor codec.Address,
+	freezeUnfreezeActor codec.Address,
+	enableDisableKYCAccountActor codec.Address,
+	deleteActor codec.Address,
 ) error {
 	k := AssetKey(asset)
+	nameLen := len(name)
 	symbolLen := len(symbol)
 	metadataLen := len(metadata)
-	v := make([]byte, consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len+codec.AddressLen)
-	binary.BigEndian.PutUint16(v, uint16(symbolLen))
-	copy(v[consts.Uint16Len:], symbol)
-	v[consts.Uint16Len+symbolLen] = decimals
-	binary.BigEndian.PutUint16(v[consts.Uint16Len+symbolLen+consts.Uint8Len:], uint16(metadataLen))
-	copy(v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len:], metadata)
-	binary.BigEndian.PutUint64(v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen:], supply)
-	copy(v[consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len:], owner[:])
+
+	v := make([]byte, consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*6)
+
+	binary.BigEndian.PutUint16(v, uint16(nameLen))
+	copy(v[consts.Uint16Len:], name)
+	binary.BigEndian.PutUint16(v[consts.Uint16Len+nameLen:], uint16(symbolLen))
+	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len:], symbol)
+	v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen] = decimals
+	binary.BigEndian.PutUint16(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len:], uint16(metadataLen))
+	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len:], metadata)
+
+	binary.BigEndian.PutUint64(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen:], totalSupply)
+	binary.BigEndian.PutUint64(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len:], maxSupply)
+
+	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2:], updateAssetActor[:])
+	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen:], mintActor[:])
+	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*2:], pauseUnpauseActor[:])
+	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*3:], freezeUnfreezeActor[:])
+	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*4:], enableDisableKYCAccountActor[:])
+	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*5:], deleteActor[:])
+
 	return mu.Insert(ctx, k, v)
 }
 
 func DeleteAsset(ctx context.Context, mu state.Mutable, asset ids.ID) error {
 	k := AssetKey(asset)
+	return mu.Remove(ctx, k)
+}
+
+// [assetID] + [uniqueID]
+func AssetNFTKey(collectionID ids.ID, uniqueID uint64) (k []byte) {
+	k = make([]byte, 1+ids.IDLen+consts.Uint64Len+consts.Uint16Len)              // Length of prefix + assetID + uniqueID + AssetNFTChunks
+	k[0] = assetNFTPrefix                                                        // assetNFTPrefix is a constant representing the assetNFT category
+	copy(k[1:], collectionID[:])                                                 // Copy the assetID
+	binary.BigEndian.PutUint64(k[1+ids.IDLen:], uniqueID)                        // Copy the uniqueID
+	binary.BigEndian.PutUint16(k[1+ids.IDLen+consts.Uint64Len:], AssetNFTChunks) // Adding AssetNFTChunks
+	return
+}
+
+// Used to serve RPC queries
+func GetAssetNFTFromState(
+	ctx context.Context,
+	f ReadState,
+	collectionID ids.ID, uniqueID uint64,
+) (bool, ids.ID, []byte, codec.Address, error) {
+	values, errs := f(ctx, [][]byte{AssetNFTKey(collectionID, uniqueID)})
+	return innerGetAssetNFT(values[0], errs[0])
+}
+
+func GetAssetNFT(
+	ctx context.Context,
+	im state.Immutable,
+	collectionID ids.ID, uniqueID uint64,
+) (bool, ids.ID, []byte, codec.Address, error) {
+	k := AssetNFTKey(collectionID, uniqueID)
+	return innerGetAssetNFT(im.GetValue(ctx, k))
+}
+
+func innerGetAssetNFT(v []byte, err error) (bool, ids.ID, []byte, codec.Address, error) {
+	if errors.Is(err, database.ErrNotFound) {
+		return false, ids.Empty, nil, codec.Address{}, nil
+	}
+	if err != nil {
+		return false, ids.Empty, nil, codec.Address{}, err
+	}
+
+	nftID, err := ids.ToID(v[:ids.IDLen])
+	if err != nil {
+		return false, ids.Empty, nil, codec.Address{}, err
+	}
+	uriLen := binary.BigEndian.Uint16(v[ids.IDLen:])
+	uri := v[ids.IDLen+consts.Uint16Len : ids.IDLen+consts.Uint16Len+uriLen]
+	var to codec.Address
+	copy(to[:], v[ids.IDLen+consts.Uint16Len+uriLen:])
+
+	return true, nftID, uri, to, nil
+}
+
+func SetAssetNFT(ctx context.Context, mu state.Mutable, collectionID ids.ID, uniqueID uint64, nftID ids.ID, uri []byte, to codec.Address) error {
+	k := AssetNFTKey(collectionID, uniqueID)
+	uriLen := len(uri)
+
+	v := make([]byte, ids.IDLen+consts.Uint16Len+uriLen+codec.AddressLen)
+	copy(v, nftID[:])
+	binary.BigEndian.PutUint16(v[ids.IDLen:], uint16(uriLen))
+	copy(v[ids.IDLen+consts.Uint16Len:], uri)
+	copy(v[ids.IDLen+consts.Uint16Len+uriLen:], to[:])
+
+	return mu.Insert(ctx, k, v)
+}
+
+func DeleteAssetNFT(ctx context.Context, mu state.Mutable, collectionID ids.ID, uniqueID uint64) error {
+	k := AssetNFTKey(collectionID, uniqueID)
 	return mu.Remove(ctx, k)
 }
 

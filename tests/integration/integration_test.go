@@ -287,14 +287,22 @@ var _ = ginkgo.BeforeSuite(func() {
 			require.Equal(balance, alloc.Balance)
 			csupply += alloc.Balance
 		}
-		exists, symbol, decimals, metadata, supply, owner, err := cli.Asset(context.Background(), nconsts.Symbol, false)
+		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := cli.Asset(context.Background(), nconsts.Symbol, false)
+
 		require.NoError(err)
 		require.True(exists)
+		require.Equal(name, nconsts.Name)
 		require.Equal(symbol, nconsts.Symbol)
 		require.Equal(decimals, uint8(nconsts.Decimals))
 		require.Equal(metadata, nconsts.Name)
-		require.Equal(supply, csupply)
-		require.Equal(owner, codec.MustAddressBech32(nconsts.HRP, codec.EmptyAddress))
+		require.Equal(totalSupply, csupply)
+		require.Equal(maxSupply, g.EmissionBalancer.MaxSupply)
+		require.Equal(updateAssetActor, codec.MustAddressBech32(nconsts.HRP, codec.EmptyAddress))
+		require.Equal(mintActor, codec.MustAddressBech32(nconsts.HRP, codec.EmptyAddress))
+		require.Equal(pauseUnpauseActor, codec.MustAddressBech32(nconsts.HRP, codec.EmptyAddress))
+		require.Equal(freezeUnfreezeActor, codec.MustAddressBech32(nconsts.HRP, codec.EmptyAddress))
+		require.Equal(enableDisableKYCAccountActor, codec.MustAddressBech32(nconsts.HRP, codec.EmptyAddress))
+		require.Equal(deleteActor, codec.MustAddressBech32(nconsts.HRP, codec.EmptyAddress))
 	}
 	blocks = []snowman.Block{}
 
@@ -793,7 +801,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.ErrorContains(err, "size is larger than limit")
 	})
 
-	ginkgo.It("mint an asset that doesn't exist", func() {
+	ginkgo.It("mint a fungible asset that doesn't exist", func() {
 		other, err := ed25519.GeneratePrivateKey()
 		require.NoError(err)
 		assetID := ids.GenerateTestID()
@@ -802,7 +810,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		submit, _, _, err := instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.MintAssetFT{
 				To:    auth.NewED25519Address(other.PublicKey()),
 				Asset: assetID,
 				Value: 10,
@@ -819,7 +827,39 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.False(result.Success)
 		require.Contains(string(result.Error), "asset missing")
 
-		exists, _, _, _, _, _, err := instances[0].ncli.Asset(context.TODO(), assetID.String(), false)
+		exists, _, _, _, _, _, _, _, _, _, _, _, _, err := instances[0].ncli.Asset(context.TODO(), assetID.String(), false)
+		require.NoError(err)
+		require.False(exists)
+	})
+
+	ginkgo.It("mint a non-fungible asset that doesn't exist", func() {
+		other, err := ed25519.GeneratePrivateKey()
+		require.NoError(err)
+		assetID := ids.GenerateTestID()
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.MintAssetNFT{
+				To:       auth.NewED25519Address(other.PublicKey()),
+				Asset:    assetID,
+				UniqueID: 0,
+				Uri:      []byte("uri"),
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		result := results[0]
+		require.False(result.Success)
+		require.Contains(string(result.Error), "asset missing")
+
+		exists, _, _, _, _, _, _, _, _, _, _, _, _, err := instances[0].ncli.Asset(context.TODO(), assetID.String(), false)
 		require.NoError(err)
 		require.False(exists)
 	})
@@ -832,9 +872,17 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				MaxFee:    1001,
 			},
 			[]chain.Action{&actions.CreateAsset{
-				Symbol:   []byte("s0"),
-				Decimals: 0,
-				Metadata: nil,
+				Name:                         []byte("n0"),
+				Symbol:                       []byte("s0"),
+				Decimals:                     0,
+				Metadata:                     nil,
+				MaxSupply:                    uint64(0),
+				UpdateAssetActor:             rsender,
+				MintActor:                    rsender,
+				PauseUnpauseActor:            rsender,
+				FreezeUnfreezeActor:          rsender,
+				EnableDisableKYCAccountActor: rsender,
+				DeleteActor:                  rsender,
 			}},
 		)
 		// Must do manual construction to avoid `tx.Sign` error (would fail with
@@ -862,9 +910,17 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				MaxFee:    1001,
 			},
 			[]chain.Action{&actions.CreateAsset{
-				Symbol:   nil,
-				Decimals: 0,
-				Metadata: []byte("m"),
+				Name:                         []byte("n0"),
+				Symbol:                       nil,
+				Decimals:                     0,
+				Metadata:                     []byte("m0"),
+				MaxSupply:                    uint64(0),
+				UpdateAssetActor:             rsender,
+				MintActor:                    rsender,
+				PauseUnpauseActor:            rsender,
+				FreezeUnfreezeActor:          rsender,
+				EnableDisableKYCAccountActor: rsender,
+				DeleteActor:                  rsender,
 			}},
 		)
 		// Must do manual construction to avoid `tx.Sign` error (would fail with
@@ -892,9 +948,17 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				MaxFee:    1000,
 			},
 			[]chain.Action{&actions.CreateAsset{
-				Symbol:   []byte("s0"),
-				Decimals: 0,
-				Metadata: make([]byte, actions.MaxMetadataSize*2),
+				Name:                         []byte("n0"),
+				Symbol:                       []byte("s0"),
+				Decimals:                     0,
+				Metadata:                     make([]byte, actions.MaxMetadataSize*2),
+				MaxSupply:                    uint64(0),
+				UpdateAssetActor:             rsender,
+				MintActor:                    rsender,
+				PauseUnpauseActor:            rsender,
+				FreezeUnfreezeActor:          rsender,
+				EnableDisableKYCAccountActor: rsender,
+				DeleteActor:                  rsender,
 			}},
 		)
 		// Must do manual construction to avoid `tx.Sign` error (would fail with
@@ -921,9 +985,17 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			context.Background(),
 			parser,
 			[]chain.Action{&actions.CreateAsset{
-				Symbol:   asset1Symbol,
-				Decimals: asset1Decimals,
-				Metadata: asset1,
+				Name:                         asset1,
+				Symbol:                       asset1Symbol,
+				Decimals:                     asset1Decimals,
+				Metadata:                     asset1,
+				MaxSupply:                    uint64(0),
+				UpdateAssetActor:             rsender,
+				MintActor:                    rsender,
+				PauseUnpauseActor:            rsender,
+				FreezeUnfreezeActor:          rsender,
+				EnableDisableKYCAccountActor: rsender,
+				DeleteActor:                  rsender,
 			}},
 			factory,
 		)
@@ -940,23 +1012,31 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.NoError(err)
 		require.Zero(balance)
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+
 		require.NoError(err)
 		require.True(exists)
+		require.Equal([]byte(name), asset1)
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Zero(supply)
-		require.Equal(owner, sender)
+		require.Zero(totalSupply)
+		require.Zero(maxSupply)
+		require.Equal(updateAssetActor, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+		require.Equal(deleteActor, sender)
 	})
 
-	ginkgo.It("mint a new asset", func() {
+	ginkgo.It("mint a new fungible asset", func() {
 		parser, err := instances[0].ncli.Parser(context.Background())
 		require.NoError(err)
 		submit, _, _, err := instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.MintAssetFT{
 				To:    rsender2,
 				Asset: asset1ID,
 				Value: 15,
@@ -978,17 +1058,70 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.NoError(err)
 		require.Zero(balance)
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
+		require.Equal([]byte(name), asset1)
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(supply, uint64(15))
-		require.Equal(owner, sender)
+		require.Equal(totalSupply, uint64(15))
+		require.Zero(maxSupply)
+		require.Equal(updateAssetActor, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+		require.Equal(deleteActor, sender)
 	})
 
-	ginkgo.It("mint asset from wrong owner", func() {
+	ginkgo.It("mint a new non-fungible asset", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.MintAssetNFT{
+				To:       rsender2,
+				Asset:    asset1ID,
+				UniqueID: 1,
+				Uri:      []byte("uri"),
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(16))
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
+		require.NoError(err)
+		require.Zero(balance)
+
+		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(symbol), asset1Symbol)
+		require.Equal(decimals, asset1Decimals)
+		require.Equal([]byte(metadata), asset1)
+		require.Equal(totalSupply, uint64(16))
+		require.Zero(maxSupply)
+		require.Equal(updateAssetActor, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+		require.Equal(deleteActor, sender)
+	})
+
+	ginkgo.It("mint fungible asset from wrong owner", func() {
 		other, err := ed25519.GeneratePrivateKey()
 		require.NoError(err)
 		parser, err := instances[0].ncli.Parser(context.Background())
@@ -996,7 +1129,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		submit, _, _, err := instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.MintAssetFT{
 				To:    auth.NewED25519Address(other.PublicKey()),
 				Asset: asset1ID,
 				Value: 10,
@@ -1012,19 +1145,70 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		result := results[0]
 
 		require.False(result.Success)
-		require.Contains(string(result.Error), "wrong owner")
+		require.Contains(string(result.Error), "wrong mint actor")
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
+		require.Equal([]byte(name), asset1)
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(supply, uint64(15))
-		require.Equal(owner, sender)
+		require.Equal(totalSupply, uint64(16))
+		require.Zero(maxSupply)
+		require.Equal(updateAssetActor, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+		require.Equal(deleteActor, sender)
 	})
 
-	ginkgo.It("burn new asset", func() {
+	ginkgo.It("mint non-fungible asset from wrong owner", func() {
+		other, err := ed25519.GeneratePrivateKey()
+		require.NoError(err)
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.MintAssetNFT{
+				To:       auth.NewED25519Address(other.PublicKey()),
+				Asset:    asset1ID,
+				UniqueID: 0,
+				Uri:      []byte("uri"),
+			}},
+			factory2,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		result := results[0]
+
+		require.False(result.Success)
+		require.Contains(string(result.Error), "wrong mint actor")
+
+		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(symbol), asset1Symbol)
+		require.Equal(decimals, asset1Decimals)
+		require.Equal([]byte(metadata), asset1)
+		require.Equal(totalSupply, uint64(16))
+		require.Zero(maxSupply)
+		require.Equal(updateAssetActor, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+		require.Equal(deleteActor, sender)
+	})
+
+	ginkgo.It("burn new fungible asset", func() {
 		parser, err := instances[0].ncli.Parser(context.Background())
 		require.NoError(err)
 		submit, _, _, err := instances[0].cli.GenerateTransaction(
@@ -1033,6 +1217,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			[]chain.Action{&actions.BurnAsset{
 				Asset: asset1ID,
 				Value: 5,
+				IsNFT: false,
 			}},
 			factory2,
 		)
@@ -1046,19 +1231,71 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 
 		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID.String())
 		require.NoError(err)
-		require.Equal(balance, uint64(10))
+		require.Equal(balance, uint64(11))
 		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
 		require.NoError(err)
 		require.Zero(balance)
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
+		require.Equal([]byte(name), asset1)
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(supply, uint64(10))
-		require.Equal(owner, sender)
+		require.Equal(totalSupply, uint64(11))
+		require.Zero(maxSupply)
+		require.Equal(updateAssetActor, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+		require.Equal(deleteActor, sender)
+	})
+
+	ginkgo.It("burn new non-fungible asset", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.BurnAsset{
+				Asset: asset1ID,
+				Value: 0,
+				IsNFT: true,
+			}},
+			factory2,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(11))
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
+		require.NoError(err)
+		require.Zero(balance)
+
+		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(symbol), asset1Symbol)
+		require.Equal(decimals, asset1Decimals)
+		require.Equal([]byte(metadata), asset1)
+		require.Equal(totalSupply, uint64(11))
+		require.Zero(maxSupply)
+		require.Equal(updateAssetActor, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+		require.Equal(deleteActor, sender)
 	})
 
 	ginkgo.It("burn missing asset", func() {
@@ -1083,14 +1320,21 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.False(result.Success)
 		require.Contains(string(result.Error), "invalid balance")
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
+		require.Equal([]byte(name), asset1)
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(supply, uint64(10))
-		require.Equal(owner, sender)
+		require.Equal(totalSupply, uint64(11))
+		require.Zero(maxSupply)
+		require.Equal(updateAssetActor, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+		require.Equal(deleteActor, sender)
 	})
 
 	ginkgo.It("rejects empty mint", func() {
@@ -1102,7 +1346,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
 				MaxFee:    1000,
 			},
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.MintAssetFT{
 				To:    auth.NewED25519Address(other.PublicKey()),
 				Asset: asset1ID,
 			}},
@@ -1130,7 +1374,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		submit, _, _, err := instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.MintAssetFT{
 				To:    rsender2,
 				Asset: asset1ID,
 				Value: consts.MaxUint64,
@@ -1149,19 +1393,26 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 
 		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID.String())
 		require.NoError(err)
-		require.Equal(balance, uint64(10))
+		require.Equal(balance, uint64(11))
 		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
 		require.NoError(err)
 		require.Zero(balance)
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
+		require.Equal([]byte(name), asset1)
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(supply, uint64(10))
-		require.Equal(owner, sender)
+		require.Equal(totalSupply, uint64(11))
+		require.Zero(maxSupply)
+		require.Equal(updateAssetActor, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+		require.Equal(deleteActor, sender)
 	})
 
 	ginkgo.It("rejects mint of native token", func() {
@@ -1173,7 +1424,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
 				MaxFee:    1000,
 			},
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.MintAssetFT{
 				To:    auth.NewED25519Address(other.PublicKey()),
 				Value: 10,
 			}},
@@ -1202,9 +1453,17 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			context.Background(),
 			parser,
 			[]chain.Action{&actions.CreateAsset{
-				Symbol:   asset2Symbol,
-				Decimals: asset2Decimals,
-				Metadata: asset2,
+				Name:                         asset2,
+				Symbol:                       asset2Symbol,
+				Decimals:                     asset2Decimals,
+				Metadata:                     asset2,
+				MaxSupply:                    uint64(0),
+				UpdateAssetActor:             rsender,
+				MintActor:                    rsender,
+				PauseUnpauseActor:            rsender,
+				FreezeUnfreezeActor:          rsender,
+				EnableDisableKYCAccountActor: rsender,
+				DeleteActor:                  rsender,
 			}},
 			factory,
 		)
@@ -1220,7 +1479,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		submit, _, _, err = instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.MintAssetFT{
 				To:    rsender,
 				Asset: asset2ID,
 				Value: 10,
@@ -1247,9 +1506,17 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			context.Background(),
 			parser,
 			[]chain.Action{&actions.CreateAsset{
-				Symbol:   asset3Symbol,
-				Decimals: asset3Decimals,
-				Metadata: asset3,
+				Name:                         asset3,
+				Symbol:                       asset3Symbol,
+				Decimals:                     asset3Decimals,
+				Metadata:                     asset3,
+				MaxSupply:                    uint64(0),
+				UpdateAssetActor:             rsender2,
+				MintActor:                    rsender2,
+				PauseUnpauseActor:            rsender2,
+				FreezeUnfreezeActor:          rsender2,
+				EnableDisableKYCAccountActor: rsender2,
+				DeleteActor:                  rsender2,
 			}},
 			factory2,
 		)
@@ -1265,7 +1532,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		submit, _, _, err = instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.MintAssetFT{
 				To:    rsender2,
 				Asset: asset3ID,
 				Value: 10,
@@ -1332,24 +1599,56 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			parser,
 			[]chain.Action{
 				&actions.CreateAsset{
-					Symbol:   asset1Symbol,
-					Decimals: asset1Decimals,
-					Metadata: asset1,
+					Name:                         asset1,
+					Symbol:                       asset1Symbol,
+					Decimals:                     asset1Decimals,
+					Metadata:                     asset1,
+					MaxSupply:                    uint64(0),
+					UpdateAssetActor:             rsender,
+					MintActor:                    rsender,
+					PauseUnpauseActor:            rsender,
+					FreezeUnfreezeActor:          rsender,
+					EnableDisableKYCAccountActor: rsender,
+					DeleteActor:                  rsender,
 				},
 				&actions.CreateAsset{
-					Symbol:   asset2Symbol,
-					Decimals: asset2Decimals,
-					Metadata: asset2,
+					Name:                         asset2,
+					Symbol:                       asset2Symbol,
+					Decimals:                     asset2Decimals,
+					Metadata:                     asset2,
+					MaxSupply:                    uint64(0),
+					UpdateAssetActor:             rsender,
+					MintActor:                    rsender,
+					PauseUnpauseActor:            rsender,
+					FreezeUnfreezeActor:          rsender,
+					EnableDisableKYCAccountActor: rsender,
+					DeleteActor:                  rsender,
 				},
 				&actions.CreateAsset{
-					Symbol:   asset3Symbol,
-					Decimals: asset3Decimals,
-					Metadata: asset3,
+					Name:                         asset3,
+					Symbol:                       asset3Symbol,
+					Decimals:                     asset3Decimals,
+					Metadata:                     asset3,
+					MaxSupply:                    uint64(0),
+					UpdateAssetActor:             rsender,
+					MintActor:                    rsender,
+					PauseUnpauseActor:            rsender,
+					FreezeUnfreezeActor:          rsender,
+					EnableDisableKYCAccountActor: rsender,
+					DeleteActor:                  rsender,
 				},
 				&actions.CreateAsset{
-					Symbol:   asset4Symbol,
-					Decimals: asset4Decimals,
-					Metadata: asset4,
+					Name:                         asset4,
+					Symbol:                       asset4Symbol,
+					Decimals:                     asset4Decimals,
+					Metadata:                     asset4,
+					MaxSupply:                    uint64(0),
+					UpdateAssetActor:             rsender,
+					MintActor:                    rsender,
+					PauseUnpauseActor:            rsender,
+					FreezeUnfreezeActor:          rsender,
+					EnableDisableKYCAccountActor: rsender,
+					DeleteActor:                  rsender,
 				},
 			},
 			factory,
@@ -1372,42 +1671,42 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			context.Background(),
 			parser,
 			[]chain.Action{
-				&actions.MintAsset{
+				&actions.MintAssetFT{
 					To:    rsender2,
 					Asset: asset1ID,
 					Value: 10,
 				},
-				&actions.MintAsset{
+				&actions.MintAssetFT{
 					To:    rsender2,
 					Asset: asset2ID,
 					Value: 10,
 				},
-				&actions.MintAsset{
+				&actions.MintAssetFT{
 					To:    rsender2,
 					Asset: asset3ID,
 					Value: 10,
 				},
-				&actions.MintAsset{
+				&actions.MintAssetFT{
 					To:    rsender2,
 					Asset: asset4ID,
 					Value: 10,
 				},
-				&actions.MintAsset{
+				&actions.MintAssetFT{
 					To:    rsender,
 					Asset: asset1ID,
 					Value: 10,
 				},
-				&actions.MintAsset{
+				&actions.MintAssetFT{
 					To:    rsender,
 					Asset: asset2ID,
 					Value: 10,
 				},
-				&actions.MintAsset{
+				&actions.MintAssetFT{
 					To:    rsender,
 					Asset: asset3ID,
 					Value: 10,
 				},
-				&actions.MintAsset{
+				&actions.MintAssetFT{
 					To:    rsender,
 					Asset: asset4ID,
 					Value: 10,

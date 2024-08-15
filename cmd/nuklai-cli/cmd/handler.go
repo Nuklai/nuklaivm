@@ -72,39 +72,49 @@ func (*Handler) GetAssetInfo(
 	addr codec.Address,
 	assetID ids.ID,
 	checkBalance bool,
-) (string, uint8, uint64, string, error) {
-	var sourceChainID ids.ID
-	exists, symbol, decimals, metadata, supply, _, err := cli.Asset(ctx, assetID.String(), false)
+) (uint64, string, string, uint8, string, uint64, uint64, string, string, string, string, string, string, error) {
+	exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := cli.Asset(ctx, assetID.String(), false)
 	if err != nil {
-		return "", 0, 0, "", err
+		return 0, "", "", 0, "", 0, 0, "", "", "", "", "", "", err
 	}
 	if assetID != ids.Empty {
 		if !exists {
 			hutils.Outf("{{red}}%s does not exist{{/}}\n", assetID)
 			hutils.Outf("{{red}}exiting...{{/}}\n")
-			return "", 0, 0, "", nil
+			return 0, "", "", 0, "", 0, 0, "", "", "", "", "", "", nil
 		}
 		hutils.Outf(
-			"{{yellow}}symbol:{{/}} %s {{yellow}}decimals:{{/}} %d {{yellow}}metadata:{{/}} %s {{yellow}}supply:{{/}} %d\n",
+			"{{yellow}}name:{{/}} %s {{yellow}}symbol:{{/}} %s {{yellow}}decimals:{{/}} %d {{yellow}}metadata:{{/}} %s {{yellow}}totalSupply:{{/}} %d{{yellow}}maxSupply:{{/}} %d{{yellow}}updateAssetActor:{{/}} %s {{yellow}}mintActor:{{/}} %s {{yellow}}pauseUnpauseActor:{{/}} %s {{yellow}}freezeUnfreezeActor:{{/}} %s {{yellow}}enableDisableKYCAccountActor:{{/}} %s {{yellow}}deleteActor:{{/}} %s \n",
+			name,
 			symbol,
 			decimals,
 			metadata,
-			supply,
+			totalSupply,
+			maxSupply,
+			updateAssetActor,
+			mintActor,
+			pauseUnpauseActor,
+			freezeUnfreezeActor,
+			enableDisableKYCAccountActor,
+			deleteActor,
 		)
 	}
 	if !checkBalance {
-		return symbol, decimals, 0, sourceChainID.String(), nil
+		return 0, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, nil
 	}
 	saddr, err := codec.AddressBech32(nconsts.HRP, addr)
 	if err != nil {
-		return "", 0, 0, "", err
+		return 0, "", "", 0, "", 0, 0, "", "", "", "", "", "", err
 	}
 	balance, err := cli.Balance(ctx, saddr, assetID.String())
 	if err != nil {
-		return "", 0, 0, "", err
+		return 0, "", "", 0, "", 0, 0, "", "", "", "", "", "", err
 	}
 	if balance == 0 {
-		hutils.Outf("{{red}}balance:{{/}} 0 %s\n", assetID)
+		hutils.Outf("{{red}}assetID:{{/}} %s\n", assetID)
+		hutils.Outf("{{red}}name:{{/}} %s\n", name)
+		hutils.Outf("{{red}}symbol:{{/}} %s\n", symbol)
+		hutils.Outf("{{red}}balance:{{/}} 0\n")
 		hutils.Outf("{{red}}please send funds to %s{{/}}\n", saddr)
 		hutils.Outf("{{red}}exiting...{{/}}\n")
 	} else {
@@ -114,7 +124,7 @@ func (*Handler) GetAssetInfo(
 			symbol,
 		)
 	}
-	return symbol, decimals, balance, sourceChainID.String(), nil
+	return balance, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, nil
 }
 
 func (h *Handler) DefaultActor() (

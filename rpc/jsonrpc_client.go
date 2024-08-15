@@ -87,12 +87,12 @@ func (cli *JSONRPCClient) Asset(
 	ctx context.Context,
 	asset string,
 	useCache bool,
-) (bool, string, uint8, string, uint64, string, error) {
+) (bool, string, string, uint8, string, uint64, uint64, string, string, string, string, string, string, error) {
 	cli.assetsL.Lock()
 	r, ok := cli.assets[asset]
 	cli.assetsL.Unlock()
 	if ok && useCache {
-		return true, r.Symbol, r.Decimals, r.Metadata, r.Supply, r.Owner, nil
+		return true, r.Name, r.Symbol, r.Decimals, r.Metadata, r.TotalSupply, r.MaxSupply, r.UpdateAssetActor, r.MintActor, r.PauseUnpauseActor, r.FreezeUnfreezeActor, r.EnableDisableKYCAccountActor, r.DeleteActor, nil
 	}
 
 	// Check if it's the native asset
@@ -109,14 +109,14 @@ func (cli *JSONRPCClient) Asset(
 	// We use string parsing here because the JSON-RPC library we use may not
 	// allows us to perform errors.Is.
 	case err != nil && strings.Contains(err.Error(), ErrAssetNotFound.Error()):
-		return false, "", 0, "", 0, "", nil
+		return false, "", "", 0, "", 0, 0, "", "", "", "", "", "", nil
 	case err != nil:
-		return false, "", 0, "", 0, "", err
+		return false, "", "", 0, "", 0, 0, "", "", "", "", "", "", nil
 	}
 	cli.assetsL.Lock()
 	cli.assets[asset] = resp
 	cli.assetsL.Unlock()
-	return true, resp.Symbol, resp.Decimals, resp.Metadata, resp.Supply, resp.Owner, nil
+	return true, resp.Name, resp.Symbol, resp.Decimals, resp.Metadata, resp.TotalSupply, resp.MaxSupply, resp.UpdateAssetActor, resp.MintActor, resp.PauseUnpauseActor, resp.FreezeUnfreezeActor, resp.EnableDisableKYCAccountActor, resp.DeleteActor, nil
 }
 
 func (cli *JSONRPCClient) Balance(ctx context.Context, addr string, asset string) (uint64, error) {
@@ -215,7 +215,7 @@ func (cli *JSONRPCClient) WaitForBalance(
 	asset ids.ID,
 	min uint64,
 ) error {
-	exists, symbol, decimals, _, _, _, err := cli.Asset(ctx, asset.String(), true)
+	exists, name, symbol, decimals, _, _, _, _, _, _, _, _, _, err := cli.Asset(ctx, asset.String(), true)
 	if err != nil {
 		return err
 	}
@@ -231,7 +231,8 @@ func (cli *JSONRPCClient) WaitForBalance(
 		shouldExit := balance >= min
 		if !shouldExit {
 			utils.Outf(
-				"{{yellow}}waiting for %s %s on %s{{/}}\n",
+				"{{yellow}}waiting for %s - %s %s on %s{{/}}\n",
+				name,
 				utils.FormatBalance(min, decimals),
 				symbol,
 				addr,

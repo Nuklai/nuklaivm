@@ -15,17 +15,22 @@ import (
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/nuklai/nuklaivm/storage"
 
+	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 var _ chain.Action = (*BurnAsset)(nil)
 
 type BurnAsset struct {
-	// Asset is the [TxID] that created the asset.
+	// Asset is the AssetID of the asset.
 	Asset ids.ID `json:"asset"`
 
-	// Number of assets to mint to [To].
+	// For FT: Number of assets to burn.
+	// For NFT: Unique ID of the NFT to burn.
 	Value uint64 `json:"value"`
+
+	// Is the asset FT or NFT
+	IsNFT bool `json:"isNFT"`
 }
 
 func (*BurnAsset) GetTypeID() uint8 {
@@ -33,9 +38,12 @@ func (*BurnAsset) GetTypeID() uint8 {
 }
 
 func (b *BurnAsset) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+	nftID := nchain.GenerateID(b.Asset, b.Value)
 	return state.Keys{
-		string(storage.AssetKey(b.Asset)):          state.Read | state.Write,
-		string(storage.BalanceKey(actor, b.Asset)): state.Read | state.Write,
+		string(storage.AssetKey(b.Asset)):             state.Read | state.Write,
+		string(storage.AssetNFTKey(b.Asset, b.Value)): state.Read | state.Write,
+		string(storage.BalanceKey(actor, b.Asset)):    state.Read | state.Write,
+		string(storage.BalanceKey(actor, nftID)):      state.Read | state.Write,
 	}
 }
 
@@ -54,23 +62,49 @@ func (b *BurnAsset) Execute(
 	if b.Value == 0 {
 		return nil, ErrOutputValueZero
 	}
-	if err := storage.SubBalance(ctx, mu, actor, b.Asset, b.Value); err != nil {
-		return nil, err
-	}
-	exists, symbol, decimals, metadata, supply, owner, err := storage.GetAsset(ctx, mu, b.Asset)
+
+	exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := storage.GetAsset(ctx, mu, b.Asset)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
 		return nil, ErrOutputAssetMissing
 	}
-	newSupply, err := smath.Sub(supply, b.Value)
+	// Check if the asset is NFT
+	if b.IsNFT {
+		exists, _, _, _, err := storage.GetAssetNFT(ctx, mu, b.Asset, b.Value)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			return nil, ErrOutputAssetMissing
+		}
+	}
+
+	newSupply, err := smath.Sub(totalSupply, b.Value)
 	if err != nil {
 		return nil, err
 	}
-	if err := storage.SetAsset(ctx, mu, b.Asset, symbol, decimals, metadata, newSupply, owner); err != nil {
+	if err := storage.SetAsset(ctx, mu, b.Asset, name, symbol, decimals, metadata, newSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor); err != nil {
 		return nil, err
 	}
+
+	if err := storage.SubBalance(ctx, mu, actor, b.Asset, b.Value); err != nil {
+		return nil, err
+	}
+
+	// Handle for NFT
+	if b.IsNFT {
+		if err := storage.DeleteAssetNFT(ctx, mu, b.Asset, b.Value); err != nil {
+			return nil, err
+		}
+
+		nftID := nchain.GenerateID(b.Asset, b.Value)
+		if err := storage.SubBalance(ctx, mu, actor, nftID, 1); err != nil {
+			return nil, err
+		}
+	}
+
 	return nil, nil
 }
 

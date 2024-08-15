@@ -8,18 +8,19 @@ const (
 	// Action TypeIDs
 	TransferID uint8 = 0
 
-	CreateAssetID uint8 = 1
-	MintAssetID   uint8 = 2
-	BurnAssetID   uint8 = 3
-	ExportAssetID uint8 = 4
-	ImportAssetID uint8 = 5
+	CreateAssetID  uint8 = 1
+	MintAssetID    uint8 = 2
+	MintAssetNFTID uint8 = 3
+	BurnAssetID    uint8 = 4
+	ExportAssetID  uint8 = 5
+	ImportAssetID  uint8 = 6
 
-	RegisterValidatorStakeID     uint8 = 6
-	ClaimValidatorStakeRewardsID uint8 = 7
-	WithdrawValidatorStakeID     uint8 = 8
-	DelegateUserStakeID          uint8 = 9
-	ClaimDelegationStakeRewards  uint8 = 10
-	UndelegateUserStakeID        uint8 = 11
+	RegisterValidatorStakeID     uint8 = 7
+	ClaimValidatorStakeRewardsID uint8 = 8
+	WithdrawValidatorStakeID     uint8 = 9
+	DelegateUserStakeID          uint8 = 10
+	ClaimDelegationStakeRewards  uint8 = 11
+	UndelegateUserStakeID        uint8 = 12
 
 	// Auth TypeIDs
 	ED25519ID   uint8 = 0

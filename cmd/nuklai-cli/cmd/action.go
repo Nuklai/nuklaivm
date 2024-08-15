@@ -68,7 +68,7 @@ var transferCmd = &cobra.Command{
 			}
 		}
 
-		_, decimals, balance, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, assetID, true)
+		balance, _, _, decimals, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, assetID, true)
 		if balance == 0 || err != nil {
 			return err
 		}
@@ -131,8 +131,14 @@ var createAssetCmd = &cobra.Command{
 			return err
 		}
 
+		// Add name to token
+		name, err := handler.Root().PromptString("name", 1, actions.MaxTextSize)
+		if err != nil {
+			return err
+		}
+
 		// Add symbol to token
-		symbol, err := handler.Root().PromptString("symbol", 1, actions.MaxSymbolSize)
+		symbol, err := handler.Root().PromptString("symbol", 1, actions.MaxTextSize)
 		if err != nil {
 			return err
 		}
@@ -149,6 +155,12 @@ var createAssetCmd = &cobra.Command{
 			return err
 		}
 
+		// Add owner
+		owner, err := handler.Root().PromptAddress("owner")
+		if err != nil {
+			return err
+		}
+
 		// Confirm action
 		cont, err := handler.Root().PromptContinue()
 		if !cont || err != nil {
@@ -157,9 +169,17 @@ var createAssetCmd = &cobra.Command{
 
 		// Generate transaction
 		txID, err := sendAndWait(ctx, []chain.Action{&actions.CreateAsset{
-			Symbol:   []byte(symbol),
-			Decimals: uint8(decimals), // already constrain above to prevent overflow
-			Metadata: []byte(metadata),
+			Name:                         []byte(name),
+			Symbol:                       []byte(symbol),
+			Decimals:                     uint8(decimals), // already constrain above to prevent overflow
+			Metadata:                     []byte(metadata),
+			MaxSupply:                    uint64(0),
+			UpdateAssetActor:             owner,
+			MintActor:                    owner,
+			PauseUnpauseActor:            owner,
+			FreezeUnfreezeActor:          owner,
+			EnableDisableKYCAccountActor: owner,
+			DeleteActor:                  owner,
 		}}, cli, scli, tcli, factory, true)
 		if err != nil {
 			return err
@@ -173,7 +193,7 @@ var createAssetCmd = &cobra.Command{
 }
 
 var mintAssetCmd = &cobra.Command{
-	Use: "mint-asset",
+	Use: "mint-asset-ft",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
 		_, priv, factory, cli, scli, tcli, err := handler.DefaultActor()
@@ -186,26 +206,34 @@ var mintAssetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		exists, symbol, decimals, metadata, supply, owner, err := tcli.Asset(ctx, assetID.String(), false)
+		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := tcli.Asset(ctx, assetID.String(), false)
 		if err != nil {
 			return err
 		}
 		if !exists {
-			hutils.Outf("{{red}}%s does not exist{{/}}\n", assetID)
+			hutils.Outf("{{red}}name: %s with assetID:%s does not exist{{/}}\n", name, assetID)
 			hutils.Outf("{{red}}exiting...{{/}}\n")
 			return nil
 		}
-		if owner != codec.MustAddressBech32(nconsts.HRP, priv.Address) {
-			hutils.Outf("{{red}}%s is the owner of %s, you are not{{/}}\n", owner, assetID)
+		if mintActor != codec.MustAddressBech32(nconsts.HRP, priv.Address) {
+			hutils.Outf("{{red}}%s has permission to mint asset '%s' with assetID '%s', you are not{{/}}\n", mintActor, name, assetID)
 			hutils.Outf("{{red}}exiting...{{/}}\n")
 			return nil
 		}
 		hutils.Outf(
-			"{{yellow}}symbol:{{/}} %s {{yellow}}decimals:{{/}} %d {{yellow}}metadata:{{/}} %s {{yellow}}supply:{{/}} %d\n",
+			"{{yellow}}name:{{/}} %s {{yellow}}symbol:{{/}} %s {{yellow}}decimals:{{/}} %d {{yellow}}metadata:{{/}} %s {{yellow}}totalSupply:{{/}} %d{{yellow}}maxSupply:{{/}} %d{{yellow}}updateAssetActor:{{/}} %s {{yellow}}mintActor:{{/}} %s {{yellow}}pauseUnpauseActor:{{/}} %s {{yellow}}freezeUnfreezeActor:{{/}} %s {{yellow}}enableDisableKYCAccountActor:{{/}} %s {{yellow}}deleteActor:{{/}} %s \n",
+			name,
 			symbol,
 			decimals,
 			metadata,
-			supply,
+			totalSupply,
+			maxSupply,
+			updateAssetActor,
+			mintActor,
+			pauseUnpauseActor,
+			freezeUnfreezeActor,
+			enableDisableKYCAccountActor,
+			deleteActor,
 		)
 
 		// Select recipient
@@ -215,7 +243,7 @@ var mintAssetCmd = &cobra.Command{
 		}
 
 		// Select amount
-		amount, err := handler.Root().PromptAmount("amount", decimals, consts.MaxUint64-supply, nil)
+		amount, err := handler.Root().PromptAmount("amount", decimals, consts.MaxUint64, nil)
 		if err != nil {
 			return err
 		}
@@ -227,7 +255,7 @@ var mintAssetCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, err = sendAndWait(ctx, []chain.Action{&actions.MintAsset{
+		_, err = sendAndWait(ctx, []chain.Action{&actions.MintAssetFT{
 			Asset: assetID,
 			To:    recipient,
 			Value: amount,
@@ -281,7 +309,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			_, _, balance, _, err := handler.GetAssetInfo(ctx, nclients[0], validatorSignerKey.Address, ids.Empty, true)
+			balance, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, nclients[0], validatorSignerKey.Address, ids.Empty, true)
 			if err != nil {
 				return err
 			}
@@ -340,7 +368,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 		}
 
 		// Get balance info
-		_, _, balance, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, ids.Empty, true)
+		balance, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, ids.Empty, true)
 		if balance == 0 || err != nil {
 			return err
 		}
@@ -671,7 +699,7 @@ var delegateUserStakeCmd = &cobra.Command{
 		nodeID := validatorChosen.NodeID
 
 		// Get balance info
-		_, _, balance, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, ids.Empty, true)
+		balance, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, ids.Empty, true)
 		if balance == 0 || err != nil {
 			return err
 		}

@@ -18,13 +18,13 @@ import (
 	"github.com/nuklai/nuklaivm/storage"
 )
 
-var _ chain.Action = (*MintAsset)(nil)
+var _ chain.Action = (*MintAssetFT)(nil)
 
-type MintAsset struct {
+type MintAssetFT struct {
 	// To is the recipient of the [Value].
 	To codec.Address `json:"to"`
 
-	// Asset is the [TxID] that created the asset.
+	// Asset is the AssetID of the asset to mint.
 	Asset ids.ID `json:"asset"`
 
 	// Number of assets to mint to [To].
@@ -34,26 +34,26 @@ type MintAsset struct {
 	// create recipient account
 }
 
-func (*MintAsset) GetTypeID() uint8 {
+func (*MintAssetFT) GetTypeID() uint8 {
 	return nconsts.MintAssetID
 }
 
-func (m *MintAsset) StateKeys(codec.Address, ids.ID) state.Keys {
+func (m *MintAssetFT) StateKeys(codec.Address, ids.ID) state.Keys {
 	return state.Keys{
 		string(storage.AssetKey(m.Asset)):         state.Read | state.Write,
 		string(storage.BalanceKey(m.To, m.Asset)): state.All,
 	}
 }
 
-func (*MintAsset) StateKeysMaxChunks() []uint16 {
+func (*MintAssetFT) StateKeysMaxChunks() []uint16 {
 	return []uint16{storage.AssetChunks, storage.BalanceChunks}
 }
 
-func (m *MintAsset) Execute(
+func (m *MintAssetFT) Execute(
 	ctx context.Context,
 	_ chain.Rules,
 	mu state.Mutable,
-	_ int64,
+	timestamp int64,
 	actor codec.Address,
 	_ ids.ID,
 ) ([][]byte, error) {
@@ -63,21 +63,28 @@ func (m *MintAsset) Execute(
 	if m.Value == 0 {
 		return nil, ErrOutputValueZero
 	}
-	exists, symbol, decimals, metadata, supply, owner, err := storage.GetAsset(ctx, mu, m.Asset)
+	exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := storage.GetAsset(ctx, mu, m.Asset)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
 		return nil, ErrOutputAssetMissing
 	}
-	if owner != actor {
-		return nil, ErrOutputWrongOwner
+	if mintActor != actor {
+		return nil, ErrOutputWrongMintActor
 	}
-	newSupply, err := smath.Add64(supply, m.Value)
+
+	// Minting logic for fungible tokens
+	newSupply, err := smath.Add64(totalSupply, m.Value)
 	if err != nil {
 		return nil, err
 	}
-	if err := storage.SetAsset(ctx, mu, m.Asset, symbol, decimals, metadata, newSupply, actor); err != nil {
+	if maxSupply != 0 && newSupply > maxSupply {
+		return nil, ErrOutputMaxSupplyReached
+	}
+	totalSupply = newSupply
+
+	if err := storage.SetAsset(ctx, mu, m.Asset, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor); err != nil {
 		return nil, err
 	}
 	if err := storage.AddBalance(ctx, mu, m.To, m.Asset, m.Value, true); err != nil {
@@ -86,29 +93,29 @@ func (m *MintAsset) Execute(
 	return nil, nil
 }
 
-func (*MintAsset) ComputeUnits(chain.Rules) uint64 {
+func (*MintAssetFT) ComputeUnits(chain.Rules) uint64 {
 	return MintAssetComputeUnits
 }
 
-func (*MintAsset) Size() int {
+func (*MintAssetFT) Size() int {
 	return codec.AddressLen + ids.IDLen + consts.Uint64Len
 }
 
-func (m *MintAsset) Marshal(p *codec.Packer) {
+func (m *MintAssetFT) Marshal(p *codec.Packer) {
 	p.PackAddress(m.To)
 	p.PackID(m.Asset)
 	p.PackUint64(m.Value)
 }
 
 func UnmarshalMintAsset(p *codec.Packer) (chain.Action, error) {
-	var mint MintAsset
+	var mint MintAssetFT
 	p.UnpackAddress(&mint.To)
 	p.UnpackID(true, &mint.Asset) // empty ID is the native asset
 	mint.Value = p.UnpackUint64(true)
 	return &mint, p.Err()
 }
 
-func (*MintAsset) ValidRange(chain.Rules) (int64, int64) {
+func (*MintAssetFT) ValidRange(chain.Rules) (int64, int64) {
 	// Returning -1, -1 means that the action is always valid.
 	return -1, -1
 }

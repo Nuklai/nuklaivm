@@ -56,6 +56,9 @@ func (s *DelegateUserStake) Execute(
 	if err != nil {
 		return nil, ErrOutputInvalidNodeID
 	}
+	if _, err := codec.AddressBech32(nconsts.HRP, s.RewardAddress); err != nil {
+		return nil, err
+	}
 
 	// Check if the validator the user is trying to delegate to is registered for staking
 	exists, stakeStartBlock, stakeEndBlock, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
