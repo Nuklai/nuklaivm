@@ -32,7 +32,7 @@ type MintAssetNFT struct {
 	UniqueID uint64 `json:"uniqueID"`
 
 	// URI of the NFT
-	Uri []byte `json:"uri"`
+	URI []byte `json:"uri"`
 }
 
 func (*MintAssetNFT) GetTypeID() uint8 {
