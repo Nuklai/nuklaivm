@@ -845,7 +845,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				To:       auth.NewED25519Address(other.PublicKey()),
 				Asset:    assetID,
 				UniqueID: 0,
-				Uri:      []byte("uri"),
+				URI:      []byte("uri"),
 			}},
 			factory,
 		)
@@ -1085,7 +1085,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				To:       rsender2,
 				Asset:    asset1ID,
 				UniqueID: 1,
-				Uri:      []byte("uri"),
+				URI:      []byte("uri"),
 			}},
 			factory,
 		)
@@ -1176,7 +1176,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				To:       auth.NewED25519Address(other.PublicKey()),
 				Asset:    asset1ID,
 				UniqueID: 0,
-				Uri:      []byte("uri"),
+				URI:      []byte("uri"),
 			}},
 			factory2,
 		)
