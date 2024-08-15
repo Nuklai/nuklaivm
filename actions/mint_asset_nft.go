@@ -64,7 +64,7 @@ func (m *MintAssetNFT) Execute(
 	if m.Asset == ids.Empty {
 		return nil, ErrOutputAssetIsNative
 	}
-	if len(m.Uri) == 0 || len(m.Uri) > MaxTextSize {
+	if len(m.URI) == 0 || len(m.URI) > MaxTextSize {
 		return nil, ErrOutputURIInvalid
 	}
 
@@ -100,7 +100,7 @@ func (m *MintAssetNFT) Execute(
 	totalSupply = newSupply
 
 	nftID := nchain.GenerateID(m.Asset, m.UniqueID)
-	if err := storage.SetAssetNFT(ctx, mu, m.Asset, m.UniqueID, nftID, m.Uri, m.To); err != nil {
+	if err := storage.SetAssetNFT(ctx, mu, m.Asset, m.UniqueID, nftID, m.URI, m.To); err != nil {
 		return nil, err
 	}
 
@@ -125,14 +125,14 @@ func (*MintAssetNFT) ComputeUnits(chain.Rules) uint64 {
 }
 
 func (m *MintAssetNFT) Size() int {
-	return codec.AddressLen + ids.IDLen + consts.Uint64Len + codec.BytesLen(m.Uri)
+	return codec.AddressLen + ids.IDLen + consts.Uint64Len + codec.BytesLen(m.URI)
 }
 
 func (m *MintAssetNFT) Marshal(p *codec.Packer) {
 	p.PackAddress(m.To)
 	p.PackID(m.Asset)
 	p.PackUint64(m.UniqueID)
-	p.PackBytes(m.Uri)
+	p.PackBytes(m.URI)
 }
 
 func UnmarshalMintAssetNFT(p *codec.Packer) (chain.Action, error) {
@@ -140,7 +140,7 @@ func UnmarshalMintAssetNFT(p *codec.Packer) (chain.Action, error) {
 	p.UnpackAddress(&mint.To)
 	p.UnpackID(true, &mint.Asset) // empty ID is the native asset
 	mint.UniqueID = p.UnpackUint64(false)
-	p.UnpackBytes(MaxTextSize, true, &mint.Uri)
+	p.UnpackBytes(MaxTextSize, true, &mint.URI)
 	return &mint, p.Err()
 }
 
