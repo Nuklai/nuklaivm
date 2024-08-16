@@ -35,7 +35,7 @@ type MintAssetFT struct {
 }
 
 func (*MintAssetFT) GetTypeID() uint8 {
-	return nconsts.MintAssetID
+	return nconsts.MintAssetFTID
 }
 
 func (m *MintAssetFT) StateKeys(codec.Address, ids.ID) state.Keys {

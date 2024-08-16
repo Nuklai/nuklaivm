@@ -19,6 +19,7 @@ type Controller interface {
 	Tracer() trace.Tracer
 	GetTransaction(context.Context, ids.ID) (bool, int64, bool, fees.Dimensions, uint64, error)
 	GetAssetFromState(context.Context, ids.ID) (bool, []byte, []byte, uint8, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error)
+	GetAssetNFTFromState(context.Context, ids.ID) (bool, ids.ID, uint64, []byte, codec.Address, error)
 
 	GetBalanceFromState(context.Context, codec.Address, ids.ID) (uint64, error)
 

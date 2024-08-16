@@ -112,6 +112,65 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 	return err
 }
 
+type AssetNFT struct {
+	UniqueID uint64 `json:"uniqueID"`
+	URI      string `json:"uri"`
+	Owner    string `json:"owner"`
+}
+
+type CollectionWrapper struct {
+	CollectionID   string     `json:"collectionID"`
+	CollectionInfo AssetReply `json:"collectionInfo"`
+}
+
+type AssetNFTReply struct {
+	Collection CollectionWrapper `json:"collection"`
+	NFT        AssetNFT          `json:"nft"`
+}
+
+func (j *JSONRPCServer) AssetNFT(req *http.Request, args *AssetArgs, reply *AssetNFTReply) error {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.AssetNFT")
+	defer span.End()
+
+	nftID, err := getAssetIDBySymbol(args.Asset)
+	if err != nil {
+		return err
+	}
+	exists, collectionID, uniqueID, uri, owner, err := j.c.GetAssetNFTFromState(ctx, nftID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrAssetNotFound
+	}
+
+	reply.NFT.UniqueID = uniqueID
+	reply.NFT.URI = string(uri)
+	reply.NFT.Owner = codec.MustAddressBech32(nconsts.HRP, owner)
+
+	exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := j.c.GetAssetFromState(ctx, collectionID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrAssetNotFound
+	}
+	reply.Collection.CollectionID = collectionID.String()
+	reply.Collection.CollectionInfo.Name = string(name)
+	reply.Collection.CollectionInfo.Symbol = string(symbol)
+	reply.Collection.CollectionInfo.Decimals = decimals
+	reply.Collection.CollectionInfo.Metadata = string(metadata)
+	reply.Collection.CollectionInfo.TotalSupply = totalSupply
+	reply.Collection.CollectionInfo.MaxSupply = maxSupply
+	reply.Collection.CollectionInfo.UpdateAssetActor = codec.MustAddressBech32(nconsts.HRP, updateAssetActor)
+	reply.Collection.CollectionInfo.MintActor = codec.MustAddressBech32(nconsts.HRP, mintActor)
+	reply.Collection.CollectionInfo.PauseUnpauseActor = codec.MustAddressBech32(nconsts.HRP, pauseUnpauseActor)
+	reply.Collection.CollectionInfo.FreezeUnfreezeActor = codec.MustAddressBech32(nconsts.HRP, freezeUnfreezeActor)
+	reply.Collection.CollectionInfo.EnableDisableKYCAccountActor = codec.MustAddressBech32(nconsts.HRP, enableDisableKYCAccountActor)
+	reply.Collection.CollectionInfo.DeleteActor = codec.MustAddressBech32(nconsts.HRP, deleteActor)
+	return err
+}
+
 type BalanceArgs struct {
 	Address string `json:"address"`
 	Asset   string `json:"asset"`

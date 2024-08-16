@@ -90,7 +90,7 @@ func handleTx(c *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Result
 			}
 			amountStr := utils.FormatBalance(action.Value, decimals)
 			summaryStr = fmt.Sprintf("%s - %s %s -> %s", name, amountStr, symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
-		case *actions.BurnAsset:
+		case *actions.BurnAssetFT:
 			summaryStr = fmt.Sprintf("%d %s -> 🔥", action.Value, action.Asset)
 		case *actions.Transfer:
 			_, name, symbol, decimals, _, _, _, _, _, _, _, _, _, err := c.Asset(context.TODO(), action.Asset.String(), true)

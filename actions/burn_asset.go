@@ -5,7 +5,6 @@ package actions
 
 import (
 	"context"
-	"math"
 
 	"github.com/ava-labs/avalanchego/ids"
 	smath "github.com/ava-labs/avalanchego/utils/math"
@@ -16,44 +15,35 @@ import (
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/nuklai/nuklaivm/storage"
 
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
-var _ chain.Action = (*BurnAsset)(nil)
+var _ chain.Action = (*BurnAssetFT)(nil)
 
-type BurnAsset struct {
-	// For FT: Asset ID of the asset to burn.
-	// For NFT: NFT ID of the asset to burn.
+type BurnAssetFT struct {
+	// Asset ID of the asset to burn.
 	Asset ids.ID `json:"asset"`
 
-	// For FT: Number of assets to burn
-	// For NFT: This field is ignored
+	// Number of assets to burn
 	Value uint64 `json:"value"`
-
-	// Is the asset FT or NFT
-	IsNFT bool `json:"isNFT"`
 }
 
-func (*BurnAsset) GetTypeID() uint8 {
-	return nconsts.BurnAssetID
+func (*BurnAssetFT) GetTypeID() uint8 {
+	return nconsts.BurnAssetFTID
 }
 
-func (b *BurnAsset) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
-	nftID := nchain.GenerateID(b.Asset, b.Value)
+func (b *BurnAssetFT) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
 	return state.Keys{
-		string(storage.AssetKey(b.Asset)):             state.Read | state.Write,
-		string(storage.AssetNFTKey(nftID)): state.Read | state.Write,
-		string(storage.BalanceKey(actor, b.Asset)):    state.Read | state.Write,
-		string(storage.BalanceKey(actor, nftID)):      state.Read | state.Write,
+		string(storage.AssetKey(b.Asset)):          state.Read | state.Write,
+		string(storage.BalanceKey(actor, b.Asset)): state.Read | state.Write,
 	}
 }
 
-func (*BurnAsset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks}
+func (*BurnAssetFT) StateKeysMaxChunks() []uint16 {
+	return []uint16{storage.AssetChunks, storage.BalanceChunks}
 }
 
-func (b *BurnAsset) Execute(
+func (b *BurnAssetFT) Execute(
 	ctx context.Context,
 	_ chain.Rules,
 	mu state.Mutable,
@@ -61,7 +51,7 @@ func (b *BurnAsset) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) ([][]byte, error) {
-	if !b.IsNFT && b.Value == 0 {
+	if b.Value == 0 {
 		return nil, ErrOutputValueZero
 	}
 
@@ -72,22 +62,8 @@ func (b *BurnAsset) Execute(
 	if !exists {
 		return nil, ErrOutputAssetMissing
 	}
-	// Check if the asset is NFT
-	if b.IsNFT {
-		exists, _, _, _, err := storage.GetAssetNFT(ctx, mu, b.Asset, b.Value)
-		if err != nil {
-			return nil, err
-		}
-		if !exists {
-			return nil, ErrOutputAssetMissing
-		}
-	}
 
-	amountOfToken := b.Value
-	if b.IsNFT {
-		amountOfToken = uint64(1 * math.Pow10(int(decimals)))
-	}
-	newSupply, err := smath.Sub(totalSupply, amountOfToken)
+	newSupply, err := smath.Sub(totalSupply, b.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -95,52 +71,34 @@ func (b *BurnAsset) Execute(
 		return nil, err
 	}
 
-	// Handle for NFT
-	if b.IsNFT {
-		if err := storage.DeleteAssetNFT(ctx, mu, b.Asset, b.Value); err != nil {
-			return nil, err
-		}
-
-		if err := storage.SubBalance(ctx, mu, actor, b.Asset, amountOfToken); err != nil {
-			return nil, err
-		}
-
-		nftID := nchain.GenerateID(b.Asset, b.Value)
-		if err := storage.SubBalance(ctx, mu, actor, nftID, 1); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := storage.SubBalance(ctx, mu, actor, b.Asset, b.Value); err != nil {
-			return nil, err
-		}
+	if err := storage.SubBalance(ctx, mu, actor, b.Asset, b.Value); err != nil {
+		return nil, err
 	}
 
 	return nil, nil
 }
 
-func (*BurnAsset) ComputeUnits(chain.Rules) uint64 {
+func (*BurnAssetFT) ComputeUnits(chain.Rules) uint64 {
 	return BurnAssetComputeUnits
 }
 
-func (*BurnAsset) Size() int {
-	return ids.IDLen + consts.Uint64Len + consts.BoolLen
+func (*BurnAssetFT) Size() int {
+	return ids.IDLen + consts.Uint64Len
 }
 
-func (b *BurnAsset) Marshal(p *codec.Packer) {
+func (b *BurnAssetFT) Marshal(p *codec.Packer) {
 	p.PackID(b.Asset)
 	p.PackUint64(b.Value)
-	p.PackBool(b.IsNFT)
 }
 
-func UnmarshalBurnAsset(p *codec.Packer) (chain.Action, error) {
-	var burn BurnAsset
+func UnmarshalBurnAssetFT(p *codec.Packer) (chain.Action, error) {
+	var burn BurnAssetFT
 	p.UnpackID(false, &burn.Asset) // can burn native asset
 	burn.Value = p.UnpackUint64(false)
-	burn.IsNFT = p.UnpackBool()
 	return &burn, p.Err()
 }
 
-func (*BurnAsset) ValidRange(chain.Rules) (int64, int64) {
+func (*BurnAssetFT) ValidRange(chain.Rules) (int64, int64) {
 	// Returning -1, -1 means that the action is always valid.
 	return -1, -1
 }

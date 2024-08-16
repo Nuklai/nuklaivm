@@ -1101,8 +1101,9 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 
 		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID.String())
 		require.NoError(err)
-		require.Equal(balance, uint64(1 * math.Pow10(int(asset1Decimals))) + uint64(15))
+		require.Equal(balance, uint64(1*math.Pow10(int(asset1Decimals)))+uint64(15))
 		nftID := nchain.GenerateID(asset1ID, 1)
+		fmt.Println("==========================\n nftID:", nftID, "\n==========================")
 		balance, err = instances[0].ncli.Balance(context.TODO(), sender2, nftID.String())
 		require.NoError(err)
 		require.Equal(balance, uint64(1))
@@ -1117,7 +1118,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(totalSupply, uint64(1 * math.Pow10(int(asset1Decimals))) + uint64(15))
+		require.Equal(totalSupply, uint64(1*math.Pow10(int(asset1Decimals)))+uint64(15))
 		require.Zero(maxSupply)
 		require.Equal(updateAssetActor, sender)
 		require.Equal(mintActor, sender)
@@ -1160,7 +1161,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(totalSupply, uint64(1 * math.Pow10(int(asset1Decimals))) + uint64(15))
+		require.Equal(totalSupply, uint64(1*math.Pow10(int(asset1Decimals)))+uint64(15))
 		require.Zero(maxSupply)
 		require.Equal(updateAssetActor, sender)
 		require.Equal(mintActor, sender)
@@ -1204,7 +1205,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(totalSupply, uint64(1 * math.Pow10(int(asset1Decimals))) + uint64(15))
+		require.Equal(totalSupply, uint64(1*math.Pow10(int(asset1Decimals)))+uint64(15))
 		require.Zero(maxSupply)
 		require.Equal(updateAssetActor, sender)
 		require.Equal(mintActor, sender)
@@ -1220,10 +1221,9 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		submit, _, _, err := instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.BurnAsset{
+			[]chain.Action{&actions.BurnAssetFT{
 				Asset: asset1ID,
 				Value: 5,
-				IsNFT: false,
 			}},
 			factory2,
 		)
@@ -1237,7 +1237,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 
 		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID.String())
 		require.NoError(err)
-		require.Equal(balance, uint64(1 * math.Pow10(int(asset1Decimals))) + uint64(10))
+		require.Equal(balance, uint64(1*math.Pow10(int(asset1Decimals)))+uint64(10))
 		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
 		require.NoError(err)
 		require.Zero(balance)
@@ -1249,7 +1249,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(totalSupply, uint64(1 * math.Pow10(int(asset1Decimals))) + uint64(10))
+		require.Equal(totalSupply, uint64(1*math.Pow10(int(asset1Decimals)))+uint64(10))
 		require.Zero(maxSupply)
 		require.Equal(updateAssetActor, sender)
 		require.Equal(mintActor, sender)
@@ -1262,13 +1262,13 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	ginkgo.It("burn new non-fungible asset", func() {
 		parser, err := instances[0].ncli.Parser(context.Background())
 		require.NoError(err)
+		nftID := nchain.GenerateID(asset1ID, 1)
 		submit, _, _, err := instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.BurnAsset{
+			[]chain.Action{&actions.BurnAssetNFT{
 				Asset: asset1ID,
-				Value: 1,
-				IsNFT: true,
+				NftID: nftID,
 			}},
 			factory2,
 		)
@@ -1310,7 +1310,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		submit, _, _, err := instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.BurnAsset{
+			[]chain.Action{&actions.BurnAssetFT{
 				Asset: asset1ID,
 				Value: 10,
 			}},

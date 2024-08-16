@@ -71,9 +71,23 @@ func (*Handler) GetAssetInfo(
 	cli *nrpc.JSONRPCClient,
 	addr codec.Address,
 	assetID ids.ID,
+	isNFT bool,
 	checkBalance bool,
 ) (uint64, string, string, uint8, string, uint64, uint64, string, string, string, string, string, string, error) {
-	exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := cli.Asset(ctx, assetID.String(), false)
+	var (
+		exists                                                                                                                                                                  bool
+		collectionID, name, symbol, metadata, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, uri, ownerAddress string
+		decimals                                                                                                                                                                uint8
+		uniqueID, totalSupply, maxSupply                                                                                                                                        uint64
+		err                                                                                                                                                                     error
+	)
+
+	if isNFT {
+		exists, collectionID, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, uniqueID, uri, ownerAddress, err = cli.AssetNFT(ctx, assetID.String(), false)
+	} else {
+		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err = cli.Asset(ctx, assetID.String(), false)
+	}
+
 	if err != nil {
 		return 0, "", "", 0, "", 0, 0, "", "", "", "", "", "", err
 	}

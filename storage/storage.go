@@ -417,9 +417,9 @@ func DeleteAsset(ctx context.Context, mu state.Mutable, asset ids.ID) error {
 // [nftID]
 func AssetNFTKey(nftID ids.ID) (k []byte) {
 	k = make([]byte, 1+ids.IDLen+consts.Uint16Len)              // Length of prefix + nftID + AssetNFTChunks
-	k[0] = assetNFTPrefix                                                        // assetNFTPrefix is a constant representing the assetNFT category
-	copy(k[1:], nftID[:])                                                 // Copy the nftID
-	binary.BigEndian.PutUint16(k[1+ids.IDLen+consts.Uint64Len:], AssetNFTChunks) // Adding AssetNFTChunks
+	k[0] = assetNFTPrefix                                       // assetNFTPrefix is a constant representing the assetNFT category
+	copy(k[1:], nftID[:])                                       // Copy the nftID
+	binary.BigEndian.PutUint16(k[1+ids.IDLen:], AssetNFTChunks) // Adding AssetNFTChunks
 	return
 }
 
@@ -428,7 +428,7 @@ func GetAssetNFTFromState(
 	ctx context.Context,
 	f ReadState,
 	nftID ids.ID,
-) (bool, ids.ID, []byte, codec.Address, error) {
+) (bool, ids.ID, uint64, []byte, codec.Address, error) {
 	values, errs := f(ctx, [][]byte{AssetNFTKey(nftID)})
 	return innerGetAssetNFT(values[0], errs[0])
 }
@@ -437,29 +437,30 @@ func GetAssetNFT(
 	ctx context.Context,
 	im state.Immutable,
 	nftID ids.ID,
-) (bool, ids.ID, []byte, codec.Address, error) {
+) (bool, ids.ID, uint64, []byte, codec.Address, error) {
 	k := AssetNFTKey(nftID)
 	return innerGetAssetNFT(im.GetValue(ctx, k))
 }
 
-func innerGetAssetNFT(v []byte, err error) (bool, ids.ID, []byte, codec.Address, error) {
+func innerGetAssetNFT(v []byte, err error) (bool, ids.ID, uint64, []byte, codec.Address, error) {
 	if errors.Is(err, database.ErrNotFound) {
-		return false, ids.Empty, nil, codec.Address{}, nil
+		return false, ids.Empty, 0, nil, codec.Address{}, nil
 	}
 	if err != nil {
-		return false, ids.Empty, nil, codec.Address{}, err
+		return false, ids.Empty, 0, nil, codec.Address{}, err
 	}
 
-	nftID, err := ids.ToID(v[:ids.IDLen])
+	collectionID, err := ids.ToID(v[:ids.IDLen])
 	if err != nil {
-		return false, ids.Empty, nil, codec.Address{}, err
+		return false, ids.Empty, 0, nil, codec.Address{}, err
 	}
-	uriLen := binary.BigEndian.Uint16(v[ids.IDLen:])
-	uri := v[ids.IDLen+consts.Uint16Len : ids.IDLen+consts.Uint16Len+uriLen]
+	uniqueID := binary.BigEndian.Uint64(v[ids.IDLen:])
+	uriLen := binary.BigEndian.Uint16(v[ids.IDLen+consts.Uint64Len:])
+	uri := v[ids.IDLen+consts.Uint64Len+consts.Uint16Len : ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen]
 	var to codec.Address
 	copy(to[:], v[ids.IDLen+consts.Uint16Len+uriLen:])
 
-	return true, nftID, uri, to, nil
+	return true, collectionID, uniqueID, uri, to, nil
 }
 
 func SetAssetNFT(ctx context.Context, mu state.Mutable, collectionID ids.ID, uniqueID uint64, nftID ids.ID, uri []byte, to codec.Address) error {

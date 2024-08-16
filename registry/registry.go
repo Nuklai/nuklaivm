@@ -26,7 +26,8 @@ func init() {
 		nconsts.ActionRegistry.Register((&actions.CreateAsset{}).GetTypeID(), actions.UnmarshalCreateAsset, false),
 		nconsts.ActionRegistry.Register((&actions.MintAssetFT{}).GetTypeID(), actions.UnmarshalMintAsset, false),
 		nconsts.ActionRegistry.Register((&actions.MintAssetNFT{}).GetTypeID(), actions.UnmarshalMintAssetNFT, false),
-		nconsts.ActionRegistry.Register((&actions.BurnAsset{}).GetTypeID(), actions.UnmarshalBurnAsset, false),
+		nconsts.ActionRegistry.Register((&actions.BurnAssetFT{}).GetTypeID(), actions.UnmarshalBurnAssetFT, false),
+		nconsts.ActionRegistry.Register((&actions.BurnAssetNFT{}).GetTypeID(), actions.UnmarshalBurnAssetNFT, false),
 
 		nconsts.ActionRegistry.Register((&actions.RegisterValidatorStake{}).GetTypeID(), actions.UnmarshalRegisterValidatorStake, false),
 		nconsts.ActionRegistry.Register((&actions.ClaimValidatorStakeRewards{}).GetTypeID(), actions.UnmarshalClaimValidatorStakeRewards, false),

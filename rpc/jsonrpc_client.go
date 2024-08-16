@@ -30,6 +30,7 @@ type JSONRPCClient struct {
 	g         *genesis.Genesis
 	assetsL   sync.Mutex
 	assets    map[string]*AssetReply
+	assetsNFT map[string]*AssetNFTReply
 }
 
 // New creates a new client object.
@@ -117,6 +118,41 @@ func (cli *JSONRPCClient) Asset(
 	cli.assets[asset] = resp
 	cli.assetsL.Unlock()
 	return true, resp.Name, resp.Symbol, resp.Decimals, resp.Metadata, resp.TotalSupply, resp.MaxSupply, resp.UpdateAssetActor, resp.MintActor, resp.PauseUnpauseActor, resp.FreezeUnfreezeActor, resp.EnableDisableKYCAccountActor, resp.DeleteActor, nil
+}
+
+func (cli *JSONRPCClient) AssetNFT(
+	ctx context.Context,
+	nft string,
+	useCache bool,
+) (bool, string, string, string, uint8, string, uint64, uint64, string, string, string, string, string, string, uint64, string, string, error) {
+	cli.assetsL.Lock()
+	r, ok := cli.assetsNFT[nft]
+	cli.assetsL.Unlock()
+	if ok && useCache {
+		return true, r.Collection.CollectionID, r.Collection.CollectionInfo.Name, r.Collection.CollectionInfo.Symbol, r.Collection.CollectionInfo.Decimals, r.Collection.CollectionInfo.Metadata, r.Collection.CollectionInfo.TotalSupply, r.Collection.CollectionInfo.MaxSupply, r.Collection.CollectionInfo.UpdateAssetActor, r.Collection.CollectionInfo.MintActor, r.Collection.CollectionInfo.PauseUnpauseActor, r.Collection.CollectionInfo.FreezeUnfreezeActor, r.Collection.CollectionInfo.EnableDisableKYCAccountActor, r.Collection.CollectionInfo.DeleteActor, r.NFT.UniqueID, r.NFT.URI, r.NFT.Owner, nil
+	}
+
+	resp := new(AssetNFTReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"assetNFT",
+		&AssetArgs{
+			Asset: nft,
+		},
+		resp,
+	)
+	switch {
+	// We use string parsing here because the JSON-RPC library we use may not
+	// allows us to perform errors.Is.
+	case err != nil && strings.Contains(err.Error(), ErrAssetNotFound.Error()):
+		return false, "", "", "", 0, "", 0, 0, "", "", "", "", "", "", 0, "", "", nil
+	case err != nil:
+		return false, "", "", "", 0, "", 0, 0, "", "", "", "", "", "", 0, "", "", nil
+	}
+	cli.assetsL.Lock()
+	cli.assetsNFT[nft] = resp
+	cli.assetsL.Unlock()
+	return true, resp.Collection.CollectionID, resp.Collection.CollectionInfo.Name, resp.Collection.CollectionInfo.Symbol, resp.Collection.CollectionInfo.Decimals, resp.Collection.CollectionInfo.Metadata, resp.Collection.CollectionInfo.TotalSupply, resp.Collection.CollectionInfo.MaxSupply, resp.Collection.CollectionInfo.UpdateAssetActor, resp.Collection.CollectionInfo.MintActor, resp.Collection.CollectionInfo.PauseUnpauseActor, resp.Collection.CollectionInfo.FreezeUnfreezeActor, resp.Collection.CollectionInfo.EnableDisableKYCAccountActor, resp.Collection.CollectionInfo.DeleteActor, resp.NFT.UniqueID, resp.NFT.URI, resp.NFT.Owner, nil
 }
 
 func (cli *JSONRPCClient) Balance(ctx context.Context, addr string, asset string) (uint64, error) {

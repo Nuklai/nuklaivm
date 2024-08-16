@@ -42,6 +42,13 @@ func (c *Controller) GetAssetFromState(
 	return storage.GetAssetFromState(ctx, c.inner.ReadState, asset)
 }
 
+func (c *Controller) GetAssetNFTFromState(
+	ctx context.Context,
+	nft ids.ID,
+) (bool, ids.ID, uint64, []byte, codec.Address, error) {
+	return storage.GetAssetNFTFromState(ctx, c.inner.ReadState, nft)
+}
+
 func (c *Controller) GetBalanceFromState(
 	ctx context.Context,
 	addr codec.Address,

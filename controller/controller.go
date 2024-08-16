@@ -201,7 +201,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 					c.metrics.createAsset.Inc()
 				case *actions.MintAssetFT:
 					c.metrics.mintAsset.Inc()
-				case *actions.BurnAsset:
+				case *actions.BurnAssetFT:
 					c.metrics.burnAsset.Inc()
 				case *actions.RegisterValidatorStake:
 					c.metrics.registerValidatorStake.Inc()
