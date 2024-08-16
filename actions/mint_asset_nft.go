@@ -5,6 +5,7 @@ package actions
 
 import (
 	"context"
+	"math"
 
 	"github.com/ava-labs/avalanchego/ids"
 	smath "github.com/ava-labs/avalanchego/utils/math"
@@ -43,7 +44,7 @@ func (m *MintAssetNFT) StateKeys(codec.Address, ids.ID) state.Keys {
 	nftID := nchain.GenerateID(m.Asset, m.UniqueID)
 	return state.Keys{
 		string(storage.AssetKey(m.Asset)):                state.Read | state.Write,
-		string(storage.AssetNFTKey(m.Asset, m.UniqueID)): state.All,
+		string(storage.AssetNFTKey(nftID)): state.All,
 		string(storage.BalanceKey(m.To, m.Asset)):        state.All,
 		string(storage.BalanceKey(m.To, nftID)):          state.All,
 	}
@@ -68,8 +69,9 @@ func (m *MintAssetNFT) Execute(
 		return nil, ErrOutputURIInvalid
 	}
 
-	// Check if the unique ID already exists
-	exists, _, _, _, _ := storage.GetAssetNFT(ctx, mu, m.Asset, m.UniqueID)
+	// Check if the nftID already exists
+	nftID := nchain.GenerateID(m.Asset, m.UniqueID)
+	exists, _, _, _, _ := storage.GetAssetNFT(ctx, mu, nftID)
 	if exists {
 		return nil, ErrOutputNFTAlreadyExists
 	}
@@ -90,7 +92,8 @@ func (m *MintAssetNFT) Execute(
 	}
 
 	// Minting logic for non-fungible tokens
-	newSupply, err := smath.Add64(totalSupply, 1)
+	amountOfToken := uint64(1 * math.Pow10(int(decimals)))
+	newSupply, err := smath.Add64(totalSupply, amountOfToken)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +102,6 @@ func (m *MintAssetNFT) Execute(
 	}
 	totalSupply = newSupply
 
-	nftID := nchain.GenerateID(m.Asset, m.UniqueID)
 	if err := storage.SetAssetNFT(ctx, mu, m.Asset, m.UniqueID, nftID, m.URI, m.To); err != nil {
 		return nil, err
 	}
@@ -109,7 +111,7 @@ func (m *MintAssetNFT) Execute(
 	}
 
 	// Add the balance to NFT collection
-	if err := storage.AddBalance(ctx, mu, m.To, m.Asset, 1, true); err != nil {
+	if err := storage.AddBalance(ctx, mu, m.To, m.Asset, amountOfToken, true); err != nil {
 		return nil, err
 	}
 	// Add the balance to individual NFT

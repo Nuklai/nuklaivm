@@ -73,7 +73,7 @@ const (
 const (
 	BalanceChunks                uint16 = 1
 	AssetChunks                  uint16 = 9
-	AssetNFTChunks               uint16 = 2
+	AssetNFTChunks               uint16 = 3
 	RegisterValidatorStakeChunks uint16 = 4
 	DelegateUserStakeChunks      uint16 = 2
 )
@@ -414,12 +414,11 @@ func DeleteAsset(ctx context.Context, mu state.Mutable, asset ids.ID) error {
 	return mu.Remove(ctx, k)
 }
 
-// [assetID] + [uniqueID]
-func AssetNFTKey(collectionID ids.ID, uniqueID uint64) (k []byte) {
-	k = make([]byte, 1+ids.IDLen+consts.Uint64Len+consts.Uint16Len)              // Length of prefix + assetID + uniqueID + AssetNFTChunks
+// [nftID]
+func AssetNFTKey(nftID ids.ID) (k []byte) {
+	k = make([]byte, 1+ids.IDLen+consts.Uint16Len)              // Length of prefix + nftID + AssetNFTChunks
 	k[0] = assetNFTPrefix                                                        // assetNFTPrefix is a constant representing the assetNFT category
-	copy(k[1:], collectionID[:])                                                 // Copy the assetID
-	binary.BigEndian.PutUint64(k[1+ids.IDLen:], uniqueID)                        // Copy the uniqueID
+	copy(k[1:], nftID[:])                                                 // Copy the nftID
 	binary.BigEndian.PutUint16(k[1+ids.IDLen+consts.Uint64Len:], AssetNFTChunks) // Adding AssetNFTChunks
 	return
 }
@@ -428,18 +427,18 @@ func AssetNFTKey(collectionID ids.ID, uniqueID uint64) (k []byte) {
 func GetAssetNFTFromState(
 	ctx context.Context,
 	f ReadState,
-	collectionID ids.ID, uniqueID uint64,
+	nftID ids.ID,
 ) (bool, ids.ID, []byte, codec.Address, error) {
-	values, errs := f(ctx, [][]byte{AssetNFTKey(collectionID, uniqueID)})
+	values, errs := f(ctx, [][]byte{AssetNFTKey(nftID)})
 	return innerGetAssetNFT(values[0], errs[0])
 }
 
 func GetAssetNFT(
 	ctx context.Context,
 	im state.Immutable,
-	collectionID ids.ID, uniqueID uint64,
+	nftID ids.ID,
 ) (bool, ids.ID, []byte, codec.Address, error) {
-	k := AssetNFTKey(collectionID, uniqueID)
+	k := AssetNFTKey(nftID)
 	return innerGetAssetNFT(im.GetValue(ctx, k))
 }
 
@@ -464,20 +463,21 @@ func innerGetAssetNFT(v []byte, err error) (bool, ids.ID, []byte, codec.Address,
 }
 
 func SetAssetNFT(ctx context.Context, mu state.Mutable, collectionID ids.ID, uniqueID uint64, nftID ids.ID, uri []byte, to codec.Address) error {
-	k := AssetNFTKey(collectionID, uniqueID)
+	k := AssetNFTKey(nftID)
 	uriLen := len(uri)
 
-	v := make([]byte, ids.IDLen+consts.Uint16Len+uriLen+codec.AddressLen)
-	copy(v, nftID[:])
-	binary.BigEndian.PutUint16(v[ids.IDLen:], uint16(uriLen))
-	copy(v[ids.IDLen+consts.Uint16Len:], uri)
-	copy(v[ids.IDLen+consts.Uint16Len+uriLen:], to[:])
+	v := make([]byte, ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen+codec.AddressLen)
+	copy(v, collectionID[:])
+	binary.BigEndian.PutUint64(v[ids.IDLen:], uniqueID)
+	binary.BigEndian.PutUint16(v[ids.IDLen+consts.Uint64Len:], uint16(uriLen))
+	copy(v[ids.IDLen+consts.Uint64Len+consts.Uint16Len:], uri)
+	copy(v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen:], to[:])
 
 	return mu.Insert(ctx, k, v)
 }
 
-func DeleteAssetNFT(ctx context.Context, mu state.Mutable, collectionID ids.ID, uniqueID uint64) error {
-	k := AssetNFTKey(collectionID, uniqueID)
+func DeleteAssetNFT(ctx context.Context, mu state.Mutable, nftID ids.ID) error {
+	k := AssetNFTKey(nftID)
 	return mu.Remove(ctx, k)
 }
 

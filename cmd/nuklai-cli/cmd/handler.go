@@ -44,7 +44,7 @@ func (h *Handler) ImportCLI(cliPath string) error {
 		return err
 	}
 	if len(oldChains) > 0 {
-		hutils.Outf("{{yellow}}deleted old chains:{{/}} %+v\n", oldChains)
+		hutils.Outf("{{blue}}deleted old chains:{{/}} %+v\n", oldChains)
 	}
 
 	// Load yaml file
@@ -57,7 +57,7 @@ func (h *Handler) ImportCLI(cliPath string) error {
 			return err
 		}
 		hutils.Outf(
-			"{{yellow}}[%s] stored chainID:{{/}} %s {{yellow}}uri:{{/}} %s\n",
+			"{{blue}}[%s] stored chainID:{{/}} %s {{blue}}uri:{{/}} %s\n",
 			name,
 			chainID,
 			uri,
@@ -84,7 +84,7 @@ func (*Handler) GetAssetInfo(
 			return 0, "", "", 0, "", 0, 0, "", "", "", "", "", "", nil
 		}
 		hutils.Outf(
-			"{{yellow}}name:{{/}} %s {{yellow}}symbol:{{/}} %s {{yellow}}decimals:{{/}} %d {{yellow}}metadata:{{/}} %s {{yellow}}totalSupply:{{/}} %d{{yellow}}maxSupply:{{/}} %d{{yellow}}updateAssetActor:{{/}} %s {{yellow}}mintActor:{{/}} %s {{yellow}}pauseUnpauseActor:{{/}} %s {{yellow}}freezeUnfreezeActor:{{/}} %s {{yellow}}enableDisableKYCAccountActor:{{/}} %s {{yellow}}deleteActor:{{/}} %s \n",
+			"{{blue}}name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}updateAssetActor:{{/}} %s {{blue}}mintActor:{{/}} %s {{blue}}pauseUnpauseActor:{{/}} %s {{blue}}freezeUnfreezeActor:{{/}} %s {{blue}}enableDisableKYCAccountActor:{{/}} %s {{blue}}deleteActor:{{/}} %s\n",
 			name,
 			symbol,
 			decimals,
@@ -119,7 +119,7 @@ func (*Handler) GetAssetInfo(
 		hutils.Outf("{{red}}exiting...{{/}}\n")
 	} else {
 		hutils.Outf(
-			"{{yellow}}balance:{{/}} %s %s\n",
+			"{{blue}}balance:{{/}} %s %s\n",
 			hutils.FormatBalance(balance, decimals),
 			symbol,
 		)
@@ -211,7 +211,7 @@ func (*Handler) GetEmissionInfo(
 	}
 
 	hutils.Outf(
-		"{{yellow}}emission info: {{/}}\nCurrentBlockHeight=%d TotalSupply=%d MaxSupply=%d TotalStaked=%d RewardsPerEpoch=%d NumBlocksInEpoch=%d EmissionAddress=%s EmissionAccumulatedReward=%d\n",
+		"{{blue}}emission info: {{/}}\nCurrentBlockHeight=%d TotalSupply=%d MaxSupply=%d TotalStaked=%d RewardsPerEpoch=%d NumBlocksInEpoch=%d EmissionAddress=%s EmissionAccumulatedReward=%d\n",
 		currentBlockHeight,
 		totalSupply,
 		maxSupply,
@@ -238,7 +238,7 @@ func (*Handler) GetAllValidators(
 			return nil, err
 		}
 		hutils.Outf(
-			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s StakedAmount=%d AccumulatedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d AccumulatedDelegatedReward=%d\n",
+			"{{blue}}validator %d:{{/}} NodeID=%s PublicKey=%s StakedAmount=%d AccumulatedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d AccumulatedDelegatedReward=%d\n",
 			index,
 			validator.NodeID,
 			base64.StdEncoding.EncodeToString(publicKey.Compress()),
@@ -266,7 +266,7 @@ func (*Handler) GetStakedValidators(
 			return nil, err
 		}
 		hutils.Outf(
-			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s Active=%t StakedAmount=%d AccumulatedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d AccumulatedDelegatedReward=%d\n",
+			"{{blue}}validator %d:{{/}} NodeID=%s PublicKey=%s Active=%t StakedAmount=%d AccumulatedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d AccumulatedDelegatedReward=%d\n",
 			index,
 			validator.NodeID,
 			base64.StdEncoding.EncodeToString(publicKey.Compress()),
@@ -292,7 +292,7 @@ func (*Handler) GetValidatorStake(
 	}
 
 	hutils.Outf(
-		"{{yellow}}validator stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d DelegationFeeRate=%d RewardAddress=%s OwnerAddress=%s\n",
+		"{{blue}}validator stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d DelegationFeeRate=%d RewardAddress=%s OwnerAddress=%s\n",
 		stakeStartBlock,
 		stakeEndBlock,
 		stakedAmount,
@@ -317,7 +317,7 @@ func (*Handler) GetUserStake(ctx context.Context,
 		return 0, 0, 0, "", "", err
 	}
 	hutils.Outf(
-		"{{yellow}}user stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
+		"{{blue}}user stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
 		stakeStartBlock,
 		stakeEndBlock,
 		stakedAmount,

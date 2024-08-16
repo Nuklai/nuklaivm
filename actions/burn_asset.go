@@ -5,6 +5,7 @@ package actions
 
 import (
 	"context"
+	"math"
 
 	"github.com/ava-labs/avalanchego/ids"
 	smath "github.com/ava-labs/avalanchego/utils/math"
@@ -22,11 +23,12 @@ import (
 var _ chain.Action = (*BurnAsset)(nil)
 
 type BurnAsset struct {
-	// Asset is the AssetID of the asset.
+	// For FT: Asset ID of the asset to burn.
+	// For NFT: NFT ID of the asset to burn.
 	Asset ids.ID `json:"asset"`
 
-	// For FT: Number of assets to burn.
-	// For NFT: Unique ID of the NFT to burn.
+	// For FT: Number of assets to burn
+	// For NFT: This field is ignored
 	Value uint64 `json:"value"`
 
 	// Is the asset FT or NFT
@@ -41,7 +43,7 @@ func (b *BurnAsset) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
 	nftID := nchain.GenerateID(b.Asset, b.Value)
 	return state.Keys{
 		string(storage.AssetKey(b.Asset)):             state.Read | state.Write,
-		string(storage.AssetNFTKey(b.Asset, b.Value)): state.Read | state.Write,
+		string(storage.AssetNFTKey(nftID)): state.Read | state.Write,
 		string(storage.BalanceKey(actor, b.Asset)):    state.Read | state.Write,
 		string(storage.BalanceKey(actor, nftID)):      state.Read | state.Write,
 	}
@@ -81,7 +83,11 @@ func (b *BurnAsset) Execute(
 		}
 	}
 
-	newSupply, err := smath.Sub(totalSupply, b.Value)
+	amountOfToken := b.Value
+	if b.IsNFT {
+		amountOfToken = uint64(1 * math.Pow10(int(decimals)))
+	}
+	newSupply, err := smath.Sub(totalSupply, amountOfToken)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +101,7 @@ func (b *BurnAsset) Execute(
 			return nil, err
 		}
 
-		if err := storage.SubBalance(ctx, mu, actor, b.Asset, 1); err != nil {
+		if err := storage.SubBalance(ctx, mu, actor, b.Asset, amountOfToken); err != nil {
 			return nil, err
 		}
 

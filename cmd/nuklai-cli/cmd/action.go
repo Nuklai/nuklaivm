@@ -24,6 +24,7 @@ import (
 
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/auth"
+	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -192,7 +193,7 @@ var createAssetCmd = &cobra.Command{
 	},
 }
 
-var mintAssetCmd = &cobra.Command{
+var mintAssetFTCmd = &cobra.Command{
 	Use: "mint-asset-ft",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
@@ -221,7 +222,7 @@ var mintAssetCmd = &cobra.Command{
 			return nil
 		}
 		hutils.Outf(
-			"{{yellow}}name:{{/}} %s {{yellow}}symbol:{{/}} %s {{yellow}}decimals:{{/}} %d {{yellow}}metadata:{{/}} %s {{yellow}}totalSupply:{{/}} %d{{yellow}}maxSupply:{{/}} %d{{yellow}}updateAssetActor:{{/}} %s {{yellow}}mintActor:{{/}} %s {{yellow}}pauseUnpauseActor:{{/}} %s {{yellow}}freezeUnfreezeActor:{{/}} %s {{yellow}}enableDisableKYCAccountActor:{{/}} %s {{yellow}}deleteActor:{{/}} %s \n",
+			"{{blue}}name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}updateAssetActor:{{/}} %s {{blue}}mintActor:{{/}} %s {{blue}}pauseUnpauseActor:{{/}} %s {{blue}}freezeUnfreezeActor:{{/}} %s {{blue}}enableDisableKYCAccountActor:{{/}} %s {{blue}}deleteActor:{{/}} %s\n",
 			name,
 			symbol,
 			decimals,
@@ -264,6 +265,95 @@ var mintAssetCmd = &cobra.Command{
 	},
 }
 
+var mintAssetNFTCmd = &cobra.Command{
+	Use: "mint-asset-nft",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, priv, factory, cli, scli, tcli, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+
+		// Select nft collection id to mint to
+		assetID, err := handler.Root().PromptAsset("assetID", false)
+		if err != nil {
+			return err
+		}
+		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := tcli.Asset(ctx, assetID.String(), false)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			hutils.Outf("{{red}}name: %s with assetID:%s does not exist{{/}}\n", name, assetID)
+			hutils.Outf("{{red}}exiting...{{/}}\n")
+			return nil
+		}
+		if mintActor != codec.MustAddressBech32(nconsts.HRP, priv.Address) {
+			hutils.Outf("{{red}}%s has permission to mint asset '%s' with assetID '%s', you are not{{/}}\n", mintActor, name, assetID)
+			hutils.Outf("{{red}}exiting...{{/}}\n")
+			return nil
+		}
+		hutils.Outf(
+			"{{blue}}name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}updateAssetActor:{{/}} %s {{blue}}mintActor:{{/}} %s {{blue}}pauseUnpauseActor:{{/}} %s {{blue}}freezeUnfreezeActor:{{/}} %s {{blue}}enableDisableKYCAccountActor:{{/}} %s {{blue}}deleteActor:{{/}} %s\n",
+			name,
+			symbol,
+			decimals,
+			metadata,
+			totalSupply,
+			maxSupply,
+			updateAssetActor,
+			mintActor,
+			pauseUnpauseActor,
+			freezeUnfreezeActor,
+			enableDisableKYCAccountActor,
+			deleteActor,
+		)
+
+		// Select recipient
+		recipient, err := handler.Root().PromptAddress("recipient")
+		if err != nil {
+			return err
+		}
+
+		// Choose unique id for the NFT
+		uniqueIdStr, err := handler.Root().PromptString("unique nft #", 1, actions.MaxTextSize)
+		if err != nil {
+			return err
+		}
+		uniqueId, err := strconv.ParseUint(uniqueIdStr, 10, 64)
+		if err != nil {
+			return err
+		}
+
+		// Add URI for the NFT
+		uri, err := handler.Root().PromptString("uri", 1, actions.MaxTextSize)
+		if err != nil {
+			return err
+		}
+
+		// Confirm action
+		cont, err := handler.Root().PromptContinue()
+		if !cont || err != nil {
+			return err
+		}
+
+		// Generate transaction
+		_, err = sendAndWait(ctx, []chain.Action{&actions.MintAssetNFT{
+			Asset: assetID,
+			To:    recipient,
+			UniqueID: uniqueId,
+			URI:  []byte(uri),
+		}}, cli, scli, tcli, factory, true)
+		if err != nil {
+			return err
+		}
+		// Print nftID
+		nftID := nchain.GenerateID(assetID, uniqueId)
+		hutils.Outf("{{green}}NFT ID:{{/}} %s\n", nftID)
+		return nil
+	},
+}
+
 // Define the layout that matches the provided date string
 // Note: the reference time is "Mon Jan 2 15:04:05 MST 2006" in Go
 const (
@@ -298,12 +388,12 @@ var registerValidatorStakeCmd = &cobra.Command{
 		}
 
 		if autoRegister {
-			hutils.Outf("{{yellow}}Loading private key for %s{{/}}\n", nodeNumber)
+			hutils.Outf("{{blue}}Loading private key for %s{{/}}\n", nodeNumber)
 			validatorSignerKey, err := loadPrivateKey("bls", fmt.Sprintf("/tmp/nuklaivm/nodes/%s/signer.key", nodeNumber))
 			if err != nil {
 				return err
 			}
-			hutils.Outf("{{yellow}}Validator Signer Address: %s\n", codec.MustAddressBech32(nconsts.HRP, validatorSignerKey.Address))
+			hutils.Outf("{{blue}}Validator Signer Address: %s\n", codec.MustAddressBech32(nconsts.HRP, validatorSignerKey.Address))
 			validatorSignerAddress := codec.MustAddressBech32(nconsts.HRP, validatorSignerKey.Address)
 			nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
 			if err != nil {
@@ -313,13 +403,13 @@ var registerValidatorStakeCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			hutils.Outf("{{yellow}}Balance of validator signer:{{/}} %s\n", hutils.FormatBalance(balance, nconsts.Decimals))
+			hutils.Outf("{{blue}}Balance of validator signer:{{/}} %s\n", hutils.FormatBalance(balance, nconsts.Decimals))
 			if balance < uint64(100*math.Pow10(int(nconsts.Decimals))) {
-				hutils.Outf("{{yellow}} You need a minimum of 100 NAI to register a validator{{/}}\n")
+				hutils.Outf("{{blue}} You need a minimum of 100 NAI to register a validator{{/}}\n")
 				return nil
 			}
 			// Set the default key to the validator signer key
-			hutils.Outf("{{yellow}}Loading validator signer key :{{/}} %s\n", validatorSignerAddress)
+			hutils.Outf("{{blue}}Loading validator signer key :{{/}} %s\n", validatorSignerAddress)
 			if err := handler.h.StoreKey(validatorSignerKey); err != nil && !errors.Is(err, hyperCli.ErrDuplicate) {
 				return err
 			}
@@ -341,7 +431,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 			return err
 		}
 		publicKey := bls.PublicKeyToBytes(bls.PublicFromPrivateKey(secretKey))
-		hutils.Outf("{{yellow}}Validator Signer Address: %s\n", codec.MustAddressBech32(nconsts.HRP, priv.Address))
+		hutils.Outf("{{blue}}Validator Signer Address: %s\n", codec.MustAddressBech32(nconsts.HRP, priv.Address))
 
 		// Get the validator for which the actor is a signer
 		// Get current list of validators
@@ -361,7 +451,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 				break
 			}
 		}
-		hutils.Outf("{{yellow}}Validator NodeID:{{/}} %s\n", nodeID.String())
+		hutils.Outf("{{blue}}Validator NodeID:{{/}} %s\n", nodeID.String())
 		if nodeID.Compare(ids.EmptyNodeID) == 0 {
 			hutils.Outf("{{red}}actor is not a signer for any of the validators{{/}}\n")
 			return nil
@@ -373,7 +463,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 			return err
 		}
 		if balance < uint64(100*math.Pow10(int(nconsts.Decimals))) {
-			hutils.Outf("{{yellow}} You need a minimum of 100 NAI to register a validator{{/}}\n")
+			hutils.Outf("{{blue}} You need a minimum of 100 NAI to register a validator{{/}}\n")
 			return nil
 		}
 
@@ -453,7 +543,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 			return err
 		}
 
-		hutils.Outf("{{yellow}}Register Validator Stake Info - stakeStartBlock: %d stakeEndBlock: %d delegationFeeRate: %d rewardAddress: %s\n", stakeStartBlock, stakeEndBlock, delegationFeeRate, codec.MustAddressBech32(nconsts.HRP, rewardAddress))
+		hutils.Outf("{{blue}}Register Validator Stake Info - stakeStartBlock: %d stakeEndBlock: %d delegationFeeRate: %d rewardAddress: %s\n", stakeStartBlock, stakeEndBlock, delegationFeeRate, codec.MustAddressBech32(nconsts.HRP, rewardAddress))
 
 		stakeInfo := &actions.ValidatorStakeInfo{
 			NodeID:            nodeID.Bytes(),
@@ -510,7 +600,7 @@ var getValidatorStakeCmd = &cobra.Command{
 		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
 		for i := 0; i < len(validators); i++ {
 			hutils.Outf(
-				"{{yellow}}%d:{{/}} NodeID=%s\n",
+				"{{blue}}%d:{{/}} NodeID=%s\n",
 				i,
 				validators[i].NodeID,
 			)
@@ -556,7 +646,7 @@ var claimValidatorStakeRewardCmd = &cobra.Command{
 		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
 		for i := 0; i < len(validators); i++ {
 			hutils.Outf(
-				"{{yellow}}%d:{{/}} NodeID=%s\n",
+				"{{blue}}%d:{{/}} NodeID=%s\n",
 				i,
 				validators[i].NodeID,
 			)
@@ -617,7 +707,7 @@ var withdrawValidatorStakeCmd = &cobra.Command{
 		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
 		for i := 0; i < len(validators); i++ {
 			hutils.Outf(
-				"{{yellow}}%d:{{/}} NodeID=%s\n",
+				"{{blue}}%d:{{/}} NodeID=%s\n",
 				i,
 				validators[i].NodeID,
 			)
@@ -685,7 +775,7 @@ var delegateUserStakeCmd = &cobra.Command{
 
 		for i := 0; i < len(validators); i++ {
 			hutils.Outf(
-				"{{yellow}}%d:{{/}} NodeID=%s\n",
+				"{{blue}}%d:{{/}} NodeID=%s\n",
 				i,
 				validators[i].NodeID,
 			)
@@ -820,7 +910,7 @@ var getUserStakeCmd = &cobra.Command{
 		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
 		for i := 0; i < len(validators); i++ {
 			hutils.Outf(
-				"{{yellow}}%d:{{/}} NodeID=%s\n",
+				"{{blue}}%d:{{/}} NodeID=%s\n",
 				i,
 				validators[i].NodeID,
 			)
@@ -866,7 +956,7 @@ var claimUserStakeRewardCmd = &cobra.Command{
 		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
 		for i := 0; i < len(validators); i++ {
 			hutils.Outf(
-				"{{yellow}}%d:{{/}} NodeID=%s\n",
+				"{{blue}}%d:{{/}} NodeID=%s\n",
 				i,
 				validators[i].NodeID,
 			)
@@ -929,7 +1019,7 @@ var undelegateUserStakeCmd = &cobra.Command{
 		hutils.Outf("{{cyan}}validators:{{/}} %d\n", len(validators))
 		for i := 0; i < len(validators); i++ {
 			hutils.Outf(
-				"{{yellow}}%d:{{/}} NodeID=%s\n",
+				"{{blue}}%d:{{/}} NodeID=%s\n",
 				i,
 				validators[i].NodeID,
 			)

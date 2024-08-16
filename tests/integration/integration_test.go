@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -43,6 +44,7 @@ import (
 
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/auth"
+	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/controller"
 	"github.com/nuklai/nuklaivm/genesis"
@@ -1099,7 +1101,11 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 
 		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID.String())
 		require.NoError(err)
-		require.Equal(balance, uint64(16))
+		require.Equal(balance, uint64(1 * math.Pow10(int(asset1Decimals))) + uint64(15))
+		nftID := nchain.GenerateID(asset1ID, 1)
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender2, nftID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(1))
 		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
 		require.NoError(err)
 		require.Zero(balance)
@@ -1111,7 +1117,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(totalSupply, uint64(16))
+		require.Equal(totalSupply, uint64(1 * math.Pow10(int(asset1Decimals))) + uint64(15))
 		require.Zero(maxSupply)
 		require.Equal(updateAssetActor, sender)
 		require.Equal(mintActor, sender)
@@ -1154,7 +1160,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(totalSupply, uint64(16))
+		require.Equal(totalSupply, uint64(1 * math.Pow10(int(asset1Decimals))) + uint64(15))
 		require.Zero(maxSupply)
 		require.Equal(updateAssetActor, sender)
 		require.Equal(mintActor, sender)
@@ -1198,7 +1204,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(totalSupply, uint64(16))
+		require.Equal(totalSupply, uint64(1 * math.Pow10(int(asset1Decimals))) + uint64(15))
 		require.Zero(maxSupply)
 		require.Equal(updateAssetActor, sender)
 		require.Equal(mintActor, sender)
@@ -1231,7 +1237,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 
 		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID.String())
 		require.NoError(err)
-		require.Equal(balance, uint64(11))
+		require.Equal(balance, uint64(1 * math.Pow10(int(asset1Decimals))) + uint64(10))
 		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
 		require.NoError(err)
 		require.Zero(balance)
@@ -1243,7 +1249,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(totalSupply, uint64(11))
+		require.Equal(totalSupply, uint64(1 * math.Pow10(int(asset1Decimals))) + uint64(10))
 		require.Zero(maxSupply)
 		require.Equal(updateAssetActor, sender)
 		require.Equal(mintActor, sender)
