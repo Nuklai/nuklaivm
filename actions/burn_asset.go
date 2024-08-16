@@ -48,7 +48,7 @@ func (b *BurnAsset) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
 }
 
 func (*BurnAsset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.BalanceChunks}
+	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks}
 }
 
 func (b *BurnAsset) Execute(
@@ -59,7 +59,7 @@ func (b *BurnAsset) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) ([][]byte, error) {
-	if b.Value == 0 {
+	if !b.IsNFT && b.Value == 0 {
 		return nil, ErrOutputValueZero
 	}
 
@@ -89,18 +89,22 @@ func (b *BurnAsset) Execute(
 		return nil, err
 	}
 
-	if err := storage.SubBalance(ctx, mu, actor, b.Asset, b.Value); err != nil {
-		return nil, err
-	}
-
 	// Handle for NFT
 	if b.IsNFT {
 		if err := storage.DeleteAssetNFT(ctx, mu, b.Asset, b.Value); err != nil {
 			return nil, err
 		}
 
+		if err := storage.SubBalance(ctx, mu, actor, b.Asset, 1); err != nil {
+			return nil, err
+		}
+
 		nftID := nchain.GenerateID(b.Asset, b.Value)
 		if err := storage.SubBalance(ctx, mu, actor, nftID, 1); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := storage.SubBalance(ctx, mu, actor, b.Asset, b.Value); err != nil {
 			return nil, err
 		}
 	}
@@ -113,18 +117,20 @@ func (*BurnAsset) ComputeUnits(chain.Rules) uint64 {
 }
 
 func (*BurnAsset) Size() int {
-	return ids.IDLen + consts.Uint64Len
+	return ids.IDLen + consts.Uint64Len + consts.BoolLen
 }
 
 func (b *BurnAsset) Marshal(p *codec.Packer) {
 	p.PackID(b.Asset)
 	p.PackUint64(b.Value)
+	p.PackBool(b.IsNFT)
 }
 
 func UnmarshalBurnAsset(p *codec.Packer) (chain.Action, error) {
 	var burn BurnAsset
 	p.UnpackID(false, &burn.Asset) // can burn native asset
-	burn.Value = p.UnpackUint64(true)
+	burn.Value = p.UnpackUint64(false)
+	burn.IsNFT = p.UnpackBool()
 	return &burn, p.Err()
 }
 

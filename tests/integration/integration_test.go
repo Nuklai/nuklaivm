@@ -1261,7 +1261,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			parser,
 			[]chain.Action{&actions.BurnAsset{
 				Asset: asset1ID,
-				Value: 0,
+				Value: 1,
 				IsNFT: true,
 			}},
 			factory2,
@@ -1276,7 +1276,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 
 		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID.String())
 		require.NoError(err)
-		require.Equal(balance, uint64(11))
+		require.Equal(balance, uint64(10))
 		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
 		require.NoError(err)
 		require.Zero(balance)
@@ -1288,7 +1288,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(totalSupply, uint64(11))
+		require.Equal(totalSupply, uint64(10))
 		require.Zero(maxSupply)
 		require.Equal(updateAssetActor, sender)
 		require.Equal(mintActor, sender)
@@ -1327,7 +1327,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(totalSupply, uint64(11))
+		require.Equal(totalSupply, uint64(10))
 		require.Zero(maxSupply)
 		require.Equal(updateAssetActor, sender)
 		require.Equal(mintActor, sender)
@@ -1393,7 +1393,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 
 		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset1ID.String())
 		require.NoError(err)
-		require.Equal(balance, uint64(11))
+		require.Equal(balance, uint64(10))
 		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
 		require.NoError(err)
 		require.Zero(balance)
@@ -1405,7 +1405,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(totalSupply, uint64(11))
+		require.Equal(totalSupply, uint64(10))
 		require.Zero(maxSupply)
 		require.Equal(updateAssetActor, sender)
 		require.Equal(mintActor, sender)
