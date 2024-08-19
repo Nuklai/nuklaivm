@@ -316,11 +316,11 @@ var mintAssetNFTCmd = &cobra.Command{
 		}
 
 		// Choose unique id for the NFT
-		uniqueIdStr, err := handler.Root().PromptString("unique nft #", 1, actions.MaxTextSize)
+		uniqueIDStr, err := handler.Root().PromptString("unique nft #", 1, actions.MaxTextSize)
 		if err != nil {
 			return err
 		}
-		uniqueId, err := strconv.ParseUint(uniqueIdStr, 10, 64)
+		uniqueId, err := strconv.ParseUint(uniqueIDStr, 10, 64)
 		if err != nil {
 			return err
 		}

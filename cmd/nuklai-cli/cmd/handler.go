@@ -74,7 +74,6 @@ func (*Handler) GetAssetInfo(
 	checkBalance bool,
 ) (uint64, string, string, uint8, string, uint64, uint64, string, string, string, string, string, string, error) {
 	exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := cli.Asset(ctx, assetID.String(), false)
-
 	if err != nil {
 		return 0, "", "", 0, "", 0, 0, "", "", "", "", "", "", err
 	}
@@ -170,7 +169,6 @@ func (*Handler) GetAssetNFTInfo(
 		hutils.Outf("{{red}}exiting...{{/}}\n")
 	} else {
 		hutils.Outf("{{blue}}You own this NFT{{/}}\n")
-
 	}
 	return true, collectionID, uniqueID, uri, ownerAddress, nil
 }
