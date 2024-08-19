@@ -71,22 +71,9 @@ func (*Handler) GetAssetInfo(
 	cli *nrpc.JSONRPCClient,
 	addr codec.Address,
 	assetID ids.ID,
-	isNFT bool,
 	checkBalance bool,
 ) (uint64, string, string, uint8, string, uint64, uint64, string, string, string, string, string, string, error) {
-	var (
-		exists                                                                                                                                                                  bool
-		collectionID, name, symbol, metadata, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, uri, ownerAddress string
-		decimals                                                                                                                                                                uint8
-		uniqueID, totalSupply, maxSupply                                                                                                                                        uint64
-		err                                                                                                                                                                     error
-	)
-
-	if isNFT {
-		exists, collectionID, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, uniqueID, uri, ownerAddress, err = cli.AssetNFT(ctx, assetID.String(), false)
-	} else {
-		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err = cli.Asset(ctx, assetID.String(), false)
-	}
+	exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := cli.Asset(ctx, assetID.String(), false)
 
 	if err != nil {
 		return 0, "", "", 0, "", 0, 0, "", "", "", "", "", "", err
@@ -139,6 +126,53 @@ func (*Handler) GetAssetInfo(
 		)
 	}
 	return balance, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, nil
+}
+
+func (*Handler) GetAssetNFTInfo(
+	ctx context.Context,
+	cli *nrpc.JSONRPCClient,
+	addr codec.Address,
+	nftID ids.ID,
+	checkBalance bool,
+) (bool, string, uint64, string, string, error) {
+	exists, collectionID, uniqueID, uri, ownerAddress, err := cli.AssetNFT(ctx, nftID.String(), false)
+	if err != nil {
+		return false, "", 0, "", "", err
+	}
+	if !exists {
+		hutils.Outf("{{red}}%s does not exist{{/}}\n", nftID)
+		hutils.Outf("{{red}}exiting...{{/}}\n")
+		return false, "", 0, "", "", nil
+	}
+	if nftID == ids.Empty {
+		hutils.Outf("{{red}}%s is a native asset. Please pass in NFT ID{{/}}\n", nftID)
+		hutils.Outf("{{red}}exiting...{{/}}\n")
+		return false, "", 0, "", "", nil
+	}
+
+	if !checkBalance {
+		return false, collectionID, uniqueID, uri, ownerAddress, nil
+	}
+	saddr, err := codec.AddressBech32(nconsts.HRP, addr)
+	if err != nil {
+		return false, "", 0, "", "", err
+	}
+	balance, err := cli.Balance(ctx, saddr, nftID.String())
+	if err != nil {
+		return false, "", 0, "", "", err
+	}
+	hutils.Outf("{{blue}}collectionID:{{/}} %s\n", collectionID)
+	hutils.Outf("{{blue}}uniqueID:{{/}} %d\n", uniqueID)
+	hutils.Outf("{{blue}}uri:{{/}} %s\n", uri)
+	hutils.Outf("{{blue}}ownerAddress:{{/}} %s\n", ownerAddress)
+	if address := codec.MustAddressBech32(nconsts.HRP, addr); ownerAddress != address || balance == 0 {
+		hutils.Outf("{{red}}You do not own this NFT{{/}}\n")
+		hutils.Outf("{{red}}exiting...{{/}}\n")
+	} else {
+		hutils.Outf("{{blue}}You own this NFT{{/}}\n")
+
+	}
+	return true, collectionID, uniqueID, uri, ownerAddress, nil
 }
 
 func (h *Handler) DefaultActor() (

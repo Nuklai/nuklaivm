@@ -1103,7 +1103,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.NoError(err)
 		require.Equal(balance, uint64(1*math.Pow10(int(asset1Decimals)))+uint64(15))
 		nftID := nchain.GenerateID(asset1ID, 1)
-		fmt.Println("==========================\n nftID:", nftID, "\n==========================")
 		balance, err = instances[0].ncli.Balance(context.TODO(), sender2, nftID.String())
 		require.NoError(err)
 		require.Equal(balance, uint64(1))
@@ -1126,6 +1125,14 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal(freezeUnfreezeActor, sender)
 		require.Equal(enableDisableKYCAccountActor, sender)
 		require.Equal(deleteActor, sender)
+
+		exists, collectionID, uniqueID, uri, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(collectionID, asset1ID.String())
+		require.Equal(uniqueID, uint64(1))
+		require.Equal([]byte(uri), []byte("uri"))
+		require.Equal(owner, sender2)
 	})
 
 	ginkgo.It("mint fungible asset from wrong owner", func() {

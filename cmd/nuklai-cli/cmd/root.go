@@ -131,6 +131,7 @@ func init() {
 		importKeyCmd,
 		setKeyCmd,
 		balanceKeyCmd,
+		balanceNFTKeyCmd,
 		vanityAddressCmd,
 	)
 

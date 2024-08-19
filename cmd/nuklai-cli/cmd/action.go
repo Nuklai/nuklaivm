@@ -339,10 +339,10 @@ var mintAssetNFTCmd = &cobra.Command{
 
 		// Generate transaction
 		_, err = sendAndWait(ctx, []chain.Action{&actions.MintAssetNFT{
-			Asset: assetID,
-			To:    recipient,
+			Asset:    assetID,
+			To:       recipient,
 			UniqueID: uniqueId,
-			URI:  []byte(uri),
+			URI:      []byte(uri),
 		}}, cli, scli, tcli, factory, true)
 		if err != nil {
 			return err

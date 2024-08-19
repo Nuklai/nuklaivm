@@ -458,7 +458,7 @@ func innerGetAssetNFT(v []byte, err error) (bool, ids.ID, uint64, []byte, codec.
 	uriLen := binary.BigEndian.Uint16(v[ids.IDLen+consts.Uint64Len:])
 	uri := v[ids.IDLen+consts.Uint64Len+consts.Uint16Len : ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen]
 	var to codec.Address
-	copy(to[:], v[ids.IDLen+consts.Uint16Len+uriLen:])
+	copy(to[:], v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen:])
 
 	return true, collectionID, uniqueID, uri, to, nil
 }
