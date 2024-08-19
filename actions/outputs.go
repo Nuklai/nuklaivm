@@ -61,4 +61,11 @@ var (
 	ErrOutputDelegateStakedAmountInvalid = errors.New("staked amount must be at least 25 NAI")
 	ErrOutputUserAlreadyStaked           = errors.New("user already staked")
 	ErrOutputValidatorNotYetRegistered   = errors.New("validator not yet registered for staking")
+
+	// datasets
+	ErrOutputDescriptionInvalid   = errors.New("description is empty or too large")
+	ErrOutputCategoriesInvalid    = errors.New("categories are empty or too large")
+	ErrOutputLicenseNameInvalid   = errors.New("license name is empty or too large")
+	ErrOutputLicenseSymbolInvalid = errors.New("license symbol is empty or too large")
+	ErrOutputLicenseURLInvalid    = errors.New("license URL is empty or too large")
 )

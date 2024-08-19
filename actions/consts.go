@@ -17,6 +17,8 @@ const (
 	UndelegateUserStakeComputeUnits    = 1
 	ClaimStakingRewardComputeUnits     = 2
 
+	CreateDatasetComputeUnits = 15
+
 	MaxTextSize     = 8
 	MaxMemoSize     = 256
 	MaxMetadataSize = 256

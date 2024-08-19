@@ -23,6 +23,8 @@ const (
 	ClaimDelegationStakeRewards  uint8 = 12
 	UndelegateUserStakeID        uint8 = 13
 
+	CreateDatasetID uint8 = 14
+
 	// Auth TypeIDs
 	ED25519ID   uint8 = 0
 	SECP256R1ID uint8 = 1
