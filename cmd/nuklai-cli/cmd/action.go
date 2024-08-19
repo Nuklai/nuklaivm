@@ -320,7 +320,7 @@ var mintAssetNFTCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		uniqueId, err := strconv.ParseUint(uniqueIDStr, 10, 64)
+		uniqueID, err := strconv.ParseUint(uniqueIDStr, 10, 64)
 		if err != nil {
 			return err
 		}
@@ -341,14 +341,14 @@ var mintAssetNFTCmd = &cobra.Command{
 		_, err = sendAndWait(ctx, []chain.Action{&actions.MintAssetNFT{
 			Asset:    assetID,
 			To:       recipient,
-			UniqueID: uniqueId,
+			UniqueID: uniqueID,
 			URI:      []byte(uri),
 		}}, cli, scli, tcli, factory, true)
 		if err != nil {
 			return err
 		}
 		// Print nftID
-		nftID := nchain.GenerateID(assetID, uniqueId)
+		nftID := nchain.GenerateID(assetID, uniqueID)
 		hutils.Outf("{{green}}NFT ID:{{/}} %s\n", nftID)
 		return nil
 	},
