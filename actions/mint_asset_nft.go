@@ -65,7 +65,7 @@ func (m *MintAssetNFT) Execute(
 	if m.Asset == ids.Empty {
 		return nil, ErrOutputAssetIsNative
 	}
-	if len(m.URI) == 0 || len(m.URI) > MaxMetadataSize {
+	if len(m.URI) < 3 || len(m.URI) > MaxMetadataSize {
 		return nil, ErrOutputURIInvalid
 	}
 

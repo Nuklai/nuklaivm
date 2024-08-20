@@ -180,17 +180,17 @@ var _ = ginkgo.BeforeSuite(func() {
 		zap.String("pk", hex.EncodeToString(priv3[:])),
 	)
 
-	asset1 = []byte("1")
-	asset1Symbol = []byte("s1")
+	asset1 = []byte("as1")
+	asset1Symbol = []byte("as1")
 	asset1Decimals = uint8(1)
-	asset2 = []byte("2")
-	asset2Symbol = []byte("s2")
+	asset2 = []byte("as2")
+	asset2Symbol = []byte("ass2")
 	asset2Decimals = uint8(2)
-	asset3 = []byte("3")
-	asset3Symbol = []byte("s3")
+	asset3 = []byte("as3")
+	asset3Symbol = []byte("as3")
 	asset3Decimals = uint8(3)
-	asset4 = []byte("4")
-	asset4Symbol = []byte("s4")
+	asset4 = []byte("as4")
+	asset4Symbol = []byte("as4")
 	asset4Decimals = uint8(4)
 
 	// create embedded VMs
@@ -874,8 +874,8 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				MaxFee:    1001,
 			},
 			[]chain.Action{&actions.CreateAsset{
-				Name:                         []byte("n0"),
-				Symbol:                       []byte("s0"),
+				Name:                         []byte("n00"),
+				Symbol:                       []byte("s00"),
 				Decimals:                     0,
 				Metadata:                     nil,
 				MaxSupply:                    uint64(0),
@@ -912,10 +912,10 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				MaxFee:    1001,
 			},
 			[]chain.Action{&actions.CreateAsset{
-				Name:                         []byte("n0"),
+				Name:                         []byte("n00"),
 				Symbol:                       nil,
 				Decimals:                     0,
-				Metadata:                     []byte("m0"),
+				Metadata:                     []byte("m00"),
 				MaxSupply:                    uint64(0),
 				UpdateAssetActor:             rsender,
 				MintActor:                    rsender,
@@ -950,8 +950,8 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				MaxFee:    1000,
 			},
 			[]chain.Action{&actions.CreateAsset{
-				Name:                         []byte("n0"),
-				Symbol:                       []byte("s0"),
+				Name:                         []byte("n00"),
+				Symbol:                       []byte("s00"),
 				Decimals:                     0,
 				Metadata:                     make([]byte, actions.MaxMetadataSize*2),
 				MaxSupply:                    uint64(0),
@@ -1752,6 +1752,126 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.NoError(err)
 		require.Equal(balance4, uint64(10))
 	})
+
+	ginkgo.It("create a new dataset (no metadata)", func() {
+		tx := chain.NewTx(
+			&chain.Base{
+				ChainID:   instances[0].chainID,
+				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
+				MaxFee:    1001,
+			},
+			[]chain.Action{&actions.CreateDataset{
+				Name:               []byte("n00"),
+				Description:        []byte("s00"),
+				Categories:         []byte("c00"),
+				LicenseName:        []byte("l00"),
+				LicenseSymbol:      []byte("ls00"),
+				LicenseURL:         []byte("lu00"),
+				Metadata:           nil,
+				IsCommunityDataset: false,
+			}},
+		)
+		// Must do manual construction to avoid `tx.Sign` error (would fail with
+		// too large)
+		msg, err := tx.Digest()
+		require.NoError(err)
+		auth, err := factory.Sign(msg)
+		require.NoError(err)
+		tx.Auth = auth
+		p := codec.NewWriter(0, consts.MaxInt) // test codec growth
+		require.NoError(tx.Marshal(p))
+		require.NoError(p.Err())
+		_, err = instances[0].cli.SubmitTx(
+			context.Background(),
+			p.Bytes(),
+		)
+		require.ErrorContains(err, "Bytes field is not populated")
+	})
+
+	ginkgo.It("create dataset with too long of metadata", func() {
+		tx := chain.NewTx(
+			&chain.Base{
+				ChainID:   instances[0].chainID,
+				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
+				MaxFee:    1000,
+			},
+			[]chain.Action{&actions.CreateDataset{
+				Name:               []byte("n00"),
+				Description:        []byte("d00"),
+				Categories:         []byte("c00"),
+				LicenseName:        []byte("l00"),
+				LicenseSymbol:      []byte("ls00"),
+				LicenseURL:         []byte("lu00"),
+				Metadata:           make([]byte, actions.MaxMetadataSize*2),
+				IsCommunityDataset: false,
+			}},
+		)
+		// Must do manual construction to avoid `tx.Sign` error (would fail with
+		// too large)
+		msg, err := tx.Digest()
+		require.NoError(err)
+		auth, err := factory.Sign(msg)
+		require.NoError(err)
+		tx.Auth = auth
+		p := codec.NewWriter(0, consts.MaxInt) // test codec growth
+		require.NoError(tx.Marshal(p))
+		require.NoError(p.Err())
+		_, err = instances[0].cli.SubmitTx(
+			context.Background(),
+			p.Bytes(),
+		)
+		require.ErrorContains(err, "size is larger than limit")
+	})
+
+	ginkgo.It("create a new dataset (simple metadata)", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, tx, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.CreateDataset{
+				Name:               asset1,
+				Description:        []byte("d00"),
+				Categories:         []byte("c00"),
+				LicenseName:        []byte("l00"),
+				LicenseSymbol:      []byte("ls00"),
+				LicenseURL:         []byte("lu00"),
+				Metadata:           asset1,
+				IsCommunityDataset: false,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		asset1ID = chain.CreateActionID(tx.ID(), 0)
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
+		require.NoError(err)
+		require.Zero(balance)
+
+		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+
+		require.NoError(err)
+		require.True(exists)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(symbol), asset1)
+		require.Equal(decimals, uint8(0))
+		require.Equal([]byte(metadata), []byte("d00"))
+		require.Zero(totalSupply)
+		require.Zero(maxSupply)
+		require.Equal(updateAssetActor, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+		require.Equal(deleteActor, sender)
+	})
+
 })
 
 func expectBlk(i instance) func(bool) []*chain.Result {

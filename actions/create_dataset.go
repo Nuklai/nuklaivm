@@ -46,12 +46,13 @@ func (*CreateDataset) GetTypeID() uint8 {
 
 func (*CreateDataset) StateKeys(_ codec.Address, actionID ids.ID) state.Keys {
 	return state.Keys{
+		string(storage.AssetKey(actionID)):   state.Allocate | state.Write,
 		string(storage.DatasetKey(actionID)): state.Allocate | state.Write,
 	}
 }
 
 func (*CreateDataset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks}
+	return []uint16{storage.AssetChunks, storage.DatasetChunks}
 }
 
 func (c *CreateDataset) Execute(
@@ -62,28 +63,29 @@ func (c *CreateDataset) Execute(
 	actor codec.Address,
 	actionID ids.ID,
 ) ([][]byte, error) {
-	if len(c.Name) == 0 || len(c.Name) > MaxTextSize*2 {
+	if len(c.Name) < 3 || len(c.Name) > MaxTextSize {
 		return nil, ErrOutputNameInvalid
 	}
-	if len(c.Description) == 0 || len(c.Description) > MaxTextSize*5 {
+	if len(c.Description) < 3 || len(c.Description) > MaxMetadataSize {
 		return nil, ErrOutputDescriptionInvalid
 	}
-	if len(c.Categories) == 0 || len(c.Categories) > MaxTextSize*5 {
+	if len(c.Categories) < 3 || len(c.Categories) > MaxMetadataSize {
 		return nil, ErrOutputCategoriesInvalid
 	}
-	if len(c.LicenseName) == 0 || len(c.LicenseName) > MaxTextSize*2 {
+	if len(c.LicenseName) < 3 || len(c.LicenseName) > MaxTextSize {
 		return nil, ErrOutputLicenseNameInvalid
 	}
-	if len(c.LicenseSymbol) == 0 || len(c.LicenseSymbol) > MaxTextSize {
+	if len(c.LicenseSymbol) < 3 || len(c.LicenseSymbol) > MaxTextSize {
 		return nil, ErrOutputLicenseSymbolInvalid
 	}
-	if len(c.LicenseURL) == 0 || len(c.LicenseURL) > MaxTextSize*5 {
+	if len(c.LicenseURL) < 3 || len(c.LicenseURL) > MaxMetadataSize {
 		return nil, ErrOutputLicenseURLInvalid
 	}
-	if len(c.Metadata) == 0 || len(c.Metadata) > MaxMetadataSize {
+	if len(c.Metadata) < 3 || len(c.Metadata) > MaxDatasetMetadataSize {
 		return nil, ErrOutputMetadataInvalid
 	}
 
+	// Create a new dataset with the following parameters:
 	// onSale = false
 	// baseAsset = ids.Empty
 	// basePrice = 0
@@ -94,15 +96,20 @@ func (c *CreateDataset) Execute(
 	if err := storage.SetDataset(ctx, mu, actionID, c.Name, c.Description, c.Categories, c.LicenseName, c.LicenseSymbol, c.LicenseURL, c.Metadata, c.IsCommunityDataset, false, ids.Empty, 0, 100, 0, 10, 0, actor); err != nil {
 		return nil, err
 	}
+
+	// Create an asset for the dataset
+	if err := storage.SetAsset(ctx, mu, actionID, c.Name, c.Name, 0, c.Description, 0, 0, actor, actor, actor, actor, actor, actor); err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 
 func (*CreateDataset) ComputeUnits(chain.Rules) uint64 {
-	return CreateAssetComputeUnits
+	return CreateDatasetComputeUnits
 }
 
 func (c *CreateDataset) Size() int {
-	// TODO: add small bytes (smaller int prefix)
 	return codec.BytesLen(c.Name) + codec.BytesLen(c.Description) + codec.BytesLen(c.Categories) + codec.BytesLen(c.LicenseName) + codec.BytesLen(c.LicenseSymbol) + codec.BytesLen(c.LicenseURL) + codec.BytesLen(c.Metadata) + consts.BoolLen
 }
 
@@ -119,12 +126,12 @@ func (c *CreateDataset) Marshal(p *codec.Packer) {
 
 func UnmarshalCreateDataset(p *codec.Packer) (chain.Action, error) {
 	var create CreateDataset
-	p.UnpackBytes(MaxTextSize*2, true, &create.Name)
-	p.UnpackBytes(MaxTextSize*5, true, &create.Description)
-	p.UnpackBytes(MaxTextSize*5, true, &create.Categories)
-	p.UnpackBytes(MaxTextSize*2, true, &create.LicenseName)
+	p.UnpackBytes(MaxTextSize, true, &create.Name)
+	p.UnpackBytes(MaxMetadataSize, true, &create.Description)
+	p.UnpackBytes(MaxMetadataSize, true, &create.Categories)
+	p.UnpackBytes(MaxTextSize, true, &create.LicenseName)
 	p.UnpackBytes(MaxTextSize, true, &create.LicenseSymbol)
-	p.UnpackBytes(MaxTextSize*5, true, &create.LicenseURL)
+	p.UnpackBytes(MaxMetadataSize, true, &create.LicenseURL)
 	p.UnpackBytes(MaxMetadataSize, true, &create.Metadata)
 	create.IsCommunityDataset = p.UnpackBool()
 	return &create, p.Err()

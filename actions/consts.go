@@ -19,8 +19,9 @@ const (
 
 	CreateDatasetComputeUnits = 15
 
-	MaxTextSize     = 8
-	MaxMemoSize     = 256
-	MaxMetadataSize = 256
-	MaxDecimals     = 9
+	MaxTextSize            = 8
+	MaxMemoSize            = 256
+	MaxMetadataSize        = 256
+	MaxDatasetMetadataSize = 5120
+	MaxDecimals            = 9
 )

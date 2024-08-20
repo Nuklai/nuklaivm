@@ -75,38 +75,44 @@ func (c *CreateAsset) Execute(
 	_ codec.Address,
 	actionID ids.ID,
 ) ([][]byte, error) {
-	if len(c.Name) == 0 || len(c.Name) > MaxTextSize {
+	if len(c.Name) < 3 || len(c.Name) > MaxTextSize {
 		return nil, ErrOutputNameInvalid
 	}
-	if len(c.Symbol) == 0 || len(c.Symbol) > MaxTextSize {
+	if len(c.Symbol) < 3 || len(c.Symbol) > MaxTextSize {
 		return nil, ErrOutputSymbolInvalid
 	}
-	if c.Decimals == 0 || c.Decimals > MaxDecimals {
+	if c.Decimals > MaxDecimals {
 		return nil, ErrOutputDecimalsInvalid
 	}
-	if len(c.Metadata) == 0 || len(c.Metadata) > MaxMetadataSize {
+	if len(c.Metadata) < 3 || len(c.Metadata) > MaxMetadataSize {
 		return nil, ErrOutputMetadataInvalid
 	}
-	if _, err := codec.AddressBech32(nconsts.HRP, c.UpdateAssetActor); err != nil {
-		return nil, err
+	updateAssetActor := codec.EmptyAddress
+	if _, err := codec.AddressBech32(nconsts.HRP, c.UpdateAssetActor); err == nil {
+		updateAssetActor = c.UpdateAssetActor
 	}
-	if _, err := codec.AddressBech32(nconsts.HRP, c.MintActor); err != nil {
-		return nil, err
+	mintActor := codec.EmptyAddress
+	if _, err := codec.AddressBech32(nconsts.HRP, c.MintActor); err == nil {
+		mintActor = c.MintActor
 	}
-	if _, err := codec.AddressBech32(nconsts.HRP, c.PauseUnpauseActor); err != nil {
-		return nil, err
+	pauseUnpauseActor := codec.EmptyAddress
+	if _, err := codec.AddressBech32(nconsts.HRP, c.PauseUnpauseActor); err == nil {
+		pauseUnpauseActor = c.PauseUnpauseActor
 	}
-	if _, err := codec.AddressBech32(nconsts.HRP, c.FreezeUnfreezeActor); err != nil {
-		return nil, err
+	freezeUnfreezeActor := codec.EmptyAddress
+	if _, err := codec.AddressBech32(nconsts.HRP, c.FreezeUnfreezeActor); err == nil {
+		freezeUnfreezeActor = c.FreezeUnfreezeActor
 	}
-	if _, err := codec.AddressBech32(nconsts.HRP, c.EnableDisableKYCAccountActor); err != nil {
-		return nil, err
+	enableDisableKYCAccountActor := codec.EmptyAddress
+	if _, err := codec.AddressBech32(nconsts.HRP, c.EnableDisableKYCAccountActor); err == nil {
+		enableDisableKYCAccountActor = c.EnableDisableKYCAccountActor
 	}
-	if _, err := codec.AddressBech32(nconsts.HRP, c.DeleteActor); err != nil {
-		return nil, err
+	deleteActor := codec.EmptyAddress
+	if _, err := codec.AddressBech32(nconsts.HRP, c.DeleteActor); err == nil {
+		deleteActor = c.DeleteActor
 	}
 
-	if err := storage.SetAsset(ctx, mu, actionID, c.Name, c.Symbol, c.Decimals, c.Metadata, 0, c.MaxSupply, c.UpdateAssetActor, c.MintActor, c.PauseUnpauseActor, c.FreezeUnfreezeActor, c.EnableDisableKYCAccountActor, c.DeleteActor); err != nil {
+	if err := storage.SetAsset(ctx, mu, actionID, c.Name, c.Symbol, c.Decimals, c.Metadata, 0, c.MaxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor); err != nil {
 		return nil, err
 	}
 	return nil, nil
