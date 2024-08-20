@@ -1871,7 +1871,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal(enableDisableKYCAccountActor, sender)
 		require.Equal(deleteActor, sender)
 	})
-
 })
 
 func expectBlk(i instance) func(bool) []*chain.Result {
