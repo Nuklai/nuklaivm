@@ -14,15 +14,15 @@ import (
 	"github.com/nuklai/nuklaivm/actions"
 )
 
-var marketPlaceCmd = &cobra.Command{
-	Use: "mp",
+var datasetCmd = &cobra.Command{
+	Use: "dataset",
 	RunE: func(*cobra.Command, []string) error {
 		return ErrMissingSubcommand
 	},
 }
 
 var createDatasetCmd = &cobra.Command{
-	Use: "create-dataset",
+	Use: "create",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
 		_, _, factory, cli, scli, tcli, err := handler.DefaultActor()
@@ -85,9 +85,13 @@ var createDatasetCmd = &cobra.Command{
 }
 
 var getDatasetCmd = &cobra.Command{
-	Use: "get-dataset",
+	Use: "info",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
+		_, priv, _, _, _, _, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
 
 		// Get clients
 		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
@@ -103,7 +107,15 @@ var getDatasetCmd = &cobra.Command{
 		}
 
 		// Get dataset info
+		hutils.Outf("Retrieving dataset info for datasetID: %s\n", datasetID)
 		_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, err = handler.GetDatasetInfo(ctx, ncli, datasetID)
+		if err != nil {
+			return err
+		}
+
+		// Get asset info
+		hutils.Outf("Retrieving asset info for assetID: %s\n", datasetID)
+		_, _, _, _, _, _, _, _, _, _, _, _, _, err = handler.GetAssetInfo(ctx, ncli, priv.Address, datasetID, true)
 		if err != nil {
 			return err
 		}

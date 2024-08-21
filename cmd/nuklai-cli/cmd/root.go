@@ -53,8 +53,9 @@ func init() {
 		keyCmd,
 		chainCmd,
 		actionCmd,
+		assetCmd,
 		emissionCmd,
-		marketPlaceCmd,
+		datasetCmd,
 		spamCmd,
 		prometheusCmd,
 	)
@@ -156,11 +157,6 @@ func init() {
 	actionCmd.AddCommand(
 		transferCmd,
 
-		createAssetCmd,
-		mintAssetFTCmd,
-		mintAssetNFTCmd,
-		// burnAssetCmd,
-
 		registerValidatorStakeCmd,
 		getValidatorStakeCmd,
 		claimValidatorStakeRewardCmd,
@@ -172,6 +168,15 @@ func init() {
 		undelegateUserStakeCmd,
 	)
 
+	// asset
+	assetCmd.AddCommand(
+		createAssetCmd,
+		mintAssetFTCmd,
+		mintAssetNFTCmd,
+		burnAssetFTCmd,
+		burnAssetNFTCmd,
+	)
+
 	// emission
 	emissionCmd.AddCommand(
 		emissionInfoCmd,
@@ -180,7 +185,7 @@ func init() {
 	)
 
 	// marketplace
-	marketPlaceCmd.AddCommand(
+	datasetCmd.AddCommand(
 		createDatasetCmd,
 		getDatasetCmd,
 	)
