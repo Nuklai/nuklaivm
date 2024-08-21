@@ -378,6 +378,38 @@ func (*Handler) GetUserStake(ctx context.Context,
 		err
 }
 
+func (*Handler) GetDatasetInfo(
+	ctx context.Context,
+	cli *nrpc.JSONRPCClient,
+	datasetID ids.ID,
+) (string, string, string, string, string, string, string, bool, bool, string, uint64, uint8, uint8, uint8, uint8, string, error) {
+	_, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := cli.Dataset(ctx, datasetID.String(), false)
+	if err != nil {
+		return "", "", "", "", "", "", "", false, false, "", 0, 0, 0, 0, 0, "", err
+	}
+
+	hutils.Outf(
+		"{{blue}}dataset info: {{/}}\nName=%s Description=%s Categories=%s LicenseName=%s LicenseSymbol=%s LicenseURL=%s Metadata=%s IsCommunityDataset=%t OnSale=%t BaseAsset=%s BasePrice=%d RevenueModelDataShare=%d RevenueModelMetadataShare=%d RevenueModelDataOwnerCut=%d RevenueModelMetadataOwnerCut=%d Owner=%s\n",
+		name,
+		description,
+		categories,
+		licenseName,
+		licenseSymbol,
+		licenseURL,
+		metadata,
+		isCommunityDataset,
+		onSale,
+		baseAsset,
+		basePrice,
+		revenueModelDataShare,
+		revenueModelMetadataShare,
+		revenueModelDataOwnerCut,
+		revenueModelMetadataOwnerCut,
+		owner,
+	)
+	return name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err
+}
+
 type Controller struct {
 	databasePath string
 }

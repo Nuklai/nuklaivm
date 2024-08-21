@@ -212,7 +212,7 @@ var mintAssetFTCmd = &cobra.Command{
 			return err
 		}
 		if !exists {
-			hutils.Outf("{{red}}name: %s with assetID:%s does not exist{{/}}\n", name, assetID)
+			hutils.Outf("{{red}}assetID:%s does not exist{{/}}\n", assetID)
 			hutils.Outf("{{red}}exiting...{{/}}\n")
 			return nil
 		}

@@ -54,6 +54,7 @@ func init() {
 		chainCmd,
 		actionCmd,
 		emissionCmd,
+		marketPlaceCmd,
 		spamCmd,
 		prometheusCmd,
 	)
@@ -176,6 +177,12 @@ func init() {
 		emissionInfoCmd,
 		emissionAllValidatorsCmd,
 		emissionStakedValidatorsCmd,
+	)
+
+	// marketplace
+	marketPlaceCmd.AddCommand(
+		createDatasetCmd,
+		getDatasetCmd,
 	)
 
 	// spam
