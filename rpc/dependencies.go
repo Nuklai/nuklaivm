@@ -45,4 +45,25 @@ type Controller interface {
 		codec.Address, // OwnerAddress
 		error,
 	)
+
+	GetDatasetFromState(ctx context.Context, datasetID ids.ID) (
+		bool, // exists
+		[]byte, // name
+		[]byte, // description
+		[]byte, // categories
+		[]byte, // licenseName
+		[]byte, // licenseSymbol
+		[]byte, // licenseURL
+		[]byte, // metadata
+		bool, // isCommunityDataset
+		bool, // onSale
+		ids.ID, // baseAsset
+		uint64, // basePrice
+		uint8, // revenueModelDataShare
+		uint8, // revenueModelMetadataShare
+		uint8, // revenueModelDataOwnerCut
+		uint8, // revenueModelMetadataOwnerCut
+		codec.Address, // Owner
+		error,
+	)
 }

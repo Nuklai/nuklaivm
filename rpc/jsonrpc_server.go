@@ -316,3 +316,60 @@ func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply 
 	reply.OwnerAddress = codec.MustAddressBech32(nconsts.HRP, ownerAddress)
 	return nil
 }
+
+type DatasetArgs struct {
+	Dataset string `json:"dataset"`
+}
+
+type DatasetReply struct {
+	Name                         string `json:"name"`
+	Description                  string `json:"description"`
+	Categories                   string `json:"categories"`
+	LicenseName                  string `json:"licenseName"`
+	LicenseSymbol                string `json:"licenseSymbol"`
+	LicenseURL                   string `json:"licenseURL"`
+	Metadata                     string `json:"metadata"`
+	IsCommunityDataset           bool   `json:"isCommunityDataset"`
+	OnSale                       bool   `json:"onSale"`
+	BaseAsset                    string `json:"baseAsset"`
+	BasePrice                    uint64 `json:"basePrice"`
+	RevenueModelDataShare        uint8  `json:"revenueModelDataShare"`
+	RevenueModelMetadataShare    uint8  `json:"revenueModelMetadataShare"`
+	RevenueModelDataOwnerCut     uint8  `json:"revenueModelDataOwnerCut"`
+	RevenueModelMetadataOwnerCut uint8  `json:"revenueModelMetadataOwnerCut"`
+	Owner                        string `json:"owner"`
+}
+
+func (j *JSONRPCServer) Dataset(req *http.Request, args *DatasetArgs, reply *DatasetReply) error {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Dataset")
+	defer span.End()
+
+	datasetID, err := getAssetIDBySymbol(args.Dataset)
+	if err != nil {
+		return err
+	}
+	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadatOwnerCut, owner, err := j.c.GetDatasetFromState(ctx, datasetID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrDatasetNotFound
+	}
+	reply.Name = string(name)
+	reply.Description = string(description)
+	reply.Categories = string(categories)
+	reply.LicenseName = string(licenseName)
+	reply.LicenseSymbol = string(licenseSymbol)
+	reply.LicenseURL = string(licenseURL)
+	reply.Metadata = string(metadata)
+	reply.IsCommunityDataset = isCommunityDataset
+	reply.OnSale = onSale
+	reply.BaseAsset = baseAsset.String()
+	reply.BasePrice = basePrice
+	reply.RevenueModelDataShare = revenueModelDataShare
+	reply.RevenueModelMetadataShare = revenueModelMetadataShare
+	reply.RevenueModelDataOwnerCut = revenueModelDataOwnerCut
+	reply.RevenueModelMetadataOwnerCut = revenueModelMetadatOwnerCut
+	reply.Owner = codec.MustAddressBech32(nconsts.HRP, owner)
+	return err
+}

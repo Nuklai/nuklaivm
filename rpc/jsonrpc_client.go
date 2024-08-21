@@ -31,6 +31,7 @@ type JSONRPCClient struct {
 	assetsL   sync.Mutex
 	assets    map[string]*AssetReply
 	assetsNFT map[string]*AssetNFTReply
+	datasets  map[string]*DatasetReply
 }
 
 // New creates a new client object.
@@ -44,6 +45,7 @@ func NewJSONRPCClient(uri string, networkID uint32, chainID ids.ID) *JSONRPCClie
 		chainID:   chainID,
 		assets:    map[string]*AssetReply{},
 		assetsNFT: map[string]*AssetNFTReply{},
+		datasets:  map[string]*DatasetReply{},
 	}
 }
 
@@ -244,6 +246,41 @@ func (cli *JSONRPCClient) UserStake(ctx context.Context, owner string, nodeID st
 		return 0, 0, 0, "", "", err
 	}
 	return resp.StakeStartBlock, resp.StakeEndBlock, resp.StakedAmount, resp.RewardAddress, resp.OwnerAddress, err
+}
+
+func (cli *JSONRPCClient) Dataset(
+	ctx context.Context,
+	dataset string,
+	useCache bool,
+) (bool, string, string, string, string, string, string, string, bool, bool, string, uint64, uint8, uint8, uint8, uint8, string, error) {
+	cli.assetsL.Lock()
+	r, ok := cli.datasets[dataset]
+	cli.assetsL.Unlock()
+	if ok && useCache {
+		return true, r.Name, r.Description, r.Categories, r.LicenseName, r.LicenseSymbol, r.LicenseURL, r.Metadata, r.IsCommunityDataset, r.OnSale, r.BaseAsset, r.BasePrice, r.RevenueModelDataShare, r.RevenueModelMetadataShare, r.RevenueModelDataOwnerCut, r.RevenueModelMetadataOwnerCut, r.Owner, nil
+	}
+
+	resp := new(DatasetReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"dataset",
+		&DatasetArgs{
+			Dataset: dataset,
+		},
+		resp,
+	)
+	switch {
+	// We use string parsing here because the JSON-RPC library we use may not
+	// allows us to perform errors.Is.
+	case err != nil && strings.Contains(err.Error(), ErrDatasetNotFound.Error()):
+		return false, "", "", "", "", "", "", "", false, false, "", 0, 0, 0, 0, 0, "", nil
+	case err != nil:
+		return false, "", "", "", "", "", "", "", false, false, "", 0, 0, 0, 0, 0, "", nil
+	}
+	cli.assetsL.Lock()
+	cli.datasets[dataset] = resp
+	cli.assetsL.Unlock()
+	return true, resp.Name, resp.Description, resp.Categories, resp.LicenseName, resp.LicenseSymbol, resp.LicenseURL, resp.Metadata, resp.IsCommunityDataset, resp.OnSale, resp.BaseAsset, resp.BasePrice, resp.RevenueModelDataShare, resp.RevenueModelMetadataShare, resp.RevenueModelDataOwnerCut, resp.RevenueModelMetadataOwnerCut, resp.Owner, nil
 }
 
 func (cli *JSONRPCClient) WaitForBalance(

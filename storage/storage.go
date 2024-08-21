@@ -78,7 +78,7 @@ const (
 	AssetNFTChunks               uint16 = 3
 	RegisterValidatorStakeChunks uint16 = 4
 	DelegateUserStakeChunks      uint16 = 2
-	DatasetChunks                uint16 = 9
+	DatasetChunks                uint16 = 91
 )
 
 var (
@@ -738,7 +738,7 @@ func GetDatasetFromState(
 	ctx context.Context,
 	f ReadState,
 	datasetID ids.ID,
-) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint64, uint64, uint64, uint64, codec.Address, error) {
+) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
 	values, errs := f(ctx, [][]byte{DatasetKey(datasetID)})
 	return innerGetDataset(values[0], errs[0])
 }
@@ -747,12 +747,12 @@ func GetDataset(
 	ctx context.Context,
 	im state.Immutable,
 	datasetID ids.ID,
-) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint64, uint64, uint64, uint64, codec.Address, error) {
+) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
 	k := DatasetKey(datasetID)
 	return innerGetDataset(im.GetValue(ctx, k))
 }
 
-func innerGetDataset(v []byte, err error) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint64, uint64, uint64, uint64, codec.Address, error) {
+func innerGetDataset(v []byte, err error) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
 	if errors.Is(err, database.ErrNotFound) {
 		return false, nil, nil, nil, nil, nil, nil, nil, false, false, ids.Empty, 0, 0, 0, 0, 0, codec.EmptyAddress, nil
 	}
@@ -803,21 +803,21 @@ func innerGetDataset(v []byte, err error) (bool, []byte, []byte, []byte, []byte,
 
 	basePrice := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
 	offset += consts.Uint64Len
-	revenueModelDataShare := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
-	offset += consts.Uint64Len
-	revenueModelMetadataShare := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
-	offset += consts.Uint64Len
-	revenueModeldataOwnerCut := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
-	offset += consts.Uint64Len
-	revenueModelMetadataOwnerCut := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
-	offset += consts.Uint64Len
+	revenueModelDataShare := v[offset]
+	offset += consts.Uint8Len
+	revenueModelMetadataShare := v[offset]
+	offset += consts.Uint8Len
+	revenueModelDataOwnerCut := v[offset]
+	offset += consts.Uint8Len
+	revenueModelMetadataOwnerCut := v[offset]
+	offset += consts.Uint8Len
 
 	var owner codec.Address
 	copy(owner[:], v[offset:])
-	return true, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModeldataOwnerCut, revenueModelMetadataOwnerCut, owner, nil
+	return true, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, nil
 }
 
-func SetDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID, name []byte, description []byte, categories []byte, licenseName []byte, licenseSymbol []byte, licenseURL []byte, metadata []byte, isCommunityDataset bool, onSale bool, baseAsset ids.ID, basePrice uint64, revenueModelDataShare uint64, revenueModelMetadataShare uint64, revenueModeldataOwnerCut uint64, revenueModelMetadataOwnerCut uint64, owner codec.Address) error {
+func SetDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID, name []byte, description []byte, categories []byte, licenseName []byte, licenseSymbol []byte, licenseURL []byte, metadata []byte, isCommunityDataset bool, onSale bool, baseAsset ids.ID, basePrice uint64, revenueModelDataShare uint8, revenueModelMetadataShare uint8, revenueModeldataOwnerCut uint8, revenueModelMetadataOwnerCut uint8, owner codec.Address) error {
 	k := DatasetKey(datasetID)
 	nameLen := len(name)
 	descriptionLen := len(description)
@@ -827,7 +827,7 @@ func SetDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID, name []
 	licenseURLLen := len(licenseURL)
 	metadataLen := len(metadata)
 
-	v := make([]byte, consts.Uint16Len+nameLen+consts.Uint16Len+descriptionLen+consts.Uint16Len+categoriesLen+consts.Uint16Len+licenseNameLen+consts.Uint16Len+licenseSymbolLen+consts.Uint16Len+licenseURLLen+consts.Uint16Len+metadataLen+consts.BoolLen+consts.BoolLen+ids.IDLen+consts.Uint64Len+consts.Uint64Len+consts.Uint64Len+consts.Uint64Len+consts.Uint64Len+codec.AddressLen)
+	v := make([]byte, consts.Uint16Len+nameLen+consts.Uint16Len+descriptionLen+consts.Uint16Len+categoriesLen+consts.Uint16Len+licenseNameLen+consts.Uint16Len+licenseSymbolLen+consts.Uint16Len+licenseURLLen+consts.Uint16Len+metadataLen+consts.BoolLen+consts.BoolLen+ids.IDLen+consts.Uint64Len+consts.Uint8Len+consts.Uint8Len+consts.Uint8Len+consts.Uint8Len+codec.AddressLen)
 
 	offset := 0
 	binary.BigEndian.PutUint16(v[offset:], uint16(nameLen))
@@ -877,14 +877,14 @@ func SetDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID, name []
 
 	binary.BigEndian.PutUint64(v[offset:], basePrice)
 	offset += consts.Uint64Len
-	binary.BigEndian.PutUint64(v[offset:], revenueModelDataShare)
-	offset += consts.Uint64Len
-	binary.BigEndian.PutUint64(v[offset:], revenueModelMetadataShare)
-	offset += consts.Uint64Len
-	binary.BigEndian.PutUint64(v[offset:], revenueModeldataOwnerCut)
-	offset += consts.Uint64Len
-	binary.BigEndian.PutUint64(v[offset:], revenueModelMetadataOwnerCut)
-	offset += consts.Uint64Len
+	v[offset] = revenueModelDataShare
+	offset += consts.Uint8Len
+	v[offset] = revenueModelMetadataShare
+	offset += consts.Uint8Len
+	v[offset] = revenueModeldataOwnerCut
+	offset += consts.Uint8Len
+	v[offset] = revenueModelMetadataOwnerCut
+	offset += consts.Uint8Len
 
 	copy(v[offset:], owner[:])
 

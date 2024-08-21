@@ -85,15 +85,19 @@ func (c *CreateDataset) Execute(
 		return nil, ErrOutputMetadataInvalid
 	}
 
+	revenueModelDataShare, revenueModelDataOwnerCut := 100, 100
+	if c.IsCommunityDataset {
+		revenueModelDataOwnerCut = 10
+	}
 	// Create a new dataset with the following parameters:
 	// onSale = false
 	// baseAsset = ids.Empty
 	// basePrice = 0
 	// revenueModelDataShare = 100
 	// revenueModelMetadataShare = 0
-	// revenueModeldataOwnerCut = 10
+	// revenueModelDataOwnerCut = 10 for community datasets, 100 for sole contributor datasets
 	// revenueModelMetadataOwnerCut = 0
-	if err := storage.SetDataset(ctx, mu, actionID, c.Name, c.Description, c.Categories, c.LicenseName, c.LicenseSymbol, c.LicenseURL, c.Metadata, c.IsCommunityDataset, false, ids.Empty, 0, 100, 0, 10, 0, actor); err != nil {
+	if err := storage.SetDataset(ctx, mu, actionID, c.Name, c.Description, c.Categories, c.LicenseName, c.LicenseSymbol, c.LicenseURL, c.Metadata, c.IsCommunityDataset, false, ids.Empty, 0, uint8(revenueModelDataShare), 0, uint8(revenueModelDataOwnerCut), 0, actor); err != nil {
 		return nil, err
 	}
 
@@ -132,7 +136,7 @@ func UnmarshalCreateDataset(p *codec.Packer) (chain.Action, error) {
 	p.UnpackBytes(MaxTextSize, true, &create.LicenseName)
 	p.UnpackBytes(MaxTextSize, true, &create.LicenseSymbol)
 	p.UnpackBytes(MaxMetadataSize, true, &create.LicenseURL)
-	p.UnpackBytes(MaxMetadataSize, true, &create.Metadata)
+	p.UnpackBytes(MaxDatasetMetadataSize, true, &create.Metadata)
 	create.IsCommunityDataset = p.UnpackBool()
 	return &create, p.Err()
 }

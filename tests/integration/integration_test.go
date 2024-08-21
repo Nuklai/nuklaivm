@@ -1802,7 +1802,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				LicenseName:        []byte("l00"),
 				LicenseSymbol:      []byte("ls00"),
 				LicenseURL:         []byte("lu00"),
-				Metadata:           make([]byte, actions.MaxMetadataSize*2),
+				Metadata:           make([]byte, actions.MaxDatasetMetadataSize*2),
 				IsCommunityDataset: false,
 			}},
 		)
@@ -1823,7 +1823,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.ErrorContains(err, "size is larger than limit")
 	})
 
-	ginkgo.It("create a new dataset (simple metadata)", func() {
+	ginkgo.It("create a new dataset (solo contributor dataset)", func() {
 		parser, err := instances[0].ncli.Parser(context.Background())
 		require.NoError(err)
 		submit, tx, _, err := instances[0].cli.GenerateTransaction(
@@ -1850,12 +1850,105 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.True(results[0].Success)
 
 		asset1ID = chain.CreateActionID(tx.ID(), 0)
+
+		// Check dataset info
+		exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := instances[0].ncli.Dataset(context.TODO(), asset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(description), []byte("d00"))
+		require.Equal([]byte(categories), []byte("c00"))
+		require.Equal([]byte(licenseName), []byte("l00"))
+		require.Equal([]byte(licenseSymbol), []byte("ls00"))
+		require.Equal([]byte(licenseURL), []byte("lu00"))
+		require.Equal([]byte(metadata), asset1)
+		require.False(isCommunityDataset)
+		require.False(onSale)
+		require.Equal(baseAsset, ids.Empty.String())
+		require.Zero(basePrice)
+		require.Equal(revenueModelDataShare, uint8(100))
+		require.Equal(revenueModelMetadataShare, uint8(0))
+		require.Equal(revenueModelDataOwnerCut, uint8(100))
+		require.Equal(revenueModelMetadataOwnerCut, uint8(0))
+		require.Equal(owner, sender)
+
+		// Check asset info
 		balance, err := instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
 		require.NoError(err)
 		require.Zero(balance)
 
 		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(symbol), asset1)
+		require.Equal(decimals, uint8(0))
+		require.Equal([]byte(metadata), []byte("d00"))
+		require.Zero(totalSupply)
+		require.Zero(maxSupply)
+		require.Equal(updateAssetActor, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+		require.Equal(deleteActor, sender)
+	})
 
+	ginkgo.It("create a new dataset (community contributor dataset)", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, tx, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.CreateDataset{
+				Name:               asset1,
+				Description:        []byte("d00"),
+				Categories:         []byte("c00"),
+				LicenseName:        []byte("l00"),
+				LicenseSymbol:      []byte("ls00"),
+				LicenseURL:         []byte("lu00"),
+				Metadata:           asset1,
+				IsCommunityDataset: true,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		asset1ID = chain.CreateActionID(tx.ID(), 0)
+
+		// Check dataset info
+		exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := instances[0].ncli.Dataset(context.TODO(), asset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(description), []byte("d00"))
+		require.Equal([]byte(categories), []byte("c00"))
+		require.Equal([]byte(licenseName), []byte("l00"))
+		require.Equal([]byte(licenseSymbol), []byte("ls00"))
+		require.Equal([]byte(licenseURL), []byte("lu00"))
+		require.Equal([]byte(metadata), asset1)
+		require.True(isCommunityDataset)
+		require.False(onSale)
+		require.Equal(baseAsset, ids.Empty.String())
+		require.Zero(basePrice)
+		require.Equal(revenueModelDataShare, uint8(100))
+		require.Equal(revenueModelMetadataShare, uint8(0))
+		require.Equal(revenueModelDataOwnerCut, uint8(10))
+		require.Equal(revenueModelMetadataOwnerCut, uint8(0))
+		require.Equal(owner, sender)
+
+		// Check asset info
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
+		require.NoError(err)
+		require.Zero(balance)
+
+		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
 		require.Equal([]byte(name), asset1)
