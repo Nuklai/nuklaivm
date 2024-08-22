@@ -115,7 +115,7 @@ var getDatasetCmd = &cobra.Command{
 
 		// Get asset info
 		hutils.Outf("Retrieving asset info for assetID: %s\n", datasetID)
-		_, _, _, _, _, _, _, _, _, _, _, _, _, err = handler.GetAssetInfo(ctx, ncli, priv.Address, datasetID, true)
+		_, _, _, _, _, _, _, _, _, _, _, _, _, _, err = handler.GetAssetInfo(ctx, ncli, priv.Address, datasetID, true)
 		if err != nil {
 			return err
 		}

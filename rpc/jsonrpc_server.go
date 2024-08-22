@@ -68,6 +68,7 @@ type AssetArgs struct {
 }
 
 type AssetReply struct {
+	AssetType                    string `json:"assetType"`
 	Name                         string `json:"name"`
 	Symbol                       string `json:"symbol"`
 	Decimals                     uint8  `json:"decimals"`
@@ -90,12 +91,20 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 	if err != nil {
 		return err
 	}
-	exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := j.c.GetAssetFromState(ctx, assetID)
+	exists, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := j.c.GetAssetFromState(ctx, assetID)
 	if err != nil {
 		return err
 	}
 	if !exists {
 		return ErrAssetNotFound
+	}
+	switch assetType {
+	case nconsts.AssetFungibleTokenID:
+		reply.AssetType = nconsts.AssetFungibleTokenDesc
+	case nconsts.AssetNonFungibleTokenID:
+		reply.AssetType = nconsts.AssetNonFungibleTokenDesc
+	case nconsts.AssetDatasetTokenID:
+		reply.AssetType = nconsts.AssetDatasetTokenDesc
 	}
 	reply.Name = string(name)
 	reply.Symbol = string(symbol)

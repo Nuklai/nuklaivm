@@ -19,6 +19,9 @@ import (
 var _ chain.Action = (*CreateAsset)(nil)
 
 type CreateAsset struct {
+	// Asset type
+	AssetType uint8 `json:"assetType"`
+
 	// The name of the asset
 	Name []byte `json:"name"`
 
@@ -75,6 +78,9 @@ func (c *CreateAsset) Execute(
 	_ codec.Address,
 	actionID ids.ID,
 ) ([][]byte, error) {
+	if c.AssetType != nconsts.AssetFungibleTokenID && c.AssetType != nconsts.AssetNonFungibleTokenID && c.AssetType != nconsts.AssetDatasetTokenID {
+		return nil, ErrOutputAssetTypeInvalid
+	}
 	if len(c.Name) < 3 || len(c.Name) > MaxTextSize {
 		return nil, ErrOutputNameInvalid
 	}
@@ -82,6 +88,9 @@ func (c *CreateAsset) Execute(
 		return nil, ErrOutputSymbolInvalid
 	}
 	if c.Decimals > MaxDecimals {
+		return nil, ErrOutputDecimalsInvalid
+	}
+	if c.AssetType == nconsts.AssetNonFungibleTokenID && c.Decimals != 0 {
 		return nil, ErrOutputDecimalsInvalid
 	}
 	if len(c.Metadata) < 3 || len(c.Metadata) > MaxMetadataSize {
@@ -112,7 +121,7 @@ func (c *CreateAsset) Execute(
 		deleteActor = c.DeleteActor
 	}
 
-	if err := storage.SetAsset(ctx, mu, actionID, c.Name, c.Symbol, c.Decimals, c.Metadata, 0, c.MaxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor); err != nil {
+	if err := storage.SetAsset(ctx, mu, actionID, c.AssetType, c.Name, c.Symbol, c.Decimals, c.Metadata, 0, c.MaxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor); err != nil {
 		return nil, err
 	}
 	return nil, nil
@@ -124,10 +133,11 @@ func (*CreateAsset) ComputeUnits(chain.Rules) uint64 {
 
 func (c *CreateAsset) Size() int {
 	// TODO: add small bytes (smaller int prefix)
-	return codec.BytesLen(c.Name) + codec.BytesLen(c.Symbol) + consts.Uint8Len + codec.BytesLen(c.Metadata) + consts.Uint64Len + codec.AddressLen*6
+	return consts.Uint8Len + codec.BytesLen(c.Name) + codec.BytesLen(c.Symbol) + consts.Uint8Len + codec.BytesLen(c.Metadata) + consts.Uint64Len + codec.AddressLen*6
 }
 
 func (c *CreateAsset) Marshal(p *codec.Packer) {
+	p.PackByte(c.AssetType)
 	p.PackBytes(c.Name)
 	p.PackBytes(c.Symbol)
 	p.PackByte(c.Decimals)
@@ -143,6 +153,7 @@ func (c *CreateAsset) Marshal(p *codec.Packer) {
 
 func UnmarshalCreateAsset(p *codec.Packer) (chain.Action, error) {
 	var create CreateAsset
+	create.AssetType = p.UnpackByte()
 	p.UnpackBytes(MaxTextSize, true, &create.Name)
 	p.UnpackBytes(MaxTextSize, true, &create.Symbol)
 	create.Decimals = p.UnpackByte()

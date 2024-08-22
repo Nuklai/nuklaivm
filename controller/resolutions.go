@@ -38,7 +38,7 @@ func (c *Controller) GetTransaction(
 func (c *Controller) GetAssetFromState(
 	ctx context.Context,
 	asset ids.ID,
-) (bool, []byte, []byte, uint8, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
+) (bool, uint8, []byte, []byte, uint8, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
 	return storage.GetAssetFromState(ctx, c.inner.ReadState, asset)
 }
 
@@ -104,5 +104,5 @@ func (c *Controller) GetDatasetFromState(
 	ctx context.Context,
 	datasetID ids.ID,
 ) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
-	return storage.GetDatasetFromState(ctx, c.inner.ReadState, datasetID)
+	return storage.GetAssetDatasetFromState(ctx, c.inner.ReadState, datasetID)
 }

@@ -35,6 +35,18 @@ var createAssetCmd = &cobra.Command{
 			return err
 		}
 
+		// Add assettype to token
+		assetType, err := handler.Root().PromptInt("assetType(0 for fungible, 1 for non-fungible and 2 for dataset)", 2)
+		if err != nil {
+			return err
+		}
+		if assetType < 0 || assetType > 2 {
+			hutils.Outf("{{red}}assetType:%s does not exist{{/}}\n", assetType)
+			hutils.Outf("{{red}}fungible=0 non-fungible=1 dataset=2{{/}}\n")
+			hutils.Outf("{{red}}exiting...{{/}}\n")
+			return nil
+		}
+
 		// Add name to token
 		name, err := handler.Root().PromptString("name", 1, actions.MaxTextSize)
 		if err != nil {
@@ -73,6 +85,7 @@ var createAssetCmd = &cobra.Command{
 
 		// Generate transaction
 		txID, err := sendAndWait(ctx, []chain.Action{&actions.CreateAsset{
+			AssetType:                    uint8(assetType),
 			Name:                         []byte(name),
 			Symbol:                       []byte(symbol),
 			Decimals:                     uint8(decimals), // already constrain above to prevent overflow
@@ -110,7 +123,7 @@ var mintAssetFTCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := tcli.Asset(ctx, assetID.String(), false)
+		exists, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := tcli.Asset(ctx, assetID.String(), false)
 		if err != nil {
 			return err
 		}
@@ -125,7 +138,8 @@ var mintAssetFTCmd = &cobra.Command{
 			return nil
 		}
 		hutils.Outf(
-			"{{blue}}name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}updateAssetActor:{{/}} %s {{blue}}mintActor:{{/}} %s {{blue}}pauseUnpauseActor:{{/}} %s {{blue}}freezeUnfreezeActor:{{/}} %s {{blue}}enableDisableKYCAccountActor:{{/}} %s {{blue}}deleteActor:{{/}} %s\n",
+			"{{blue}}assetType:{{/}} %s name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}updateAssetActor:{{/}} %s {{blue}}mintActor:{{/}} %s {{blue}}pauseUnpauseActor:{{/}} %s {{blue}}freezeUnfreezeActor:{{/}} %s {{blue}}enableDisableKYCAccountActor:{{/}} %s {{blue}}deleteActor:{{/}} %s\n",
+			assetType,
 			name,
 			symbol,
 			decimals,
@@ -182,7 +196,7 @@ var mintAssetNFTCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := tcli.Asset(ctx, assetID.String(), false)
+		exists, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := tcli.Asset(ctx, assetID.String(), false)
 		if err != nil {
 			return err
 		}
@@ -197,7 +211,8 @@ var mintAssetNFTCmd = &cobra.Command{
 			return nil
 		}
 		hutils.Outf(
-			"{{blue}}name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}updateAssetActor:{{/}} %s {{blue}}mintActor:{{/}} %s {{blue}}pauseUnpauseActor:{{/}} %s {{blue}}freezeUnfreezeActor:{{/}} %s {{blue}}enableDisableKYCAccountActor:{{/}} %s {{blue}}deleteActor:{{/}} %s\n",
+			"{{blue}}assetType:{{/}} %s name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}updateAssetActor:{{/}} %s {{blue}}mintActor:{{/}} %s {{blue}}pauseUnpauseActor:{{/}} %s {{blue}}freezeUnfreezeActor:{{/}} %s {{blue}}enableDisableKYCAccountActor:{{/}} %s {{blue}}deleteActor:{{/}} %s\n",
+			assetType,
 			name,
 			symbol,
 			decimals,
@@ -271,7 +286,7 @@ var burnAssetFTCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := tcli.Asset(ctx, assetID.String(), false)
+		exists, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := tcli.Asset(ctx, assetID.String(), false)
 		if err != nil {
 			return err
 		}
@@ -281,7 +296,8 @@ var burnAssetFTCmd = &cobra.Command{
 			return nil
 		}
 		hutils.Outf(
-			"{{blue}}name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}updateAssetActor:{{/}} %s {{blue}}mintActor:{{/}} %s {{blue}}pauseUnpauseActor:{{/}} %s {{blue}}freezeUnfreezeActor:{{/}} %s {{blue}}enableDisableKYCAccountActor:{{/}} %s {{blue}}deleteActor:{{/}} %s\n",
+			"{{blue}}assetType:{{/}} %s name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}updateAssetActor:{{/}} %s {{blue}}mintActor:{{/}} %s {{blue}}pauseUnpauseActor:{{/}} %s {{blue}}freezeUnfreezeActor:{{/}} %s {{blue}}enableDisableKYCAccountActor:{{/}} %s {{blue}}deleteActor:{{/}} %s\n",
+			assetType,
 			name,
 			symbol,
 			decimals,

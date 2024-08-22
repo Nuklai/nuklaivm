@@ -46,8 +46,8 @@ func (*CreateDataset) GetTypeID() uint8 {
 
 func (*CreateDataset) StateKeys(_ codec.Address, actionID ids.ID) state.Keys {
 	return state.Keys{
-		string(storage.AssetKey(actionID)):   state.Allocate | state.Write,
-		string(storage.DatasetKey(actionID)): state.Allocate | state.Write,
+		string(storage.AssetKey(actionID)):        state.Allocate | state.Write,
+		string(storage.AssetDatasetKey(actionID)): state.Allocate | state.Write,
 	}
 }
 
@@ -97,12 +97,12 @@ func (c *CreateDataset) Execute(
 	// revenueModelMetadataShare = 0
 	// revenueModelDataOwnerCut = 10 for community datasets, 100 for sole contributor datasets
 	// revenueModelMetadataOwnerCut = 0
-	if err := storage.SetDataset(ctx, mu, actionID, c.Name, c.Description, c.Categories, c.LicenseName, c.LicenseSymbol, c.LicenseURL, c.Metadata, c.IsCommunityDataset, false, ids.Empty, 0, uint8(revenueModelDataShare), 0, uint8(revenueModelDataOwnerCut), 0, actor); err != nil {
+	if err := storage.SetAssetDataset(ctx, mu, actionID, c.Name, c.Description, c.Categories, c.LicenseName, c.LicenseSymbol, c.LicenseURL, c.Metadata, c.IsCommunityDataset, false, ids.Empty, 0, uint8(revenueModelDataShare), 0, uint8(revenueModelDataOwnerCut), 0, actor); err != nil {
 		return nil, err
 	}
 
 	// Create an asset for the dataset
-	if err := storage.SetAsset(ctx, mu, actionID, c.Name, c.Name, 0, c.Description, 0, 0, actor, actor, actor, actor, actor, actor); err != nil {
+	if err := storage.SetAsset(ctx, mu, actionID, nconsts.AssetDatasetTokenID, c.Name, c.Name, 0, c.Description, 0, 0, actor, actor, actor, actor, actor, actor); err != nil {
 		return nil, err
 	}
 

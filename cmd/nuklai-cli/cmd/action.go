@@ -67,7 +67,7 @@ var transferCmd = &cobra.Command{
 			}
 		}
 
-		balance, _, _, decimals, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, assetID, true)
+		balance, _, _, _, decimals, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, assetID, true)
 		if balance == 0 || err != nil {
 			return err
 		}
@@ -166,7 +166,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			balance, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, nclients[0], validatorSignerKey.Address, ids.Empty, true)
+			balance, _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, nclients[0], validatorSignerKey.Address, ids.Empty, true)
 			if err != nil {
 				return err
 			}
@@ -225,7 +225,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 		}
 
 		// Get balance info
-		balance, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, ids.Empty, true)
+		balance, _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, ids.Empty, true)
 		if balance == 0 || err != nil {
 			return err
 		}
@@ -556,7 +556,7 @@ var delegateUserStakeCmd = &cobra.Command{
 		nodeID := validatorChosen.NodeID
 
 		// Get balance info
-		balance, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, ids.Empty, true)
+		balance, _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, ids.Empty, true)
 		if balance == 0 || err != nil {
 			return err
 		}

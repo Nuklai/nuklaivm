@@ -147,6 +147,7 @@ func (g *Genesis) Load(ctx context.Context, tracer trace.Tracer, mu state.Mutabl
 		ctx,
 		mu,
 		ids.Empty,
+		nconsts.AssetFungibleTokenID,
 		[]byte(nconsts.Name),
 		[]byte(nconsts.Symbol),
 		nconsts.Decimals,

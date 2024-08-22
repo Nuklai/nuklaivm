@@ -25,6 +25,15 @@ const (
 
 	CreateDatasetID uint8 = 14
 
+	// Asset TypeIDs
+	AssetFungibleTokenID    uint8 = 0
+	AssetNonFungibleTokenID uint8 = 1
+	AssetDatasetTokenID     uint8 = 2
+	// Asset Names for TypeIDs
+	AssetFungibleTokenDesc    string = "Fungible Token"
+	AssetNonFungibleTokenDesc string = "Non-Fungible Token"
+	AssetDatasetTokenDesc     string = "Dataset Token"
+
 	// Auth TypeIDs
 	ED25519ID   uint8 = 0
 	SECP256R1ID uint8 = 1

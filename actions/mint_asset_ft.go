@@ -63,12 +63,15 @@ func (m *MintAssetFT) Execute(
 	if m.Value == 0 {
 		return nil, ErrOutputValueZero
 	}
-	exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := storage.GetAsset(ctx, mu, m.Asset)
+	exists, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := storage.GetAsset(ctx, mu, m.Asset)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
 		return nil, ErrOutputAssetMissing
+	}
+	if assetType != nconsts.AssetFungibleTokenID {
+		return nil, ErrOutputWrongAssetType
 	}
 	if mintActor != actor {
 		return nil, ErrOutputWrongMintActor
@@ -84,7 +87,7 @@ func (m *MintAssetFT) Execute(
 	}
 	totalSupply = newSupply
 
-	if err := storage.SetAsset(ctx, mu, m.Asset, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor); err != nil {
+	if err := storage.SetAsset(ctx, mu, m.Asset, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor); err != nil {
 		return nil, err
 	}
 	if err := storage.AddBalance(ctx, mu, m.To, m.Asset, m.Value, true); err != nil {

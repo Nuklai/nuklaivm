@@ -315,7 +315,7 @@ func GetAssetFromState(
 	ctx context.Context,
 	f ReadState,
 	asset ids.ID,
-) (bool, []byte, []byte, uint8, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
+) (bool, uint8, []byte, []byte, uint8, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
 	values, errs := f(ctx, [][]byte{AssetKey(asset)})
 	return innerGetAsset(values[0], errs[0])
 }
@@ -324,7 +324,7 @@ func GetAsset(
 	ctx context.Context,
 	im state.Immutable,
 	asset ids.ID,
-) (bool, []byte, []byte, uint8, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
+) (bool, uint8, []byte, []byte, uint8, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
 	k := AssetKey(asset)
 	return innerGetAsset(im.GetValue(ctx, k))
 }
@@ -332,45 +332,63 @@ func GetAsset(
 func innerGetAsset(
 	v []byte,
 	err error,
-) (bool, []byte, []byte, uint8, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
+) (bool, uint8, []byte, []byte, uint8, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
 	if errors.Is(err, database.ErrNotFound) {
-		return false, nil, nil, 0, nil, 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, nil
+		return false, 0, nil, nil, 0, nil, 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, nil
 	}
 	if err != nil {
-		return false, nil, nil, 0, nil, 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, err
+		return false, 0, nil, nil, 0, nil, 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, err
 	}
 
-	nameLen := binary.BigEndian.Uint16(v)
-	name := v[consts.Uint16Len : consts.Uint16Len+nameLen]
-	symbolLen := binary.BigEndian.Uint16(v[consts.Uint16Len+nameLen:])
-	symbol := v[consts.Uint16Len+nameLen+consts.Uint16Len : consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen]
-	decimals := v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen]
-	metadataLen := binary.BigEndian.Uint16(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len:])
-	metadata := v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len : +consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen]
-
-	totalSupply := binary.BigEndian.Uint64(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen:])
-	maxSupply := binary.BigEndian.Uint64(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len:])
+	offset := uint16(0)
+	assetType := v[offset]
+	offset += consts.Uint8Len
+	nameLen := binary.BigEndian.Uint16(v[offset:])
+	offset += consts.Uint16Len
+	name := v[offset : offset+nameLen]
+	offset += nameLen
+	symbolLen := binary.BigEndian.Uint16(v[offset:])
+	offset += consts.Uint16Len
+	symbol := v[offset : offset+symbolLen]
+	offset += symbolLen
+	decimals := v[offset]
+	offset += consts.Uint8Len
+	metadataLen := binary.BigEndian.Uint16(v[offset:])
+	offset += consts.Uint16Len
+	metadata := v[offset : offset+metadataLen]
+	offset += metadataLen
+	totalSupply := binary.BigEndian.Uint64(v[offset:])
+	offset += consts.Uint64Len
+	maxSupply := binary.BigEndian.Uint64(v[offset:])
+	offset += consts.Uint64Len
 
 	var updateAssetActor codec.Address
-	copy(updateAssetActor[:], v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2:])
+	copy(updateAssetActor[:], v[offset:])
+	offset += codec.AddressLen
 	var mintActor codec.Address
-	copy(mintActor[:], v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen:])
+	copy(mintActor[:], v[offset:])
+	offset += codec.AddressLen
 	var pauseUnpauseActor codec.Address
-	copy(pauseUnpauseActor[:], v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*2:])
+	copy(pauseUnpauseActor[:], v[offset:])
+	offset += codec.AddressLen
 	var freezeUnfreezeActor codec.Address
-	copy(freezeUnfreezeActor[:], v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*3:])
+	copy(freezeUnfreezeActor[:], v[offset:])
+	offset += codec.AddressLen
 	var enableDisableKYCAccountActor codec.Address
-	copy(enableDisableKYCAccountActor[:], v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*4:])
+	copy(enableDisableKYCAccountActor[:], v[offset:])
+	offset += codec.AddressLen
 	var deleteActor codec.Address
-	copy(deleteActor[:], v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*5:])
+	copy(deleteActor[:], v[offset:])
 
-	return true, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, nil
+	return true, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, nil
+
 }
 
 func SetAsset(
 	ctx context.Context,
 	mu state.Mutable,
 	asset ids.ID,
+	assetType uint8,
 	name []byte,
 	symbol []byte,
 	decimals uint8,
@@ -389,25 +407,40 @@ func SetAsset(
 	symbolLen := len(symbol)
 	metadataLen := len(metadata)
 
-	v := make([]byte, consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*6)
+	v := make([]byte, consts.Uint8Len+consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*6)
 
-	binary.BigEndian.PutUint16(v, uint16(nameLen))
-	copy(v[consts.Uint16Len:], name)
-	binary.BigEndian.PutUint16(v[consts.Uint16Len+nameLen:], uint16(symbolLen))
-	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len:], symbol)
-	v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen] = decimals
-	binary.BigEndian.PutUint16(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len:], uint16(metadataLen))
-	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len:], metadata)
-
-	binary.BigEndian.PutUint64(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen:], totalSupply)
-	binary.BigEndian.PutUint64(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len:], maxSupply)
-
-	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2:], updateAssetActor[:])
-	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen:], mintActor[:])
-	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*2:], pauseUnpauseActor[:])
-	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*3:], freezeUnfreezeActor[:])
-	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*4:], enableDisableKYCAccountActor[:])
-	copy(v[consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*5:], deleteActor[:])
+	offset := 0
+	v[offset] = assetType
+	offset += consts.Uint8Len
+	binary.BigEndian.PutUint16(v[offset:], uint16(nameLen))
+	offset += consts.Uint16Len
+	copy(v[offset:], name)
+	offset += nameLen
+	binary.BigEndian.PutUint16(v[offset:], uint16(symbolLen))
+	offset += consts.Uint16Len
+	copy(v[offset:], symbol)
+	offset += symbolLen
+	v[offset] = decimals
+	offset += consts.Uint8Len
+	binary.BigEndian.PutUint16(v[offset:], uint16(metadataLen))
+	offset += consts.Uint16Len
+	copy(v[offset:], metadata)
+	offset += metadataLen
+	binary.BigEndian.PutUint64(v[offset:], totalSupply)
+	offset += consts.Uint64Len
+	binary.BigEndian.PutUint64(v[offset:], maxSupply)
+	offset += consts.Uint64Len
+	copy(v[offset:], updateAssetActor[:])
+	offset += codec.AddressLen
+	copy(v[offset:], mintActor[:])
+	offset += codec.AddressLen
+	copy(v[offset:], pauseUnpauseActor[:])
+	offset += codec.AddressLen
+	copy(v[offset:], freezeUnfreezeActor[:])
+	offset += codec.AddressLen
+	copy(v[offset:], enableDisableKYCAccountActor[:])
+	offset += codec.AddressLen
+	copy(v[offset:], deleteActor[:])
 
 	return mu.Insert(ctx, k, v)
 }
@@ -482,6 +515,178 @@ func SetAssetNFT(ctx context.Context, mu state.Mutable, collectionID ids.ID, uni
 
 func DeleteAssetNFT(ctx context.Context, mu state.Mutable, nftID ids.ID) error {
 	k := AssetNFTKey(nftID)
+	return mu.Remove(ctx, k)
+}
+
+// [datasetID]
+func AssetDatasetKey(datasetID ids.ID) (k []byte) {
+	k = make([]byte, 1+ids.IDLen+consts.Uint16Len) // Length of prefix + datasetID + DatasetChunks
+	k[0] = datasetPrefix                           // datasetPrefix is a constant representing the dataset category
+	copy(k[1:], datasetID[:])                      // Copy the datasetID
+	binary.BigEndian.PutUint16(k[1+ids.IDLen:], DatasetChunks)
+	return
+}
+
+// Used to serve RPC queries
+func GetAssetDatasetFromState(
+	ctx context.Context,
+	f ReadState,
+	datasetID ids.ID,
+) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
+	values, errs := f(ctx, [][]byte{AssetDatasetKey(datasetID)})
+	return innerGetAssetDataset(values[0], errs[0])
+}
+
+func GetAssetDataset(
+	ctx context.Context,
+	im state.Immutable,
+	datasetID ids.ID,
+) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
+	k := AssetDatasetKey(datasetID)
+	return innerGetAssetDataset(im.GetValue(ctx, k))
+}
+
+func innerGetAssetDataset(v []byte, err error) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
+	if errors.Is(err, database.ErrNotFound) {
+		return false, nil, nil, nil, nil, nil, nil, nil, false, false, ids.Empty, 0, 0, 0, 0, 0, codec.EmptyAddress, nil
+	}
+	if err != nil {
+		return false, nil, nil, nil, nil, nil, nil, nil, false, false, ids.Empty, 0, 0, 0, 0, 0, codec.EmptyAddress, err
+	}
+
+	offset := uint16(0)
+	nameLen := binary.BigEndian.Uint16(v[offset : offset+consts.Uint16Len])
+	offset += consts.Uint16Len
+	name := v[offset : offset+nameLen]
+	offset += nameLen
+	descriptionLen := binary.BigEndian.Uint16(v[offset : offset+consts.Uint16Len])
+	offset += consts.Uint16Len
+	description := v[offset : offset+descriptionLen]
+	offset += descriptionLen
+	categoriesLen := binary.BigEndian.Uint16(v[offset : offset+consts.Uint16Len])
+	offset += consts.Uint16Len
+	categories := v[offset : offset+categoriesLen]
+	offset += categoriesLen
+	licenseNameLen := binary.BigEndian.Uint16(v[offset : offset+consts.Uint16Len])
+	offset += consts.Uint16Len
+	licenseName := v[offset : offset+licenseNameLen]
+	offset += licenseNameLen
+	licenseSymbolLen := binary.BigEndian.Uint16(v[offset : offset+consts.Uint16Len])
+	offset += consts.Uint16Len
+	licenseSymbol := v[offset : offset+licenseSymbolLen]
+	offset += licenseSymbolLen
+	licenseURLLen := binary.BigEndian.Uint16(v[offset : offset+consts.Uint16Len])
+	offset += consts.Uint16Len
+	licenseURL := v[offset : offset+licenseURLLen]
+	offset += licenseURLLen
+	metadataLen := binary.BigEndian.Uint16(v[offset : offset+consts.Uint16Len])
+	offset += consts.Uint16Len
+	metadata := v[offset : offset+metadataLen]
+	offset += metadataLen
+
+	isCommunityDataset := v[offset] == successByte
+	offset += consts.BoolLen
+	onSale := v[offset] == successByte
+	offset += consts.BoolLen
+
+	baseAsset, err := ids.ToID(v[offset : offset+ids.IDLen])
+	if err != nil {
+		return false, nil, nil, nil, nil, nil, nil, nil, false, false, ids.Empty, 0, 0, 0, 0, 0, codec.EmptyAddress, err
+	}
+	offset += ids.IDLen
+
+	basePrice := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
+	offset += consts.Uint64Len
+	revenueModelDataShare := v[offset]
+	offset += consts.Uint8Len
+	revenueModelMetadataShare := v[offset]
+	offset += consts.Uint8Len
+	revenueModelDataOwnerCut := v[offset]
+	offset += consts.Uint8Len
+	revenueModelMetadataOwnerCut := v[offset]
+	offset += consts.Uint8Len
+
+	var owner codec.Address
+	copy(owner[:], v[offset:])
+	return true, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, nil
+}
+
+func SetAssetDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID, name []byte, description []byte, categories []byte, licenseName []byte, licenseSymbol []byte, licenseURL []byte, metadata []byte, isCommunityDataset bool, onSale bool, baseAsset ids.ID, basePrice uint64, revenueModelDataShare uint8, revenueModelMetadataShare uint8, revenueModeldataOwnerCut uint8, revenueModelMetadataOwnerCut uint8, owner codec.Address) error {
+	k := AssetDatasetKey(datasetID)
+	nameLen := len(name)
+	descriptionLen := len(description)
+	categoriesLen := len(categories)
+	licenseNameLen := len(licenseName)
+	licenseSymbolLen := len(licenseSymbol)
+	licenseURLLen := len(licenseURL)
+	metadataLen := len(metadata)
+
+	v := make([]byte, consts.Uint16Len+nameLen+consts.Uint16Len+descriptionLen+consts.Uint16Len+categoriesLen+consts.Uint16Len+licenseNameLen+consts.Uint16Len+licenseSymbolLen+consts.Uint16Len+licenseURLLen+consts.Uint16Len+metadataLen+consts.BoolLen+consts.BoolLen+ids.IDLen+consts.Uint64Len+consts.Uint8Len+consts.Uint8Len+consts.Uint8Len+consts.Uint8Len+codec.AddressLen)
+
+	offset := 0
+	binary.BigEndian.PutUint16(v[offset:], uint16(nameLen))
+	offset += consts.Uint16Len
+	copy(v[offset:], name)
+	offset += nameLen
+	binary.BigEndian.PutUint16(v[offset:], uint16(descriptionLen))
+	offset += consts.Uint16Len
+	copy(v[offset:], description)
+	offset += descriptionLen
+	binary.BigEndian.PutUint16(v[offset:], uint16(categoriesLen))
+	offset += consts.Uint16Len
+	copy(v[offset:], categories)
+	offset += categoriesLen
+	binary.BigEndian.PutUint16(v[offset:], uint16(licenseNameLen))
+	offset += consts.Uint16Len
+	copy(v[offset:], licenseName)
+	offset += licenseNameLen
+	binary.BigEndian.PutUint16(v[offset:], uint16(licenseSymbolLen))
+	offset += consts.Uint16Len
+	copy(v[offset:], licenseSymbol)
+	offset += licenseSymbolLen
+	binary.BigEndian.PutUint16(v[offset:], uint16(licenseURLLen))
+	offset += consts.Uint16Len
+	copy(v[offset:], licenseURL)
+	offset += licenseURLLen
+	binary.BigEndian.PutUint16(v[offset:], uint16(metadataLen))
+	offset += consts.Uint16Len
+	copy(v[offset:], metadata)
+	offset += metadataLen
+
+	if isCommunityDataset {
+		v[offset] = successByte
+	} else {
+		v[offset] = failureByte
+	}
+	offset += consts.BoolLen
+	if onSale {
+		v[offset] = successByte
+	} else {
+		v[offset] = failureByte
+	}
+	offset += consts.BoolLen
+
+	copy(v[offset:], baseAsset[:])
+	offset += ids.IDLen
+
+	binary.BigEndian.PutUint64(v[offset:], basePrice)
+	offset += consts.Uint64Len
+	v[offset] = revenueModelDataShare
+	offset += consts.Uint8Len
+	v[offset] = revenueModelMetadataShare
+	offset += consts.Uint8Len
+	v[offset] = revenueModeldataOwnerCut
+	offset += consts.Uint8Len
+	v[offset] = revenueModelMetadataOwnerCut
+	offset += consts.Uint8Len
+
+	copy(v[offset:], owner[:])
+
+	return mu.Insert(ctx, k, v)
+}
+
+func DeleteAssetDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID) error {
+	k := AssetDatasetKey(datasetID)
 	return mu.Remove(ctx, k)
 }
 
@@ -723,177 +928,6 @@ func DeleteDelegateUserStake(
 	nodeID ids.NodeID,
 ) error {
 	return mu.Remove(ctx, DelegateUserStakeKey(owner, nodeID))
-}
-
-func DatasetKey(datasetID ids.ID) (k []byte) {
-	k = make([]byte, 1+ids.IDLen+consts.Uint16Len) // Length of prefix + datasetID + DatasetChunks
-	k[0] = datasetPrefix                           // datasetPrefix is a constant representing the dataset category
-	copy(k[1:], datasetID[:])                      // Copy the datasetID
-	binary.BigEndian.PutUint16(k[1+ids.IDLen:], DatasetChunks)
-	return
-}
-
-// Used to serve RPC queries
-func GetDatasetFromState(
-	ctx context.Context,
-	f ReadState,
-	datasetID ids.ID,
-) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
-	values, errs := f(ctx, [][]byte{DatasetKey(datasetID)})
-	return innerGetDataset(values[0], errs[0])
-}
-
-func GetDataset(
-	ctx context.Context,
-	im state.Immutable,
-	datasetID ids.ID,
-) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
-	k := DatasetKey(datasetID)
-	return innerGetDataset(im.GetValue(ctx, k))
-}
-
-func innerGetDataset(v []byte, err error) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
-	if errors.Is(err, database.ErrNotFound) {
-		return false, nil, nil, nil, nil, nil, nil, nil, false, false, ids.Empty, 0, 0, 0, 0, 0, codec.EmptyAddress, nil
-	}
-	if err != nil {
-		return false, nil, nil, nil, nil, nil, nil, nil, false, false, ids.Empty, 0, 0, 0, 0, 0, codec.EmptyAddress, err
-	}
-
-	offset := uint16(0)
-	nameLen := binary.BigEndian.Uint16(v[offset : offset+consts.Uint16Len])
-	offset += consts.Uint16Len
-	name := v[offset : offset+nameLen]
-	offset += nameLen
-	descriptionLen := binary.BigEndian.Uint16(v[offset : offset+consts.Uint16Len])
-	offset += consts.Uint16Len
-	description := v[offset : offset+descriptionLen]
-	offset += descriptionLen
-	categoriesLen := binary.BigEndian.Uint16(v[offset : offset+consts.Uint16Len])
-	offset += consts.Uint16Len
-	categories := v[offset : offset+categoriesLen]
-	offset += categoriesLen
-	licenseNameLen := binary.BigEndian.Uint16(v[offset : offset+consts.Uint16Len])
-	offset += consts.Uint16Len
-	licenseName := v[offset : offset+licenseNameLen]
-	offset += licenseNameLen
-	licenseSymbolLen := binary.BigEndian.Uint16(v[offset : offset+consts.Uint16Len])
-	offset += consts.Uint16Len
-	licenseSymbol := v[offset : offset+licenseSymbolLen]
-	offset += licenseSymbolLen
-	licenseURLLen := binary.BigEndian.Uint16(v[offset : offset+consts.Uint16Len])
-	offset += consts.Uint16Len
-	licenseURL := v[offset : offset+licenseURLLen]
-	offset += licenseURLLen
-	metadataLen := binary.BigEndian.Uint16(v[offset : offset+consts.Uint16Len])
-	offset += consts.Uint16Len
-	metadata := v[offset : offset+metadataLen]
-	offset += metadataLen
-
-	isCommunityDataset := v[offset] == successByte
-	offset += consts.BoolLen
-	onSale := v[offset] == successByte
-	offset += consts.BoolLen
-
-	baseAsset, err := ids.ToID(v[offset : offset+ids.IDLen])
-	if err != nil {
-		return false, nil, nil, nil, nil, nil, nil, nil, false, false, ids.Empty, 0, 0, 0, 0, 0, codec.EmptyAddress, err
-	}
-	offset += ids.IDLen
-
-	basePrice := binary.BigEndian.Uint64(v[offset : offset+consts.Uint64Len])
-	offset += consts.Uint64Len
-	revenueModelDataShare := v[offset]
-	offset += consts.Uint8Len
-	revenueModelMetadataShare := v[offset]
-	offset += consts.Uint8Len
-	revenueModelDataOwnerCut := v[offset]
-	offset += consts.Uint8Len
-	revenueModelMetadataOwnerCut := v[offset]
-	offset += consts.Uint8Len
-
-	var owner codec.Address
-	copy(owner[:], v[offset:])
-	return true, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, nil
-}
-
-func SetDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID, name []byte, description []byte, categories []byte, licenseName []byte, licenseSymbol []byte, licenseURL []byte, metadata []byte, isCommunityDataset bool, onSale bool, baseAsset ids.ID, basePrice uint64, revenueModelDataShare uint8, revenueModelMetadataShare uint8, revenueModeldataOwnerCut uint8, revenueModelMetadataOwnerCut uint8, owner codec.Address) error {
-	k := DatasetKey(datasetID)
-	nameLen := len(name)
-	descriptionLen := len(description)
-	categoriesLen := len(categories)
-	licenseNameLen := len(licenseName)
-	licenseSymbolLen := len(licenseSymbol)
-	licenseURLLen := len(licenseURL)
-	metadataLen := len(metadata)
-
-	v := make([]byte, consts.Uint16Len+nameLen+consts.Uint16Len+descriptionLen+consts.Uint16Len+categoriesLen+consts.Uint16Len+licenseNameLen+consts.Uint16Len+licenseSymbolLen+consts.Uint16Len+licenseURLLen+consts.Uint16Len+metadataLen+consts.BoolLen+consts.BoolLen+ids.IDLen+consts.Uint64Len+consts.Uint8Len+consts.Uint8Len+consts.Uint8Len+consts.Uint8Len+codec.AddressLen)
-
-	offset := 0
-	binary.BigEndian.PutUint16(v[offset:], uint16(nameLen))
-	offset += consts.Uint16Len
-	copy(v[offset:], name)
-	offset += nameLen
-	binary.BigEndian.PutUint16(v[offset:], uint16(descriptionLen))
-	offset += consts.Uint16Len
-	copy(v[offset:], description)
-	offset += descriptionLen
-	binary.BigEndian.PutUint16(v[offset:], uint16(categoriesLen))
-	offset += consts.Uint16Len
-	copy(v[offset:], categories)
-	offset += categoriesLen
-	binary.BigEndian.PutUint16(v[offset:], uint16(licenseNameLen))
-	offset += consts.Uint16Len
-	copy(v[offset:], licenseName)
-	offset += licenseNameLen
-	binary.BigEndian.PutUint16(v[offset:], uint16(licenseSymbolLen))
-	offset += consts.Uint16Len
-	copy(v[offset:], licenseSymbol)
-	offset += licenseSymbolLen
-	binary.BigEndian.PutUint16(v[offset:], uint16(licenseURLLen))
-	offset += consts.Uint16Len
-	copy(v[offset:], licenseURL)
-	offset += licenseURLLen
-	binary.BigEndian.PutUint16(v[offset:], uint16(metadataLen))
-	offset += consts.Uint16Len
-	copy(v[offset:], metadata)
-	offset += metadataLen
-
-	if isCommunityDataset {
-		v[offset] = successByte
-	} else {
-		v[offset] = failureByte
-	}
-	offset += consts.BoolLen
-	if onSale {
-		v[offset] = successByte
-	} else {
-		v[offset] = failureByte
-	}
-	offset += consts.BoolLen
-
-	copy(v[offset:], baseAsset[:])
-	offset += ids.IDLen
-
-	binary.BigEndian.PutUint64(v[offset:], basePrice)
-	offset += consts.Uint64Len
-	v[offset] = revenueModelDataShare
-	offset += consts.Uint8Len
-	v[offset] = revenueModelMetadataShare
-	offset += consts.Uint8Len
-	v[offset] = revenueModeldataOwnerCut
-	offset += consts.Uint8Len
-	v[offset] = revenueModelMetadataOwnerCut
-	offset += consts.Uint8Len
-
-	copy(v[offset:], owner[:])
-
-	return mu.Insert(ctx, k, v)
-}
-
-func DeleteDataset(ctx context.Context, mu state.Mutable, nftID ids.ID) error {
-	k := DatasetKey(nftID)
-	return mu.Remove(ctx, k)
 }
 
 func HeightKey() (k []byte) {

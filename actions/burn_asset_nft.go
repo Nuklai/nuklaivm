@@ -5,7 +5,6 @@ package actions
 
 import (
 	"context"
-	"math"
 
 	"github.com/ava-labs/avalanchego/ids"
 	smath "github.com/ava-labs/avalanchego/utils/math"
@@ -53,12 +52,15 @@ func (b *BurnAssetNFT) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) ([][]byte, error) {
-	exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := storage.GetAsset(ctx, mu, b.Asset)
+	exists, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := storage.GetAsset(ctx, mu, b.Asset)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
 		return nil, ErrOutputAssetMissing
+	}
+	if assetType != nconsts.AssetNonFungibleTokenID {
+		return nil, ErrOutputWrongAssetType
 	}
 
 	exists, _, _, _, _, err = storage.GetAssetNFT(ctx, mu, b.NftID)
@@ -69,12 +71,12 @@ func (b *BurnAssetNFT) Execute(
 		return nil, ErrOutputAssetMissing
 	}
 
-	amountOfToken := uint64(1 * math.Pow10(int(decimals)))
+	amountOfToken := uint64(1)
 	newSupply, err := smath.Sub(totalSupply, amountOfToken)
 	if err != nil {
 		return nil, err
 	}
-	if err := storage.SetAsset(ctx, mu, b.Asset, name, symbol, decimals, metadata, newSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor); err != nil {
+	if err := storage.SetAsset(ctx, mu, b.Asset, assetType, name, symbol, decimals, metadata, newSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor); err != nil {
 		return nil, err
 	}
 

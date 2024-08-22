@@ -24,7 +24,8 @@ var (
 	ErrOutputInsufficientOutput = errors.New("insufficient output")
 	ErrOutputValueMisaligned    = errors.New("value is misaligned")
 
-	ErrOutputAssetTypeIncorrect     = errors.New("asset type is incorrect. It must be fungible, non-fungible, fractionalized-fungible or fractionalized-non-fungible")
+	ErrOutputAssetTypeInvalid       = errors.New("asset type is invalid. It must be 0(fungible), 1(non-fungible), and 2(dataset)")
+	ErrOutputWrongAssetType         = errors.New("wrong asset type")
 	ErrOutputNameInvalid            = errors.New("name is empty or too large")
 	ErrOutputURIInvalid             = errors.New("uri is empty or too large")
 	ErrOutputSymbolInvalid          = errors.New("symbol is empty or too large")

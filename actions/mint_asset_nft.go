@@ -5,7 +5,6 @@ package actions
 
 import (
 	"context"
-	"math"
 
 	"github.com/ava-labs/avalanchego/ids"
 	smath "github.com/ava-labs/avalanchego/utils/math"
@@ -76,12 +75,15 @@ func (m *MintAssetNFT) Execute(
 		return nil, ErrOutputNFTAlreadyExists
 	}
 
-	exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := storage.GetAsset(ctx, mu, m.Asset)
+	exists, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := storage.GetAsset(ctx, mu, m.Asset)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
 		return nil, ErrOutputAssetMissing
+	}
+	if assetType != nconsts.AssetNonFungibleTokenID {
+		return nil, ErrOutputWrongAssetType
 	}
 	if mintActor != actor {
 		return nil, ErrOutputWrongMintActor
@@ -92,7 +94,7 @@ func (m *MintAssetNFT) Execute(
 	}
 
 	// Minting logic for non-fungible tokens
-	amountOfToken := uint64(1 * math.Pow10(int(decimals)))
+	amountOfToken := uint64(1)
 	newSupply, err := smath.Add64(totalSupply, amountOfToken)
 	if err != nil {
 		return nil, err
@@ -106,7 +108,7 @@ func (m *MintAssetNFT) Execute(
 		return nil, err
 	}
 
-	if err := storage.SetAsset(ctx, mu, m.Asset, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor); err != nil {
+	if err := storage.SetAsset(ctx, mu, m.Asset, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor); err != nil {
 		return nil, err
 	}
 
@@ -114,8 +116,9 @@ func (m *MintAssetNFT) Execute(
 	if err := storage.AddBalance(ctx, mu, m.To, m.Asset, amountOfToken, true); err != nil {
 		return nil, err
 	}
+
 	// Add the balance to individual NFT
-	if err := storage.AddBalance(ctx, mu, m.To, nftID, 1, true); err != nil {
+	if err := storage.AddBalance(ctx, mu, m.To, nftID, amountOfToken, true); err != nil {
 		return nil, err
 	}
 

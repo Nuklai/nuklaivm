@@ -55,19 +55,22 @@ func (b *BurnAssetFT) Execute(
 		return nil, ErrOutputValueZero
 	}
 
-	exists, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := storage.GetAsset(ctx, mu, b.Asset)
+	exists, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := storage.GetAsset(ctx, mu, b.Asset)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
 		return nil, ErrOutputAssetMissing
 	}
+	if assetType != nconsts.AssetFungibleTokenID {
+		return nil, ErrOutputWrongAssetType
+	}
 
 	newSupply, err := smath.Sub(totalSupply, b.Value)
 	if err != nil {
 		return nil, err
 	}
-	if err := storage.SetAsset(ctx, mu, b.Asset, name, symbol, decimals, metadata, newSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor); err != nil {
+	if err := storage.SetAsset(ctx, mu, b.Asset, assetType, name, symbol, decimals, metadata, newSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor); err != nil {
 		return nil, err
 	}
 
