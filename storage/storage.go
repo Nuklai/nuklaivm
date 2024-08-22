@@ -381,7 +381,6 @@ func innerGetAsset(
 	copy(deleteActor[:], v[offset:])
 
 	return true, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, nil
-
 }
 
 func SetAsset(

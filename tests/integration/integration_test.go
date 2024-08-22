@@ -84,10 +84,6 @@ var (
 	asset3Symbol   []byte
 	asset3Decimals uint8
 	asset3ID       ids.ID
-	asset4         []byte
-	asset4Symbol   []byte
-	asset4Decimals uint8
-	asset4ID       ids.ID
 
 	// when used with embedded VMs
 	genesisBytes []byte
@@ -188,9 +184,6 @@ var _ = ginkgo.BeforeSuite(func() {
 	asset3 = []byte("as3")
 	asset3Symbol = []byte("as3")
 	asset3Decimals = uint8(3)
-	asset4 = []byte("as4")
-	asset4Symbol = []byte("as4")
-	asset4Decimals = uint8(4)
 
 	// create embedded VMs
 	instances = make([]instance, vms)
