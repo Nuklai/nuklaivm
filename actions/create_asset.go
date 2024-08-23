@@ -58,7 +58,7 @@ func (*CreateAsset) GetTypeID() uint8 {
 	return nconsts.CreateAssetID
 }
 
-func (c *CreateAsset) StateKeys(actor codec.Address, actionID ids.ID) state.Keys {
+func (*CreateAsset) StateKeys(actor codec.Address, actionID ids.ID) state.Keys {
 	nftID := nchain.GenerateID(actionID, 0)
 	return state.Keys{
 		string(storage.AssetKey(actionID)):          state.Allocate | state.Write,
