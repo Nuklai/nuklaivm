@@ -43,9 +43,9 @@ func (m *MintAssetNFT) StateKeys(codec.Address, ids.ID) state.Keys {
 	nftID := nchain.GenerateID(m.Asset, m.UniqueID)
 	return state.Keys{
 		string(storage.AssetKey(m.Asset)):         state.Read | state.Write,
-		string(storage.AssetNFTKey(nftID)):        state.All,
-		string(storage.BalanceKey(m.To, m.Asset)): state.All,
-		string(storage.BalanceKey(m.To, nftID)):   state.All,
+		string(storage.AssetNFTKey(nftID)):        state.Allocate | state.Write,
+		string(storage.BalanceKey(m.To, m.Asset)): state.Allocate | state.Write,
+		string(storage.BalanceKey(m.To, nftID)):   state.Allocate | state.Write,
 	}
 }
 
@@ -75,7 +75,7 @@ func (m *MintAssetNFT) Execute(
 		return nil, ErrOutputNFTAlreadyExists
 	}
 
-	exists, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := storage.GetAsset(ctx, mu, m.Asset)
+	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAsset(ctx, mu, m.Asset)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func (m *MintAssetNFT) Execute(
 		return nil, err
 	}
 
-	if err := storage.SetAsset(ctx, mu, m.Asset, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor); err != nil {
+	if err := storage.SetAsset(ctx, mu, m.Asset, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
 		return nil, err
 	}
 

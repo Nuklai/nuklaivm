@@ -74,11 +74,11 @@ const (
 
 const (
 	BalanceChunks                uint16 = 1
-	AssetChunks                  uint16 = 9
+	AssetChunks                  uint16 = 16
 	AssetNFTChunks               uint16 = 3
 	RegisterValidatorStakeChunks uint16 = 4
 	DelegateUserStakeChunks      uint16 = 2
-	DatasetChunks                uint16 = 91
+	DatasetChunks                uint16 = 101
 )
 
 var (
@@ -315,7 +315,7 @@ func GetAssetFromState(
 	ctx context.Context,
 	f ReadState,
 	asset ids.ID,
-) (bool, uint8, []byte, []byte, uint8, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
+) (bool, uint8, []byte, []byte, uint8, []byte, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
 	values, errs := f(ctx, [][]byte{AssetKey(asset)})
 	return innerGetAsset(values[0], errs[0])
 }
@@ -324,7 +324,7 @@ func GetAsset(
 	ctx context.Context,
 	im state.Immutable,
 	asset ids.ID,
-) (bool, uint8, []byte, []byte, uint8, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
+) (bool, uint8, []byte, []byte, uint8, []byte, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
 	k := AssetKey(asset)
 	return innerGetAsset(im.GetValue(ctx, k))
 }
@@ -332,12 +332,12 @@ func GetAsset(
 func innerGetAsset(
 	v []byte,
 	err error,
-) (bool, uint8, []byte, []byte, uint8, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
+) (bool, uint8, []byte, []byte, uint8, []byte, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
 	if errors.Is(err, database.ErrNotFound) {
-		return false, 0, nil, nil, 0, nil, 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, nil
+		return false, 0, nil, nil, 0, nil, nil, 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, nil
 	}
 	if err != nil {
-		return false, 0, nil, nil, 0, nil, 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, err
+		return false, 0, nil, nil, 0, nil, nil, 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, err
 	}
 
 	offset := uint16(0)
@@ -357,13 +357,17 @@ func innerGetAsset(
 	offset += consts.Uint16Len
 	metadata := v[offset : offset+metadataLen]
 	offset += metadataLen
+	uriLen := binary.BigEndian.Uint16(v[offset:])
+	offset += consts.Uint16Len
+	uri := v[offset : offset+uriLen]
+	offset += uriLen
 	totalSupply := binary.BigEndian.Uint64(v[offset:])
 	offset += consts.Uint64Len
 	maxSupply := binary.BigEndian.Uint64(v[offset:])
 	offset += consts.Uint64Len
 
-	var updateAssetActor codec.Address
-	copy(updateAssetActor[:], v[offset:])
+	var admin codec.Address
+	copy(admin[:], v[offset:])
 	offset += codec.AddressLen
 	var mintActor codec.Address
 	copy(mintActor[:], v[offset:])
@@ -376,11 +380,8 @@ func innerGetAsset(
 	offset += codec.AddressLen
 	var enableDisableKYCAccountActor codec.Address
 	copy(enableDisableKYCAccountActor[:], v[offset:])
-	offset += codec.AddressLen
-	var deleteActor codec.Address
-	copy(deleteActor[:], v[offset:])
 
-	return true, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, nil
+	return true, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, nil
 }
 
 func SetAsset(
@@ -392,21 +393,22 @@ func SetAsset(
 	symbol []byte,
 	decimals uint8,
 	metadata []byte,
+	uri []byte,
 	totalSupply uint64,
 	maxSupply uint64,
-	updateAssetActor codec.Address,
+	admin codec.Address,
 	mintActor codec.Address,
 	pauseUnpauseActor codec.Address,
 	freezeUnfreezeActor codec.Address,
 	enableDisableKYCAccountActor codec.Address,
-	deleteActor codec.Address,
 ) error {
 	k := AssetKey(asset)
 	nameLen := len(name)
 	symbolLen := len(symbol)
 	metadataLen := len(metadata)
+	uriLen := len(uri)
 
-	v := make([]byte, consts.Uint8Len+consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint64Len*2+codec.AddressLen*6)
+	v := make([]byte, consts.Uint8Len+consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint16Len+uriLen+consts.Uint64Len*2+codec.AddressLen*5)
 
 	offset := 0
 	v[offset] = assetType
@@ -425,11 +427,15 @@ func SetAsset(
 	offset += consts.Uint16Len
 	copy(v[offset:], metadata)
 	offset += metadataLen
+	binary.BigEndian.PutUint16(v[offset:], uint16(uriLen))
+	offset += consts.Uint16Len
+	copy(v[offset:], uri)
+	offset += uriLen
 	binary.BigEndian.PutUint64(v[offset:], totalSupply)
 	offset += consts.Uint64Len
 	binary.BigEndian.PutUint64(v[offset:], maxSupply)
 	offset += consts.Uint64Len
-	copy(v[offset:], updateAssetActor[:])
+	copy(v[offset:], admin[:])
 	offset += codec.AddressLen
 	copy(v[offset:], mintActor[:])
 	offset += codec.AddressLen
@@ -438,8 +444,6 @@ func SetAsset(
 	copy(v[offset:], freezeUnfreezeActor[:])
 	offset += codec.AddressLen
 	copy(v[offset:], enableDisableKYCAccountActor[:])
-	offset += codec.AddressLen
-	copy(v[offset:], deleteActor[:])
 
 	return mu.Insert(ctx, k, v)
 }

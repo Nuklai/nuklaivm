@@ -5,13 +5,13 @@ package actions
 
 const (
 	TransferComputeUnits               = 1
-	CreateAssetComputeUnits            = 10
+	CreateAssetComputeUnits            = 15
 	ExportAssetComputeUnits            = 5
 	ImportAssetComputeUnits            = 5
 	MintAssetComputeUnits              = 5
 	MintAssetNFTComputeUnits           = 5
 	BurnAssetComputeUnits              = 1
-	RegisterValidatorStakeComputeUnits = 10
+	RegisterValidatorStakeComputeUnits = 4
 	WithdrawValidatorStakeComputeUnits = 1
 	DelegateUserStakeComputeUnits      = 5
 	UndelegateUserStakeComputeUnits    = 1

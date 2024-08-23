@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
+	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/storage"
 )
@@ -19,6 +20,9 @@ import (
 var _ chain.Action = (*CreateDataset)(nil)
 
 type CreateDataset struct {
+	// Asset id if it was already created
+	AssetID ids.ID `json:"assetID"`
+
 	// The title of the dataset
 	Name []byte `json:"name"`
 
@@ -44,15 +48,23 @@ func (*CreateDataset) GetTypeID() uint8 {
 	return nconsts.CreateDatasetID
 }
 
-func (*CreateDataset) StateKeys(_ codec.Address, actionID ids.ID) state.Keys {
+func (c *CreateDataset) StateKeys(actor codec.Address, actionID ids.ID) state.Keys {
+	assetID := actionID
+	if c.AssetID != ids.Empty {
+		assetID = c.AssetID
+	}
+	nftID := nchain.GenerateID(actionID, 0)
 	return state.Keys{
-		string(storage.AssetKey(actionID)):        state.Allocate | state.Write,
-		string(storage.AssetDatasetKey(actionID)): state.Allocate | state.Write,
+		string(storage.AssetKey(assetID)):          state.Allocate | state.Write,
+		string(storage.AssetDatasetKey(assetID)):   state.Allocate | state.Write,
+		string(storage.AssetNFTKey(nftID)):         state.Allocate | state.Write,
+		string(storage.BalanceKey(actor, assetID)): state.Allocate | state.Write,
+		string(storage.BalanceKey(actor, nftID)):   state.Allocate | state.Write,
 	}
 }
 
 func (*CreateDataset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.DatasetChunks}
+	return []uint16{storage.AssetChunks, storage.DatasetChunks, storage.AssetNFTChunks, storage.BalanceChunks}
 }
 
 func (c *CreateDataset) Execute(
@@ -63,7 +75,7 @@ func (c *CreateDataset) Execute(
 	actor codec.Address,
 	actionID ids.ID,
 ) ([][]byte, error) {
-	if len(c.Name) < 3 || len(c.Name) > MaxTextSize {
+	if len(c.Name) < 3 || len(c.Name) > MaxMetadataSize {
 		return nil, ErrOutputNameInvalid
 	}
 	if len(c.Description) < 3 || len(c.Description) > MaxMetadataSize {
@@ -72,7 +84,7 @@ func (c *CreateDataset) Execute(
 	if len(c.Categories) < 3 || len(c.Categories) > MaxMetadataSize {
 		return nil, ErrOutputCategoriesInvalid
 	}
-	if len(c.LicenseName) < 3 || len(c.LicenseName) > MaxTextSize {
+	if len(c.LicenseName) < 3 || len(c.LicenseName) > MaxMetadataSize {
 		return nil, ErrOutputLicenseNameInvalid
 	}
 	if len(c.LicenseSymbol) < 3 || len(c.LicenseSymbol) > MaxTextSize {
@@ -83,6 +95,45 @@ func (c *CreateDataset) Execute(
 	}
 	if len(c.Metadata) < 3 || len(c.Metadata) > MaxDatasetMetadataSize {
 		return nil, ErrOutputMetadataInvalid
+	}
+
+	var assetID ids.ID
+	if c.AssetID != ids.Empty {
+		assetID = c.AssetID
+		// Check if the asset exists
+		exists, assetType, _, _, _, _, _, _, _, _, _, _, _, _, err := storage.GetAsset(ctx, mu, assetID)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			return nil, ErrOutputAssetMissing
+		}
+		if assetType != nconsts.AssetDatasetTokenID {
+			return nil, ErrOutputWrongAssetType
+		}
+	} else {
+		assetID = actionID
+
+		// Mint the parent NFT for the dataset(fractionalized asset)
+		nftID := nchain.GenerateID(assetID, 0)
+		if err := storage.SetAssetNFT(ctx, mu, assetID, 0, nftID, c.Description, actor); err != nil {
+			return nil, err
+		}
+
+		// Create a new asset for the dataset
+		if err := storage.SetAsset(ctx, mu, assetID, nconsts.AssetDatasetTokenID, c.Name, c.Name, 0, c.Description, c.Description, 1, 0, actor, actor, actor, actor, actor); err != nil {
+			return nil, err
+		}
+
+		// Add the balance to NFT collection
+		if err := storage.AddBalance(ctx, mu, actor, assetID, 1, true); err != nil {
+			return nil, err
+		}
+
+		// Add the balance to individual NFT
+		if err := storage.AddBalance(ctx, mu, actor, nftID, 1, true); err != nil {
+			return nil, err
+		}
 	}
 
 	revenueModelDataShare, revenueModelDataOwnerCut := 100, 100
@@ -97,12 +148,7 @@ func (c *CreateDataset) Execute(
 	// revenueModelMetadataShare = 0
 	// revenueModelDataOwnerCut = 10 for community datasets, 100 for sole contributor datasets
 	// revenueModelMetadataOwnerCut = 0
-	if err := storage.SetAssetDataset(ctx, mu, actionID, c.Name, c.Description, c.Categories, c.LicenseName, c.LicenseSymbol, c.LicenseURL, c.Metadata, c.IsCommunityDataset, false, ids.Empty, 0, uint8(revenueModelDataShare), 0, uint8(revenueModelDataOwnerCut), 0, actor); err != nil {
-		return nil, err
-	}
-
-	// Create an asset for the dataset
-	if err := storage.SetAsset(ctx, mu, actionID, nconsts.AssetDatasetTokenID, c.Name, c.Name, 0, c.Description, 0, 0, actor, actor, actor, actor, actor, actor); err != nil {
+	if err := storage.SetAssetDataset(ctx, mu, assetID, c.Name, c.Description, c.Categories, c.LicenseName, c.LicenseSymbol, c.LicenseURL, c.Metadata, c.IsCommunityDataset, false, ids.Empty, 0, uint8(revenueModelDataShare), 0, uint8(revenueModelDataOwnerCut), 0, actor); err != nil {
 		return nil, err
 	}
 
@@ -114,10 +160,11 @@ func (*CreateDataset) ComputeUnits(chain.Rules) uint64 {
 }
 
 func (c *CreateDataset) Size() int {
-	return codec.BytesLen(c.Name) + codec.BytesLen(c.Description) + codec.BytesLen(c.Categories) + codec.BytesLen(c.LicenseName) + codec.BytesLen(c.LicenseSymbol) + codec.BytesLen(c.LicenseURL) + codec.BytesLen(c.Metadata) + consts.BoolLen
+	return ids.IDLen + codec.BytesLen(c.Name) + codec.BytesLen(c.Description) + codec.BytesLen(c.Categories) + codec.BytesLen(c.LicenseName) + codec.BytesLen(c.LicenseSymbol) + codec.BytesLen(c.LicenseURL) + codec.BytesLen(c.Metadata) + consts.BoolLen
 }
 
 func (c *CreateDataset) Marshal(p *codec.Packer) {
+	p.PackID(c.AssetID)
 	p.PackBytes(c.Name)
 	p.PackBytes(c.Description)
 	p.PackBytes(c.Categories)
@@ -130,10 +177,11 @@ func (c *CreateDataset) Marshal(p *codec.Packer) {
 
 func UnmarshalCreateDataset(p *codec.Packer) (chain.Action, error) {
 	var create CreateDataset
-	p.UnpackBytes(MaxTextSize, true, &create.Name)
+	p.UnpackID(false, &create.AssetID)
+	p.UnpackBytes(MaxMetadataSize, true, &create.Name)
 	p.UnpackBytes(MaxMetadataSize, true, &create.Description)
 	p.UnpackBytes(MaxMetadataSize, true, &create.Categories)
-	p.UnpackBytes(MaxTextSize, true, &create.LicenseName)
+	p.UnpackBytes(MaxMetadataSize, true, &create.LicenseName)
 	p.UnpackBytes(MaxTextSize, true, &create.LicenseSymbol)
 	p.UnpackBytes(MaxMetadataSize, true, &create.LicenseURL)
 	p.UnpackBytes(MaxDatasetMetadataSize, true, &create.Metadata)

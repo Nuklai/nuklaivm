@@ -73,14 +73,14 @@ type AssetReply struct {
 	Symbol                       string `json:"symbol"`
 	Decimals                     uint8  `json:"decimals"`
 	Metadata                     string `json:"metadata"`
+	URI                          string `json:"uri"`
 	TotalSupply                  uint64 `json:"totalSupply"`
 	MaxSupply                    uint64 `json:"maxSupply"`
-	UpdateAssetActor             string `json:"updateAssetActor"`
+	Admin                        string `json:"admin"`
 	MintActor                    string `json:"mintActor"`
 	PauseUnpauseActor            string `json:"pauseUnpauseActor"`
 	FreezeUnfreezeActor          string `json:"freezeUnfreezeActor"`
 	EnableDisableKYCAccountActor string `json:"enableDisableKYCAccountActor"`
-	DeleteActor                  string `json:"deleteActor"`
 }
 
 func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetReply) error {
@@ -91,7 +91,7 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 	if err != nil {
 		return err
 	}
-	exists, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, updateAssetActor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, deleteActor, err := j.c.GetAssetFromState(ctx, assetID)
+	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := j.c.GetAssetFromState(ctx, assetID)
 	if err != nil {
 		return err
 	}
@@ -110,14 +110,14 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 	reply.Symbol = string(symbol)
 	reply.Decimals = decimals
 	reply.Metadata = string(metadata)
+	reply.URI = string(uri)
 	reply.TotalSupply = totalSupply
 	reply.MaxSupply = maxSupply
-	reply.UpdateAssetActor = codec.MustAddressBech32(nconsts.HRP, updateAssetActor)
+	reply.Admin = codec.MustAddressBech32(nconsts.HRP, admin)
 	reply.MintActor = codec.MustAddressBech32(nconsts.HRP, mintActor)
 	reply.PauseUnpauseActor = codec.MustAddressBech32(nconsts.HRP, pauseUnpauseActor)
 	reply.FreezeUnfreezeActor = codec.MustAddressBech32(nconsts.HRP, freezeUnfreezeActor)
 	reply.EnableDisableKYCAccountActor = codec.MustAddressBech32(nconsts.HRP, enableDisableKYCAccountActor)
-	reply.DeleteActor = codec.MustAddressBech32(nconsts.HRP, deleteActor)
 	return err
 }
 

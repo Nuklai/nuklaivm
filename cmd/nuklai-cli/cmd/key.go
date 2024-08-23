@@ -241,7 +241,7 @@ var setKeyCmd = &cobra.Command{
 }
 
 func lookupKeyBalance(addr codec.Address, uri string, networkID uint32, chainID ids.ID, assetID ids.ID) error {
-	_, _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(
+	_, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(
 		context.TODO(), nrpc.NewJSONRPCClient(uri, networkID, chainID),
 		addr, assetID, true)
 	return err
@@ -267,7 +267,7 @@ var balanceKeyCmd = &cobra.Command{
 			return err
 		}
 		for _, ncli := range nclients {
-			if _, _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, assetID, true); err != nil {
+			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, assetID, true); err != nil {
 				return err
 			}
 		}

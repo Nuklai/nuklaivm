@@ -187,6 +187,7 @@ func init() {
 	// marketplace
 	datasetCmd.AddCommand(
 		createDatasetCmd,
+		createDatasetFromExistingAssetCmd,
 		getDatasetCmd,
 	)
 

@@ -91,12 +91,12 @@ func (cli *JSONRPCClient) Asset(
 	ctx context.Context,
 	asset string,
 	useCache bool,
-) (bool, string, string, string, uint8, string, uint64, uint64, string, string, string, string, string, string, error) {
+) (bool, string, string, string, uint8, string, string, uint64, uint64, string, string, string, string, string, error) {
 	cli.assetsL.Lock()
 	r, ok := cli.assets[asset]
 	cli.assetsL.Unlock()
 	if ok && useCache {
-		return true, r.AssetType, r.Name, r.Symbol, r.Decimals, r.Metadata, r.TotalSupply, r.MaxSupply, r.UpdateAssetActor, r.MintActor, r.PauseUnpauseActor, r.FreezeUnfreezeActor, r.EnableDisableKYCAccountActor, r.DeleteActor, nil
+		return true, r.AssetType, r.Name, r.Symbol, r.Decimals, r.Metadata, r.URI, r.TotalSupply, r.MaxSupply, r.Admin, r.MintActor, r.PauseUnpauseActor, r.FreezeUnfreezeActor, r.EnableDisableKYCAccountActor, nil
 	}
 
 	// Check if it's the native asset
@@ -113,14 +113,14 @@ func (cli *JSONRPCClient) Asset(
 	// We use string parsing here because the JSON-RPC library we use may not
 	// allows us to perform errors.Is.
 	case err != nil && strings.Contains(err.Error(), ErrAssetNotFound.Error()):
-		return false, "", "", "", 0, "", 0, 0, "", "", "", "", "", "", nil
+		return false, "", "", "", 0, "", "", 0, 0, "", "", "", "", "", nil
 	case err != nil:
-		return false, "", "", "", 0, "", 0, 0, "", "", "", "", "", "", nil
+		return false, "", "", "", 0, "", "", 0, 0, "", "", "", "", "", nil
 	}
 	cli.assetsL.Lock()
 	cli.assets[asset] = resp
 	cli.assetsL.Unlock()
-	return true, resp.AssetType, resp.Name, resp.Symbol, resp.Decimals, resp.Metadata, resp.TotalSupply, resp.MaxSupply, resp.UpdateAssetActor, resp.MintActor, resp.PauseUnpauseActor, resp.FreezeUnfreezeActor, resp.EnableDisableKYCAccountActor, resp.DeleteActor, nil
+	return true, resp.AssetType, resp.Name, resp.Symbol, resp.Decimals, resp.Metadata, resp.URI, resp.TotalSupply, resp.MaxSupply, resp.Admin, resp.MintActor, resp.PauseUnpauseActor, resp.FreezeUnfreezeActor, resp.EnableDisableKYCAccountActor, nil
 }
 
 func (cli *JSONRPCClient) AssetNFT(

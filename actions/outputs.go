@@ -29,7 +29,7 @@ var (
 	ErrOutputNameInvalid            = errors.New("name is empty or too large")
 	ErrOutputURIInvalid             = errors.New("uri is empty or too large")
 	ErrOutputSymbolInvalid          = errors.New("symbol is empty or too large")
-	ErrOutputDecimalsInvalid        = errors.New("decimal is incorrect or too large")
+	ErrOutputDecimalsInvalid        = errors.New("decimal is invalid")
 	ErrOutputMaxSupplyReached       = errors.New("max supply reached")
 	ErrOutputMetadataInvalid        = errors.New("metadata is empty or too large")
 	ErrOutputWrongMintActor         = errors.New("wrong mint actor")
