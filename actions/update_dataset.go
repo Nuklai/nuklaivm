@@ -146,15 +146,15 @@ func (u *UpdateDataset) Size() int {
 	return ids.IDLen + codec.BytesLen(u.Name) + codec.BytesLen(u.Description) + codec.BytesLen(u.Categories) + codec.BytesLen(u.LicenseName) + codec.BytesLen(u.LicenseSymbol) + codec.BytesLen(u.LicenseURL) + consts.BoolLen
 }
 
-func (c *UpdateDataset) Marshal(p *codec.Packer) {
-	p.PackID(c.Dataset)
-	p.PackBytes(c.Name)
-	p.PackBytes(c.Description)
-	p.PackBytes(c.Categories)
-	p.PackBytes(c.LicenseName)
-	p.PackBytes(c.LicenseSymbol)
-	p.PackBytes(c.LicenseURL)
-	p.PackBool(c.IsCommunityDataset)
+func (u *UpdateDataset) Marshal(p *codec.Packer) {
+	p.PackID(u.Dataset)
+	p.PackBytes(u.Name)
+	p.PackBytes(u.Description)
+	p.PackBytes(u.Categories)
+	p.PackBytes(u.LicenseName)
+	p.PackBytes(u.LicenseSymbol)
+	p.PackBytes(u.LicenseURL)
+	p.PackBool(u.IsCommunityDataset)
 }
 
 func UnmarshalUpdateDataset(p *codec.Packer) (chain.Action, error) {

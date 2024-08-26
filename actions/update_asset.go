@@ -177,22 +177,22 @@ func (*UpdateAsset) ComputeUnits(chain.Rules) uint64 {
 	return UpdateAssetComputeUnits
 }
 
-func (c *UpdateAsset) Size() int {
-	return ids.IDLen + codec.BytesLen(c.Name) + codec.BytesLen(c.Symbol) + codec.BytesLen(c.Metadata) + codec.BytesLen(c.URI) + consts.Uint64Len + codec.AddressLen*5
+func (u *UpdateAsset) Size() int {
+	return ids.IDLen + codec.BytesLen(u.Name) + codec.BytesLen(u.Symbol) + codec.BytesLen(u.Metadata) + codec.BytesLen(u.URI) + consts.Uint64Len + codec.AddressLen*5
 }
 
-func (c *UpdateAsset) Marshal(p *codec.Packer) {
-	p.PackID(c.Asset)
-	p.PackBytes(c.Name)
-	p.PackBytes(c.Symbol)
-	p.PackBytes(c.Metadata)
-	p.PackBytes(c.URI)
-	p.PackUint64(c.MaxSupply)
-	p.PackBytes(c.Admin)
-	p.PackBytes(c.MintActor)
-	p.PackBytes(c.PauseUnpauseActor)
-	p.PackBytes(c.FreezeUnfreezeActor)
-	p.PackBytes(c.EnableDisableKYCAccountActor)
+func (u *UpdateAsset) Marshal(p *codec.Packer) {
+	p.PackID(u.Asset)
+	p.PackBytes(u.Name)
+	p.PackBytes(u.Symbol)
+	p.PackBytes(u.Metadata)
+	p.PackBytes(u.URI)
+	p.PackUint64(u.MaxSupply)
+	p.PackBytes(u.Admin)
+	p.PackBytes(u.MintActor)
+	p.PackBytes(u.PauseUnpauseActor)
+	p.PackBytes(u.FreezeUnfreezeActor)
+	p.PackBytes(u.EnableDisableKYCAccountActor)
 }
 
 func UnmarshalUpdateAsset(p *codec.Packer) (chain.Action, error) {
