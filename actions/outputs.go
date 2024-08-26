@@ -24,6 +24,7 @@ var (
 	ErrOutputInsufficientOutput = errors.New("insufficient output")
 	ErrOutputValueMisaligned    = errors.New("value is misaligned")
 
+	ErrAssetNotFound                = errors.New("asset not found")
 	ErrOutputAssetTypeInvalid       = errors.New("asset type is invalid. It must be 0(fungible), 1(non-fungible), and 2(dataset)")
 	ErrOutputWrongAssetType         = errors.New("wrong asset type")
 	ErrOutputNameInvalid            = errors.New("name is empty or too large")
@@ -64,9 +65,11 @@ var (
 	ErrOutputValidatorNotYetRegistered   = errors.New("validator not yet registered for staking")
 
 	// datasets
-	ErrOutputDescriptionInvalid   = errors.New("description is empty or too large")
-	ErrOutputCategoriesInvalid    = errors.New("categories are empty or too large")
-	ErrOutputLicenseNameInvalid   = errors.New("license name is empty or too large")
-	ErrOutputLicenseSymbolInvalid = errors.New("license symbol is empty or too large")
-	ErrOutputLicenseURLInvalid    = errors.New("license URL is empty or too large")
+	ErrOutputDescriptionInvalid        = errors.New("description is empty or too large")
+	ErrOutputCategoriesInvalid         = errors.New("categories are empty or too large")
+	ErrOutputLicenseNameInvalid        = errors.New("license name is empty or too large")
+	ErrOutputLicenseSymbolInvalid      = errors.New("license symbol is empty or too large")
+	ErrOutputLicenseURLInvalid         = errors.New("license URL is empty or too large")
+	ErrDatasetNotFound                 = errors.New("dataset not found")
+	ErrOutputMustUpdateAtLeastOneField = errors.New("must update at least one field")
 )

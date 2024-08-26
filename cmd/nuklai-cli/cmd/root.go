@@ -171,6 +171,7 @@ func init() {
 	// asset
 	assetCmd.AddCommand(
 		createAssetCmd,
+		updateAssetCmd,
 		mintAssetFTCmd,
 		mintAssetNFTCmd,
 		burnAssetFTCmd,
@@ -188,6 +189,7 @@ func init() {
 	datasetCmd.AddCommand(
 		createDatasetCmd,
 		createDatasetFromExistingAssetCmd,
+		updateDatasetCmd,
 		getDatasetCmd,
 	)
 

@@ -84,6 +84,9 @@ var (
 	asset3Symbol   []byte
 	asset3Decimals uint8
 	asset3ID       ids.ID
+	asset4         []byte
+	asset4Symbol   []byte
+	asset4Decimals uint8
 
 	// when used with embedded VMs
 	genesisBytes []byte
@@ -184,6 +187,9 @@ var _ = ginkgo.BeforeSuite(func() {
 	asset3 = []byte("as3")
 	asset3Symbol = []byte("as3")
 	asset3Decimals = uint8(3)
+	asset4 = []byte("as4")
+	asset4Symbol = []byte("as4")
+	asset4Decimals = uint8(0)
 
 	// create embedded VMs
 	instances = make([]instance, vms)
@@ -1178,6 +1184,93 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal(uniqueID, uint64(0))
 		require.Equal([]byte(uri), asset3)
 		require.Equal(owner, sender)
+	})
+
+	ginkgo.It("update an asset that doesn't exist", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.UpdateAsset{
+				Asset:    ids.GenerateTestID(),
+				Name:     asset4,
+				Symbol:   asset4Symbol,
+				Metadata: asset4,
+				URI:      asset4,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		result := results[0]
+		require.False(result.Success)
+		require.Contains(string(result.Error), "asset not found")
+	})
+
+	ginkgo.It("update an asset(no field is updated)", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.UpdateAsset{
+				Asset: asset1ID,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		result := results[0]
+		require.False(result.Success)
+		require.Contains(string(result.Error), "must update at least one field")
+	})
+
+	ginkgo.It("update an existing asset", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.UpdateAsset{
+				Asset:     asset3ID,
+				MaxSupply: uint64(100000),
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset3ID.String(), false)
+
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(assetType, nconsts.AssetDatasetTokenDesc)
+		require.Equal([]byte(name), asset3)
+		require.Equal([]byte(symbol), asset3Symbol)
+		require.Equal(decimals, uint8(0))
+		require.Equal([]byte(metadata), asset3)
+		require.Equal([]byte(uri), asset3)
+		require.Equal(totalSupply, uint64(1))
+		require.Equal(maxSupply, uint64(100000))
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
 	})
 
 	ginkgo.It("mint a new fungible asset", func() {
@@ -2295,6 +2388,105 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal(uniqueID, uint64(0))
 		require.Equal([]byte(uri), asset1)
 		require.Equal(owner, sender)
+	})
+
+	ginkgo.It("update a dataset that doesn't exist", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.UpdateDataset{
+				Dataset:            ids.GenerateTestID(),
+				Name:               []byte("n00"),
+				Description:        []byte("d00"),
+				Categories:         []byte("c00"),
+				LicenseName:        []byte("l00"),
+				LicenseSymbol:      []byte("ls00"),
+				LicenseURL:         []byte("lu00"),
+				IsCommunityDataset: false,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		result := results[0]
+		require.False(result.Success)
+		require.Contains(string(result.Error), "dataset not found")
+	})
+
+	ginkgo.It("update a dataset(no field is updated)", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.UpdateDataset{
+				Dataset:            asset1ID,
+				Name:               asset1,
+				Description:        []byte("d00"),
+				Categories:         []byte("c00"),
+				LicenseName:        []byte("l00"),
+				LicenseSymbol:      []byte("ls00"),
+				LicenseURL:         []byte("lu00"),
+				IsCommunityDataset: false,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		result := results[0]
+		require.False(result.Success)
+		require.Contains(string(result.Error), "must update at least one field")
+	})
+
+	ginkgo.It("update an existing dataset(convert solo contributor to community dataset)", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.UpdateDataset{
+				Dataset:            asset1ID,
+				Name:               asset1,
+				Description:        []byte("d00-updated"),
+				Categories:         []byte("c00-updated"),
+				LicenseName:        []byte("l00-updated"),
+				LicenseSymbol:      []byte("ls00up"),
+				LicenseURL:         []byte("lu00-updated"),
+				IsCommunityDataset: true,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		// Check dataset info
+		exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, _, _, _, _, _, revenueModelDataOwnerCut, _, _, err := instances[0].ncli.Dataset(context.TODO(), asset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(description), []byte("d00-updated"))
+		require.Equal([]byte(categories), []byte("c00-updated"))
+		require.Equal([]byte(licenseName), []byte("l00-updated"))
+		require.Equal([]byte(licenseSymbol), []byte("ls00up"))
+		require.Equal([]byte(licenseURL), []byte("lu00-updated"))
+		require.Equal([]byte(metadata), asset1)
+		require.True(isCommunityDataset)
+		require.Equal(revenueModelDataOwnerCut, uint8(10))
 	})
 })
 

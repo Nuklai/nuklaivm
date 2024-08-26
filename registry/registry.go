@@ -24,6 +24,7 @@ func init() {
 		nconsts.ActionRegistry.Register((&actions.Transfer{}).GetTypeID(), actions.UnmarshalTransfer, false),
 
 		nconsts.ActionRegistry.Register((&actions.CreateAsset{}).GetTypeID(), actions.UnmarshalCreateAsset, false),
+		nconsts.ActionRegistry.Register((&actions.UpdateAsset{}).GetTypeID(), actions.UnmarshalUpdateAsset, false),
 		nconsts.ActionRegistry.Register((&actions.MintAssetFT{}).GetTypeID(), actions.UnmarshalMintAsset, false),
 		nconsts.ActionRegistry.Register((&actions.MintAssetNFT{}).GetTypeID(), actions.UnmarshalMintAssetNFT, false),
 		nconsts.ActionRegistry.Register((&actions.BurnAssetFT{}).GetTypeID(), actions.UnmarshalBurnAssetFT, false),
@@ -37,6 +38,7 @@ func init() {
 		nconsts.ActionRegistry.Register((&actions.UndelegateUserStake{}).GetTypeID(), actions.UnmarshalUndelegateUserStake, false),
 
 		nconsts.ActionRegistry.Register((&actions.CreateDataset{}).GetTypeID(), actions.UnmarshalCreateDataset, false),
+		nconsts.ActionRegistry.Register((&actions.UpdateDataset{}).GetTypeID(), actions.UnmarshalUpdateDataset, false),
 
 		// When registering new auth, ALWAYS make sure to append at the end.
 		nconsts.AuthRegistry.Register((&auth.ED25519{}).GetTypeID(), auth.UnmarshalED25519, false),

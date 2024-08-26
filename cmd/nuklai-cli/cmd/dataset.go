@@ -164,6 +164,53 @@ var createDatasetFromExistingAssetCmd = &cobra.Command{
 	},
 }
 
+var updateDatasetCmd = &cobra.Command{
+	Use: "update",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, _, factory, cli, scli, tcli, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+
+		// Select dataset ID to update
+		datasetID, err := handler.Root().PromptAsset("datasetID", true)
+		if err != nil {
+			return err
+		}
+
+		// Update name to dataset
+		name, err := handler.Root().PromptString("name", 1, actions.MaxMetadataSize)
+		if err != nil {
+			return err
+		}
+
+		// Prompt for isCommunityDataset
+		isCommunityDataset, err := handler.Root().PromptBool("isCommunityDataset")
+		if err != nil {
+			return err
+		}
+
+		// Confirm action
+		cont, err := handler.Root().PromptContinue()
+		if !cont || err != nil {
+			return err
+		}
+
+		// Generate transaction
+		_, err = sendAndWait(ctx, []chain.Action{&actions.UpdateDataset{
+			Dataset:            datasetID,
+			Name:               []byte(name),
+			IsCommunityDataset: isCommunityDataset,
+		}}, cli, scli, tcli, factory, true)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
 var getDatasetCmd = &cobra.Command{
 	Use: "info",
 	RunE: func(*cobra.Command, []string) error {

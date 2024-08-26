@@ -111,6 +111,52 @@ var createAssetCmd = &cobra.Command{
 	},
 }
 
+var updateAssetCmd = &cobra.Command{
+	Use: "update",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, _, factory, cli, scli, tcli, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+
+		// Select asset ID to update
+		assetID, err := handler.Root().PromptAsset("assetID", true)
+		if err != nil {
+			return err
+		}
+
+		// Add name to token
+		name, err := handler.Root().PromptString("name", 1, actions.MaxMetadataSize)
+		if err != nil {
+			return err
+		}
+
+		// Add symbol to token
+		symbol, err := handler.Root().PromptString("symbol", 1, actions.MaxTextSize)
+		if err != nil {
+			return err
+		}
+
+		// Confirm action
+		cont, err := handler.Root().PromptContinue()
+		if !cont || err != nil {
+			return err
+		}
+
+		// Generate transaction
+		_, err = sendAndWait(ctx, []chain.Action{&actions.UpdateAsset{
+			Asset:  assetID,
+			Name:   []byte(name),
+			Symbol: []byte(symbol),
+		}}, cli, scli, tcli, factory, true)
+		if err != nil {
+			return err
+		}
+		return nil
+	},
+}
+
 var mintAssetFTCmd = &cobra.Command{
 	Use: "mint-ft",
 	RunE: func(*cobra.Command, []string) error {

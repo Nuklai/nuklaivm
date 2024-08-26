@@ -41,8 +41,8 @@ type CreateAsset struct {
 	// The max supply of the asset
 	MaxSupply uint64 `json:"maxSupply"`
 
-	// The wallet address that can mint/burn assets
-	MintActor codec.Address `json:"mintBurnActor"`
+	// The wallet address that can mint assets
+	MintActor codec.Address `json:"mintActor"`
 
 	// The wallet address that can pause/unpause assets
 	PauseUnpauseActor codec.Address `json:"pauseUnpauseActor"`
@@ -58,7 +58,7 @@ func (*CreateAsset) GetTypeID() uint8 {
 	return nconsts.CreateAssetID
 }
 
-func (*CreateAsset) StateKeys(actor codec.Address, actionID ids.ID) state.Keys {
+func (c *CreateAsset) StateKeys(actor codec.Address, actionID ids.ID) state.Keys {
 	nftID := nchain.GenerateID(actionID, 0)
 	return state.Keys{
 		string(storage.AssetKey(actionID)):          state.Allocate | state.Write,
