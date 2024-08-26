@@ -45,7 +45,7 @@ func (*UpdateDataset) GetTypeID() uint8 {
 	return nconsts.UpdateDatasetID
 }
 
-func (u *UpdateDataset) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (u *UpdateDataset) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
 	return state.Keys{
 		string(storage.AssetDatasetKey(u.Dataset)): state.Allocate | state.Write,
 	}

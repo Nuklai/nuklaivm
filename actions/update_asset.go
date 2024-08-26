@@ -58,8 +58,7 @@ func (*UpdateAsset) GetTypeID() uint8 {
 	return nconsts.UpdateAssetID
 }
 
-func (u *UpdateAsset) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
-
+func (u *UpdateAsset) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
 	return state.Keys{
 		string(storage.AssetKey(u.Asset)): state.Allocate | state.Write,
 	}
