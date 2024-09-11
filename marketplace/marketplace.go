@@ -3,16 +3,12 @@
 
 package marketplace
 
-import (
-	"sync"
-)
-
 var _ Hub = (*Marketplace)(nil)
 
 type Marketplace struct {
 	c Controller
 
-	lock sync.RWMutex
+	// lock sync.RWMutex
 }
 
 // NewMarketplace initializes the Marketplace struct with initial parameters

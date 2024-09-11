@@ -5,6 +5,4 @@ package marketplace
 
 import "errors"
 
-var (
-	ErrRowAlreadyAdded = errors.New("row already added")
-)
+var ErrRowAlreadyAdded = errors.New("row already added")

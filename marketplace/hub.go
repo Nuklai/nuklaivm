@@ -3,8 +3,7 @@
 
 package marketplace
 
-type Hub interface {
-}
+type Hub interface{}
 
 // GetMarketplace returns the singleton instance of Marketplace
 func GetMarketplace() Hub {

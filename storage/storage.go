@@ -596,10 +596,7 @@ func innerGetAssetNFTsByCollection(
 	collectionID ids.ID,
 ) ([]ids.ID, error) {
 	// Decode the page count.
-	pageCount, err := decodeNFTCountInCollection(pageCountValue)
-	if err != nil {
-		return nil, err
-	}
+	pageCount := decodeNFTCountInCollection(pageCountValue)
 
 	// Initialize a slice to hold all NFT IDs.
 	allNFTs := []ids.ID{}
@@ -630,7 +627,7 @@ func AddAssetNFT(ctx context.Context, mu state.Mutable, collectionID ids.ID, nft
 	if err := handleGetCollectionNFTError(err); err != nil {
 		return err
 	}
-	currentPageCount, _ := decodeNFTCountInCollection(currentPageCountBytes)
+	currentPageCount := decodeNFTCountInCollection(currentPageCountBytes)
 
 	// Load the current page of NFTs.
 	pageKey := AssetCollectionPageKey(collectionID, currentPageCount)
@@ -719,11 +716,11 @@ func handleGetCollectionNFTError(err error) error {
 	return nil
 }
 
-func decodeNFTCountInCollection(countValue []byte) (uint64, error) {
+func decodeNFTCountInCollection(countValue []byte) uint64 {
 	if len(countValue) == 0 {
-		return 0, nil // No NFTs in the collection.
+		return 0 // No NFTs in the collection.
 	}
-	return binary.BigEndian.Uint64(countValue), nil
+	return binary.BigEndian.Uint64(countValue)
 }
 
 func DeleteAssetCollectionNFT(
@@ -739,7 +736,7 @@ func DeleteAssetCollectionNFT(
 	}
 
 	// Decode the page count.
-	pageCount, err := decodeNFTCountInCollection(pageCountValue)
+	pageCount := decodeNFTCountInCollection(pageCountValue)
 	if err != nil {
 		return err
 	}
