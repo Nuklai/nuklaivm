@@ -24,8 +24,9 @@ const (
 	ClaimDelegationStakeRewards  uint8 = 13
 	UndelegateUserStakeID        uint8 = 14
 
-	CreateDatasetID uint8 = 15
-	UpdateDatasetID uint8 = 16
+	CreateDatasetID             uint8 = 15
+	UpdateDatasetID             uint8 = 16
+	InitiateContributeDatasetID uint8 = 17
 
 	// Asset TypeIDs
 	AssetFungibleTokenID    uint8 = 0

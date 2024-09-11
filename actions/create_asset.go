@@ -61,15 +61,17 @@ func (*CreateAsset) GetTypeID() uint8 {
 func (*CreateAsset) StateKeys(actor codec.Address, actionID ids.ID) state.Keys {
 	nftID := nchain.GenerateID(actionID, 0)
 	return state.Keys{
-		string(storage.AssetKey(actionID)):          state.Allocate | state.Write,
-		string(storage.AssetNFTKey(nftID)):          state.Allocate | state.Write,
-		string(storage.BalanceKey(actor, actionID)): state.Allocate | state.Write,
-		string(storage.BalanceKey(actor, nftID)):    state.Allocate | state.Write,
+		string(storage.AssetKey(actionID)):                    state.Allocate | state.Write,
+		string(storage.AssetNFTKey(nftID)):                    state.Allocate | state.Write,
+		string(storage.AssetCollectionPageKey(actionID, 0)):   state.Allocate | state.Write,
+		string(storage.AssetCollectionPageCountKey(actionID)): state.Allocate | state.Write,
+		string(storage.BalanceKey(actor, actionID)):           state.Allocate | state.Write,
+		string(storage.BalanceKey(actor, nftID)):              state.Allocate | state.Write,
 	}
 }
 
 func (*CreateAsset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks}
+	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.AssetCollectionPageChunks, storage.AssetCollectionPageCountChunks, storage.BalanceChunks}
 }
 
 func (c *CreateAsset) Execute(
@@ -133,6 +135,10 @@ func (c *CreateAsset) Execute(
 
 		// Add the balance to individual NFT
 		if err := storage.AddBalance(ctx, mu, actor, nftID, 1, true); err != nil {
+			return nil, err
+		}
+		// Add NFT to Collection
+		if err := storage.AddAssetNFT(ctx, mu, actionID, nftID); err != nil {
 			return nil, err
 		}
 	}

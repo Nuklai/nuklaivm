@@ -56,7 +56,7 @@ func (c *CreateDataset) StateKeys(actor codec.Address, actionID ids.ID) state.Ke
 	nftID := nchain.GenerateID(actionID, 0)
 	return state.Keys{
 		string(storage.AssetKey(assetID)):          state.Allocate | state.Write,
-		string(storage.AssetDatasetKey(assetID)):   state.Allocate | state.Write,
+		string(storage.DatasetKey(assetID)):        state.Allocate | state.Write,
 		string(storage.AssetNFTKey(nftID)):         state.Allocate | state.Write,
 		string(storage.BalanceKey(actor, assetID)): state.Allocate | state.Write,
 		string(storage.BalanceKey(actor, nftID)):   state.Allocate | state.Write,
@@ -148,7 +148,7 @@ func (c *CreateDataset) Execute(
 	// revenueModelMetadataShare = 0
 	// revenueModelDataOwnerCut = 10 for community datasets, 100 for sole contributor datasets
 	// revenueModelMetadataOwnerCut = 0
-	if err := storage.SetAssetDataset(ctx, mu, assetID, c.Name, c.Description, c.Categories, c.LicenseName, c.LicenseSymbol, c.LicenseURL, c.Metadata, c.IsCommunityDataset, false, ids.Empty, 0, uint8(revenueModelDataShare), 0, uint8(revenueModelDataOwnerCut), 0, actor); err != nil {
+	if err := storage.SetDataset(ctx, mu, assetID, c.Name, c.Description, c.Categories, c.LicenseName, c.LicenseSymbol, c.LicenseURL, c.Metadata, c.IsCommunityDataset, false, ids.Empty, 0, uint8(revenueModelDataShare), 0, uint8(revenueModelDataOwnerCut), 0, actor); err != nil {
 		return nil, err
 	}
 

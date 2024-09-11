@@ -72,4 +72,6 @@ var (
 	ErrOutputLicenseURLInvalid         = errors.New("license URL is empty or too large")
 	ErrDatasetNotFound                 = errors.New("dataset not found")
 	ErrOutputMustUpdateAtLeastOneField = errors.New("must update at least one field")
+
+	ErrOutputDataLocationInvalid = errors.New("data location is invalid")
 )

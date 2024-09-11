@@ -47,7 +47,7 @@ func (*UpdateDataset) GetTypeID() uint8 {
 
 func (u *UpdateDataset) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
 	return state.Keys{
-		string(storage.AssetDatasetKey(u.Dataset)): state.Allocate | state.Write,
+		string(storage.DatasetKey(u.Dataset)): state.Allocate | state.Write,
 	}
 }
 
@@ -64,7 +64,7 @@ func (u *UpdateDataset) Execute(
 	_ ids.ID,
 ) ([][]byte, error) {
 	// Check if the dataset exists
-	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := storage.GetAssetDataset(ctx, mu, u.Dataset)
+	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := storage.GetDataset(ctx, mu, u.Dataset)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (u *UpdateDataset) Execute(
 	}
 
 	// Update the dataset
-	if err := storage.SetAssetDataset(ctx, mu, u.Dataset, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, u.IsCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
+	if err := storage.SetDataset(ctx, mu, u.Dataset, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, u.IsCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
 		return nil, err
 	}
 

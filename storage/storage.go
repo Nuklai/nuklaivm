@@ -63,22 +63,27 @@ const (
 	incomingWarpPrefix = 0x4
 	outgoingWarpPrefix = 0x5
 
-	assetPrefix    = 0x6
-	assetNFTPrefix = 0x7
+	assetPrefix                    = 0x6
+	assetNFTPrefix                 = 0x7
+	assetCollectionPagePrefix      = 0x8
+	assetCollectionPageCountPrefix = 0x9
 
-	registerValidatorStakePrefix = 0x8
-	delegateUserStakePrefix      = 0x9
+	registerValidatorStakePrefix = 0xA
+	delegateUserStakePrefix      = 0xB
 
-	datasetPrefix = 0xA
+	datasetPrefix = 0xC
 )
 
 const (
-	BalanceChunks                uint16 = 1
-	AssetChunks                  uint16 = 16
-	AssetNFTChunks               uint16 = 3
-	RegisterValidatorStakeChunks uint16 = 4
-	DelegateUserStakeChunks      uint16 = 2
-	DatasetChunks                uint16 = 101
+	BalanceChunks                  uint16 = 1
+	AssetChunks                    uint16 = 16
+	AssetNFTChunks                 uint16 = 3
+	AssetCollectionPageChunks      uint16 = 11
+	AssetCollectionPageCountChunks uint16 = 1
+	AssetDatasetChunks             uint16 = 3
+	RegisterValidatorStakeChunks   uint16 = 4
+	DelegateUserStakeChunks        uint16 = 2
+	DatasetChunks                  uint16 = 101
 )
 
 var (
@@ -521,8 +526,238 @@ func DeleteAssetNFT(ctx context.Context, mu state.Mutable, nftID ids.ID) error {
 	return mu.Remove(ctx, k)
 }
 
+// [collectionID + pageIndex]
+func AssetCollectionPageKey(collectionID ids.ID, pageIndex uint64) (k []byte) {
+	k = make([]byte, 1+ids.IDLen+consts.Uint64Len+consts.Uint16Len)                         // Length of prefix + collectionID + pageIndex + AssetCollectionPageChunks
+	k[0] = assetCollectionPagePrefix                                                        // assetCollectionPagePrefix is a constant representing a page in a collection
+	copy(k[1:], collectionID[:])                                                            // Copy the collectionID
+	binary.BigEndian.PutUint64(k[1+ids.IDLen:], pageIndex)                                  // Adding pageIndex for dynamic growth
+	binary.BigEndian.PutUint16(k[1+ids.IDLen+consts.Uint64Len:], AssetCollectionPageChunks) // Adding AssetCollectionPageChunks
+	return
+}
+
+// [collectionID]
+func AssetCollectionPageCountKey(collectionID ids.ID) (k []byte) {
+	k = make([]byte, 1+ids.IDLen+consts.Uint16Len)                              // Length of prefix + collectionID + AssetCollectionPageCountChunks
+	k[0] = assetCollectionPageCountPrefix                                       // assetCollectionPageCountPrefix is a constant representing the count of pages in a collection
+	copy(k[1:], collectionID[:])                                                // Copy the collectionID
+	binary.BigEndian.PutUint16(k[1+ids.IDLen:], AssetCollectionPageCountChunks) // Adding AssetCollectionPageCountChunks
+	return
+}
+
+func GetAssetNFTsByCollectionFromState(
+	ctx context.Context,
+	f ReadState,
+	collectionID ids.ID,
+) ([]ids.ID, error) {
+	// Retrieve the page count key to determine how many pages are in the collection.
+	pageCountKey := AssetCollectionPageCountKey(collectionID)
+	pageCountValues, pageCountErrs := f(ctx, [][]byte{pageCountKey})
+
+	// Handle errors for retrieving the page count.
+	if len(pageCountErrs) > 0 {
+		if err := handleGetCollectionNFTError(pageCountErrs[0]); err != nil {
+			return nil, err
+		}
+	}
+
+	// Use the helper function to get all NFTs.
+	return innerGetAssetNFTsByCollection(pageCountValues[0], func(ctx context.Context, key []byte) ([]byte, error) {
+		values, errs := f(ctx, [][]byte{key})
+		if len(errs) > 0 {
+			if err := handleGetCollectionNFTError(errs[0]); err != nil {
+				return nil, err
+			}
+		}
+		return values[0], nil
+	}, ctx, collectionID)
+}
+
+func GetAssetNFTsByCollection(
+	ctx context.Context,
+	im state.Immutable,
+	collectionID ids.ID,
+) ([]ids.ID, error) {
+	// Retrieve the page count key to determine how many pages are in the collection.
+	pageCountKey := AssetCollectionPageCountKey(collectionID)
+	pageCountValue, err := im.GetValue(ctx, pageCountKey)
+	if err := handleGetCollectionNFTError(err); err != nil {
+		return nil, err
+	}
+
+	// Use the helper function to get all NFTs.
+	return innerGetAssetNFTsByCollection(pageCountValue, im.GetValue, ctx, collectionID)
+}
+
+func innerGetAssetNFTsByCollection(
+	pageCountValue []byte,
+	getValueFunc func(ctx context.Context, key []byte) ([]byte, error),
+	ctx context.Context,
+	collectionID ids.ID,
+) ([]ids.ID, error) {
+	// Decode the page count.
+	pageCount, err := decodeNFTCountInCollection(pageCountValue)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize a slice to hold all NFT IDs.
+	allNFTs := []ids.ID{}
+
+	// Iterate over all pages to fetch each NFT ID.
+	for i := uint64(0); i <= pageCount; i++ {
+		pageKey := AssetCollectionPageKey(collectionID, i)
+		pageValue, err := getValueFunc(ctx, pageKey)
+		if err := handleGetCollectionNFTError(err); err != nil {
+			return nil, err
+		}
+		if len(pageValue) == 0 {
+			continue // No value found; skip to the next.
+		}
+
+		// Decode the list of NFTs from the current page.
+		nftList := decodeNFTList(pageValue)
+		allNFTs = append(allNFTs, nftList...)
+	}
+
+	return allNFTs, nil
+}
+
+func AddAssetNFT(ctx context.Context, mu state.Mutable, collectionID ids.ID, nftID ids.ID) error {
+	// Fetch the current page count of NFTs in the collection.
+	pageCountKey := AssetCollectionPageCountKey(collectionID)
+	currentPageCountBytes, err := mu.GetValue(ctx, pageCountKey)
+	if err := handleGetCollectionNFTError(err); err != nil {
+		return err
+	}
+	currentPageCount, _ := decodeNFTCountInCollection(currentPageCountBytes)
+
+	// Load the current page of NFTs.
+	pageKey := AssetCollectionPageKey(collectionID, currentPageCount)
+	currentPage, err := mu.GetValue(ctx, pageKey)
+	if err := handleGetCollectionNFTError(err); err != nil {
+		return err
+	}
+
+	// Determine if the current page has space.
+	const maxNFTsPerPage = 10 // Define a maximum number of NFTs per page.
+	var nftList []ids.ID
+	if len(currentPage) > 0 {
+		nftList = decodeNFTList(currentPage) // Decode the list of NFTs from the current page.
+	}
+
+	if len(nftList) >= maxNFTsPerPage {
+		// If the current page is full, increment the page count and create a new page.
+		currentPageCount++
+		pageKey = AssetCollectionPageKey(collectionID, currentPageCount)
+		nftList = []ids.ID{} // Start a new list for the new page.
+	}
+
+	// Add the new NFT to the list.
+	nftList = append(nftList, nftID)
+
+	// Encode the updated list and store it in the state.
+	updatedPageData := encodeNFTList(nftList)
+	if err := mu.Insert(ctx, pageKey, updatedPageData); err != nil {
+		return err
+	}
+
+	// Update the page count if necessary.
+	if len(nftList) == 1 { // Only update the page count if a new page was created.
+		newPageCountBytes := make([]byte, consts.Uint64Len)
+		binary.BigEndian.PutUint64(newPageCountBytes, currentPageCount)
+		if err := mu.Insert(ctx, pageCountKey, newPageCountBytes); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func encodeNFTList(nftList []ids.ID) []byte {
+	// Each ID is a fixed size. Calculate the total size of the byte array.
+	idSize := ids.IDLen
+	totalSize := len(nftList) * idSize
+
+	// Create a byte array to hold all IDs.
+	encoded := make([]byte, totalSize)
+
+	// Copy each ID into the byte array.
+	for i, nftID := range nftList {
+		start := i * idSize
+		end := start + idSize
+		copy(encoded[start:end], nftID[:])
+	}
+
+	return encoded
+}
+
+func decodeNFTList(data []byte) []ids.ID {
+	idSize := ids.IDLen
+	totalNFTs := len(data) / idSize
+
+	// Create a slice to hold the decoded IDs.
+	nftList := make([]ids.ID, totalNFTs)
+
+	// Extract each ID from the byte array.
+	for i := 0; i < totalNFTs; i++ {
+		start := i * idSize
+		end := start + idSize
+		copy(nftList[i][:], data[start:end])
+	}
+
+	return nftList
+}
+
+func handleGetCollectionNFTError(err error) error {
+	if err != nil {
+		if errors.Is(err, database.ErrNotFound) {
+			return nil // No action needed for not found.
+		}
+		return err // Return any other error.
+	}
+	return nil
+}
+
+func decodeNFTCountInCollection(countValue []byte) (uint64, error) {
+	if len(countValue) == 0 {
+		return 0, nil // No NFTs in the collection.
+	}
+	return binary.BigEndian.Uint64(countValue), nil
+}
+
+func DeleteAssetCollectionNFT(
+	ctx context.Context,
+	mu state.Mutable,
+	collectionID ids.ID,
+) error {
+	// Retrieve the page count key to determine how many pages are in the collection.
+	pageCountKey := AssetCollectionPageCountKey(collectionID)
+	pageCountValue, err := mu.GetValue(ctx, pageCountKey)
+	if err := handleGetCollectionNFTError(err); err != nil {
+		return err
+	}
+
+	// Decode the page count.
+	pageCount, err := decodeNFTCountInCollection(pageCountValue)
+	if err != nil {
+		return err
+	}
+
+	// Iterate over the indices to delete each page of NFTs.
+	for i := uint64(0); i <= pageCount; i++ {
+		pageKey := AssetCollectionPageKey(collectionID, i)
+		if err := handleGetCollectionNFTError(mu.Remove(ctx, pageKey)); err != nil {
+			return err
+		}
+	}
+
+	// Finally, delete the page count key for the collection.
+	return mu.Remove(ctx, pageCountKey)
+}
+
 // [datasetID]
-func AssetDatasetKey(datasetID ids.ID) (k []byte) {
+func DatasetKey(datasetID ids.ID) (k []byte) {
 	k = make([]byte, 1+ids.IDLen+consts.Uint16Len) // Length of prefix + datasetID + DatasetChunks
 	k[0] = datasetPrefix                           // datasetPrefix is a constant representing the dataset category
 	copy(k[1:], datasetID[:])                      // Copy the datasetID
@@ -531,25 +766,25 @@ func AssetDatasetKey(datasetID ids.ID) (k []byte) {
 }
 
 // Used to serve RPC queries
-func GetAssetDatasetFromState(
+func GetDatasetFromState(
 	ctx context.Context,
 	f ReadState,
 	datasetID ids.ID,
 ) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
-	values, errs := f(ctx, [][]byte{AssetDatasetKey(datasetID)})
-	return innerGetAssetDataset(values[0], errs[0])
+	values, errs := f(ctx, [][]byte{DatasetKey(datasetID)})
+	return innerGetDataset(values[0], errs[0])
 }
 
-func GetAssetDataset(
+func GetDataset(
 	ctx context.Context,
 	im state.Immutable,
 	datasetID ids.ID,
 ) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
-	k := AssetDatasetKey(datasetID)
-	return innerGetAssetDataset(im.GetValue(ctx, k))
+	k := DatasetKey(datasetID)
+	return innerGetDataset(im.GetValue(ctx, k))
 }
 
-func innerGetAssetDataset(v []byte, err error) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
+func innerGetDataset(v []byte, err error) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
 	if errors.Is(err, database.ErrNotFound) {
 		return false, nil, nil, nil, nil, nil, nil, nil, false, false, ids.Empty, 0, 0, 0, 0, 0, codec.EmptyAddress, nil
 	}
@@ -614,8 +849,8 @@ func innerGetAssetDataset(v []byte, err error) (bool, []byte, []byte, []byte, []
 	return true, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, nil
 }
 
-func SetAssetDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID, name []byte, description []byte, categories []byte, licenseName []byte, licenseSymbol []byte, licenseURL []byte, metadata []byte, isCommunityDataset bool, onSale bool, baseAsset ids.ID, basePrice uint64, revenueModelDataShare uint8, revenueModelMetadataShare uint8, revenueModeldataOwnerCut uint8, revenueModelMetadataOwnerCut uint8, owner codec.Address) error {
-	k := AssetDatasetKey(datasetID)
+func SetDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID, name []byte, description []byte, categories []byte, licenseName []byte, licenseSymbol []byte, licenseURL []byte, metadata []byte, isCommunityDataset bool, onSale bool, baseAsset ids.ID, basePrice uint64, revenueModelDataShare uint8, revenueModelMetadataShare uint8, revenueModeldataOwnerCut uint8, revenueModelMetadataOwnerCut uint8, owner codec.Address) error {
+	k := DatasetKey(datasetID)
 	nameLen := len(name)
 	descriptionLen := len(description)
 	categoriesLen := len(categories)
@@ -688,8 +923,8 @@ func SetAssetDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID, na
 	return mu.Insert(ctx, k, v)
 }
 
-func DeleteAssetDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID) error {
-	k := AssetDatasetKey(datasetID)
+func DeleteDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID) error {
+	k := DatasetKey(datasetID)
 	return mu.Remove(ctx, k)
 }
 
