@@ -63,7 +63,7 @@ func (b *BurnAssetNFT) Execute(
 		return nil, ErrOutputWrongAssetType
 	}
 
-	exists, _, _, _, _, err = storage.GetAssetNFT(ctx, mu, b.NftID)
+	exists, _, _, _, _, _, err = storage.GetAssetNFT(ctx, mu, b.NftID)
 	if err != nil {
 		return nil, err
 	}

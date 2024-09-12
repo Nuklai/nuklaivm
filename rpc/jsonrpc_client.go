@@ -68,7 +68,7 @@ func (cli *JSONRPCClient) Genesis(ctx context.Context) (*genesis.Genesis, error)
 	return resp.Genesis, nil
 }
 
-func (cli *JSONRPCClient) Tx(ctx context.Context, id ids.ID) (bool, bool, int64, uint64, error) {
+func (cli *JSONRPCClient) Tx(ctx context.Context, id ids.ID) (bool, bool, int64, uint64, string, error) {
 	resp := new(TxReply)
 	err := cli.requester.SendRequest(
 		ctx,
@@ -80,11 +80,11 @@ func (cli *JSONRPCClient) Tx(ctx context.Context, id ids.ID) (bool, bool, int64,
 	// We use string parsing here because the JSON-RPC library we use may not
 	// allows us to perform errors.Is.
 	case err != nil && strings.Contains(err.Error(), ErrTxNotFound.Error()):
-		return false, false, -1, 0, nil
+		return false, false, -1, 0, "", nil
 	case err != nil:
-		return false, false, -1, 0, err
+		return false, false, -1, 0, "", err
 	}
-	return true, resp.Success, resp.Timestamp, resp.Fee, nil
+	return true, resp.Success, resp.Timestamp, resp.Fee, resp.Actor, nil
 }
 
 func (cli *JSONRPCClient) Asset(
@@ -127,12 +127,12 @@ func (cli *JSONRPCClient) AssetNFT(
 	ctx context.Context,
 	nft string,
 	useCache bool,
-) (bool, string, uint64, string, string, error) {
+) (bool, string, uint64, string, string, string, error) {
 	cli.assetsL.Lock()
 	r, ok := cli.assetsNFT[nft]
 	cli.assetsL.Unlock()
 	if ok && useCache {
-		return true, r.CollectionID, r.UniqueID, r.URI, r.Owner, nil
+		return true, r.CollectionID, r.UniqueID, r.URI, r.Metadata, r.Owner, nil
 	}
 
 	resp := new(AssetNFTReply)
@@ -148,14 +148,14 @@ func (cli *JSONRPCClient) AssetNFT(
 	// We use string parsing here because the JSON-RPC library we use may not
 	// allows us to perform errors.Is.
 	case err != nil && strings.Contains(err.Error(), ErrAssetNotFound.Error()):
-		return false, "", 0, "", "", nil
+		return false, "", 0, "", "", "", nil
 	case err != nil:
-		return false, "", 0, "", "", nil
+		return false, "", 0, "", "", "", nil
 	}
 	cli.assetsL.Lock()
 	cli.assetsNFT[nft] = resp
 	cli.assetsL.Unlock()
-	return true, resp.CollectionID, resp.UniqueID, resp.URI, resp.Owner, nil
+	return true, resp.CollectionID, resp.UniqueID, resp.URI, resp.Metadata, resp.Owner, nil
 }
 
 func (cli *JSONRPCClient) Balance(ctx context.Context, addr string, asset string) (uint64, error) {
@@ -316,21 +316,23 @@ func (cli *JSONRPCClient) WaitForBalance(
 	})
 }
 
-func (cli *JSONRPCClient) WaitForTransaction(ctx context.Context, txID ids.ID) (bool, uint64, error) {
+func (cli *JSONRPCClient) WaitForTransaction(ctx context.Context, txID ids.ID) (bool, uint64, string, error) {
 	var success bool
 	var fee uint64
+	var actor string
 	if err := rpc.Wait(ctx, func(ctx context.Context) (bool, error) {
-		found, isuccess, _, ifee, err := cli.Tx(ctx, txID)
+		found, isuccess, _, ifee, iactor, err := cli.Tx(ctx, txID)
 		if err != nil {
 			return false, err
 		}
 		success = isuccess
 		fee = ifee
+		actor = iactor
 		return found, nil
 	}); err != nil {
-		return false, 0, err
+		return false, 0, "", err
 	}
-	return success, fee, nil
+	return success, fee, actor, nil
 }
 
 var _ chain.Parser = (*Parser)(nil)

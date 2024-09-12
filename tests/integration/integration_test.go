@@ -847,6 +847,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				Asset:    assetID,
 				UniqueID: 0,
 				URI:      []byte("uri"),
+				Metadata: []byte("metadata"),
 			}},
 			factory,
 		)
@@ -1177,13 +1178,16 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal(freezeUnfreezeActor, sender)
 		require.Equal(enableDisableKYCAccountActor, sender)
 
-		exists, collectionID, uniqueID, uri, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
+		exists, collectionID, uniqueID, uri, metadata, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
 		require.NoError(err)
 		require.True(exists)
 		require.Equal(collectionID, asset3ID.String())
 		require.Equal(uniqueID, uint64(0))
 		require.Equal([]byte(uri), asset3)
+		require.Equal([]byte(metadata), asset3)
 		require.Equal(owner, sender)
+
+		// TODO: Get storage.GetAssetNFTsByCollection
 	})
 
 	ginkgo.It("update an asset that doesn't exist", func() {
@@ -1330,6 +1334,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				Asset:    asset2ID,
 				UniqueID: 0,
 				URI:      []byte("uri"),
+				Metadata: []byte("metadata"),
 			}},
 			factory,
 		)
@@ -1369,12 +1374,13 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal(freezeUnfreezeActor, sender)
 		require.Equal(enableDisableKYCAccountActor, sender)
 
-		exists, collectionID, uniqueID, uri, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
+		exists, collectionID, uniqueID, uri, metadata, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
 		require.NoError(err)
 		require.True(exists)
 		require.Equal(collectionID, asset2ID.String())
 		require.Equal(uniqueID, uint64(0))
 		require.Equal([]byte(uri), []byte("uri"))
+		require.Equal([]byte(metadata), []byte("metadata"))
 		require.Equal(owner, sender2)
 	})
 
@@ -1435,6 +1441,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				Asset:    asset2ID,
 				UniqueID: 1,
 				URI:      []byte("uri"),
+				Metadata: []byte("metadata"),
 			}},
 			factory2,
 		)
@@ -1994,12 +2001,14 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 					Asset:    asset1ID,
 					UniqueID: 0,
 					URI:      []byte("uri1"),
+					Metadata: []byte("metadata1"),
 				},
 				&actions.MintAssetNFT{
 					To:       rsender2,
 					Asset:    asset2ID,
 					UniqueID: 1,
 					URI:      []byte("uri2"),
+					Metadata: []byte("metadata2"),
 				},
 			},
 			factory,
@@ -2180,12 +2189,13 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.NoError(err)
 		require.Equal(balance, uint64(1))
 
-		exists, collectionID, uniqueID, uri, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
+		exists, collectionID, uniqueID, uri, metadata, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
 		require.NoError(err)
 		require.True(exists)
 		require.Equal(collectionID, asset1ID.String())
 		require.Equal(uniqueID, uint64(0))
 		require.Equal([]byte(uri), []byte("d00"))
+		require.Equal([]byte(metadata), []byte("d00"))
 		require.Equal(owner, sender)
 	})
 
@@ -2267,12 +2277,13 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.NoError(err)
 		require.Equal(balance, uint64(1))
 
-		exists, collectionID, uniqueID, uri, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
+		exists, collectionID, uniqueID, uri, metadata, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
 		require.NoError(err)
 		require.True(exists)
 		require.Equal(collectionID, asset1ID.String())
 		require.Equal(uniqueID, uint64(0))
 		require.Equal([]byte(uri), []byte("d00"))
+		require.Equal([]byte(metadata), []byte("d00"))
 		require.Equal(owner, sender)
 	})
 
@@ -2381,12 +2392,13 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.NoError(err)
 		require.Equal(balance, uint64(1))
 
-		exists, collectionID, uniqueID, uri, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
+		exists, collectionID, uniqueID, uri, metadata, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
 		require.NoError(err)
 		require.True(exists)
 		require.Equal(collectionID, asset1ID.String())
 		require.Equal(uniqueID, uint64(0))
 		require.Equal([]byte(uri), asset1)
+		require.Equal([]byte(metadata), asset1)
 		require.Equal(owner, sender)
 	})
 

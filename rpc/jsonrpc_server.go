@@ -43,13 +43,14 @@ type TxReply struct {
 	Success   bool            `json:"success"`
 	Units     fees.Dimensions `json:"units"`
 	Fee       uint64          `json:"fee"`
+	Actor     string          `json:"actor"`
 }
 
 func (j *JSONRPCServer) Tx(req *http.Request, args *TxArgs, reply *TxReply) error {
 	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Tx")
 	defer span.End()
 
-	found, t, success, units, fee, err := j.c.GetTransaction(ctx, args.TxID)
+	found, t, success, units, fee, actor, err := j.c.GetTransaction(ctx, args.TxID)
 	if err != nil {
 		return err
 	}
@@ -60,6 +61,7 @@ func (j *JSONRPCServer) Tx(req *http.Request, args *TxArgs, reply *TxReply) erro
 	reply.Success = success
 	reply.Units = units
 	reply.Fee = fee
+	reply.Actor = codec.MustAddressBech32(nconsts.HRP, actor)
 	return nil
 }
 
@@ -125,6 +127,7 @@ type AssetNFTReply struct {
 	CollectionID string `json:"collectionID"`
 	UniqueID     uint64 `json:"uniqueID"`
 	URI          string `json:"uri"`
+	Metadata     string `json:"metadata"`
 	Owner        string `json:"owner"`
 }
 
@@ -136,7 +139,7 @@ func (j *JSONRPCServer) AssetNFT(req *http.Request, args *AssetArgs, reply *Asse
 	if err != nil {
 		return err
 	}
-	exists, collectionID, uniqueID, uri, owner, err := j.c.GetAssetNFTFromState(ctx, nftID)
+	exists, collectionID, uniqueID, uri, metadata, owner, err := j.c.GetAssetNFTFromState(ctx, nftID)
 	if err != nil {
 		return err
 	}
@@ -147,6 +150,7 @@ func (j *JSONRPCServer) AssetNFT(req *http.Request, args *AssetArgs, reply *Asse
 	reply.CollectionID = collectionID.String()
 	reply.UniqueID = uniqueID
 	reply.URI = string(uri)
+	reply.Metadata = string(metadata)
 	reply.Owner = codec.MustAddressBech32(nconsts.HRP, owner)
 
 	return err

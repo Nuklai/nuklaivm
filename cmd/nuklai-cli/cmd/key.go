@@ -299,7 +299,7 @@ var balanceNFTKeyCmd = &cobra.Command{
 			return err
 		}
 		for _, ncli := range nclients {
-			if _, _, _, _, _, err := handler.GetAssetNFTInfo(context.TODO(), ncli, addr, nftID, true); err != nil {
+			if _, _, _, _, _, _, err := handler.GetAssetNFTInfo(context.TODO(), ncli, addr, nftID, true); err != nil {
 				return err
 			}
 		}

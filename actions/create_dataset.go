@@ -101,7 +101,7 @@ func (c *CreateDataset) Execute(
 	if c.AssetID != ids.Empty {
 		assetID = c.AssetID
 		// Check if the asset exists
-		exists, assetType, _, _, _, _, _, _, _, _, _, _, _, _, err := storage.GetAsset(ctx, mu, assetID)
+		exists, assetType, _, _, _, _, _, _, _, _, mintActor, _, _, _, err := storage.GetAsset(ctx, mu, assetID)
 		if err != nil {
 			return nil, err
 		}
@@ -111,12 +111,15 @@ func (c *CreateDataset) Execute(
 		if assetType != nconsts.AssetDatasetTokenID {
 			return nil, ErrOutputWrongAssetType
 		}
+		if mintActor != actor {
+			return nil, ErrOutputWrongMintActor
+		}
 	} else {
 		assetID = actionID
 
 		// Mint the parent NFT for the dataset(fractionalized asset)
 		nftID := nchain.GenerateID(assetID, 0)
-		if err := storage.SetAssetNFT(ctx, mu, assetID, 0, nftID, c.Description, actor); err != nil {
+		if err := storage.SetAssetNFT(ctx, mu, assetID, 0, nftID, c.Description, c.Description, actor); err != nil {
 			return nil, err
 		}
 

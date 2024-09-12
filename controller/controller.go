@@ -161,7 +161,7 @@ func (c *Controller) Initialize(
 	c.emission = emission.NewEmission(c, c.inner, totalSupply, c.genesis.EmissionBalancer.MaxSupply, emissionAddr)
 
 	// Initialize marketplace
-	c.marketplace = marketplace.NewMarketplace(c)
+	c.marketplace = marketplace.NewMarketplace(c, c.inner)
 
 	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, nconsts.ActionRegistry, nconsts.AuthRegistry, auth.Engines(), nil
 }
@@ -192,6 +192,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				result.Success,
 				result.Units,
 				result.Fee,
+				tx.Auth.Actor(),
 			)
 			if err != nil {
 				return err

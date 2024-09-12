@@ -31,7 +31,7 @@ func (c *Controller) Tracer() trace.Tracer {
 func (c *Controller) GetTransaction(
 	ctx context.Context,
 	txID ids.ID,
-) (bool, int64, bool, fees.Dimensions, uint64, error) {
+) (bool, int64, bool, fees.Dimensions, uint64, codec.Address, error) {
 	return storage.GetTransaction(ctx, c.metaDB, txID)
 }
 
@@ -45,7 +45,7 @@ func (c *Controller) GetAssetFromState(
 func (c *Controller) GetAssetNFTFromState(
 	ctx context.Context,
 	nft ids.ID,
-) (bool, ids.ID, uint64, []byte, codec.Address, error) {
+) (bool, ids.ID, uint64, []byte, []byte, codec.Address, error) {
 	return storage.GetAssetNFTFromState(ctx, c.inner.ReadState, nft)
 }
 

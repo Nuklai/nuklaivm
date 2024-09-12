@@ -36,9 +36,10 @@ func StoreTransaction(
 	success bool,
 	units fees.Dimensions,
 	fee uint64,
+	actor codec.Address,
 ) error {
 	k := TxKey(id)
-	v := make([]byte, consts.Uint64Len+1+fees.DimensionsLen+consts.Uint64Len)
+	v := make([]byte, consts.Uint64Len+1+fees.DimensionsLen+consts.Uint64Len+codec.AddressLen)
 	binary.BigEndian.PutUint64(v, uint64(t))
 	if success {
 		v[consts.Uint64Len] = successByte
@@ -47,6 +48,7 @@ func StoreTransaction(
 	}
 	copy(v[consts.Uint64Len+1:], units.Bytes())
 	binary.BigEndian.PutUint64(v[consts.Uint64Len+1+fees.DimensionsLen:], fee)
+	copy(v[consts.Uint64Len+1+fees.DimensionsLen+consts.Uint64Len:], actor[:])
 	return db.Put(k, v)
 }
 
@@ -54,14 +56,14 @@ func GetTransaction(
 	_ context.Context,
 	db database.KeyValueReader,
 	id ids.ID,
-) (bool, int64, bool, fees.Dimensions, uint64, error) {
+) (bool, int64, bool, fees.Dimensions, uint64, codec.Address, error) {
 	k := TxKey(id)
 	v, err := db.Get(k)
 	if errors.Is(err, database.ErrNotFound) {
-		return false, 0, false, fees.Dimensions{}, 0, nil
+		return false, 0, false, fees.Dimensions{}, 0, codec.EmptyAddress, nil
 	}
 	if err != nil {
-		return false, 0, false, fees.Dimensions{}, 0, err
+		return false, 0, false, fees.Dimensions{}, 0, codec.EmptyAddress, err
 	}
 	t := int64(binary.BigEndian.Uint64(v))
 	success := true
@@ -70,10 +72,12 @@ func GetTransaction(
 	}
 	d, err := fees.UnpackDimensions(v[consts.Uint64Len+1 : consts.Uint64Len+1+fees.DimensionsLen])
 	if err != nil {
-		return false, 0, false, fees.Dimensions{}, 0, err
+		return false, 0, false, fees.Dimensions{}, 0, codec.EmptyAddress, err
 	}
 	fee := binary.BigEndian.Uint64(v[consts.Uint64Len+1+fees.DimensionsLen:])
-	return true, t, success, d, fee, nil
+	var actor codec.Address
+	copy(actor[:], v[consts.Uint64Len+1+fees.DimensionsLen+consts.Uint64Len:])
+	return true, t, success, d, fee, actor, nil
 }
 
 // [accountPrefix] + [address] + [asset]

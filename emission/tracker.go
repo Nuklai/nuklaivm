@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/crypto/bls"
+	"github.com/ava-labs/hypersdk/state"
 )
 
 type Tracker interface {
@@ -32,6 +33,7 @@ type Tracker interface {
 	GetLastAcceptedBlockHeight() uint64
 	GetEmissionValidators() map[ids.NodeID]*Validator
 	GetInfo() (emissionAccount EmissionAccount, totalSupply uint64, maxSupply uint64, totalStaked uint64, epochTracker EpochTracker)
+	GetVMMutableState() (state.Mutable, error)
 }
 
 // GetEmission returns the singleton instance of Emission

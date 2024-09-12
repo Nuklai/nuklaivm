@@ -33,6 +33,9 @@ type MintAssetNFT struct {
 
 	// URI of the NFT
 	URI []byte `json:"uri"`
+
+	// Metadata of the NFT
+	Metadata []byte `json:"metadata"`
 }
 
 func (*MintAssetNFT) GetTypeID() uint8 {
@@ -67,10 +70,13 @@ func (m *MintAssetNFT) Execute(
 	if len(m.URI) < 3 || len(m.URI) > MaxMetadataSize {
 		return nil, ErrOutputURIInvalid
 	}
+	if len(m.Metadata) < 3 || len(m.Metadata) > MaxMetadataSize {
+		return nil, ErrOutputMetadataInvalid
+	}
 
 	// Check if the nftID already exists
 	nftID := nchain.GenerateID(m.Asset, m.UniqueID)
-	exists, _, _, _, _, _ := storage.GetAssetNFT(ctx, mu, nftID)
+	exists, _, _, _, _, _, _ := storage.GetAssetNFT(ctx, mu, nftID)
 	if exists {
 		return nil, ErrOutputNFTAlreadyExists
 	}
@@ -104,7 +110,7 @@ func (m *MintAssetNFT) Execute(
 	}
 	totalSupply = newSupply
 
-	if err := storage.SetAssetNFT(ctx, mu, m.Asset, m.UniqueID, nftID, m.URI, m.To); err != nil {
+	if err := storage.SetAssetNFT(ctx, mu, m.Asset, m.UniqueID, nftID, m.URI, m.Metadata, m.To); err != nil {
 		return nil, err
 	}
 
@@ -130,7 +136,7 @@ func (*MintAssetNFT) ComputeUnits(chain.Rules) uint64 {
 }
 
 func (m *MintAssetNFT) Size() int {
-	return codec.AddressLen + ids.IDLen + consts.Uint64Len + codec.BytesLen(m.URI)
+	return codec.AddressLen + ids.IDLen + consts.Uint64Len + codec.BytesLen(m.URI) + codec.BytesLen(m.Metadata)
 }
 
 func (m *MintAssetNFT) Marshal(p *codec.Packer) {
@@ -138,6 +144,7 @@ func (m *MintAssetNFT) Marshal(p *codec.Packer) {
 	p.PackID(m.Asset)
 	p.PackUint64(m.UniqueID)
 	p.PackBytes(m.URI)
+	p.PackBytes(m.Metadata)
 }
 
 func UnmarshalMintAssetNFT(p *codec.Packer) (chain.Action, error) {
@@ -145,7 +152,8 @@ func UnmarshalMintAssetNFT(p *codec.Packer) (chain.Action, error) {
 	p.UnpackAddress(&mint.To)
 	p.UnpackID(true, &mint.Asset) // empty ID is the native asset
 	mint.UniqueID = p.UnpackUint64(false)
-	p.UnpackBytes(MaxTextSize, true, &mint.URI)
+	p.UnpackBytes(MaxMetadataSize, true, &mint.URI)
+	p.UnpackBytes(MaxMetadataSize, true, &mint.Metadata)
 	return &mint, p.Err()
 }
 

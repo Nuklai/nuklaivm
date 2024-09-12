@@ -11,3 +11,8 @@ var (
 	once        sync.Once
 	marketplace Hub
 )
+
+type DataContribution struct {
+	DataLocation   []byte `json:"dataLocation"`
+	DataIdentifier []byte `json:"dataIdentifier"`
+}

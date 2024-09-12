@@ -5,4 +5,9 @@ package marketplace
 
 import "errors"
 
-var ErrRowAlreadyAdded = errors.New("row already added")
+var (
+	ErrDataAlreadyAdded                = errors.New("data already added")
+	ErrAlreadyContributedToThisDataset = errors.New("already contributed to this dataset")
+	ErrContributionNotFound            = errors.New("contribution not found")
+	ErrDatasetNotFound                 = errors.New("dataset not found")
+)

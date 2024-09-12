@@ -15,6 +15,8 @@ import (
 	"github.com/ava-labs/hypersdk/state"
 )
 
+const MaxNFTsPerPage = 10 // Define a maximum number of NFTs per page.
+
 // [assetID]
 func AssetKey(asset ids.ID) (k []byte) {
 	k = make([]byte, 1+ids.IDLen+consts.Uint16Len)           // Length of prefix + assetID + AssetChunks
@@ -181,7 +183,7 @@ func GetAssetNFTFromState(
 	ctx context.Context,
 	f ReadState,
 	nftID ids.ID,
-) (bool, ids.ID, uint64, []byte, codec.Address, error) {
+) (bool, ids.ID, uint64, []byte, []byte, codec.Address, error) {
 	values, errs := f(ctx, [][]byte{AssetNFTKey(nftID)})
 	return innerGetAssetNFT(values[0], errs[0])
 }
@@ -190,42 +192,47 @@ func GetAssetNFT(
 	ctx context.Context,
 	im state.Immutable,
 	nftID ids.ID,
-) (bool, ids.ID, uint64, []byte, codec.Address, error) {
+) (bool, ids.ID, uint64, []byte, []byte, codec.Address, error) {
 	k := AssetNFTKey(nftID)
 	return innerGetAssetNFT(im.GetValue(ctx, k))
 }
 
-func innerGetAssetNFT(v []byte, err error) (bool, ids.ID, uint64, []byte, codec.Address, error) {
+func innerGetAssetNFT(v []byte, err error) (bool, ids.ID, uint64, []byte, []byte, codec.Address, error) {
 	if errors.Is(err, database.ErrNotFound) {
-		return false, ids.Empty, 0, nil, codec.Address{}, nil
+		return false, ids.Empty, 0, nil, nil, codec.Address{}, nil
 	}
 	if err != nil {
-		return false, ids.Empty, 0, nil, codec.Address{}, err
+		return false, ids.Empty, 0, nil, nil, codec.Address{}, err
 	}
 
 	collectionID, err := ids.ToID(v[:ids.IDLen])
 	if err != nil {
-		return false, ids.Empty, 0, nil, codec.Address{}, err
+		return false, ids.Empty, 0, nil, nil, codec.Address{}, err
 	}
 	uniqueID := binary.BigEndian.Uint64(v[ids.IDLen:])
 	uriLen := binary.BigEndian.Uint16(v[ids.IDLen+consts.Uint64Len:])
 	uri := v[ids.IDLen+consts.Uint64Len+consts.Uint16Len : ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen]
+	metadataLen := binary.BigEndian.Uint16(v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen:])
+	metadata := v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen+consts.Uint16Len : ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen+consts.Uint16Len+metadataLen]
 	var to codec.Address
-	copy(to[:], v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen:])
+	copy(to[:], v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen+consts.Uint16Len+metadataLen:])
 
-	return true, collectionID, uniqueID, uri, to, nil
+	return true, collectionID, uniqueID, uri, metadata, to, nil
 }
 
-func SetAssetNFT(ctx context.Context, mu state.Mutable, collectionID ids.ID, uniqueID uint64, nftID ids.ID, uri []byte, to codec.Address) error {
+func SetAssetNFT(ctx context.Context, mu state.Mutable, collectionID ids.ID, uniqueID uint64, nftID ids.ID, uri []byte, metadata []byte, to codec.Address) error {
 	k := AssetNFTKey(nftID)
 	uriLen := len(uri)
+	metadataLen := len(metadata)
 
-	v := make([]byte, ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen+codec.AddressLen)
+	v := make([]byte, ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen+consts.Uint16Len+metadataLen+codec.AddressLen)
 	copy(v, collectionID[:])
 	binary.BigEndian.PutUint64(v[ids.IDLen:], uniqueID)
 	binary.BigEndian.PutUint16(v[ids.IDLen+consts.Uint64Len:], uint16(uriLen))
 	copy(v[ids.IDLen+consts.Uint64Len+consts.Uint16Len:], uri)
-	copy(v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen:], to[:])
+	binary.BigEndian.PutUint16(v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen:], uint16(metadataLen))
+	copy(v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen+consts.Uint16Len:], metadata)
+	copy(v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen+consts.Uint16Len+metadataLen:], to[:])
 
 	return mu.Insert(ctx, k, v)
 }
@@ -346,13 +353,12 @@ func AddAssetNFT(ctx context.Context, mu state.Mutable, collectionID ids.ID, nft
 	}
 
 	// Determine if the current page has space.
-	const maxNFTsPerPage = 10 // Define a maximum number of NFTs per page.
 	var nftList []ids.ID
 	if len(currentPage) > 0 {
 		nftList = decodeNFTList(currentPage) // Decode the list of NFTs from the current page.
 	}
 
-	if len(nftList) >= maxNFTsPerPage {
+	if len(nftList) >= MaxNFTsPerPage {
 		// If the current page is full, increment the page count and create a new page.
 		currentPageCount++
 		pageKey = AssetCollectionPageKey(collectionID, currentPageCount)

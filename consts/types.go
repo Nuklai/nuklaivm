@@ -27,6 +27,7 @@ const (
 	CreateDatasetID             uint8 = 15
 	UpdateDatasetID             uint8 = 16
 	InitiateContributeDatasetID uint8 = 17
+	CompleteContributeDatasetID uint8 = 18
 
 	// Asset TypeIDs
 	AssetFungibleTokenID    uint8 = 0

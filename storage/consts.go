@@ -68,7 +68,7 @@ const (
 const (
 	BalanceChunks                  uint16 = 1
 	AssetChunks                    uint16 = 16
-	AssetNFTChunks                 uint16 = 3
+	AssetNFTChunks                 uint16 = 10
 	AssetCollectionPageChunks      uint16 = 11
 	AssetCollectionPageCountChunks uint16 = 1
 	AssetDatasetChunks             uint16 = 3

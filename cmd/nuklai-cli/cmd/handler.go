@@ -134,36 +134,37 @@ func (*Handler) GetAssetNFTInfo(
 	addr codec.Address,
 	nftID ids.ID,
 	checkBalance bool,
-) (bool, string, uint64, string, string, error) {
-	exists, collectionID, uniqueID, uri, ownerAddress, err := cli.AssetNFT(ctx, nftID.String(), false)
+) (bool, string, uint64, string, string, string, error) {
+	exists, collectionID, uniqueID, uri, metadata, ownerAddress, err := cli.AssetNFT(ctx, nftID.String(), false)
 	if err != nil {
-		return false, "", 0, "", "", err
+		return false, "", 0, "", "", "", err
 	}
 	if !exists {
 		hutils.Outf("{{red}}%s does not exist{{/}}\n", nftID)
 		hutils.Outf("{{red}}exiting...{{/}}\n")
-		return false, "", 0, "", "", nil
+		return false, "", 0, "", "", "", nil
 	}
 	if nftID == ids.Empty {
 		hutils.Outf("{{red}}%s is a native asset. Please pass in NFT ID{{/}}\n", nftID)
 		hutils.Outf("{{red}}exiting...{{/}}\n")
-		return false, "", 0, "", "", nil
+		return false, "", 0, "", "", "", nil
 	}
 
 	if !checkBalance {
-		return false, collectionID, uniqueID, uri, ownerAddress, nil
+		return false, collectionID, uniqueID, uri, metadata, ownerAddress, nil
 	}
 	saddr, err := codec.AddressBech32(nconsts.HRP, addr)
 	if err != nil {
-		return false, "", 0, "", "", err
+		return false, "", 0, "", "", "", err
 	}
 	balance, err := cli.Balance(ctx, saddr, nftID.String())
 	if err != nil {
-		return false, "", 0, "", "", err
+		return false, "", 0, "", "", "", err
 	}
 	hutils.Outf("{{blue}}collectionID:{{/}} %s\n", collectionID)
 	hutils.Outf("{{blue}}uniqueID:{{/}} %d\n", uniqueID)
 	hutils.Outf("{{blue}}uri:{{/}} %s\n", uri)
+	hutils.Outf("{{blue}}metadata:{{/}} %s\n", metadata)
 	hutils.Outf("{{blue}}ownerAddress:{{/}} %s\n", ownerAddress)
 	if address := codec.MustAddressBech32(nconsts.HRP, addr); ownerAddress != address || balance == 0 {
 		hutils.Outf("{{red}}You do not own this NFT{{/}}\n")
@@ -171,7 +172,7 @@ func (*Handler) GetAssetNFTInfo(
 	} else {
 		hutils.Outf("{{blue}}You own this NFT{{/}}\n")
 	}
-	return true, collectionID, uniqueID, uri, ownerAddress, nil
+	return true, collectionID, uniqueID, uri, metadata, ownerAddress, nil
 }
 
 func (h *Handler) DefaultActor() (

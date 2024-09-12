@@ -20,6 +20,7 @@ const (
 	CreateDatasetComputeUnits             = 100
 	UpdateDatasetComputeUnits             = 5
 	InitiateContributeDatasetComputeUnits = 5
+	CompleteContributeDatasetComputeUnits = 5
 
 	MaxTextSize            = 8
 	MaxMemoSize            = 256

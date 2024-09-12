@@ -402,7 +402,7 @@ var burnAssetNFTCmd = &cobra.Command{
 			return err
 		}
 
-		if _, _, _, _, _, err = handler.GetAssetNFTInfo(context.TODO(), tcli, priv.Address, nftID, true); err != nil {
+		if _, _, _, _, _, _, err = handler.GetAssetNFTInfo(context.TODO(), tcli, priv.Address, nftID, true); err != nil {
 			return err
 		}
 

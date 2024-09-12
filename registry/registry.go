@@ -39,6 +39,8 @@ func init() {
 
 		nconsts.ActionRegistry.Register((&actions.CreateDataset{}).GetTypeID(), actions.UnmarshalCreateDataset, false),
 		nconsts.ActionRegistry.Register((&actions.UpdateDataset{}).GetTypeID(), actions.UnmarshalUpdateDataset, false),
+		nconsts.ActionRegistry.Register((&actions.InitiateContributeDataset{}).GetTypeID(), actions.UnmarshalInitiateContributeDataset, false),
+		nconsts.ActionRegistry.Register((&actions.CompleteContributeDataset{}).GetTypeID(), actions.UnmarshalCompleteContributeDataset, false),
 
 		// When registering new auth, ALWAYS make sure to append at the end.
 		nconsts.AuthRegistry.Register((&auth.ED25519{}).GetTypeID(), auth.UnmarshalED25519, false),

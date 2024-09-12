@@ -61,17 +61,19 @@ func (*CreateAsset) GetTypeID() uint8 {
 func (*CreateAsset) StateKeys(actor codec.Address, actionID ids.ID) state.Keys {
 	nftID := nchain.GenerateID(actionID, 0)
 	return state.Keys{
-		string(storage.AssetKey(actionID)):                    state.Allocate | state.Write,
-		string(storage.AssetNFTKey(nftID)):                    state.Allocate | state.Write,
-		string(storage.AssetCollectionPageKey(actionID, 0)):   state.Allocate | state.Write,
-		string(storage.AssetCollectionPageCountKey(actionID)): state.Allocate | state.Write,
-		string(storage.BalanceKey(actor, actionID)):           state.Allocate | state.Write,
-		string(storage.BalanceKey(actor, nftID)):              state.Allocate | state.Write,
+		string(storage.AssetKey(actionID)): state.Allocate | state.Write,
+		string(storage.AssetNFTKey(nftID)): state.Allocate | state.Write,
+		/* string(storage.AssetCollectionPageKey(actionID, 0)):   state.Allocate | state.Write,
+		string(storage.AssetCollectionPageCountKey(actionID)): state.Allocate | state.Write, */
+		string(storage.BalanceKey(actor, actionID)): state.Allocate | state.Write,
+		string(storage.BalanceKey(actor, nftID)):    state.Allocate | state.Write,
 	}
 }
 
 func (*CreateAsset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.AssetCollectionPageChunks, storage.AssetCollectionPageCountChunks, storage.BalanceChunks}
+	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks}
+
+	// return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.AssetCollectionPageChunks, storage.AssetCollectionPageCountChunks, storage.BalanceChunks}
 }
 
 func (c *CreateAsset) Execute(
@@ -124,7 +126,7 @@ func (c *CreateAsset) Execute(
 	if c.AssetType == nconsts.AssetDatasetTokenID {
 		// Mint the parent NFT for the dataset(fractionalized asset)
 		nftID := nchain.GenerateID(actionID, 0)
-		if err := storage.SetAssetNFT(ctx, mu, actionID, 0, nftID, c.URI, actor); err != nil {
+		if err := storage.SetAssetNFT(ctx, mu, actionID, 0, nftID, c.URI, c.Metadata, actor); err != nil {
 			return nil, err
 		}
 		totalSupply += 1
@@ -137,10 +139,10 @@ func (c *CreateAsset) Execute(
 		if err := storage.AddBalance(ctx, mu, actor, nftID, 1, true); err != nil {
 			return nil, err
 		}
-		// Add NFT to Collection
-		if err := storage.AddAssetNFT(ctx, mu, actionID, nftID); err != nil {
-			return nil, err
-		}
+		/* 		// Add NFT to Collection
+		   		if err := storage.AddAssetNFT(ctx, mu, actionID, nftID); err != nil {
+		   			return nil, err
+		   		} */
 	}
 
 	if err := storage.SetAsset(ctx, mu, actionID, c.AssetType, c.Name, c.Symbol, c.Decimals, c.Metadata, c.URI, totalSupply, c.MaxSupply, actor, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {

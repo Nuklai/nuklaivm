@@ -65,6 +65,7 @@ var (
 	ErrOutputValidatorNotYetRegistered   = errors.New("validator not yet registered for staking")
 
 	// datasets
+	ErrNotDatasetOwner                 = errors.New("not dataset owner")
 	ErrOutputDescriptionInvalid        = errors.New("description is empty or too large")
 	ErrOutputCategoriesInvalid         = errors.New("categories are empty or too large")
 	ErrOutputLicenseNameInvalid        = errors.New("license name is empty or too large")
