@@ -41,7 +41,7 @@ func NewMarketplace(c Controller, vm NuklaiVM) *Marketplace {
 }
 
 // InitiateContributeDataset initiates the contribution of a dataset
-func (m *Marketplace) InitiateContributeDataset(ctx context.Context, datasetID ids.ID, dataLocation, dataIdentifier []byte, contributor codec.Address) error {
+func (m *Marketplace) InitiateContributeDataset(_ context.Context, datasetID ids.ID, dataLocation, dataIdentifier []byte, contributor codec.Address) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -69,7 +69,7 @@ func (m *Marketplace) InitiateContributeDataset(ctx context.Context, datasetID i
 }
 
 // CompleteContributeDataset completes the contribution of a dataset
-func (m *Marketplace) CompleteContributeDataset(ctx context.Context, datasetID ids.ID, contributor codec.Address) (DataContribution, error) {
+func (m *Marketplace) CompleteContributeDataset(_ context.Context, datasetID ids.ID, contributor codec.Address) (DataContribution, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 

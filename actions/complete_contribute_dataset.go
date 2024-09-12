@@ -125,7 +125,7 @@ func (*CompleteContributeDataset) ComputeUnits(chain.Rules) uint64 {
 	return CompleteContributeDatasetComputeUnits
 }
 
-func (d *CompleteContributeDataset) Size() int {
+func (*CompleteContributeDataset) Size() int {
 	return ids.IDLen + codec.AddressLen
 }
 
