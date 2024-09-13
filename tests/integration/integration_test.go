@@ -2543,6 +2543,24 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 
 		dataset1ID = chain.CreateActionID(tx.ID(), 0)
 
+		// Check asset info
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), dataset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(assetType, nconsts.AssetDatasetTokenDesc)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(symbol), asset1)
+		require.Equal(decimals, uint8(0))
+		require.Equal([]byte(metadata), []byte("d01"))
+		require.Equal([]byte(uri), []byte("d01"))
+		require.Equal(totalSupply, uint64(1))
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+
 		// Save balance before contribution
 		balanceBefore, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
 		require.NoError(err)
@@ -2584,6 +2602,12 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		balanceBefore, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
 		require.NoError(err)
 
+		// Check asset info before an NFT is minted for data contribution
+		exists, _, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := instances[0].ncli.Asset(context.TODO(), dataset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(totalSupply, uint64(1))
+
 		parser, err := instances[0].ncli.Parser(context.Background())
 		require.NoError(err)
 		// Complete contribution to dataset
@@ -2593,6 +2617,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			[]chain.Action{&actions.CompleteContributeDataset{
 				Dataset:     dataset1ID,
 				Contributor: rsender,
+				UniqueNFTID: totalSupply,
 			}},
 			factory,
 		)
@@ -2612,6 +2637,33 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		// Check contribution info
 		_, err = instances[0].marketplace.GetDataContributionByOwner(context.TODO(), dataset1ID, rsender)
 		require.Equal(err.Error(), "contribution not found")
+
+		// Check asset info
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender, dataset1ID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(2))
+
+		// Check asset info after an NFT is minted for data contribution
+		exists, _, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err = instances[0].ncli.Asset(context.TODO(), dataset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(totalSupply, uint64(2))
+
+		// Check NFT that was created for data contribution to the dataset
+		nftID := nchain.GenerateID(dataset1ID, totalSupply-1)
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender, nftID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(1))
+
+		// Check NFT info
+		exists, collectionID, uniqueID, uri, metadata, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(collectionID, dataset1ID.String())
+		require.Equal(uniqueID, totalSupply-1)
+		require.Equal([]byte(uri), []byte("d01"))
+		require.Equal([]byte(metadata), []byte("{\"dataLocation\":\"default\",\"dataIdentifier\":\"id1\"}"))
+		require.Equal(owner, sender)
 	})
 })
 
