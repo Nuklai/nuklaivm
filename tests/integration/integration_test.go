@@ -47,6 +47,7 @@ import (
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/controller"
 	"github.com/nuklai/nuklaivm/genesis"
+	"github.com/nuklai/nuklaivm/marketplace"
 	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
 
@@ -127,10 +128,19 @@ func init() {
 	)
 }
 
+type MockController struct {
+	logger logging.Logger
+}
+
+func (mc *MockController) Logger() logging.Logger {
+	return mc.logger
+}
+
 type instance struct {
 	chainID             ids.ID
 	nodeID              ids.NodeID
 	vm                  *vm.VM
+	marketplace         marketplace.Hub
 	toEngine            chan common.Message
 	JSONRPCServer       *httptest.Server
 	NuklaiJSONRPCServer *httptest.Server
@@ -257,10 +267,13 @@ var _ = ginkgo.BeforeSuite(func() {
 		jsonRPCServer := httptest.NewServer(hd[rpc.JSONRPCEndpoint])
 		njsonRPCServer := httptest.NewServer(hd[nrpc.JSONRPCEndpoint])
 		webSocketServer := httptest.NewServer(hd[rpc.WebSocketEndpoint])
+		mockLogger := logging.NewLogger("", logging.NewWrappedCore(logging.Info, logging.Discard, logging.Plain.ConsoleEncoder()))
+		mockController := &MockController{logger: mockLogger}
 		instances[i] = instance{
 			chainID:             snowCtx.ChainID,
 			nodeID:              snowCtx.NodeID,
 			vm:                  v,
+			marketplace:         marketplace.NewMarketplace(mockController, v),
 			toEngine:            toEngine,
 			JSONRPCServer:       jsonRPCServer,
 			NuklaiJSONRPCServer: njsonRPCServer,
@@ -1186,8 +1199,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal([]byte(uri), asset3)
 		require.Equal([]byte(metadata), asset3)
 		require.Equal(owner, sender)
-
-		// TODO: Get storage.GetAssetNFTsByCollection
 	})
 
 	ginkgo.It("update an asset that doesn't exist", func() {
@@ -2499,6 +2510,64 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal([]byte(metadata), asset1)
 		require.True(isCommunityDataset)
 		require.Equal(revenueModelDataOwnerCut, uint8(10))
+	})
+
+	ginkgo.It("initiate data contribution to the dataset", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, tx, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.CreateDataset{
+				AssetID:            ids.Empty,
+				Name:               asset1,
+				Description:        []byte("d00"),
+				Categories:         []byte("c00"),
+				LicenseName:        []byte("l00"),
+				LicenseSymbol:      []byte("ls00"),
+				LicenseURL:         []byte("lu00"),
+				Metadata:           asset1,
+				IsCommunityDataset: true,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		datasetID := chain.CreateActionID(tx.ID(), 0)
+
+		// Save balance before contribution
+		balanceBefore, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
+		require.NoError(err)
+
+		// Initiate contribution to dataset
+		submit, _, _, err = instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.InitiateContributeDataset{
+				Dataset:        datasetID,
+				DataLocation:   []byte("default"),
+				DataIdentifier: []byte("id1"),
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept = expectBlk(instances[0])
+		results = accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		// Check balance after contribution
+		balanceAfter, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
+		require.NoError(err)
+		require.Equal(balanceAfter, balanceBefore-uint64(1))
 	})
 })
 

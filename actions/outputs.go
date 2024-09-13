@@ -74,5 +74,6 @@ var (
 	ErrDatasetNotFound                 = errors.New("dataset not found")
 	ErrOutputMustUpdateAtLeastOneField = errors.New("must update at least one field")
 
-	ErrOutputDataLocationInvalid = errors.New("data location is invalid")
+	ErrOutputDataLocationInvalid     = errors.New("data location is invalid")
+	ErrDatasetNotOpenForContribution = errors.New("dataset not open for contribution")
 )

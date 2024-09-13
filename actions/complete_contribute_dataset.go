@@ -33,14 +33,19 @@ func (*CompleteContributeDataset) GetTypeID() uint8 {
 }
 
 func (d *CompleteContributeDataset) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
+	nftID := nchain.GenerateID(d.Dataset, 0)
 	return state.Keys{
+		string(storage.AssetKey(d.Dataset)):                  state.Read | state.Write,
+		string(storage.AssetNFTKey(nftID)):                   state.Allocate | state.Write,
 		string(storage.DatasetKey(d.Dataset)):                state.Read,
 		string(storage.BalanceKey(d.Contributor, ids.Empty)): state.Read | state.Write,
+		string(storage.BalanceKey(d.Contributor, d.Dataset)): state.Allocate | state.Write,
+		string(storage.BalanceKey(d.Contributor, nftID)):     state.Allocate | state.Write,
 	}
 }
 
 func (*CompleteContributeDataset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.DatasetChunks, storage.BalanceChunks}
+	return []uint16{storage.AssetChunks, storage.DatasetChunks, storage.BalanceChunks}
 }
 
 func (d *CompleteContributeDataset) Execute(
