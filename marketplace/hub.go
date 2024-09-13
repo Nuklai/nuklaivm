@@ -14,6 +14,7 @@ import (
 type Hub interface {
 	InitiateContributeDataset(ctx context.Context, datasetID ids.ID, dataLocation, dataIdentifier []byte, contributor codec.Address) error
 	CompleteContributeDataset(ctx context.Context, datasetID ids.ID, contributor codec.Address) (DataContribution, error)
+	GetDataContributionByOwner(_ context.Context, datasetID ids.ID, owner codec.Address) (DataContribution, error)
 	GetVMMutableState() (state.Mutable, error)
 }
 

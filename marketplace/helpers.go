@@ -5,6 +5,8 @@ package marketplace
 
 import (
 	"sync"
+
+	"github.com/ava-labs/hypersdk/codec"
 )
 
 var (
@@ -13,6 +15,7 @@ var (
 )
 
 type DataContribution struct {
-	DataLocation   []byte `json:"dataLocation"`
-	DataIdentifier []byte `json:"dataIdentifier"`
+	DataLocation   []byte        `json:"dataLocation"`
+	DataIdentifier []byte        `json:"dataIdentifier"`
+	Contributor    codec.Address `json:"contributor"`
 }

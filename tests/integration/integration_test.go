@@ -89,6 +89,8 @@ var (
 	asset4Symbol   []byte
 	asset4Decimals uint8
 
+	dataset1ID ids.ID
+
 	// when used with embedded VMs
 	genesisBytes []byte
 	instances    []instance
@@ -210,7 +212,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	gen.CustomAllocation = []*genesis.CustomAllocation{
 		{
 			Address: sender,
-			Balance: 10_000_000,
+			Balance: 10_000_000_000_000,
 		},
 	}
 	genesisBytes, err = json.Marshal(gen)
@@ -489,7 +491,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		ginkgo.By("ensure balance is updated", func() {
 			balance, err := instances[1].ncli.Balance(context.Background(), sender, nconsts.Symbol)
 			require.NoError(err)
-			require.Equal(balance, uint64(9_899_679))
+			require.Equal(balance, uint64(9_999_999_899_679))
 			balance2, err := instances[1].ncli.Balance(context.Background(), sender2, nconsts.Symbol)
 			require.NoError(err)
 			require.Equal(balance2, uint64(100_000))
@@ -2521,11 +2523,11 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			[]chain.Action{&actions.CreateDataset{
 				AssetID:            ids.Empty,
 				Name:               asset1,
-				Description:        []byte("d00"),
-				Categories:         []byte("c00"),
-				LicenseName:        []byte("l00"),
-				LicenseSymbol:      []byte("ls00"),
-				LicenseURL:         []byte("lu00"),
+				Description:        []byte("d01"),
+				Categories:         []byte("c01"),
+				LicenseName:        []byte("l01"),
+				LicenseSymbol:      []byte("ls01"),
+				LicenseURL:         []byte("lu01"),
 				Metadata:           asset1,
 				IsCommunityDataset: true,
 			}},
@@ -2539,7 +2541,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Len(results, 1)
 		require.True(results[0].Success)
 
-		datasetID := chain.CreateActionID(tx.ID(), 0)
+		dataset1ID = chain.CreateActionID(tx.ID(), 0)
 
 		// Save balance before contribution
 		balanceBefore, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
@@ -2550,7 +2552,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			context.Background(),
 			parser,
 			[]chain.Action{&actions.InitiateContributeDataset{
-				Dataset:        datasetID,
+				Dataset:        dataset1ID,
 				DataLocation:   []byte("default"),
 				DataIdentifier: []byte("id1"),
 			}},
@@ -2567,7 +2569,49 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		// Check balance after contribution
 		balanceAfter, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
 		require.NoError(err)
-		require.Equal(balanceAfter, balanceBefore-uint64(1))
+		require.Less(balanceAfter, balanceBefore-uint64(1_000_000_000)) // 1 NAI is deducted + fees
+
+		// Check contribution info
+		dataContribution, err := instances[0].marketplace.GetDataContributionByOwner(context.TODO(), dataset1ID, rsender)
+		require.NoError(err)
+		require.NotNil(dataContribution)
+		require.Equal([]byte("default"), dataContribution.DataLocation)
+		require.Equal([]byte("id1"), dataContribution.DataIdentifier)
+	})
+
+	ginkgo.It("complete data contribution to the dataset", func() {
+		// Save balance before contribution
+		balanceBefore, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
+		require.NoError(err)
+
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		// Complete contribution to dataset
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.CompleteContributeDataset{
+				Dataset:     dataset1ID,
+				Contributor: rsender,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		// Check balance after getting the collateral refunded after the contribution is complete
+		balanceAfter, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
+		require.NoError(err)
+		require.GreaterOrEqual(balanceAfter, balanceBefore+uint64(1_000_000_000)-uint64(100_000)) // 1 NAI is refunded but fees is taken
+
+		// Check contribution info
+		_, err = instances[0].marketplace.GetDataContributionByOwner(context.TODO(), dataset1ID, rsender)
+		require.Equal(err.Error(), "contribution not found")
 	})
 })
 

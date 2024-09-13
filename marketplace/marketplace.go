@@ -20,7 +20,6 @@ type Marketplace struct {
 	nuklaivm NuklaiVM
 
 	tempDataContributions map[ids.ID][]*DataContribution
-	tempDataContribors    map[ids.ID][]codec.Address
 
 	lock sync.RWMutex
 }
@@ -34,7 +33,6 @@ func NewMarketplace(c Controller, vm NuklaiVM) *Marketplace {
 			c:                     c,
 			nuklaivm:              vm,
 			tempDataContributions: make(map[ids.ID][]*DataContribution),
-			tempDataContribors:    make(map[ids.ID][]codec.Address),
 		}
 	})
 	return marketplace.(*Marketplace)
@@ -51,18 +49,17 @@ func (m *Marketplace) InitiateContributeDataset(_ context.Context, datasetID ids
 
 	// Check if the contributor has already contributed to this dataset
 	// Each contributor can only contribute once to a dataset
-	for _, contrib := range m.tempDataContribors[datasetID] {
-		if contrib == contributor {
+	for _, contrib := range m.tempDataContributions[datasetID] {
+		if contrib.Contributor == contributor {
 			return ErrAlreadyContributedToThisDataset
 		}
 	}
 
-	// Add the contributor to the list of contributors
-	m.tempDataContribors[datasetID] = append(m.tempDataContribors[datasetID], contributor)
 	// Add the data contribution to the list of contributions
 	m.tempDataContributions[datasetID] = append(m.tempDataContributions[datasetID], &DataContribution{
 		DataLocation:   dataLocation,
 		DataIdentifier: dataIdentifier,
+		Contributor:    contributor,
 	})
 
 	return nil
@@ -80,14 +77,11 @@ func (m *Marketplace) CompleteContributeDataset(_ context.Context, datasetID ids
 
 	// Check if the contributor has contributed to this dataset
 	var found bool
-	for i, contrib := range m.tempDataContribors[datasetID] {
-		if contrib == contributor {
+	for i, contrib := range m.tempDataContributions[datasetID] {
+		if contrib.Contributor == contributor {
 			found = true
 			// Get the data contribution
 			data = *m.tempDataContributions[datasetID][i]
-
-			// Remove the contributor from the list of contributors
-			m.tempDataContribors[datasetID] = append(m.tempDataContribors[datasetID][:i], m.tempDataContribors[datasetID][i+1:]...)
 
 			// Remove the data contribution from the list of contributions
 			m.tempDataContributions[datasetID] = append(m.tempDataContributions[datasetID][:i], m.tempDataContributions[datasetID][i+1:]...)
@@ -99,6 +93,31 @@ func (m *Marketplace) CompleteContributeDataset(_ context.Context, datasetID ids
 	}
 
 	return data, nil
+}
+
+// GetDataContributionByOwner retrieves the data contribution for a given dataset ID and owner (contributor).
+func (m *Marketplace) GetDataContributionByOwner(_ context.Context, datasetID ids.ID, owner codec.Address) (DataContribution, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+
+	// Initialize an empty DataContribution to return in case of an error
+	var contribution DataContribution
+
+	// Check if the dataset exists
+	contributions, exists := m.tempDataContributions[datasetID]
+	if !exists {
+		return contribution, ErrDatasetNotFound
+	}
+
+	// Search for the contribution by the specified owner
+	for _, contrib := range contributions {
+		if contrib.Contributor == owner {
+			return *contrib, nil
+		}
+	}
+
+	// Return an error if no contribution is found for the specified owner
+	return contribution, ErrContributionNotFound
 }
 
 func (m *Marketplace) GetVMMutableState() (state.Mutable, error) {
