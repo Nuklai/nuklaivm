@@ -297,7 +297,7 @@ func (cli *JSONRPCClient) DataContributionPending(ctx context.Context, dataset s
 		return []DataContribution{}, err
 	}
 
-	return resp.contributions, nil
+	return resp.Contributions, nil
 }
 
 func (cli *JSONRPCClient) WaitForBalance(

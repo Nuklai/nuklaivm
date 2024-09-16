@@ -394,7 +394,7 @@ type DataContribution struct {
 }
 
 type DataContributionPendingReply struct {
-	contributions []DataContribution
+	Contributions []DataContribution `json:"contributions"`
 }
 
 func (j *JSONRPCServer) DataContributionPending(req *http.Request, args *DatasetArgs, reply *DataContributionPendingReply) (err error) {
@@ -419,8 +419,7 @@ func (j *JSONRPCServer) DataContributionPending(req *http.Request, args *Dataset
 			DataIdentifier: string(contrib.DataIdentifier),                            // Convert []byte to string
 			Contributor:    codec.MustAddressBech32(nconsts.HRP, contrib.Contributor), // Convert codec.Address to string
 		}
-		reply.contributions = append(reply.contributions, convertedContribution)
+		reply.Contributions = append(reply.Contributions, convertedContribution)
 	}
-
 	return nil
 }

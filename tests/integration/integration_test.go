@@ -2589,13 +2589,21 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.NoError(err)
 		require.Less(balanceAfter, balanceBefore-uint64(1_000_000_000)) // 1 NAI is deducted + fees
 
-		// Check contribution info
+		// Check contribution info by interacting with marketplace directly
 		dataContributions, err := instances[0].marketplace.GetDataContribution(dataset1ID, rsender)
 		require.NoError(err)
 		require.NotEmpty(dataContributions)
 		require.Equal(len(dataContributions), 1)
 		require.Equal([]byte("default"), dataContributions[0].DataLocation)
 		require.Equal([]byte("id1"), dataContributions[0].DataIdentifier)
+
+		// Check contribution info by interacting with RPC node
+		dataContributionsNew, err := instances[0].ncli.DataContributionPending(context.TODO(), dataset1ID.String())
+		require.NoError(err)
+		require.NotEmpty(dataContributionsNew)
+		require.Equal(len(dataContributionsNew), 1)
+		require.Equal("default", dataContributionsNew[0].DataLocation)
+		require.Equal("id1", dataContributionsNew[0].DataIdentifier)
 	})
 
 	ginkgo.It("complete data contribution to the dataset", func() {
