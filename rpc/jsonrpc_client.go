@@ -288,7 +288,9 @@ func (cli *JSONRPCClient) DataContributionPending(ctx context.Context, dataset s
 	err := cli.requester.SendRequest(
 		ctx,
 		"dataContributionPending",
-		nil,
+		&DatasetArgs{
+			Dataset: dataset,
+		},
 		resp,
 	)
 	if err != nil {
