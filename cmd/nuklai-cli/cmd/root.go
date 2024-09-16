@@ -191,6 +191,9 @@ func init() {
 		createDatasetFromExistingAssetCmd,
 		updateDatasetCmd,
 		getDatasetCmd,
+		initiateContributeDatasetCmd,
+		getDataContributionPendingCmd,
+		completeContributeDatasetCmd,
 	)
 
 	// spam

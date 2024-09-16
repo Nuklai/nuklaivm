@@ -4,7 +4,6 @@
 package marketplace
 
 import (
-	"context"
 	"sync"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -39,7 +38,7 @@ func NewMarketplace(c Controller, vm NuklaiVM) *Marketplace {
 }
 
 // InitiateContributeDataset initiates the contribution of a dataset
-func (m *Marketplace) InitiateContributeDataset(_ context.Context, datasetID ids.ID, dataLocation, dataIdentifier []byte, contributor codec.Address) error {
+func (m *Marketplace) InitiateContributeDataset(datasetID ids.ID, dataLocation, dataIdentifier []byte, contributor codec.Address) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -66,7 +65,7 @@ func (m *Marketplace) InitiateContributeDataset(_ context.Context, datasetID ids
 }
 
 // CompleteContributeDataset completes the contribution of a dataset
-func (m *Marketplace) CompleteContributeDataset(_ context.Context, datasetID ids.ID, contributor codec.Address) (DataContribution, error) {
+func (m *Marketplace) CompleteContributeDataset(datasetID ids.ID, contributor codec.Address) (DataContribution, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -95,29 +94,38 @@ func (m *Marketplace) CompleteContributeDataset(_ context.Context, datasetID ids
 	return data, nil
 }
 
-// GetDataContributionByOwner retrieves the data contribution for a given dataset ID and owner (contributor).
-func (m *Marketplace) GetDataContributionByOwner(_ context.Context, datasetID ids.ID, owner codec.Address) (DataContribution, error) {
+// GetDataContribution retrieves the data contribution(s) for a given dataset ID.
+// If `owner` is codec.EmptyAddress, it returns all contributions for the dataset.
+// If a specific `owner` is provided, it returns only the contribution by that owner.
+func (m *Marketplace) GetDataContribution(datasetID ids.ID, owner codec.Address) ([]DataContribution, error) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
-
-	// Initialize an empty DataContribution to return in case of an error
-	var contribution DataContribution
 
 	// Check if the dataset exists
 	contributions, exists := m.tempDataContributions[datasetID]
 	if !exists {
-		return contribution, ErrDatasetNotFound
+		return nil, ErrDatasetNotFound
 	}
 
-	// Search for the contribution by the specified owner
+	// If owner is empty, return all contributions
+	if owner == codec.EmptyAddress {
+		// Convert []*DataContribution to []DataContribution
+		contributionsValues := make([]DataContribution, len(contributions))
+		for i, contrib := range contributions {
+			contributionsValues[i] = *contrib
+		}
+		return contributionsValues, nil
+	}
+
+	// If a specific owner is provided, search for their contribution
 	for _, contrib := range contributions {
 		if contrib.Contributor == owner {
-			return *contrib, nil
+			return []DataContribution{*contrib}, nil
 		}
 	}
 
 	// Return an error if no contribution is found for the specified owner
-	return contribution, ErrContributionNotFound
+	return nil, ErrContributionNotFound
 }
 
 func (m *Marketplace) GetVMMutableState() (state.Mutable, error) {

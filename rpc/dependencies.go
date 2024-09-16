@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/hypersdk/fees"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
+	"github.com/nuklai/nuklaivm/marketplace"
 )
 
 type Controller interface {
@@ -66,4 +67,5 @@ type Controller interface {
 		codec.Address, // Owner
 		error,
 	)
+	GetDataContributionPending(ctx context.Context, datasetID ids.ID, contributor codec.Address) ([]marketplace.DataContribution, error)
 }

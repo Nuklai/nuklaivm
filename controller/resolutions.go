@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/hypersdk/fees"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
+	"github.com/nuklai/nuklaivm/marketplace"
 	"github.com/nuklai/nuklaivm/storage"
 )
 
@@ -105,4 +106,8 @@ func (c *Controller) GetDatasetFromState(
 	datasetID ids.ID,
 ) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
 	return storage.GetDatasetFromState(ctx, c.inner.ReadState, datasetID)
+}
+
+func (c *Controller) GetDataContributionPending(_ context.Context, datasetID ids.ID, contributor codec.Address) ([]marketplace.DataContribution, error) {
+	return c.marketplace.GetDataContribution(datasetID, contributor)
 }

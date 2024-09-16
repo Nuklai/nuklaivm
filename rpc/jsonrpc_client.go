@@ -283,6 +283,21 @@ func (cli *JSONRPCClient) Dataset(
 	return true, resp.Name, resp.Description, resp.Categories, resp.LicenseName, resp.LicenseSymbol, resp.LicenseURL, resp.Metadata, resp.IsCommunityDataset, resp.OnSale, resp.BaseAsset, resp.BasePrice, resp.RevenueModelDataShare, resp.RevenueModelMetadataShare, resp.RevenueModelDataOwnerCut, resp.RevenueModelMetadataOwnerCut, resp.Owner, nil
 }
 
+func (cli *JSONRPCClient) DataContributionPending(ctx context.Context, dataset string) ([]DataContribution, error) {
+	resp := new(DataContributionPendingReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"dataContributionPending",
+		nil,
+		resp,
+	)
+	if err != nil {
+		return []DataContribution{}, err
+	}
+
+	return resp.contributions, nil
+}
+
 func (cli *JSONRPCClient) WaitForBalance(
 	ctx context.Context,
 	addr string,

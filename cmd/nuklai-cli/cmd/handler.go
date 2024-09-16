@@ -412,6 +412,27 @@ func (*Handler) GetDatasetInfo(
 	return name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err
 }
 
+func (*Handler) GetDataContributionPendingInfo(
+	ctx context.Context,
+	cli *nrpc.JSONRPCClient,
+	datasetID ids.ID,
+) ([]nrpc.DataContribution, error) {
+	contributions, err := cli.DataContributionPending(ctx, datasetID.String())
+	if err != nil {
+		return nil, err
+	}
+	for index, contribution := range contributions {
+		hutils.Outf(
+			"{{blue}}Contribution %d:{{/}} Contributor=%s DataLocation=%s DataIdentifier=%s\n",
+			index,
+			contribution.Contributor,
+			contribution.DataLocation,
+			contribution.DataIdentifier,
+		)
+	}
+	return contributions, nil
+}
+
 type Controller struct {
 	databasePath string
 }

@@ -104,7 +104,7 @@ func (d *CompleteContributeDataset) Execute(
 
 	// Get the marketplace instance
 	marketplaceInstance := marketplace.GetMarketplace()
-	dataContribution, err := marketplaceInstance.CompleteContributeDataset(ctx, d.Dataset, d.Contributor)
+	dataContribution, err := marketplaceInstance.CompleteContributeDataset(d.Dataset, d.Contributor)
 	if err != nil {
 		return nil, err
 	}

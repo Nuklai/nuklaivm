@@ -79,7 +79,7 @@ func (d *InitiateContributeDataset) Execute(
 
 	// Get the marketplace instance
 	marketplaceInstance := marketplace.GetMarketplace()
-	if err := marketplaceInstance.InitiateContributeDataset(ctx, d.Dataset, dataLocation, d.DataIdentifier, actor); err != nil {
+	if err := marketplaceInstance.InitiateContributeDataset(d.Dataset, dataLocation, d.DataIdentifier, actor); err != nil {
 		return nil, err
 	}
 

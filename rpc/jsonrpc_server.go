@@ -386,3 +386,41 @@ func (j *JSONRPCServer) Dataset(req *http.Request, args *DatasetArgs, reply *Dat
 	reply.Owner = codec.MustAddressBech32(nconsts.HRP, owner)
 	return err
 }
+
+type DataContribution struct {
+	DataLocation   string `json:"dataLocation"`
+	DataIdentifier string `json:"dataIdentifier"`
+	Contributor    string `json:"contributor"`
+}
+
+type DataContributionPendingReply struct {
+	contributions []DataContribution
+}
+
+func (j *JSONRPCServer) DataContributionPending(req *http.Request, args *DatasetArgs, reply *DataContributionPendingReply) (err error) {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.DataContributionPending")
+	defer span.End()
+
+	datasetID, err := getAssetIDBySymbol(args.Dataset)
+	if err != nil {
+		return err
+	}
+
+	// Get all contributions for the dataset
+	contributions, err := j.c.GetDataContributionPending(ctx, datasetID, codec.EmptyAddress)
+	if err != nil {
+		return err
+	}
+
+	// Iterate over contributions and populate reply
+	for _, contrib := range contributions {
+		convertedContribution := DataContribution{
+			DataLocation:   string(contrib.DataLocation),                              // Convert []byte to string
+			DataIdentifier: string(contrib.DataIdentifier),                            // Convert []byte to string
+			Contributor:    codec.MustAddressBech32(nconsts.HRP, contrib.Contributor), // Convert codec.Address to string
+		}
+		reply.contributions = append(reply.contributions, convertedContribution)
+	}
+
+	return nil
+}

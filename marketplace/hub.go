@@ -4,17 +4,15 @@
 package marketplace
 
 import (
-	"context"
-
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/state"
 )
 
 type Hub interface {
-	InitiateContributeDataset(ctx context.Context, datasetID ids.ID, dataLocation, dataIdentifier []byte, contributor codec.Address) error
-	CompleteContributeDataset(ctx context.Context, datasetID ids.ID, contributor codec.Address) (DataContribution, error)
-	GetDataContributionByOwner(_ context.Context, datasetID ids.ID, owner codec.Address) (DataContribution, error)
+	InitiateContributeDataset(datasetID ids.ID, dataLocation, dataIdentifier []byte, contributor codec.Address) error
+	CompleteContributeDataset(datasetID ids.ID, contributor codec.Address) (DataContribution, error)
+	GetDataContribution(datasetID ids.ID, owner codec.Address) ([]DataContribution, error)
 	GetVMMutableState() (state.Mutable, error)
 }
 

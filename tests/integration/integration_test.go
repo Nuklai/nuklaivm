@@ -2590,11 +2590,12 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Less(balanceAfter, balanceBefore-uint64(1_000_000_000)) // 1 NAI is deducted + fees
 
 		// Check contribution info
-		dataContribution, err := instances[0].marketplace.GetDataContributionByOwner(context.TODO(), dataset1ID, rsender)
+		dataContributions, err := instances[0].marketplace.GetDataContribution(dataset1ID, rsender)
 		require.NoError(err)
-		require.NotNil(dataContribution)
-		require.Equal([]byte("default"), dataContribution.DataLocation)
-		require.Equal([]byte("id1"), dataContribution.DataIdentifier)
+		require.NotEmpty(dataContributions)
+		require.Equal(len(dataContributions), 1)
+		require.Equal([]byte("default"), dataContributions[0].DataLocation)
+		require.Equal([]byte("id1"), dataContributions[0].DataIdentifier)
 	})
 
 	ginkgo.It("complete data contribution to the dataset", func() {
@@ -2635,7 +2636,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.GreaterOrEqual(balanceAfter, balanceBefore+uint64(1_000_000_000)-uint64(100_000)) // 1 NAI is refunded but fees is taken
 
 		// Check contribution info
-		_, err = instances[0].marketplace.GetDataContributionByOwner(context.TODO(), dataset1ID, rsender)
+		_, err = instances[0].marketplace.GetDataContribution(dataset1ID, rsender)
 		require.Equal(err.Error(), "contribution not found")
 
 		// Check asset info
