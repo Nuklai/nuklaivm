@@ -97,6 +97,9 @@ func (r *RegisterValidatorStake) Execute(
 	if err != nil {
 		return nil, ErrOutputInvalidNodeID
 	}
+	if _, err := codec.AddressBech32(nconsts.HRP, stakeInfo.RewardAddress); err != nil {
+		return nil, err
+	}
 
 	// Check if the validator was already registered
 	exists, _, _, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)

@@ -129,13 +129,13 @@ func (g *Genesis) Load(ctx context.Context, tracer trace.Tracer, mu state.Mutabl
 		return err
 	}
 
-	supply := uint64(0)
+	totalSupply := uint64(0)
 	for _, alloc := range g.CustomAllocation {
 		pk, err := codec.ParseAddressBech32(nconsts.HRP, alloc.Address)
 		if err != nil {
 			return err
 		}
-		supply, err = smath.Add64(supply, alloc.Balance)
+		totalSupply, err = smath.Add64(totalSupply, alloc.Balance)
 		if err != nil {
 			return err
 		}
@@ -147,10 +147,18 @@ func (g *Genesis) Load(ctx context.Context, tracer trace.Tracer, mu state.Mutabl
 		ctx,
 		mu,
 		ids.Empty,
+		nconsts.AssetFungibleTokenID,
+		[]byte(nconsts.Name),
 		[]byte(nconsts.Symbol),
 		nconsts.Decimals,
 		[]byte(nconsts.Name),
-		supply,
+		[]byte(nconsts.Name),
+		totalSupply,
+		g.EmissionBalancer.MaxSupply,
+		codec.EmptyAddress,
+		codec.EmptyAddress,
+		codec.EmptyAddress,
+		codec.EmptyAddress,
 		codec.EmptyAddress,
 	)
 }

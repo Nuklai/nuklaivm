@@ -43,9 +43,11 @@ import (
 
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/auth"
+	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/controller"
 	"github.com/nuklai/nuklaivm/genesis"
+	"github.com/nuklai/nuklaivm/marketplace"
 	nrpc "github.com/nuklai/nuklaivm/rpc"
 )
 
@@ -86,7 +88,8 @@ var (
 	asset4         []byte
 	asset4Symbol   []byte
 	asset4Decimals uint8
-	asset4ID       ids.ID
+
+	dataset1ID ids.ID
 
 	// when used with embedded VMs
 	genesisBytes []byte
@@ -127,10 +130,19 @@ func init() {
 	)
 }
 
+type MockController struct {
+	logger logging.Logger
+}
+
+func (mc *MockController) Logger() logging.Logger {
+	return mc.logger
+}
+
 type instance struct {
 	chainID             ids.ID
 	nodeID              ids.NodeID
 	vm                  *vm.VM
+	marketplace         marketplace.Hub
 	toEngine            chan common.Message
 	JSONRPCServer       *httptest.Server
 	NuklaiJSONRPCServer *httptest.Server
@@ -178,18 +190,18 @@ var _ = ginkgo.BeforeSuite(func() {
 		zap.String("pk", hex.EncodeToString(priv3[:])),
 	)
 
-	asset1 = []byte("1")
-	asset1Symbol = []byte("s1")
+	asset1 = []byte("as1")
+	asset1Symbol = []byte("as1")
 	asset1Decimals = uint8(1)
-	asset2 = []byte("2")
-	asset2Symbol = []byte("s2")
+	asset2 = []byte("as2")
+	asset2Symbol = []byte("ass2")
 	asset2Decimals = uint8(2)
-	asset3 = []byte("3")
-	asset3Symbol = []byte("s3")
+	asset3 = []byte("as3")
+	asset3Symbol = []byte("as3")
 	asset3Decimals = uint8(3)
-	asset4 = []byte("4")
-	asset4Symbol = []byte("s4")
-	asset4Decimals = uint8(4)
+	asset4 = []byte("as4")
+	asset4Symbol = []byte("as4")
+	asset4Decimals = uint8(0)
 
 	// create embedded VMs
 	instances = make([]instance, vms)
@@ -200,7 +212,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	gen.CustomAllocation = []*genesis.CustomAllocation{
 		{
 			Address: sender,
-			Balance: 10_000_000,
+			Balance: 10_000_000_000_000,
 		},
 	}
 	genesisBytes, err = json.Marshal(gen)
@@ -257,10 +269,13 @@ var _ = ginkgo.BeforeSuite(func() {
 		jsonRPCServer := httptest.NewServer(hd[rpc.JSONRPCEndpoint])
 		njsonRPCServer := httptest.NewServer(hd[nrpc.JSONRPCEndpoint])
 		webSocketServer := httptest.NewServer(hd[rpc.WebSocketEndpoint])
+		mockLogger := logging.NewLogger("", logging.NewWrappedCore(logging.Info, logging.Discard, logging.Plain.ConsoleEncoder()))
+		mockController := &MockController{logger: mockLogger}
 		instances[i] = instance{
 			chainID:             snowCtx.ChainID,
 			nodeID:              snowCtx.NodeID,
 			vm:                  v,
+			marketplace:         marketplace.NewMarketplace(mockController, v),
 			toEngine:            toEngine,
 			JSONRPCServer:       jsonRPCServer,
 			NuklaiJSONRPCServer: njsonRPCServer,
@@ -287,14 +302,23 @@ var _ = ginkgo.BeforeSuite(func() {
 			require.Equal(balance, alloc.Balance)
 			csupply += alloc.Balance
 		}
-		exists, symbol, decimals, metadata, supply, owner, err := cli.Asset(context.Background(), nconsts.Symbol, false)
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := cli.Asset(context.Background(), nconsts.Symbol, false)
+
 		require.NoError(err)
 		require.True(exists)
+		require.Equal(assetType, nconsts.AssetFungibleTokenDesc)
+		require.Equal(name, nconsts.Name)
 		require.Equal(symbol, nconsts.Symbol)
 		require.Equal(decimals, uint8(nconsts.Decimals))
 		require.Equal(metadata, nconsts.Name)
-		require.Equal(supply, csupply)
-		require.Equal(owner, codec.MustAddressBech32(nconsts.HRP, codec.EmptyAddress))
+		require.Equal(uri, nconsts.Name)
+		require.Equal(totalSupply, csupply)
+		require.Equal(maxSupply, g.EmissionBalancer.MaxSupply)
+		require.Equal(admin, codec.MustAddressBech32(nconsts.HRP, codec.EmptyAddress))
+		require.Equal(mintActor, codec.MustAddressBech32(nconsts.HRP, codec.EmptyAddress))
+		require.Equal(pauseUnpauseActor, codec.MustAddressBech32(nconsts.HRP, codec.EmptyAddress))
+		require.Equal(freezeUnfreezeActor, codec.MustAddressBech32(nconsts.HRP, codec.EmptyAddress))
+		require.Equal(enableDisableKYCAccountActor, codec.MustAddressBech32(nconsts.HRP, codec.EmptyAddress))
 	}
 	blocks = []snowman.Block{}
 
@@ -467,7 +491,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		ginkgo.By("ensure balance is updated", func() {
 			balance, err := instances[1].ncli.Balance(context.Background(), sender, nconsts.Symbol)
 			require.NoError(err)
-			require.Equal(balance, uint64(9_899_679))
+			require.Equal(balance, uint64(9_999_999_899_679))
 			balance2, err := instances[1].ncli.Balance(context.Background(), sender2, nconsts.Symbol)
 			require.NoError(err)
 			require.Equal(balance2, uint64(100_000))
@@ -793,7 +817,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.ErrorContains(err, "size is larger than limit")
 	})
 
-	ginkgo.It("mint an asset that doesn't exist", func() {
+	ginkgo.It("mint a fungible asset that doesn't exist", func() {
 		other, err := ed25519.GeneratePrivateKey()
 		require.NoError(err)
 		assetID := ids.GenerateTestID()
@@ -802,7 +826,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		submit, _, _, err := instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.MintAssetFT{
 				To:    auth.NewED25519Address(other.PublicKey()),
 				Asset: assetID,
 				Value: 10,
@@ -819,7 +843,40 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.False(result.Success)
 		require.Contains(string(result.Error), "asset missing")
 
-		exists, _, _, _, _, _, err := instances[0].ncli.Asset(context.TODO(), assetID.String(), false)
+		exists, _, _, _, _, _, _, _, _, _, _, _, _, _, err := instances[0].ncli.Asset(context.TODO(), assetID.String(), false)
+		require.NoError(err)
+		require.False(exists)
+	})
+
+	ginkgo.It("mint a non-fungible asset that doesn't exist", func() {
+		other, err := ed25519.GeneratePrivateKey()
+		require.NoError(err)
+		assetID := ids.GenerateTestID()
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.MintAssetNFT{
+				To:       auth.NewED25519Address(other.PublicKey()),
+				Asset:    assetID,
+				UniqueID: 0,
+				URI:      []byte("uri"),
+				Metadata: []byte("metadata"),
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		result := results[0]
+		require.False(result.Success)
+		require.Contains(string(result.Error), "asset missing")
+
+		exists, _, _, _, _, _, _, _, _, _, _, _, _, _, err := instances[0].ncli.Asset(context.TODO(), assetID.String(), false)
 		require.NoError(err)
 		require.False(exists)
 	})
@@ -832,9 +889,17 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				MaxFee:    1001,
 			},
 			[]chain.Action{&actions.CreateAsset{
-				Symbol:   []byte("s0"),
-				Decimals: 0,
-				Metadata: nil,
+				AssetType:                    nconsts.AssetFungibleTokenID,
+				Name:                         []byte("n00"),
+				Symbol:                       []byte("s00"),
+				Decimals:                     0,
+				Metadata:                     nil,
+				URI:                          []byte("uri"),
+				MaxSupply:                    uint64(0),
+				MintActor:                    rsender,
+				PauseUnpauseActor:            rsender,
+				FreezeUnfreezeActor:          rsender,
+				EnableDisableKYCAccountActor: rsender,
 			}},
 		)
 		// Must do manual construction to avoid `tx.Sign` error (would fail with
@@ -862,9 +927,17 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				MaxFee:    1001,
 			},
 			[]chain.Action{&actions.CreateAsset{
-				Symbol:   nil,
-				Decimals: 0,
-				Metadata: []byte("m"),
+				AssetType:                    nconsts.AssetFungibleTokenID,
+				Name:                         []byte("n00"),
+				Symbol:                       nil,
+				Decimals:                     0,
+				Metadata:                     []byte("m00"),
+				URI:                          []byte("u00"),
+				MaxSupply:                    uint64(0),
+				MintActor:                    rsender,
+				PauseUnpauseActor:            rsender,
+				FreezeUnfreezeActor:          rsender,
+				EnableDisableKYCAccountActor: rsender,
 			}},
 		)
 		// Must do manual construction to avoid `tx.Sign` error (would fail with
@@ -892,9 +965,17 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				MaxFee:    1000,
 			},
 			[]chain.Action{&actions.CreateAsset{
-				Symbol:   []byte("s0"),
-				Decimals: 0,
-				Metadata: make([]byte, actions.MaxMetadataSize*2),
+				AssetType:                    nconsts.AssetFungibleTokenID,
+				Name:                         []byte("n00"),
+				Symbol:                       []byte("s00"),
+				Decimals:                     0,
+				Metadata:                     make([]byte, actions.MaxMetadataSize*2),
+				URI:                          []byte("u00"),
+				MaxSupply:                    uint64(0),
+				MintActor:                    rsender,
+				PauseUnpauseActor:            rsender,
+				FreezeUnfreezeActor:          rsender,
+				EnableDisableKYCAccountActor: rsender,
 			}},
 		)
 		// Must do manual construction to avoid `tx.Sign` error (would fail with
@@ -914,16 +995,56 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.ErrorContains(err, "size is larger than limit")
 	})
 
-	ginkgo.It("create a new asset (simple metadata)", func() {
+	ginkgo.It("create a new non-fungible asset (decimals is greater than 0)", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.CreateAsset{
+				AssetType:                    nconsts.AssetNonFungibleTokenID,
+				Name:                         []byte("n00"),
+				Symbol:                       []byte("s00"),
+				Decimals:                     1,
+				Metadata:                     []byte("m00"),
+				URI:                          []byte("u00"),
+				MaxSupply:                    uint64(0),
+				MintActor:                    rsender,
+				PauseUnpauseActor:            rsender,
+				FreezeUnfreezeActor:          rsender,
+				EnableDisableKYCAccountActor: rsender,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		result := results[0]
+		require.False(result.Success)
+		require.Contains(string(result.Error), "decimal is invalid")
+	})
+
+	ginkgo.It("create a new fungible asset (simple metadata)", func() {
 		parser, err := instances[0].ncli.Parser(context.Background())
 		require.NoError(err)
 		submit, tx, _, err := instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
 			[]chain.Action{&actions.CreateAsset{
-				Symbol:   asset1Symbol,
-				Decimals: asset1Decimals,
-				Metadata: asset1,
+				AssetType:                    nconsts.AssetFungibleTokenID,
+				Name:                         asset1,
+				Symbol:                       asset1Symbol,
+				Decimals:                     asset1Decimals,
+				Metadata:                     asset1,
+				URI:                          asset1,
+				MaxSupply:                    uint64(0),
+				MintActor:                    rsender,
+				PauseUnpauseActor:            rsender,
+				FreezeUnfreezeActor:          rsender,
+				EnableDisableKYCAccountActor: rsender,
 			}},
 			factory,
 		)
@@ -940,23 +1061,242 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.NoError(err)
 		require.Zero(balance)
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+
 		require.NoError(err)
 		require.True(exists)
+		require.Equal(assetType, nconsts.AssetFungibleTokenDesc)
+		require.Equal([]byte(name), asset1)
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Zero(supply)
+		require.Equal([]byte(uri), asset1)
+		require.Zero(totalSupply)
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+	})
+
+	ginkgo.It("create a new non-fungible asset (simple metadata)", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, tx, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.CreateAsset{
+				AssetType:                    nconsts.AssetNonFungibleTokenID,
+				Name:                         asset2,
+				Symbol:                       asset2Symbol,
+				Decimals:                     0,
+				Metadata:                     asset2,
+				URI:                          asset2,
+				MaxSupply:                    uint64(0),
+				MintActor:                    rsender,
+				PauseUnpauseActor:            rsender,
+				FreezeUnfreezeActor:          rsender,
+				EnableDisableKYCAccountActor: rsender,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		asset2ID = chain.CreateActionID(tx.ID(), 0)
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender, asset2ID.String())
+		require.NoError(err)
+		require.Zero(balance)
+
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset2ID.String(), false)
+
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(assetType, nconsts.AssetNonFungibleTokenDesc)
+		require.Equal([]byte(name), asset2)
+		require.Equal([]byte(symbol), asset2Symbol)
+		require.Equal(decimals, uint8(0))
+		require.Equal([]byte(metadata), asset2)
+		require.Equal([]byte(uri), asset2)
+		require.Zero(totalSupply)
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+	})
+
+	ginkgo.It("create a new dataset asset (simple metadata)", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, tx, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.CreateAsset{
+				AssetType:                    nconsts.AssetDatasetTokenID,
+				Name:                         asset3,
+				Symbol:                       asset3Symbol,
+				Decimals:                     0,
+				Metadata:                     asset3,
+				URI:                          asset3,
+				MaxSupply:                    uint64(0),
+				MintActor:                    rsender,
+				PauseUnpauseActor:            rsender,
+				FreezeUnfreezeActor:          rsender,
+				EnableDisableKYCAccountActor: rsender,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+
+		require.True(results[0].Success)
+
+		asset3ID = chain.CreateActionID(tx.ID(), 0)
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender, asset3ID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(1))
+		nftID := nchain.GenerateID(asset3ID, 0)
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender, nftID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(1))
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender2, asset3ID.String())
+		require.NoError(err)
+		require.Zero(balance)
+
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset3ID.String(), false)
+
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(assetType, nconsts.AssetDatasetTokenDesc)
+		require.Equal([]byte(name), asset3)
+		require.Equal([]byte(symbol), asset3Symbol)
+		require.Equal(decimals, uint8(0))
+		require.Equal([]byte(metadata), asset3)
+		require.Equal([]byte(uri), asset3)
+		require.Equal(totalSupply, uint64(1))
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+
+		exists, collectionID, uniqueID, uri, metadata, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(collectionID, asset3ID.String())
+		require.Equal(uniqueID, uint64(0))
+		require.Equal([]byte(uri), asset3)
+		require.Equal([]byte(metadata), asset3)
 		require.Equal(owner, sender)
 	})
 
-	ginkgo.It("mint a new asset", func() {
+	ginkgo.It("update an asset that doesn't exist", func() {
 		parser, err := instances[0].ncli.Parser(context.Background())
 		require.NoError(err)
 		submit, _, _, err := instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.UpdateAsset{
+				Asset:    ids.GenerateTestID(),
+				Name:     asset4,
+				Symbol:   asset4Symbol,
+				Metadata: asset4,
+				URI:      asset4,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		result := results[0]
+		require.False(result.Success)
+		require.Contains(string(result.Error), "asset not found")
+	})
+
+	ginkgo.It("update an asset(no field is updated)", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.UpdateAsset{
+				Asset: asset1ID,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		result := results[0]
+		require.False(result.Success)
+		require.Contains(string(result.Error), "must update at least one field")
+	})
+
+	ginkgo.It("update an existing asset", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.UpdateAsset{
+				Asset:     asset3ID,
+				MaxSupply: uint64(100000),
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset3ID.String(), false)
+
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(assetType, nconsts.AssetDatasetTokenDesc)
+		require.Equal([]byte(name), asset3)
+		require.Equal([]byte(symbol), asset3Symbol)
+		require.Equal(decimals, uint8(0))
+		require.Equal([]byte(metadata), asset3)
+		require.Equal([]byte(uri), asset3)
+		require.Equal(totalSupply, uint64(1))
+		require.Equal(maxSupply, uint64(100000))
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+	})
+
+	ginkgo.It("mint a new fungible asset", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.MintAssetFT{
 				To:    rsender2,
 				Asset: asset1ID,
 				Value: 15,
@@ -978,17 +1318,86 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.NoError(err)
 		require.Zero(balance)
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
+		require.Equal(assetType, nconsts.AssetFungibleTokenDesc)
+		require.Equal([]byte(name), asset1)
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(supply, uint64(15))
-		require.Equal(owner, sender)
+		require.Equal([]byte(uri), asset1)
+		require.Equal(totalSupply, uint64(15))
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
 	})
 
-	ginkgo.It("mint asset from wrong owner", func() {
+	ginkgo.It("mint a new non-fungible asset", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.MintAssetNFT{
+				To:       rsender2,
+				Asset:    asset2ID,
+				UniqueID: 0,
+				URI:      []byte("uri"),
+				Metadata: []byte("metadata"),
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset2ID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(1))
+		nftID := nchain.GenerateID(asset2ID, 0)
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender2, nftID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(1))
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset2ID.String())
+		require.NoError(err)
+		require.Zero(balance)
+
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset2ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(assetType, nconsts.AssetNonFungibleTokenDesc)
+		require.Equal([]byte(name), asset2)
+		require.Equal([]byte(symbol), asset2Symbol)
+		require.Equal(decimals, uint8(0))
+		require.Equal([]byte(metadata), asset2)
+		require.Equal([]byte(uri), asset2)
+		require.Equal(totalSupply, uint64(1))
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+
+		exists, collectionID, uniqueID, uri, metadata, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(collectionID, asset2ID.String())
+		require.Equal(uniqueID, uint64(0))
+		require.Equal([]byte(uri), []byte("uri"))
+		require.Equal([]byte(metadata), []byte("metadata"))
+		require.Equal(owner, sender2)
+	})
+
+	ginkgo.It("mint fungible asset from wrong owner", func() {
 		other, err := ed25519.GeneratePrivateKey()
 		require.NoError(err)
 		parser, err := instances[0].ncli.Parser(context.Background())
@@ -996,7 +1405,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		submit, _, _, err := instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.MintAssetFT{
 				To:    auth.NewED25519Address(other.PublicKey()),
 				Asset: asset1ID,
 				Value: 10,
@@ -1012,25 +1421,79 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		result := results[0]
 
 		require.False(result.Success)
-		require.Contains(string(result.Error), "wrong owner")
+		require.Contains(string(result.Error), "wrong mint actor")
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
+		require.Equal(assetType, nconsts.AssetFungibleTokenDesc)
+		require.Equal([]byte(name), asset1)
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(supply, uint64(15))
-		require.Equal(owner, sender)
+		require.Equal([]byte(uri), asset1)
+		require.Equal(totalSupply, uint64(15))
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
 	})
 
-	ginkgo.It("burn new asset", func() {
+	ginkgo.It("mint non-fungible asset from wrong owner", func() {
+		other, err := ed25519.GeneratePrivateKey()
+		require.NoError(err)
 		parser, err := instances[0].ncli.Parser(context.Background())
 		require.NoError(err)
 		submit, _, _, err := instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.BurnAsset{
+			[]chain.Action{&actions.MintAssetNFT{
+				To:       auth.NewED25519Address(other.PublicKey()),
+				Asset:    asset2ID,
+				UniqueID: 1,
+				URI:      []byte("uri"),
+				Metadata: []byte("metadata"),
+			}},
+			factory2,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		result := results[0]
+
+		require.False(result.Success)
+		require.Contains(string(result.Error), "wrong mint actor")
+
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset2ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(assetType, nconsts.AssetNonFungibleTokenDesc)
+		require.Equal([]byte(name), asset2)
+		require.Equal([]byte(symbol), asset2Symbol)
+		require.Equal(decimals, uint8(0))
+		require.Equal([]byte(metadata), asset2)
+		require.Equal([]byte(uri), asset2)
+		require.Equal(totalSupply, uint64(1))
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+	})
+
+	ginkgo.It("burn new fungible asset", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.BurnAssetFT{
 				Asset: asset1ID,
 				Value: 5,
 			}},
@@ -1051,14 +1514,68 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.NoError(err)
 		require.Zero(balance)
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
+		require.Equal(assetType, nconsts.AssetFungibleTokenDesc)
+		require.Equal([]byte(name), asset1)
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(supply, uint64(10))
-		require.Equal(owner, sender)
+		require.Equal([]byte(uri), asset1)
+		require.Equal(totalSupply, uint64(10))
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+	})
+
+	ginkgo.It("burn new non-fungible asset", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		nftID := nchain.GenerateID(asset2ID, 0)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.BurnAssetNFT{
+				Asset: asset2ID,
+				NftID: nftID,
+			}},
+			factory2,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset2ID.String())
+		require.NoError(err)
+		require.Zero(balance)
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender, asset2ID.String())
+		require.NoError(err)
+		require.Zero(balance)
+
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset2ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(assetType, nconsts.AssetNonFungibleTokenDesc)
+		require.Equal([]byte(name), asset2)
+		require.Equal([]byte(symbol), asset2Symbol)
+		require.Equal(decimals, uint8(0))
+		require.Equal([]byte(metadata), asset2)
+		require.Equal([]byte(uri), asset2)
+		require.Equal(totalSupply, uint64(0))
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
 	})
 
 	ginkgo.It("burn missing asset", func() {
@@ -1067,7 +1584,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		submit, _, _, err := instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.BurnAsset{
+			[]chain.Action{&actions.BurnAssetFT{
 				Asset: asset1ID,
 				Value: 10,
 			}},
@@ -1083,14 +1600,22 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.False(result.Success)
 		require.Contains(string(result.Error), "invalid balance")
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
+		require.Equal(assetType, nconsts.AssetFungibleTokenDesc)
+		require.Equal([]byte(name), asset1)
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(supply, uint64(10))
-		require.Equal(owner, sender)
+		require.Equal([]byte(uri), asset1)
+		require.Equal(totalSupply, uint64(10))
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
 	})
 
 	ginkgo.It("rejects empty mint", func() {
@@ -1102,7 +1627,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
 				MaxFee:    1000,
 			},
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.MintAssetFT{
 				To:    auth.NewED25519Address(other.PublicKey()),
 				Asset: asset1ID,
 			}},
@@ -1130,7 +1655,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		submit, _, _, err := instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.MintAssetFT{
 				To:    rsender2,
 				Asset: asset1ID,
 				Value: consts.MaxUint64,
@@ -1154,14 +1679,22 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.NoError(err)
 		require.Zero(balance)
 
-		exists, symbol, decimals, metadata, supply, owner, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
+		require.Equal(assetType, nconsts.AssetFungibleTokenDesc)
+		require.Equal([]byte(name), asset1)
 		require.Equal([]byte(symbol), asset1Symbol)
 		require.Equal(decimals, asset1Decimals)
 		require.Equal([]byte(metadata), asset1)
-		require.Equal(supply, uint64(10))
-		require.Equal(owner, sender)
+		require.Equal([]byte(uri), asset1)
+		require.Equal(totalSupply, uint64(10))
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
 	})
 
 	ginkgo.It("rejects mint of native token", func() {
@@ -1173,7 +1706,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
 				MaxFee:    1000,
 			},
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.MintAssetFT{
 				To:    auth.NewED25519Address(other.PublicKey()),
 				Value: 10,
 			}},
@@ -1202,9 +1735,17 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			context.Background(),
 			parser,
 			[]chain.Action{&actions.CreateAsset{
-				Symbol:   asset2Symbol,
-				Decimals: asset2Decimals,
-				Metadata: asset2,
+				AssetType:                    nconsts.AssetFungibleTokenID,
+				Name:                         asset2,
+				Symbol:                       asset2Symbol,
+				Decimals:                     asset2Decimals,
+				Metadata:                     asset2,
+				URI:                          asset2,
+				MaxSupply:                    0,
+				MintActor:                    rsender,
+				PauseUnpauseActor:            rsender,
+				FreezeUnfreezeActor:          rsender,
+				EnableDisableKYCAccountActor: rsender,
 			}},
 			factory,
 		)
@@ -1220,7 +1761,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		submit, _, _, err = instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.MintAssetFT{
 				To:    rsender,
 				Asset: asset2ID,
 				Value: 10,
@@ -1247,9 +1788,17 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			context.Background(),
 			parser,
 			[]chain.Action{&actions.CreateAsset{
-				Symbol:   asset3Symbol,
-				Decimals: asset3Decimals,
-				Metadata: asset3,
+				AssetType:                    nconsts.AssetFungibleTokenID,
+				Name:                         asset3,
+				Symbol:                       asset3Symbol,
+				Decimals:                     asset3Decimals,
+				Metadata:                     asset3,
+				URI:                          asset3,
+				MaxSupply:                    0,
+				MintActor:                    rsender2,
+				PauseUnpauseActor:            rsender2,
+				FreezeUnfreezeActor:          rsender2,
+				EnableDisableKYCAccountActor: rsender2,
 			}},
 			factory2,
 		)
@@ -1265,7 +1814,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		submit, _, _, err = instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
-			[]chain.Action{&actions.MintAsset{
+			[]chain.Action{&actions.MintAssetFT{
 				To:    rsender2,
 				Asset: asset3ID,
 				Value: 10,
@@ -1323,7 +1872,7 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		require.Equal(balance3, uint64(5000))
 	})
 
-	ginkgo.It("create and mint multiple of assets in a single tx", func() {
+	ginkgo.It("create and mint multiple of fungible assets in a single tx", func() {
 		// Create asset
 		parser, err := instances[3].ncli.Parser(context.Background())
 		require.NoError(err)
@@ -1332,24 +1881,30 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			parser,
 			[]chain.Action{
 				&actions.CreateAsset{
-					Symbol:   asset1Symbol,
-					Decimals: asset1Decimals,
-					Metadata: asset1,
+					AssetType:                    nconsts.AssetFungibleTokenID,
+					Name:                         asset1,
+					Symbol:                       asset1Symbol,
+					Decimals:                     asset1Decimals,
+					Metadata:                     asset1,
+					URI:                          asset1,
+					MaxSupply:                    0,
+					MintActor:                    rsender,
+					PauseUnpauseActor:            rsender,
+					FreezeUnfreezeActor:          rsender,
+					EnableDisableKYCAccountActor: rsender,
 				},
 				&actions.CreateAsset{
-					Symbol:   asset2Symbol,
-					Decimals: asset2Decimals,
-					Metadata: asset2,
-				},
-				&actions.CreateAsset{
-					Symbol:   asset3Symbol,
-					Decimals: asset3Decimals,
-					Metadata: asset3,
-				},
-				&actions.CreateAsset{
-					Symbol:   asset4Symbol,
-					Decimals: asset4Decimals,
-					Metadata: asset4,
+					AssetType:                    nconsts.AssetFungibleTokenID,
+					Name:                         asset2,
+					Symbol:                       asset2Symbol,
+					Decimals:                     asset2Decimals,
+					Metadata:                     asset2,
+					URI:                          asset2,
+					MaxSupply:                    0,
+					MintActor:                    rsender,
+					PauseUnpauseActor:            rsender,
+					FreezeUnfreezeActor:          rsender,
+					EnableDisableKYCAccountActor: rsender,
 				},
 			},
 			factory,
@@ -1364,52 +1919,20 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 
 		asset1ID = chain.CreateActionID(tx.ID(), 0)
 		asset2ID = chain.CreateActionID(tx.ID(), 1)
-		asset3ID = chain.CreateActionID(tx.ID(), 2)
-		asset4ID = chain.CreateActionID(tx.ID(), 3)
 
 		// Mint multiple
 		submit, _, _, err = instances[3].cli.GenerateTransaction(
 			context.Background(),
 			parser,
 			[]chain.Action{
-				&actions.MintAsset{
+				&actions.MintAssetFT{
 					To:    rsender2,
 					Asset: asset1ID,
 					Value: 10,
 				},
-				&actions.MintAsset{
+				&actions.MintAssetFT{
 					To:    rsender2,
 					Asset: asset2ID,
-					Value: 10,
-				},
-				&actions.MintAsset{
-					To:    rsender2,
-					Asset: asset3ID,
-					Value: 10,
-				},
-				&actions.MintAsset{
-					To:    rsender2,
-					Asset: asset4ID,
-					Value: 10,
-				},
-				&actions.MintAsset{
-					To:    rsender,
-					Asset: asset1ID,
-					Value: 10,
-				},
-				&actions.MintAsset{
-					To:    rsender,
-					Asset: asset2ID,
-					Value: 10,
-				},
-				&actions.MintAsset{
-					To:    rsender,
-					Asset: asset3ID,
-					Value: 10,
-				},
-				&actions.MintAsset{
-					To:    rsender,
-					Asset: asset4ID,
 					Value: 10,
 				},
 			},
@@ -1431,14 +1954,725 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 		balance2, err := instances[3].ncli.Balance(context.TODO(), sender2, asset2ID.String())
 		require.NoError(err)
 		require.Equal(balance2, uint64(10))
+	})
 
-		balance3, err := instances[3].ncli.Balance(context.TODO(), sender2, asset3ID.String())
+	ginkgo.It("create and mint multiple of non-fungible assets in a single tx", func() {
+		// Create asset
+		parser, err := instances[3].ncli.Parser(context.Background())
 		require.NoError(err)
-		require.Equal(balance3, uint64(10))
+		submit, tx, _, err := instances[3].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{
+				&actions.CreateAsset{
+					AssetType:                    nconsts.AssetNonFungibleTokenID,
+					Name:                         asset1,
+					Symbol:                       asset1Symbol,
+					Decimals:                     0,
+					Metadata:                     asset1,
+					URI:                          asset1,
+					MaxSupply:                    0,
+					MintActor:                    rsender,
+					PauseUnpauseActor:            rsender,
+					FreezeUnfreezeActor:          rsender,
+					EnableDisableKYCAccountActor: rsender,
+				},
+				&actions.CreateAsset{
+					AssetType:                    nconsts.AssetNonFungibleTokenID,
+					Name:                         asset2,
+					Symbol:                       asset2Symbol,
+					Decimals:                     0,
+					Metadata:                     asset2,
+					URI:                          asset2,
+					MaxSupply:                    0,
+					MintActor:                    rsender,
+					PauseUnpauseActor:            rsender,
+					FreezeUnfreezeActor:          rsender,
+					EnableDisableKYCAccountActor: rsender,
+				},
+			},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
 
-		balance4, err := instances[3].ncli.Balance(context.TODO(), sender2, asset4ID.String())
+		accept := expectBlk(instances[3])
+		results := accept(true)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		asset1ID = chain.CreateActionID(tx.ID(), 0)
+		asset2ID = chain.CreateActionID(tx.ID(), 1)
+
+		// Mint multiple
+		submit, _, _, err = instances[3].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{
+				&actions.MintAssetNFT{
+					To:       rsender2,
+					Asset:    asset1ID,
+					UniqueID: 0,
+					URI:      []byte("uri1"),
+					Metadata: []byte("metadata1"),
+				},
+				&actions.MintAssetNFT{
+					To:       rsender2,
+					Asset:    asset2ID,
+					UniqueID: 1,
+					URI:      []byte("uri2"),
+					Metadata: []byte("metadata2"),
+				},
+			},
+			factory,
+		)
 		require.NoError(err)
-		require.Equal(balance4, uint64(10))
+		require.NoError(submit(context.Background()))
+
+		accept = expectBlk(instances[3])
+		results = accept(true)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		// check sender2 assets
+		balance1, err := instances[3].ncli.Balance(context.TODO(), sender2, asset1ID.String())
+		require.NoError(err)
+		require.Equal(balance1, uint64(1))
+		/* 		nftID := nchain.GenerateID(asset2ID, 0)
+		balance1, err = instances[3].ncli.Balance(context.TODO(), sender2, nftID.String())
+		require.NoError(err)
+		require.Equal(balance1, uint64(1)) */
+
+		balance2, err := instances[3].ncli.Balance(context.TODO(), sender2, asset2ID.String())
+		require.NoError(err)
+		require.Equal(balance2, uint64(1))
+		/* 	nftID = nchain.GenerateID(asset2ID, 1)
+		balance2, err = instances[0].ncli.Balance(context.TODO(), sender2, nftID.String())
+		require.NoError(err)
+		require.Equal(balance2, uint64(1)) */
+	})
+
+	ginkgo.It("create a new dataset (no metadata)", func() {
+		tx := chain.NewTx(
+			&chain.Base{
+				ChainID:   instances[0].chainID,
+				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
+				MaxFee:    1001,
+			},
+			[]chain.Action{&actions.CreateDataset{
+				AssetID:            ids.Empty,
+				Name:               []byte("n00"),
+				Description:        []byte("s00"),
+				Categories:         []byte("c00"),
+				LicenseName:        []byte("l00"),
+				LicenseSymbol:      []byte("ls00"),
+				LicenseURL:         []byte("lu00"),
+				Metadata:           nil,
+				IsCommunityDataset: false,
+			}},
+		)
+		// Must do manual construction to avoid `tx.Sign` error (would fail with
+		// too large)
+		msg, err := tx.Digest()
+		require.NoError(err)
+		auth, err := factory.Sign(msg)
+		require.NoError(err)
+		tx.Auth = auth
+		p := codec.NewWriter(0, consts.MaxInt) // test codec growth
+		require.NoError(tx.Marshal(p))
+		require.NoError(p.Err())
+		_, err = instances[0].cli.SubmitTx(
+			context.Background(),
+			p.Bytes(),
+		)
+		require.ErrorContains(err, "Bytes field is not populated")
+	})
+
+	ginkgo.It("create dataset with too long of metadata", func() {
+		tx := chain.NewTx(
+			&chain.Base{
+				ChainID:   instances[0].chainID,
+				Timestamp: hutils.UnixRMilli(-1, 5*consts.MillisecondsPerSecond),
+				MaxFee:    1000,
+			},
+			[]chain.Action{&actions.CreateDataset{
+				AssetID:            ids.Empty,
+				Name:               []byte("n00"),
+				Description:        []byte("d00"),
+				Categories:         []byte("c00"),
+				LicenseName:        []byte("l00"),
+				LicenseSymbol:      []byte("ls00"),
+				LicenseURL:         []byte("lu00"),
+				Metadata:           make([]byte, actions.MaxDatasetMetadataSize*2),
+				IsCommunityDataset: false,
+			}},
+		)
+		// Must do manual construction to avoid `tx.Sign` error (would fail with
+		// too large)
+		msg, err := tx.Digest()
+		require.NoError(err)
+		auth, err := factory.Sign(msg)
+		require.NoError(err)
+		tx.Auth = auth
+		p := codec.NewWriter(0, consts.MaxInt) // test codec growth
+		require.NoError(tx.Marshal(p))
+		require.NoError(p.Err())
+		_, err = instances[0].cli.SubmitTx(
+			context.Background(),
+			p.Bytes(),
+		)
+		require.ErrorContains(err, "size is larger than limit")
+	})
+
+	ginkgo.It("create a new dataset (solo contributor dataset)", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, tx, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.CreateDataset{
+				AssetID:            ids.Empty,
+				Name:               asset1,
+				Description:        []byte("d00"),
+				Categories:         []byte("c00"),
+				LicenseName:        []byte("l00"),
+				LicenseSymbol:      []byte("ls00"),
+				LicenseURL:         []byte("lu00"),
+				Metadata:           asset1,
+				IsCommunityDataset: false,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		asset1ID = chain.CreateActionID(tx.ID(), 0)
+
+		// Check dataset info
+		exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := instances[0].ncli.Dataset(context.TODO(), asset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(description), []byte("d00"))
+		require.Equal([]byte(categories), []byte("c00"))
+		require.Equal([]byte(licenseName), []byte("l00"))
+		require.Equal([]byte(licenseSymbol), []byte("ls00"))
+		require.Equal([]byte(licenseURL), []byte("lu00"))
+		require.Equal([]byte(metadata), asset1)
+		require.False(isCommunityDataset)
+		require.False(onSale)
+		require.Equal(baseAsset, ids.Empty.String())
+		require.Zero(basePrice)
+		require.Equal(revenueModelDataShare, uint8(100))
+		require.Equal(revenueModelMetadataShare, uint8(0))
+		require.Equal(revenueModelDataOwnerCut, uint8(100))
+		require.Equal(revenueModelMetadataOwnerCut, uint8(0))
+		require.Equal(owner, sender)
+
+		// Check asset info
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(1))
+
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(assetType, nconsts.AssetDatasetTokenDesc)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(symbol), asset1)
+		require.Equal(decimals, uint8(0))
+		require.Equal([]byte(metadata), []byte("d00"))
+		require.Equal([]byte(uri), []byte("d00"))
+		require.Equal(totalSupply, uint64(1))
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+
+		// Check NFT info
+		nftID := nchain.GenerateID(asset1ID, 0)
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender, nftID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(1))
+
+		exists, collectionID, uniqueID, uri, metadata, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(collectionID, asset1ID.String())
+		require.Equal(uniqueID, uint64(0))
+		require.Equal([]byte(uri), []byte("d00"))
+		require.Equal([]byte(metadata), []byte("d00"))
+		require.Equal(owner, sender)
+	})
+
+	ginkgo.It("create a new dataset (community contributor dataset)", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, tx, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.CreateDataset{
+				AssetID:            ids.Empty,
+				Name:               asset1,
+				Description:        []byte("d00"),
+				Categories:         []byte("c00"),
+				LicenseName:        []byte("l00"),
+				LicenseSymbol:      []byte("ls00"),
+				LicenseURL:         []byte("lu00"),
+				Metadata:           asset1,
+				IsCommunityDataset: true,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		asset1ID = chain.CreateActionID(tx.ID(), 0)
+
+		// Check dataset info
+		exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := instances[0].ncli.Dataset(context.TODO(), asset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(description), []byte("d00"))
+		require.Equal([]byte(categories), []byte("c00"))
+		require.Equal([]byte(licenseName), []byte("l00"))
+		require.Equal([]byte(licenseSymbol), []byte("ls00"))
+		require.Equal([]byte(licenseURL), []byte("lu00"))
+		require.Equal([]byte(metadata), asset1)
+		require.True(isCommunityDataset)
+		require.False(onSale)
+		require.Equal(baseAsset, ids.Empty.String())
+		require.Zero(basePrice)
+		require.Equal(revenueModelDataShare, uint8(100))
+		require.Equal(revenueModelMetadataShare, uint8(0))
+		require.Equal(revenueModelDataOwnerCut, uint8(10))
+		require.Equal(revenueModelMetadataOwnerCut, uint8(0))
+		require.Equal(owner, sender)
+
+		// Check asset info
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(1))
+
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(assetType, nconsts.AssetDatasetTokenDesc)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(symbol), asset1)
+		require.Equal(decimals, uint8(0))
+		require.Equal([]byte(metadata), []byte("d00"))
+		require.Equal([]byte(uri), []byte("d00"))
+		require.Equal(totalSupply, uint64(1))
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+
+		// Check NFT info
+		nftID := nchain.GenerateID(asset1ID, 0)
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender, nftID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(1))
+
+		exists, collectionID, uniqueID, uri, metadata, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(collectionID, asset1ID.String())
+		require.Equal(uniqueID, uint64(0))
+		require.Equal([]byte(uri), []byte("d00"))
+		require.Equal([]byte(metadata), []byte("d00"))
+		require.Equal(owner, sender)
+	})
+
+	ginkgo.It("create a new dataset (after an asset is already created)", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, tx, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.CreateAsset{
+				AssetType:                    nconsts.AssetDatasetTokenID,
+				Name:                         asset1,
+				Symbol:                       asset1Symbol,
+				Decimals:                     0,
+				Metadata:                     asset1,
+				URI:                          asset1,
+				MaxSupply:                    uint64(0),
+				MintActor:                    rsender,
+				PauseUnpauseActor:            rsender,
+				FreezeUnfreezeActor:          rsender,
+				EnableDisableKYCAccountActor: rsender,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		asset1ID = chain.CreateActionID(tx.ID(), 0)
+		parser, err = instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err = instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.CreateDataset{
+				AssetID:            asset1ID,
+				Name:               asset1,
+				Description:        []byte("d00"),
+				Categories:         []byte("c00"),
+				LicenseName:        []byte("l00"),
+				LicenseSymbol:      []byte("ls00"),
+				LicenseURL:         []byte("lu00"),
+				Metadata:           asset1,
+				IsCommunityDataset: false,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept = expectBlk(instances[0])
+		results = accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		// Check dataset info
+		exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := instances[0].ncli.Dataset(context.TODO(), asset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(description), []byte("d00"))
+		require.Equal([]byte(categories), []byte("c00"))
+		require.Equal([]byte(licenseName), []byte("l00"))
+		require.Equal([]byte(licenseSymbol), []byte("ls00"))
+		require.Equal([]byte(licenseURL), []byte("lu00"))
+		require.Equal([]byte(metadata), asset1)
+		require.False(isCommunityDataset)
+		require.False(onSale)
+		require.Equal(baseAsset, ids.Empty.String())
+		require.Zero(basePrice)
+		require.Equal(revenueModelDataShare, uint8(100))
+		require.Equal(revenueModelMetadataShare, uint8(0))
+		require.Equal(revenueModelDataOwnerCut, uint8(100))
+		require.Equal(revenueModelMetadataOwnerCut, uint8(0))
+		require.Equal(owner, sender)
+
+		// Check asset info
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender, asset1ID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(1))
+
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(assetType, nconsts.AssetDatasetTokenDesc)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(symbol), asset1)
+		require.Equal(decimals, uint8(0))
+		require.Equal([]byte(metadata), asset1)
+		require.Equal([]byte(uri), asset1)
+		require.Equal(totalSupply, uint64(1))
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+
+		// Check NFT info
+		nftID := nchain.GenerateID(asset1ID, 0)
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender, nftID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(1))
+
+		exists, collectionID, uniqueID, uri, metadata, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(collectionID, asset1ID.String())
+		require.Equal(uniqueID, uint64(0))
+		require.Equal([]byte(uri), asset1)
+		require.Equal([]byte(metadata), asset1)
+		require.Equal(owner, sender)
+	})
+
+	ginkgo.It("update a dataset that doesn't exist", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.UpdateDataset{
+				Dataset:            ids.GenerateTestID(),
+				Name:               []byte("n00"),
+				Description:        []byte("d00"),
+				Categories:         []byte("c00"),
+				LicenseName:        []byte("l00"),
+				LicenseSymbol:      []byte("ls00"),
+				LicenseURL:         []byte("lu00"),
+				IsCommunityDataset: false,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		result := results[0]
+		require.False(result.Success)
+		require.Contains(string(result.Error), "dataset not found")
+	})
+
+	ginkgo.It("update a dataset(no field is updated)", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.UpdateDataset{
+				Dataset:            asset1ID,
+				Name:               asset1,
+				Description:        []byte("d00"),
+				Categories:         []byte("c00"),
+				LicenseName:        []byte("l00"),
+				LicenseSymbol:      []byte("ls00"),
+				LicenseURL:         []byte("lu00"),
+				IsCommunityDataset: false,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		result := results[0]
+		require.False(result.Success)
+		require.Contains(string(result.Error), "must update at least one field")
+	})
+
+	ginkgo.It("update an existing dataset(convert solo contributor to community dataset)", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.UpdateDataset{
+				Dataset:            asset1ID,
+				Name:               asset1,
+				Description:        []byte("d00-updated"),
+				Categories:         []byte("c00-updated"),
+				LicenseName:        []byte("l00-updated"),
+				LicenseSymbol:      []byte("ls00up"),
+				LicenseURL:         []byte("lu00-updated"),
+				IsCommunityDataset: true,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		// Check dataset info
+		exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, _, _, _, _, _, revenueModelDataOwnerCut, _, _, err := instances[0].ncli.Dataset(context.TODO(), asset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(description), []byte("d00-updated"))
+		require.Equal([]byte(categories), []byte("c00-updated"))
+		require.Equal([]byte(licenseName), []byte("l00-updated"))
+		require.Equal([]byte(licenseSymbol), []byte("ls00up"))
+		require.Equal([]byte(licenseURL), []byte("lu00-updated"))
+		require.Equal([]byte(metadata), asset1)
+		require.True(isCommunityDataset)
+		require.Equal(revenueModelDataOwnerCut, uint8(10))
+	})
+
+	ginkgo.It("initiate data contribution to the dataset", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		submit, tx, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.CreateDataset{
+				AssetID:            ids.Empty,
+				Name:               asset1,
+				Description:        []byte("d01"),
+				Categories:         []byte("c01"),
+				LicenseName:        []byte("l01"),
+				LicenseSymbol:      []byte("ls01"),
+				LicenseURL:         []byte("lu01"),
+				Metadata:           asset1,
+				IsCommunityDataset: true,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		dataset1ID = chain.CreateActionID(tx.ID(), 0)
+
+		// Check asset info
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), dataset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(assetType, nconsts.AssetDatasetTokenDesc)
+		require.Equal([]byte(name), asset1)
+		require.Equal([]byte(symbol), asset1)
+		require.Equal(decimals, uint8(0))
+		require.Equal([]byte(metadata), []byte("d01"))
+		require.Equal([]byte(uri), []byte("d01"))
+		require.Equal(totalSupply, uint64(1))
+		require.Zero(maxSupply)
+		require.Equal(admin, sender)
+		require.Equal(mintActor, sender)
+		require.Equal(pauseUnpauseActor, sender)
+		require.Equal(freezeUnfreezeActor, sender)
+		require.Equal(enableDisableKYCAccountActor, sender)
+
+		// Save balance before contribution
+		balanceBefore, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
+		require.NoError(err)
+
+		// Initiate contribution to dataset
+		submit, _, _, err = instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.InitiateContributeDataset{
+				Dataset:        dataset1ID,
+				DataLocation:   []byte("default"),
+				DataIdentifier: []byte("id1"),
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept = expectBlk(instances[0])
+		results = accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		// Check balance after contribution
+		balanceAfter, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
+		require.NoError(err)
+		require.Less(balanceAfter, balanceBefore-uint64(1_000_000_000)) // 1 NAI is deducted + fees
+
+		// Check contribution info by interacting with marketplace directly
+		dataContributions, err := instances[0].marketplace.GetDataContribution(dataset1ID, rsender)
+		require.NoError(err)
+		require.NotEmpty(dataContributions)
+		require.Equal(len(dataContributions), 1)
+		require.Equal([]byte("default"), dataContributions[0].DataLocation)
+		require.Equal([]byte("id1"), dataContributions[0].DataIdentifier)
+
+		// Check contribution info by interacting with RPC node
+		dataContributionsNew, err := instances[0].ncli.DataContributionPending(context.TODO(), dataset1ID.String())
+		require.NoError(err)
+		require.NotEmpty(dataContributionsNew)
+		require.Equal(len(dataContributionsNew), 1)
+		require.Equal("default", dataContributionsNew[0].DataLocation)
+		require.Equal("id1", dataContributionsNew[0].DataIdentifier)
+	})
+
+	ginkgo.It("complete data contribution to the dataset", func() {
+		// Save balance before contribution
+		balanceBefore, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
+		require.NoError(err)
+
+		// Check asset info before an NFT is minted for data contribution
+		exists, _, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := instances[0].ncli.Asset(context.TODO(), dataset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(totalSupply, uint64(1))
+
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		// Complete contribution to dataset
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.CompleteContributeDataset{
+				Dataset:     dataset1ID,
+				Contributor: rsender,
+				UniqueNFTID: totalSupply,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		// Check balance after getting the collateral refunded after the contribution is complete
+		balanceAfter, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
+		require.NoError(err)
+		require.GreaterOrEqual(balanceAfter, balanceBefore+uint64(1_000_000_000)-uint64(100_000)) // 1 NAI is refunded but fees is taken
+
+		// Check contribution info
+		_, err = instances[0].marketplace.GetDataContribution(dataset1ID, rsender)
+		require.Equal(err.Error(), "contribution not found")
+
+		// Check asset info
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender, dataset1ID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(2))
+
+		// Check asset info after an NFT is minted for data contribution
+		exists, _, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err = instances[0].ncli.Asset(context.TODO(), dataset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(totalSupply, uint64(2))
+
+		// Check NFT that was created for data contribution to the dataset
+		nftID := nchain.GenerateID(dataset1ID, totalSupply-1)
+		balance, err = instances[0].ncli.Balance(context.TODO(), sender, nftID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(1))
+
+		// Check NFT info
+		exists, collectionID, uniqueID, uri, metadata, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(collectionID, dataset1ID.String())
+		require.Equal(uniqueID, totalSupply-1)
+		require.Equal([]byte(uri), []byte("d01"))
+		require.Equal([]byte(metadata), []byte("{\"dataLocation\":\"default\",\"dataIdentifier\":\"id1\"}"))
+		require.Equal(owner, sender)
 	})
 })
 

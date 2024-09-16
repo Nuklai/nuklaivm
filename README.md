@@ -391,13 +391,4 @@ docker-compose -f trace/zipkin.yml down
 
 ## Creating a Devnet
 
-Refer to [Creating Devnet Demo](./docs/demos/devnet.md) to learn how to create a private devnet (running on a
-custom Primary Network with traffic scoped to the deployer IP) across any number of regions and nodes
-in ~30 minutes with a single script.
-
-/home/ubuntu/avalanche-node/avalanchego --config-file=/home/ubuntu/.avalanchego/configs/node.json
-ubuntu@ip-172-31-39-145:~$ ps -p 10411 -o cmd
-CMD
-/home/ubuntu/.avalanchego/plugins/Nke3kc2vJZWmoVv3hewi3NYUCHa42wTvFuaX4j1sgNp8WCRX4
-
-34.243.81.202
+Refer to [Creating Devnet Demo](./docs/demos/devnet.md) to learn how to create a private devnet (running on a custom Primary Network with traffic scoped to the deployer IP) across any number of regions and nodes in ~30 minutes with a single script.

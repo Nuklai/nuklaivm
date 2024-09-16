@@ -82,24 +82,24 @@ func handleTx(c *nrpc.JSONRPCClient, tx *chain.Transaction, result *chain.Result
 		switch action := act.(type) {
 		case *actions.CreateAsset:
 			summaryStr = fmt.Sprintf("assetID: %s symbol: %s decimals: %d metadata: %s", actionID, action.Symbol, action.Decimals, action.Metadata)
-		case *actions.MintAsset:
-			_, symbol, decimals, _, _, _, err := c.Asset(context.TODO(), action.Asset.String(), true)
+		case *actions.MintAssetFT:
+			_, assetType, name, symbol, decimals, _, _, _, _, _, _, _, _, _, err := c.Asset(context.TODO(), action.Asset.String(), true)
 			if err != nil {
 				utils.Outf("{{red}}could not fetch asset info:{{/}} %v", err)
 				return
 			}
 			amountStr := utils.FormatBalance(action.Value, decimals)
-			summaryStr = fmt.Sprintf("%s %s -> %s", amountStr, symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
-		case *actions.BurnAsset:
+			summaryStr = fmt.Sprintf("%s: %s - %s %s -> %s", assetType, name, amountStr, symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
+		case *actions.BurnAssetFT:
 			summaryStr = fmt.Sprintf("%d %s -> 🔥", action.Value, action.Asset)
 		case *actions.Transfer:
-			_, symbol, decimals, _, _, _, err := c.Asset(context.TODO(), action.Asset.String(), true)
+			_, assetType, name, symbol, decimals, _, _, _, _, _, _, _, _, _, err := c.Asset(context.TODO(), action.Asset.String(), true)
 			if err != nil {
 				utils.Outf("{{red}}could not fetch asset info:{{/}} %v", err)
 				return
 			}
 			amountStr := utils.FormatBalance(action.Value, decimals)
-			summaryStr = fmt.Sprintf("%s %s -> %s", amountStr, symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
+			summaryStr = fmt.Sprintf("%s: %s - %s %s -> %s", assetType, name, amountStr, symbol, codec.MustAddressBech32(nconsts.HRP, action.To))
 			if len(action.Memo) > 0 {
 				summaryStr += fmt.Sprintf(" (memo: %s)", action.Memo)
 			}

@@ -26,6 +26,7 @@ import (
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
+	"github.com/nuklai/nuklaivm/marketplace"
 	nrpc "github.com/nuklai/nuklaivm/rpc"
 	"github.com/nuklai/nuklaivm/storage"
 	"github.com/nuklai/nuklaivm/version"
@@ -46,6 +47,8 @@ type Controller struct {
 	metaDB database.Database
 
 	emission emission.Tracker // Emission Balancer for NuklaiVM
+
+	marketplace marketplace.Hub // Marketplace for NuklaiVM
 }
 
 func New() *vm.VM {
@@ -157,6 +160,9 @@ func (c *Controller) Initialize(
 	}
 	c.emission = emission.NewEmission(c, c.inner, totalSupply, c.genesis.EmissionBalancer.MaxSupply, emissionAddr)
 
+	// Initialize marketplace
+	c.marketplace = marketplace.NewMarketplace(c, c.inner)
+
 	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, nconsts.ActionRegistry, nconsts.AuthRegistry, auth.Engines(), nil
 }
 
@@ -186,6 +192,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				result.Success,
 				result.Units,
 				result.Fee,
+				tx.Auth.Actor(),
 			)
 			if err != nil {
 				return err
@@ -199,9 +206,9 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 					c.metrics.transfer.Inc()
 				case *actions.CreateAsset:
 					c.metrics.createAsset.Inc()
-				case *actions.MintAsset:
+				case *actions.MintAssetFT:
 					c.metrics.mintAsset.Inc()
-				case *actions.BurnAsset:
+				case *actions.BurnAssetFT:
 					c.metrics.burnAsset.Inc()
 				case *actions.RegisterValidatorStake:
 					c.metrics.registerValidatorStake.Inc()

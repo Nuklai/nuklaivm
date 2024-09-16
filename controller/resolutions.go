@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/hypersdk/fees"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
+	"github.com/nuklai/nuklaivm/marketplace"
 	"github.com/nuklai/nuklaivm/storage"
 )
 
@@ -31,15 +32,22 @@ func (c *Controller) Tracer() trace.Tracer {
 func (c *Controller) GetTransaction(
 	ctx context.Context,
 	txID ids.ID,
-) (bool, int64, bool, fees.Dimensions, uint64, error) {
+) (bool, int64, bool, fees.Dimensions, uint64, codec.Address, error) {
 	return storage.GetTransaction(ctx, c.metaDB, txID)
 }
 
 func (c *Controller) GetAssetFromState(
 	ctx context.Context,
 	asset ids.ID,
-) (bool, []byte, uint8, []byte, uint64, codec.Address, error) {
+) (bool, uint8, []byte, []byte, uint8, []byte, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
 	return storage.GetAssetFromState(ctx, c.inner.ReadState, asset)
+}
+
+func (c *Controller) GetAssetNFTFromState(
+	ctx context.Context,
+	nft ids.ID,
+) (bool, ids.ID, uint64, []byte, []byte, codec.Address, error) {
+	return storage.GetAssetNFTFromState(ctx, c.inner.ReadState, nft)
 }
 
 func (c *Controller) GetBalanceFromState(
@@ -91,4 +99,15 @@ func (c *Controller) GetDelegatedUserStakeFromState(ctx context.Context, owner c
 	error,
 ) {
 	return storage.GetDelegateUserStakeFromState(ctx, c.inner.ReadState, owner, nodeID)
+}
+
+func (c *Controller) GetDatasetFromState(
+	ctx context.Context,
+	datasetID ids.ID,
+) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
+	return storage.GetDatasetFromState(ctx, c.inner.ReadState, datasetID)
+}
+
+func (c *Controller) GetDataContributionPending(_ context.Context, datasetID ids.ID, contributor codec.Address) ([]marketplace.DataContribution, error) {
+	return c.marketplace.GetDataContribution(datasetID, contributor)
 }

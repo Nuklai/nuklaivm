@@ -43,13 +43,14 @@ type TxReply struct {
 	Success   bool            `json:"success"`
 	Units     fees.Dimensions `json:"units"`
 	Fee       uint64          `json:"fee"`
+	Actor     string          `json:"actor"`
 }
 
 func (j *JSONRPCServer) Tx(req *http.Request, args *TxArgs, reply *TxReply) error {
 	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Tx")
 	defer span.End()
 
-	found, t, success, units, fee, err := j.c.GetTransaction(ctx, args.TxID)
+	found, t, success, units, fee, actor, err := j.c.GetTransaction(ctx, args.TxID)
 	if err != nil {
 		return err
 	}
@@ -60,6 +61,7 @@ func (j *JSONRPCServer) Tx(req *http.Request, args *TxArgs, reply *TxReply) erro
 	reply.Success = success
 	reply.Units = units
 	reply.Fee = fee
+	reply.Actor = codec.MustAddressBech32(nconsts.HRP, actor)
 	return nil
 }
 
@@ -68,11 +70,19 @@ type AssetArgs struct {
 }
 
 type AssetReply struct {
-	Symbol   string `json:"symbol"`
-	Decimals uint8  `json:"decimals"`
-	Metadata string `json:"metadata"`
-	Supply   uint64 `json:"supply"`
-	Owner    string `json:"owner"`
+	AssetType                    string `json:"assetType"`
+	Name                         string `json:"name"`
+	Symbol                       string `json:"symbol"`
+	Decimals                     uint8  `json:"decimals"`
+	Metadata                     string `json:"metadata"`
+	URI                          string `json:"uri"`
+	TotalSupply                  uint64 `json:"totalSupply"`
+	MaxSupply                    uint64 `json:"maxSupply"`
+	Admin                        string `json:"admin"`
+	MintActor                    string `json:"mintActor"`
+	PauseUnpauseActor            string `json:"pauseUnpauseActor"`
+	FreezeUnfreezeActor          string `json:"freezeUnfreezeActor"`
+	EnableDisableKYCAccountActor string `json:"enableDisableKYCAccountActor"`
 }
 
 func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetReply) error {
@@ -83,18 +93,66 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 	if err != nil {
 		return err
 	}
-	exists, symbol, decimals, metadata, supply, owner, err := j.c.GetAssetFromState(ctx, assetID)
+	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := j.c.GetAssetFromState(ctx, assetID)
 	if err != nil {
 		return err
 	}
 	if !exists {
 		return ErrAssetNotFound
 	}
+	switch assetType {
+	case nconsts.AssetFungibleTokenID:
+		reply.AssetType = nconsts.AssetFungibleTokenDesc
+	case nconsts.AssetNonFungibleTokenID:
+		reply.AssetType = nconsts.AssetNonFungibleTokenDesc
+	case nconsts.AssetDatasetTokenID:
+		reply.AssetType = nconsts.AssetDatasetTokenDesc
+	}
+	reply.Name = string(name)
 	reply.Symbol = string(symbol)
 	reply.Decimals = decimals
 	reply.Metadata = string(metadata)
-	reply.Supply = supply
+	reply.URI = string(uri)
+	reply.TotalSupply = totalSupply
+	reply.MaxSupply = maxSupply
+	reply.Admin = codec.MustAddressBech32(nconsts.HRP, admin)
+	reply.MintActor = codec.MustAddressBech32(nconsts.HRP, mintActor)
+	reply.PauseUnpauseActor = codec.MustAddressBech32(nconsts.HRP, pauseUnpauseActor)
+	reply.FreezeUnfreezeActor = codec.MustAddressBech32(nconsts.HRP, freezeUnfreezeActor)
+	reply.EnableDisableKYCAccountActor = codec.MustAddressBech32(nconsts.HRP, enableDisableKYCAccountActor)
+	return err
+}
+
+type AssetNFTReply struct {
+	CollectionID string `json:"collectionID"`
+	UniqueID     uint64 `json:"uniqueID"`
+	URI          string `json:"uri"`
+	Metadata     string `json:"metadata"`
+	Owner        string `json:"owner"`
+}
+
+func (j *JSONRPCServer) AssetNFT(req *http.Request, args *AssetArgs, reply *AssetNFTReply) error {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.AssetNFT")
+	defer span.End()
+
+	nftID, err := getAssetIDBySymbol(args.Asset)
+	if err != nil {
+		return err
+	}
+	exists, collectionID, uniqueID, uri, metadata, owner, err := j.c.GetAssetNFTFromState(ctx, nftID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrAssetNotFound
+	}
+
+	reply.CollectionID = collectionID.String()
+	reply.UniqueID = uniqueID
+	reply.URI = string(uri)
+	reply.Metadata = string(metadata)
 	reply.Owner = codec.MustAddressBech32(nconsts.HRP, owner)
+
 	return err
 }
 
@@ -269,5 +327,99 @@ func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply 
 	reply.StakedAmount = stakedAmount
 	reply.RewardAddress = codec.MustAddressBech32(nconsts.HRP, rewardAddress)
 	reply.OwnerAddress = codec.MustAddressBech32(nconsts.HRP, ownerAddress)
+	return nil
+}
+
+type DatasetArgs struct {
+	Dataset string `json:"dataset"`
+}
+
+type DatasetReply struct {
+	Name                         string `json:"name"`
+	Description                  string `json:"description"`
+	Categories                   string `json:"categories"`
+	LicenseName                  string `json:"licenseName"`
+	LicenseSymbol                string `json:"licenseSymbol"`
+	LicenseURL                   string `json:"licenseURL"`
+	Metadata                     string `json:"metadata"`
+	IsCommunityDataset           bool   `json:"isCommunityDataset"`
+	OnSale                       bool   `json:"onSale"`
+	BaseAsset                    string `json:"baseAsset"`
+	BasePrice                    uint64 `json:"basePrice"`
+	RevenueModelDataShare        uint8  `json:"revenueModelDataShare"`
+	RevenueModelMetadataShare    uint8  `json:"revenueModelMetadataShare"`
+	RevenueModelDataOwnerCut     uint8  `json:"revenueModelDataOwnerCut"`
+	RevenueModelMetadataOwnerCut uint8  `json:"revenueModelMetadataOwnerCut"`
+	Owner                        string `json:"owner"`
+}
+
+func (j *JSONRPCServer) Dataset(req *http.Request, args *DatasetArgs, reply *DatasetReply) error {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Dataset")
+	defer span.End()
+
+	datasetID, err := getAssetIDBySymbol(args.Dataset)
+	if err != nil {
+		return err
+	}
+	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadatOwnerCut, owner, err := j.c.GetDatasetFromState(ctx, datasetID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrDatasetNotFound
+	}
+	reply.Name = string(name)
+	reply.Description = string(description)
+	reply.Categories = string(categories)
+	reply.LicenseName = string(licenseName)
+	reply.LicenseSymbol = string(licenseSymbol)
+	reply.LicenseURL = string(licenseURL)
+	reply.Metadata = string(metadata)
+	reply.IsCommunityDataset = isCommunityDataset
+	reply.OnSale = onSale
+	reply.BaseAsset = baseAsset.String()
+	reply.BasePrice = basePrice
+	reply.RevenueModelDataShare = revenueModelDataShare
+	reply.RevenueModelMetadataShare = revenueModelMetadataShare
+	reply.RevenueModelDataOwnerCut = revenueModelDataOwnerCut
+	reply.RevenueModelMetadataOwnerCut = revenueModelMetadatOwnerCut
+	reply.Owner = codec.MustAddressBech32(nconsts.HRP, owner)
+	return err
+}
+
+type DataContribution struct {
+	DataLocation   string `json:"dataLocation"`
+	DataIdentifier string `json:"dataIdentifier"`
+	Contributor    string `json:"contributor"`
+}
+
+type DataContributionPendingReply struct {
+	Contributions []DataContribution `json:"contributions"`
+}
+
+func (j *JSONRPCServer) DataContributionPending(req *http.Request, args *DatasetArgs, reply *DataContributionPendingReply) (err error) {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.DataContributionPending")
+	defer span.End()
+
+	datasetID, err := getAssetIDBySymbol(args.Dataset)
+	if err != nil {
+		return err
+	}
+
+	// Get all contributions for the dataset
+	contributions, err := j.c.GetDataContributionPending(ctx, datasetID, codec.EmptyAddress)
+	if err != nil {
+		return err
+	}
+
+	// Iterate over contributions and populate reply
+	for _, contrib := range contributions {
+		convertedContribution := DataContribution{
+			DataLocation:   string(contrib.DataLocation),                              // Convert []byte to string
+			DataIdentifier: string(contrib.DataIdentifier),                            // Convert []byte to string
+			Contributor:    codec.MustAddressBech32(nconsts.HRP, contrib.Contributor), // Convert codec.Address to string
+		}
+		reply.Contributions = append(reply.Contributions, convertedContribution)
+	}
 	return nil
 }

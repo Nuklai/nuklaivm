@@ -241,7 +241,7 @@ var setKeyCmd = &cobra.Command{
 }
 
 func lookupKeyBalance(addr codec.Address, uri string, networkID uint32, chainID ids.ID, assetID ids.ID) error {
-	_, _, _, _, err := handler.GetAssetInfo(
+	_, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(
 		context.TODO(), nrpc.NewJSONRPCClient(uri, networkID, chainID),
 		addr, assetID, true)
 	return err
@@ -267,7 +267,39 @@ var balanceKeyCmd = &cobra.Command{
 			return err
 		}
 		for _, ncli := range nclients {
-			if _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, assetID, true); err != nil {
+			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, assetID, true); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+}
+
+var balanceNFTKeyCmd = &cobra.Command{
+	Use: "balanceNFT [address]",
+	RunE: func(_ *cobra.Command, args []string) error {
+		var (
+			addr codec.Address
+			err  error
+		)
+		if len(args) != 1 {
+			addr, err = handler.Root().PromptAddress("address")
+		} else {
+			addr, err = codec.ParseAddressBech32(nconsts.HRP, args[0])
+		}
+		if err != nil {
+			return err
+		}
+		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
+		if err != nil {
+			return err
+		}
+		nftID, err := handler.h.PromptAsset("nftID", false)
+		if err != nil {
+			return err
+		}
+		for _, ncli := range nclients {
+			if _, _, _, _, _, _, err := handler.GetAssetNFTInfo(context.TODO(), ncli, addr, nftID, true); err != nil {
 				return err
 			}
 		}

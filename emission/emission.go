@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/crypto/bls"
+	"github.com/ava-labs/hypersdk/state"
 	"go.uber.org/zap"
 )
 
@@ -606,4 +607,14 @@ func (e *Emission) GetEmissionValidators() map[ids.NodeID]*Validator {
 
 func (e *Emission) GetInfo() (emissionAccount EmissionAccount, totalSupply uint64, maxSupply uint64, totalStaked uint64, epochTracker EpochTracker) {
 	return e.EmissionAccount, e.TotalSupply, e.MaxSupply, e.TotalStaked, e.EpochTracker
+}
+
+func (e *Emission) GetVMMutableState() (state.Mutable, error) {
+	e.c.Logger().Info("fetching VM state")
+	stateDB, err := e.nuklaivm.State()
+	if err != nil {
+		e.c.Logger().Error("error fetching VM state", zap.Error(err))
+		return nil, err
+	}
+	return state.NewSimpleMutable(stateDB), nil
 }
