@@ -313,9 +313,13 @@ var getDataContributionPendingCmd = &cobra.Command{
 
 		// Get pending data contributions info
 		hutils.Outf("Retrieving pending data contributions info for datasetID: %s\n", datasetID)
-		_, err = handler.GetDataContributionPendingInfo(ctx, ncli, datasetID)
+		contributions, err := handler.GetDataContributionPendingInfo(ctx, ncli, datasetID)
 		if err != nil {
 			return err
+		}
+		if len(contributions) == 0 {
+			hutils.Outf("{{red}}This contribution does not exist{{/}}\n")
+			hutils.Outf("{{red}}exiting...{{/}}\n")
 		}
 
 		return nil

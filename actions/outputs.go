@@ -76,4 +76,8 @@ var (
 
 	ErrOutputDataLocationInvalid     = errors.New("data location is invalid")
 	ErrDatasetNotOpenForContribution = errors.New("dataset not open for contribution")
+
+	ErrBaseAssetNotSupported = errors.New("base asset not supported")
+	ErrBasePriceInvalid      = errors.New("base price is invalid")
+	ErrDatasetAlreadyOnSale  = errors.New("dataset already on sale")
 )
