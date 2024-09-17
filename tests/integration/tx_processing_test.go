@@ -1,3 +1,6 @@
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 // tx_processing_test.go
 package integration
 
@@ -514,5 +517,4 @@ var _ = ginkgo.Describe("tx_processing", func() {
 			require.Equal(balance3, uint64(10_000_000_005_000))
 		})
 	})
-
 })

@@ -1,3 +1,6 @@
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 // contributions_test.go
 package integration
 
@@ -178,5 +181,4 @@ var _ = ginkgo.Describe("marketplace", func() {
 		require.Equal([]byte(metadata), []byte("{\"dataLocation\":\"default\",\"dataIdentifier\":\"id1\"}"))
 		require.Equal(owner, sender)
 	})
-
 })

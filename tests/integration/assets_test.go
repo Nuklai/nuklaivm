@@ -1,3 +1,6 @@
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 // assets_test.go
 package integration
 
@@ -1154,5 +1157,4 @@ var _ = ginkgo.Describe("assets", func() {
 			require.Equal(balance2, uint64(1)) */
 		})
 	})
-
 })
