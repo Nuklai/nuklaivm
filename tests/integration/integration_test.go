@@ -761,7 +761,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	})
 
 	ginkgo.It("transfer an asset", func() {
-
 		ginkgo.By("transfer an asset with a memo", func() {
 			other, err := ed25519.GeneratePrivateKey()
 			require.NoError(err)
@@ -856,11 +855,9 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			require.NoError(err)
 			require.Equal(balance3, uint64(5000))
 		})
-
 	})
 
 	ginkgo.It("mint asset that doesn't exist", func() {
-
 		ginkgo.By("mint a fungible asset that doesn't exist", func() {
 			other, err := ed25519.GeneratePrivateKey()
 			require.NoError(err)
@@ -927,7 +924,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	})
 
 	ginkgo.It("create a new asset", func() {
-
 		ginkgo.By("create a new asset (no metadata)", func() {
 			tx := chain.NewTx(
 				&chain.Base{
@@ -1252,7 +1248,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	})
 
 	ginkgo.It("update an asset", func() {
-
 		ginkgo.By("update an asset that doesn't exist", func() {
 			parser, err := instances[0].ncli.Parser(context.Background())
 			require.NoError(err)
@@ -1342,7 +1337,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	})
 
 	ginkgo.It("mint an asset", func() {
-
 		ginkgo.By("mint a new fungible asset", func() {
 			parser, err := instances[0].ncli.Parser(context.Background())
 			require.NoError(err)
@@ -1681,7 +1675,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	})
 
 	ginkgo.It("burn an asset", func() {
-
 		ginkgo.By("burn new fungible asset", func() {
 			parser, err := instances[0].ncli.Parser(context.Background())
 			require.NoError(err)
@@ -1815,7 +1808,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	})
 
 	ginkgo.It("create and mint multiple assets", func() {
-
 		ginkgo.By("create and mint multiple of fungible assets in a single tx", func() {
 			// Create asset
 			parser, err := instances[3].ncli.Parser(context.Background())
@@ -1998,7 +1990,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 	})
 
 	ginkgo.It("create a dataset", func() {
-
 		ginkgo.By("create a new dataset (no metadata)", func() {
 			tx := chain.NewTx(
 				&chain.Base{
@@ -2361,11 +2352,9 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			require.Equal([]byte(metadata), asset1)
 			require.Equal(owner, sender)
 		})
-
 	})
 
 	ginkgo.It("update dataset", func() {
-
 		ginkgo.By("update a dataset that doesn't exist", func() {
 			parser, err := instances[0].ncli.Parser(context.Background())
 			require.NoError(err)
@@ -2464,7 +2453,6 @@ var _ = ginkgo.Describe("[Tx Processing]", func() {
 			require.True(isCommunityDataset)
 			require.Equal(revenueModelDataOwnerCut, uint8(10))
 		})
-
 	})
 
 	ginkgo.It("initiate data contribution to the dataset", func() {

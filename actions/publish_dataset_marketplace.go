@@ -94,7 +94,7 @@ func (*PublishDatasetMarketplace) ComputeUnits(chain.Rules) uint64 {
 	return PublishDatasetMarketplaceComputeUnits
 }
 
-func (d *PublishDatasetMarketplace) Size() int {
+func (*PublishDatasetMarketplace) Size() int {
 	return ids.IDLen*2 + consts.Uint64Len
 }
 
