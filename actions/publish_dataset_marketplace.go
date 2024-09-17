@@ -5,6 +5,7 @@ package actions
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/chain"
@@ -89,7 +90,7 @@ func (d *PublishDatasetMarketplace) Execute(
 
 	// Create an asset that represents that this dataset is published to the marketplace
 	// This is a special type of token that cannot be manually created/minted
-	metadata = []byte("{\"dataset\":\"" + d.Dataset.String() + "\",\"datasetPricePerBlock\":\"" + string(d.BasePrice) + "\",\"assetForPayment\":\"" + d.BaseAsset.String() + "\",\"publisher\":\"" + codec.MustAddressBech32(nconsts.HRP, actor) + "\"}")
+	metadata = []byte("{\"dataset\":\"" + d.Dataset.String() + "\",\"datasetPricePerBlock\":\"" + fmt.Sprint(d.BasePrice) + "\",\"assetForPayment\":\"" + d.BaseAsset.String() + "\",\"publisher\":\"" + codec.MustAddressBech32(nconsts.HRP, actor) + "\"}")
 	if err := storage.SetAsset(ctx, mu, actionID, nconsts.AssetMarketplaceTokenID, name, symbol, 0, metadata, d.Dataset[:], 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}
@@ -137,7 +138,7 @@ func combineWithPrefix(prefix, name []byte, maxLength int) []byte {
 	}
 
 	// Combine the prefix with the (potentially truncated) name
-	newVar := append(prefix, name...)
+	prefix = append(prefix, name...)
 
-	return newVar
+	return prefix
 }

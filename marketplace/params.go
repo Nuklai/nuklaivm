@@ -13,7 +13,7 @@ type DatasetConfig struct {
 	// Collateral needed to start the contribution process to the dataset
 	CollateralForDataContribution uint64 `json:"collateralForDataContribution"`
 
-	// Minumum amount of blocks to subscribe to
+	// Minimum amount of blocks to subscribe to
 	MinBlocksToSubscribe uint64 `json:"minBlocksToSubscribe"`
 }
 

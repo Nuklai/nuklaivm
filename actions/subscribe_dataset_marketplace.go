@@ -5,6 +5,7 @@ package actions
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	smath "github.com/ava-labs/avalanchego/utils/math"
@@ -127,7 +128,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	totalCost := d.NumBlocksToSubscribe * basePrice
 
 	// Mint the NFT for the subscription
-	metadataNFT := []byte("{\"dataset\":\"" + d.Dataset.String() + "\",\"marketplaceID\":\"" + d.MarketplaceID.String() + "\",\"datasetPricePerBlock\":\"" + string(basePrice) + "\",\"totalCost\":\"" + string(totalCost) + "\",\"assetForPayment\":\"" + d.AssetForPayment.String() + "\",\"numBlocksToSubscribe\":\"" + string(d.NumBlocksToSubscribe) + "\"}")
+	metadataNFT := []byte("{\"dataset\":\"" + d.Dataset.String() + "\",\"marketplaceID\":\"" + d.MarketplaceID.String() + "\",\"datasetPricePerBlock\":\"" + fmt.Sprint(basePrice) + "\",\"totalCost\":\"" + fmt.Sprint(totalCost) + "\",\"assetForPayment\":\"" + d.AssetForPayment.String() + "\",\"numBlocksToSubscribe\":\"" + fmt.Sprint(d.NumBlocksToSubscribe) + "\"}")
 	if err := storage.SetAssetNFT(ctx, mu, d.MarketplaceID, totalSupply, nftID, d.Dataset[:], metadataNFT, actor); err != nil {
 		return nil, err
 	}
@@ -161,7 +162,7 @@ func (*SubscribeDatasetMarketplace) ComputeUnits(chain.Rules) uint64 {
 	return SubscribeDatasetMarketplaceComputeUnits
 }
 
-func (d *SubscribeDatasetMarketplace) Size() int {
+func (*SubscribeDatasetMarketplace) Size() int {
 	return ids.IDLen*3 + consts.Uint64Len
 }
 

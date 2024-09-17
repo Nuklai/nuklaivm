@@ -181,5 +181,4 @@ var _ = ginkgo.Describe("marketplace", func() {
 		require.Equal([]byte(metadata), []byte("{\"dataLocation\":\"default\",\"dataIdentifier\":\"id1\"}"))
 		require.Equal(owner, sender)
 	})
-
 })
