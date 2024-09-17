@@ -35,10 +35,12 @@ const (
 	AssetFungibleTokenID    uint8 = 0
 	AssetNonFungibleTokenID uint8 = 1
 	AssetDatasetTokenID     uint8 = 2
+	AssetMarketplaceTokenID uint8 = 3
 	// Asset Names for TypeIDs
 	AssetFungibleTokenDesc    = "Fungible Token"     // #nosec
 	AssetNonFungibleTokenDesc = "Non-Fungible Token" // #nosec
 	AssetDatasetTokenDesc     = "Dataset Token"      // #nosec
+	AssetMarketplaceTokenDesc = "Marketplace Token"  // #nosec
 
 	// Auth TypeIDs
 	ED25519ID   uint8 = 0

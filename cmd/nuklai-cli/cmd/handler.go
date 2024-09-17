@@ -384,10 +384,10 @@ func (*Handler) GetDatasetInfo(
 	ctx context.Context,
 	cli *nrpc.JSONRPCClient,
 	datasetID ids.ID,
-) (string, string, string, string, string, string, string, bool, bool, string, uint64, uint8, uint8, uint8, uint8, string, error) {
-	_, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := cli.Dataset(ctx, datasetID.String(), false)
+) (string, string, string, string, string, string, string, bool, string, string, uint64, uint8, uint8, uint8, uint8, string, error) {
+	_, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := cli.Dataset(ctx, datasetID.String(), false)
 	if err != nil {
-		return "", "", "", "", "", "", "", false, false, "", 0, 0, 0, 0, 0, "", err
+		return "", "", "", "", "", "", "", false, "", "", 0, 0, 0, 0, 0, "", err
 	}
 
 	hutils.Outf(
@@ -400,7 +400,7 @@ func (*Handler) GetDatasetInfo(
 		licenseURL,
 		metadata,
 		isCommunityDataset,
-		onSale,
+		saleID,
 		baseAsset,
 		basePrice,
 		revenueModelDataShare,
@@ -409,7 +409,7 @@ func (*Handler) GetDatasetInfo(
 		revenueModelMetadataOwnerCut,
 		owner,
 	)
-	return name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err
+	return name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err
 }
 
 func (*Handler) GetDataContributionPendingInfo(

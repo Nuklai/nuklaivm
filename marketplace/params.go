@@ -12,6 +12,9 @@ import (
 type DatasetConfig struct {
 	// Collateral needed to start the contribution process to the dataset
 	CollateralForDataContribution uint64 `json:"collateralForDataContribution"`
+
+	// Minumum amount of blocks to subscribe to
+	MinBlocksToSubscribe uint64 `json:"minBlocksToSubscribe"`
 }
 
 func GetDatasetConfig() DatasetConfig {
@@ -19,5 +22,6 @@ func GetDatasetConfig() DatasetConfig {
 
 	return DatasetConfig{
 		CollateralForDataContribution: collateralForDataContribution,
+		MinBlocksToSubscribe:          100, // TODO: 720(1 hour) for production
 	}
 }

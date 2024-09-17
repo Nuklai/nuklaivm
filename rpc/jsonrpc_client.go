@@ -252,12 +252,12 @@ func (cli *JSONRPCClient) Dataset(
 	ctx context.Context,
 	dataset string,
 	useCache bool,
-) (bool, string, string, string, string, string, string, string, bool, bool, string, uint64, uint8, uint8, uint8, uint8, string, error) {
+) (bool, string, string, string, string, string, string, string, bool, string, string, uint64, uint8, uint8, uint8, uint8, string, error) {
 	cli.assetsL.Lock()
 	r, ok := cli.datasets[dataset]
 	cli.assetsL.Unlock()
 	if ok && useCache {
-		return true, r.Name, r.Description, r.Categories, r.LicenseName, r.LicenseSymbol, r.LicenseURL, r.Metadata, r.IsCommunityDataset, r.OnSale, r.BaseAsset, r.BasePrice, r.RevenueModelDataShare, r.RevenueModelMetadataShare, r.RevenueModelDataOwnerCut, r.RevenueModelMetadataOwnerCut, r.Owner, nil
+		return true, r.Name, r.Description, r.Categories, r.LicenseName, r.LicenseSymbol, r.LicenseURL, r.Metadata, r.IsCommunityDataset, r.SaleID, r.BaseAsset, r.BasePrice, r.RevenueModelDataShare, r.RevenueModelMetadataShare, r.RevenueModelDataOwnerCut, r.RevenueModelMetadataOwnerCut, r.Owner, nil
 	}
 
 	resp := new(DatasetReply)
@@ -273,14 +273,14 @@ func (cli *JSONRPCClient) Dataset(
 	// We use string parsing here because the JSON-RPC library we use may not
 	// allows us to perform errors.Is.
 	case err != nil && strings.Contains(err.Error(), ErrDatasetNotFound.Error()):
-		return false, "", "", "", "", "", "", "", false, false, "", 0, 0, 0, 0, 0, "", nil
+		return false, "", "", "", "", "", "", "", false, "", "", 0, 0, 0, 0, 0, "", nil
 	case err != nil:
-		return false, "", "", "", "", "", "", "", false, false, "", 0, 0, 0, 0, 0, "", nil
+		return false, "", "", "", "", "", "", "", false, "", "", 0, 0, 0, 0, 0, "", nil
 	}
 	cli.assetsL.Lock()
 	cli.datasets[dataset] = resp
 	cli.assetsL.Unlock()
-	return true, resp.Name, resp.Description, resp.Categories, resp.LicenseName, resp.LicenseSymbol, resp.LicenseURL, resp.Metadata, resp.IsCommunityDataset, resp.OnSale, resp.BaseAsset, resp.BasePrice, resp.RevenueModelDataShare, resp.RevenueModelMetadataShare, resp.RevenueModelDataOwnerCut, resp.RevenueModelMetadataOwnerCut, resp.Owner, nil
+	return true, resp.Name, resp.Description, resp.Categories, resp.LicenseName, resp.LicenseSymbol, resp.LicenseURL, resp.Metadata, resp.IsCommunityDataset, resp.SaleID, resp.BaseAsset, resp.BasePrice, resp.RevenueModelDataShare, resp.RevenueModelMetadataShare, resp.RevenueModelDataOwnerCut, resp.RevenueModelMetadataOwnerCut, resp.Owner, nil
 }
 
 func (cli *JSONRPCClient) DataContributionPending(ctx context.Context, dataset string) ([]DataContribution, error) {

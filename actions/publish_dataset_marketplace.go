@@ -25,9 +25,10 @@ type PublishDatasetMarketplace struct {
 	// This is the asset ID to use for calculating the price for one block
 	BaseAsset ids.ID `json:"baseAsset"`
 
-	// THis is the base price in the `baseAsset` amount for one block
+	// This is the base price in the `baseAsset` amount for one block
 	// For example, if the base price is 1 and the base asset is NAI,
 	// then the price for one block is 1 NAI
+	// If 0 is passed, the dataset is free to use
 	BasePrice uint64 `json:"basePrice"`
 }
 
@@ -35,15 +36,17 @@ func (*PublishDatasetMarketplace) GetTypeID() uint8 {
 	return nconsts.PublishDatasetMarketplaceID
 }
 
-func (d *PublishDatasetMarketplace) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (d *PublishDatasetMarketplace) StateKeys(actor codec.Address, actionID ids.ID) state.Keys {
 	return state.Keys{
-		string(storage.DatasetKey(d.Dataset)):        state.Read,
-		string(storage.BalanceKey(actor, ids.Empty)): state.Read | state.Write,
+		string(storage.DatasetKey(d.Dataset)):       state.Read | state.Write,
+		string(storage.AssetKey(d.Dataset)):         state.Read,
+		string(storage.AssetKey(actionID)):          state.Allocate | state.Write,
+		string(storage.BalanceKey(actor, actionID)): state.Allocate | state.Write,
 	}
 }
 
 func (*PublishDatasetMarketplace) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.DatasetChunks, storage.BalanceChunks}
+	return []uint16{storage.DatasetChunks, storage.AssetChunks, storage.BalanceChunks}
 }
 
 func (d *PublishDatasetMarketplace) Execute(
@@ -52,10 +55,10 @@ func (d *PublishDatasetMarketplace) Execute(
 	mu state.Mutable,
 	_ int64,
 	actor codec.Address,
-	_ ids.ID,
+	actionID ids.ID,
 ) ([][]byte, error) {
 	// Check if the dataset exists
-	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, _, _, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := storage.GetDataset(ctx, mu, d.Dataset)
+	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, _, _, _, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := storage.GetDataset(ctx, mu, d.Dataset)
 	if err != nil {
 		return nil, err
 	}
@@ -68,22 +71,26 @@ func (d *PublishDatasetMarketplace) Execute(
 		return nil, ErrOutputWrongOwner
 	}
 
-	// Check if the dataset is already on sale
-	if onSale {
-		return nil, ErrDatasetAlreadyOnSale
-	}
-
-	// Check that BaseAsset is supported
-	if d.BaseAsset != ids.Empty {
-		return nil, ErrBaseAssetNotSupported
-	}
-	// Check that BasePrice is valid
-	if d.BasePrice == 0 {
-		return nil, ErrBasePriceInvalid
-	}
-
 	// Update the dataset
-	if err := storage.SetDataset(ctx, mu, d.Dataset, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, true, d.BaseAsset, d.BasePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
+	if err := storage.SetDataset(ctx, mu, d.Dataset, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, actionID, d.BaseAsset, d.BasePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
+		return nil, err
+	}
+
+	// Retrieve the asset info
+	exists, _, name, symbol, _, _, _, _, _, _, _, _, _, _, err := storage.GetAsset(ctx, mu, d.Dataset)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, ErrAssetNotFound
+	}
+	name = combineWithPrefix([]byte("Dataset-Marketplace-"), name, MaxMetadataSize)
+	symbol = combineWithPrefix([]byte("DM-"), symbol, MaxTextSize)
+
+	// Create an asset that represents that this dataset is published to the marketplace
+	// This is a special type of token that cannot be manually created/minted
+	metadata = []byte("{\"dataset\":\"" + d.Dataset.String() + "\",\"datasetPricePerBlock\":\"" + string(d.BasePrice) + "\",\"assetForPayment\":\"" + d.BaseAsset.String() + "\",\"publisher\":\"" + codec.MustAddressBech32(nconsts.HRP, actor) + "\"}")
+	if err := storage.SetAsset(ctx, mu, actionID, nconsts.AssetMarketplaceTokenID, name, symbol, 0, metadata, d.Dataset[:], 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}
 
@@ -108,11 +115,29 @@ func UnmarshalPublishDatasetMarketplace(p *codec.Packer) (chain.Action, error) {
 	var publish PublishDatasetMarketplace
 	p.UnpackID(true, &publish.Dataset)
 	p.UnpackID(true, &publish.BaseAsset)
-	publish.BasePrice = p.UnpackUint64(true)
+	publish.BasePrice = p.UnpackUint64(false)
 	return &publish, p.Err()
 }
 
 func (*PublishDatasetMarketplace) ValidRange(chain.Rules) (int64, int64) {
 	// Returning -1, -1 means that the action is always valid.
 	return -1, -1
+}
+
+// Function to combine the prefix with the name byte slice
+func combineWithPrefix(prefix, name []byte, maxLength int) []byte {
+	prefixLen := len(prefix)
+
+	// Calculate the maximum allowable length for the name
+	maxNameLen := maxLength - prefixLen
+
+	// Truncate the name if it's too long
+	if len(name) > maxNameLen {
+		name = name[:maxNameLen]
+	}
+
+	// Combine the prefix with the (potentially truncated) name
+	newVar := append(prefix, name...)
+
+	return newVar
 }

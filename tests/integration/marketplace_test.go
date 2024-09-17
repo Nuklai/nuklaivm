@@ -166,7 +166,7 @@ var _ = ginkgo.Describe("marketplace", func() {
 		require.Equal(totalSupply, uint64(2))
 
 		// Check NFT that was created for data contribution to the dataset
-		nftID := nchain.GenerateID(dataset1ID, totalSupply-1)
+		nftID := nchain.GenerateIDWithIndex(dataset1ID, totalSupply-1)
 		balance, err = instances[0].ncli.Balance(context.TODO(), sender, nftID.String())
 		require.NoError(err)
 		require.Equal(balance, uint64(1))
@@ -181,4 +181,5 @@ var _ = ginkgo.Describe("marketplace", func() {
 		require.Equal([]byte(metadata), []byte("{\"dataLocation\":\"default\",\"dataIdentifier\":\"id1\"}"))
 		require.Equal(owner, sender)
 	})
+
 })

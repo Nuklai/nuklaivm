@@ -77,7 +77,10 @@ var (
 	ErrOutputDataLocationInvalid     = errors.New("data location is invalid")
 	ErrDatasetNotOpenForContribution = errors.New("dataset not open for contribution")
 
-	ErrBaseAssetNotSupported = errors.New("base asset not supported")
-	ErrBasePriceInvalid      = errors.New("base price is invalid")
-	ErrDatasetAlreadyOnSale  = errors.New("dataset already on sale")
+	ErrBaseAssetNotSupported             = errors.New("base asset not supported")
+	ErrBasePriceInvalid                  = errors.New("base price is invalid")
+	ErrDatasetAlreadyOnSale              = errors.New("dataset already on sale")
+	ErrDatasetNotOnSale                  = errors.New("dataset not on sale")
+	ErrOutputNumBlocksToSubscribeInvalid = errors.New("num blocks to subscribe is invalid")
+	ErrMarketplaceIDInvalid              = errors.New("marketplace ID is invalid")
 )

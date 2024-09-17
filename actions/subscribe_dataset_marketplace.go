@@ -7,10 +7,13 @@ import (
 	"context"
 
 	"github.com/ava-labs/avalanchego/ids"
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
+	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
+	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/marketplace"
 	"github.com/nuklai/nuklaivm/storage"
@@ -22,11 +25,14 @@ type SubscribeDatasetMarketplace struct {
 	// Dataset ID
 	Dataset ids.ID `json:"dataset"`
 
-	// Data location(default, S3, Filecoin, etc.)
-	DataLocation []byte `json:"dataLocation"`
+	// Marketplace ID(This is also the asset ID in the marketplace that represents the dataset)
+	MarketplaceID ids.ID `json:"marketplaceID"`
 
-	// Data Identifier(id/hash/URL)
-	DataIdentifier []byte `json:"dataIdentifier"`
+	// Asset to use for the subscription
+	AssetForPayment ids.ID `json:"assetForPayment"`
+
+	// Total amount of blocks to subscribe to
+	NumBlocksToSubscribe uint64 `json:"numBlocksToSubscribe"`
 }
 
 func (*SubscribeDatasetMarketplace) GetTypeID() uint8 {
@@ -34,14 +40,19 @@ func (*SubscribeDatasetMarketplace) GetTypeID() uint8 {
 }
 
 func (d *SubscribeDatasetMarketplace) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+	nftID := nchain.GenerateIDWithAddress(d.MarketplaceID, actor)
 	return state.Keys{
-		string(storage.DatasetKey(d.Dataset)):        state.Read,
-		string(storage.BalanceKey(actor, ids.Empty)): state.Read | state.Write,
+		string(storage.DatasetKey(d.Dataset)):                state.Read,
+		string(storage.AssetKey(d.MarketplaceID)):            state.Read | state.Write,
+		string(storage.AssetNFTKey(nftID)):                   state.Allocate | state.Write,
+		string(storage.BalanceKey(actor, d.AssetForPayment)): state.Read | state.Write,
+		string(storage.BalanceKey(actor, d.MarketplaceID)):   state.Allocate | state.Write,
+		string(storage.BalanceKey(actor, nftID)):             state.Allocate | state.Write,
 	}
 }
 
 func (*SubscribeDatasetMarketplace) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.DatasetChunks, storage.BalanceChunks}
+	return []uint16{storage.DatasetChunks, storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks}
 }
 
 func (d *SubscribeDatasetMarketplace) Execute(
@@ -52,67 +63,121 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) ([][]byte, error) {
+	// Check if the nftID already exists(This means the user is already subscribed)
+	nftID := nchain.GenerateIDWithAddress(d.MarketplaceID, actor)
+	exists, _, _, _, _, _, _ := storage.GetAssetNFT(ctx, mu, nftID)
+	if exists {
+		return nil, ErrOutputNFTAlreadyExists
+	}
+
 	// Check if the dataset exists
-	exists, _, _, _, _, _, _, _, isCommunityDataset, _, _, _, _, _, _, _, _, err := storage.GetDataset(ctx, mu, d.Dataset)
+	exists, _, _, _, _, _, _, _, _, saleID, baseAsset, basePrice, _, _, _, _, _, err := storage.GetDataset(ctx, mu, d.Dataset)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
 		return nil, ErrDatasetNotFound
 	}
-	if !isCommunityDataset {
-		return nil, ErrDatasetNotOpenForContribution
+
+	// Check if the dataset is on sale
+	if saleID == ids.Empty {
+		return nil, ErrDatasetNotOnSale
+	}
+	// Check if the marketplace ID is correct
+	if saleID != d.MarketplaceID {
+		return nil, ErrMarketplaceIDInvalid
 	}
 
-	// Check if the data location is valid
-	dataLocation := []byte("default")
-	if len(d.DataLocation) > 0 {
-		dataLocation = d.DataLocation
-	}
-	if len(dataLocation) < 3 || len(dataLocation) > MaxTextSize {
-		return nil, ErrOutputDataLocationInvalid
-	}
-	// Check if the data identifier is valid(MaxMetadataSize - MaxTextSize because the data location and data identifier are stored together as metadata in the NFT metadata)
-	if len(d.DataIdentifier) == 0 || len(d.DataIdentifier) > (MaxMetadataSize-MaxTextSize) {
-		return nil, ErrOutputURIInvalid
+	// Ensure assetForPayment is supported
+	if d.AssetForPayment != baseAsset {
+		return nil, ErrBaseAssetNotSupported
 	}
 
-	// Get the marketplace instance
-	marketplaceInstance := marketplace.GetMarketplace()
-	if err := marketplaceInstance.InitiateContributeDataset(d.Dataset, dataLocation, d.DataIdentifier, actor); err != nil {
-		return nil, err
-	}
-
-	// Reduce the balance of the contributor with the collateral needed to contribute to the dataset
-	// This will be refunded if the contribution is successful
-	// This is done to prevent spamming the network with fake contributions
+	// Ensure numBlocksToSubscribe is valid
 	dataConfig := marketplace.GetDatasetConfig()
-	if err := storage.SubBalance(ctx, mu, actor, ids.Empty, dataConfig.CollateralForDataContribution); err != nil {
+	if d.NumBlocksToSubscribe < dataConfig.MinBlocksToSubscribe {
+		return nil, ErrOutputNumBlocksToSubscribeInvalid
+	}
+
+	// Check for the asset
+	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAsset(ctx, mu, d.MarketplaceID)
+	if err != nil {
 		return nil, err
+	}
+	if !exists {
+		return nil, ErrOutputAssetMissing
+	}
+	if assetType != nconsts.AssetMarketplaceTokenID {
+		return nil, ErrOutputWrongAssetType
+	}
+
+	// Mint the subscription non-fungible token to represent the user is subscribed
+	// to the dataset
+	amountOfToken := uint64(1)
+	newSupply, err := smath.Add64(totalSupply, amountOfToken)
+	if err != nil {
+		return nil, err
+	}
+	if maxSupply != 0 && newSupply > maxSupply {
+		return nil, ErrOutputMaxSupplyReached
+	}
+	totalSupply = newSupply
+
+	// Calculate the total cost of the subscription
+	totalCost := d.NumBlocksToSubscribe * basePrice
+
+	// Mint the NFT for the subscription
+	metadataNFT := []byte("{\"dataset\":\"" + d.Dataset.String() + "\",\"marketplaceID\":\"" + d.MarketplaceID.String() + "\",\"datasetPricePerBlock\":\"" + string(basePrice) + "\",\"totalCost\":\"" + string(totalCost) + "\",\"assetForPayment\":\"" + d.AssetForPayment.String() + "\",\"numBlocksToSubscribe\":\"" + string(d.NumBlocksToSubscribe) + "\"}")
+	if err := storage.SetAssetNFT(ctx, mu, d.MarketplaceID, totalSupply, nftID, d.Dataset[:], metadataNFT, actor); err != nil {
+		return nil, err
+	}
+
+	// Update the asset with the new total supply
+	if err := storage.SetAsset(ctx, mu, d.MarketplaceID, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
+		return nil, err
+	}
+
+	// Add the balance to NFT collection
+	if err := storage.AddBalance(ctx, mu, actor, d.MarketplaceID, amountOfToken, true); err != nil {
+		return nil, err
+	}
+
+	// Add the balance to individual NFT
+	if err := storage.AddBalance(ctx, mu, actor, nftID, amountOfToken, true); err != nil {
+		return nil, err
+	}
+
+	// Check if the actor has enough balance to subscribe
+	if totalCost > 0 {
+		if err := storage.SubBalance(ctx, mu, actor, d.AssetForPayment, totalCost); err != nil {
+			return nil, err
+		}
 	}
 
 	return nil, nil
 }
 
 func (*SubscribeDatasetMarketplace) ComputeUnits(chain.Rules) uint64 {
-	return InitiateContributeDatasetComputeUnits
+	return SubscribeDatasetMarketplaceComputeUnits
 }
 
 func (d *SubscribeDatasetMarketplace) Size() int {
-	return ids.IDLen + codec.BytesLen(d.DataLocation) + codec.BytesLen(d.DataIdentifier)
+	return ids.IDLen*3 + consts.Uint64Len
 }
 
 func (d *SubscribeDatasetMarketplace) Marshal(p *codec.Packer) {
 	p.PackID(d.Dataset)
-	p.PackBytes(d.DataLocation)
-	p.PackBytes(d.DataIdentifier)
+	p.PackID(d.MarketplaceID)
+	p.PackID(d.AssetForPayment)
+	p.PackUint64(d.NumBlocksToSubscribe)
 }
 
 func UnmarshalSubscribeDatasetMarketplace(p *codec.Packer) (chain.Action, error) {
 	var subscribe SubscribeDatasetMarketplace
 	p.UnpackID(true, &subscribe.Dataset)
-	p.UnpackBytes(MaxTextSize, false, &subscribe.DataLocation)
-	p.UnpackBytes(MaxMetadataSize-MaxTextSize, true, &subscribe.DataIdentifier)
+	p.UnpackID(true, &subscribe.MarketplaceID)
+	p.UnpackID(true, &subscribe.AssetForPayment)
+	subscribe.NumBlocksToSubscribe = p.UnpackUint64(false)
 	return &subscribe, p.Err()
 }
 

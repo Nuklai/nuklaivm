@@ -37,7 +37,7 @@ func (*CompleteContributeDataset) GetTypeID() uint8 {
 }
 
 func (d *CompleteContributeDataset) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
-	nftID := nchain.GenerateID(d.Dataset, d.UniqueNFTID)
+	nftID := nchain.GenerateIDWithIndex(d.Dataset, d.UniqueNFTID)
 	return state.Keys{
 		string(storage.AssetKey(d.Dataset)):                  state.Read | state.Write,
 		string(storage.AssetNFTKey(nftID)):                   state.Allocate | state.Write,
@@ -73,7 +73,7 @@ func (d *CompleteContributeDataset) Execute(
 	}
 
 	// Check if the nftID already exists
-	nftID := nchain.GenerateID(d.Dataset, d.UniqueNFTID)
+	nftID := nchain.GenerateIDWithIndex(d.Dataset, d.UniqueNFTID)
 	exists, _, _, _, _, _, _ = storage.GetAssetNFT(ctx, mu, nftID)
 	if exists {
 		return nil, ErrOutputNFTAlreadyExists

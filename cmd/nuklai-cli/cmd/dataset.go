@@ -85,7 +85,7 @@ var createDatasetCmd = &cobra.Command{
 		hutils.Outf("{{green}}assetID:{{/}} %s\n", datasetID)
 
 		// Print nftID
-		nftID := nchain.GenerateID(datasetID, 0)
+		nftID := nchain.GenerateIDWithIndex(datasetID, 0)
 		hutils.Outf("{{green}}nftID:{{/}} %s\n", nftID)
 
 		return nil
@@ -158,7 +158,7 @@ var createDatasetFromExistingAssetCmd = &cobra.Command{
 		hutils.Outf("{{green}}assetID:{{/}} %s\n", assetID)
 
 		// Print nftID
-		nftID := nchain.GenerateID(assetID, 0)
+		nftID := nchain.GenerateIDWithIndex(assetID, 0)
 		hutils.Outf("{{green}}nftID:{{/}} %s\n", nftID)
 
 		return nil
@@ -374,7 +374,7 @@ var completeContributeDatasetCmd = &cobra.Command{
 		}
 
 		// Print nftID
-		nftID := nchain.GenerateID(datasetID, uniqueID)
+		nftID := nchain.GenerateIDWithIndex(datasetID, uniqueID)
 		hutils.Outf("{{green}}nftID:{{/}} %s\n", nftID)
 
 		return nil

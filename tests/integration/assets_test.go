@@ -379,7 +379,7 @@ var _ = ginkgo.Describe("assets", func() {
 			balance, err := instances[0].ncli.Balance(context.TODO(), sender, asset3ID.String())
 			require.NoError(err)
 			require.Equal(balance, uint64(1))
-			nftID := nchain.GenerateID(asset3ID, 0)
+			nftID := nchain.GenerateIDWithIndex(asset3ID, 0)
 			balance, err = instances[0].ncli.Balance(context.TODO(), sender, nftID.String())
 			require.NoError(err)
 			require.Equal(balance, uint64(1))
@@ -578,7 +578,7 @@ var _ = ginkgo.Describe("assets", func() {
 			balance, err := instances[0].ncli.Balance(context.TODO(), sender2, asset2ID.String())
 			require.NoError(err)
 			require.Equal(balance, uint64(1))
-			nftID := nchain.GenerateID(asset2ID, 0)
+			nftID := nchain.GenerateIDWithIndex(asset2ID, 0)
 			balance, err = instances[0].ncli.Balance(context.TODO(), sender2, nftID.String())
 			require.NoError(err)
 			require.Equal(balance, uint64(1))
@@ -892,7 +892,7 @@ var _ = ginkgo.Describe("assets", func() {
 		ginkgo.By("burn new non-fungible asset", func() {
 			parser, err := instances[0].ncli.Parser(context.Background())
 			require.NoError(err)
-			nftID := nchain.GenerateID(asset2ID, 0)
+			nftID := nchain.GenerateIDWithIndex(asset2ID, 0)
 			submit, _, _, err := instances[0].cli.GenerateTransaction(
 				context.Background(),
 				parser,

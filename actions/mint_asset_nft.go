@@ -43,7 +43,7 @@ func (*MintAssetNFT) GetTypeID() uint8 {
 }
 
 func (m *MintAssetNFT) StateKeys(codec.Address, ids.ID) state.Keys {
-	nftID := nchain.GenerateID(m.Asset, m.UniqueID)
+	nftID := nchain.GenerateIDWithIndex(m.Asset, m.UniqueID)
 	return state.Keys{
 		string(storage.AssetKey(m.Asset)):         state.Read | state.Write,
 		string(storage.AssetNFTKey(nftID)):        state.Allocate | state.Write,
@@ -75,7 +75,7 @@ func (m *MintAssetNFT) Execute(
 	}
 
 	// Check if the nftID already exists
-	nftID := nchain.GenerateID(m.Asset, m.UniqueID)
+	nftID := nchain.GenerateIDWithIndex(m.Asset, m.UniqueID)
 	exists, _, _, _, _, _, _ := storage.GetAssetNFT(ctx, mu, nftID)
 	if exists {
 		return nil, ErrOutputNFTAlreadyExists

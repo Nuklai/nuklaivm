@@ -127,7 +127,7 @@ var _ = ginkgo.Describe("datasets", func() {
 			asset1ID = chain.CreateActionID(tx.ID(), 0)
 
 			// Check dataset info
-			exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := instances[0].ncli.Dataset(context.TODO(), asset1ID.String(), false)
+			exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := instances[0].ncli.Dataset(context.TODO(), asset1ID.String(), false)
 			require.NoError(err)
 			require.True(exists)
 			require.Equal([]byte(name), asset1)
@@ -138,7 +138,7 @@ var _ = ginkgo.Describe("datasets", func() {
 			require.Equal([]byte(licenseURL), []byte("lu00"))
 			require.Equal([]byte(metadata), asset1)
 			require.False(isCommunityDataset)
-			require.False(onSale)
+			require.Equal(saleID, ids.Empty.String())
 			require.Equal(baseAsset, ids.Empty.String())
 			require.Zero(basePrice)
 			require.Equal(revenueModelDataShare, uint8(100))
@@ -170,7 +170,7 @@ var _ = ginkgo.Describe("datasets", func() {
 			require.Equal(enableDisableKYCAccountActor, sender)
 
 			// Check NFT info
-			nftID := nchain.GenerateID(asset1ID, 0)
+			nftID := nchain.GenerateIDWithIndex(asset1ID, 0)
 			balance, err = instances[0].ncli.Balance(context.TODO(), sender, nftID.String())
 			require.NoError(err)
 			require.Equal(balance, uint64(1))
@@ -215,7 +215,7 @@ var _ = ginkgo.Describe("datasets", func() {
 			asset1ID = chain.CreateActionID(tx.ID(), 0)
 
 			// Check dataset info
-			exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := instances[0].ncli.Dataset(context.TODO(), asset1ID.String(), false)
+			exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := instances[0].ncli.Dataset(context.TODO(), asset1ID.String(), false)
 			require.NoError(err)
 			require.True(exists)
 			require.Equal([]byte(name), asset1)
@@ -226,7 +226,7 @@ var _ = ginkgo.Describe("datasets", func() {
 			require.Equal([]byte(licenseURL), []byte("lu00"))
 			require.Equal([]byte(metadata), asset1)
 			require.True(isCommunityDataset)
-			require.False(onSale)
+			require.Equal(saleID, ids.Empty.String())
 			require.Equal(baseAsset, ids.Empty.String())
 			require.Zero(basePrice)
 			require.Equal(revenueModelDataShare, uint8(100))
@@ -258,7 +258,7 @@ var _ = ginkgo.Describe("datasets", func() {
 			require.Equal(enableDisableKYCAccountActor, sender)
 
 			// Check NFT info
-			nftID := nchain.GenerateID(asset1ID, 0)
+			nftID := nchain.GenerateIDWithIndex(asset1ID, 0)
 			balance, err = instances[0].ncli.Balance(context.TODO(), sender, nftID.String())
 			require.NoError(err)
 			require.Equal(balance, uint64(1))
@@ -330,7 +330,7 @@ var _ = ginkgo.Describe("datasets", func() {
 			require.True(results[0].Success)
 
 			// Check dataset info
-			exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := instances[0].ncli.Dataset(context.TODO(), asset1ID.String(), false)
+			exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := instances[0].ncli.Dataset(context.TODO(), asset1ID.String(), false)
 			require.NoError(err)
 			require.True(exists)
 			require.Equal([]byte(name), asset1)
@@ -341,7 +341,7 @@ var _ = ginkgo.Describe("datasets", func() {
 			require.Equal([]byte(licenseURL), []byte("lu00"))
 			require.Equal([]byte(metadata), asset1)
 			require.False(isCommunityDataset)
-			require.False(onSale)
+			require.Equal(saleID, ids.Empty.String())
 			require.Equal(baseAsset, ids.Empty.String())
 			require.Zero(basePrice)
 			require.Equal(revenueModelDataShare, uint8(100))
@@ -373,7 +373,7 @@ var _ = ginkgo.Describe("datasets", func() {
 			require.Equal(enableDisableKYCAccountActor, sender)
 
 			// Check NFT info
-			nftID := nchain.GenerateID(asset1ID, 0)
+			nftID := nchain.GenerateIDWithIndex(asset1ID, 0)
 			balance, err = instances[0].ncli.Balance(context.TODO(), sender, nftID.String())
 			require.NoError(err)
 			require.Equal(balance, uint64(1))
