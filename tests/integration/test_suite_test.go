@@ -99,7 +99,8 @@ var (
 	asset4Symbol   []byte
 	asset4Decimals uint8
 
-	dataset1ID ids.ID
+	dataset1ID     ids.ID
+	marketplace1ID ids.ID
 
 	// when used with embedded VMs
 	genesisBytes []byte

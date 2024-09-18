@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
+	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/storage"
 )
@@ -39,15 +40,14 @@ func (*PublishDatasetMarketplace) GetTypeID() uint8 {
 
 func (d *PublishDatasetMarketplace) StateKeys(actor codec.Address, actionID ids.ID) state.Keys {
 	return state.Keys{
-		string(storage.DatasetKey(d.Dataset)):       state.Read | state.Write,
-		string(storage.AssetKey(d.Dataset)):         state.Read,
-		string(storage.AssetKey(actionID)):          state.Allocate | state.Write,
-		string(storage.BalanceKey(actor, actionID)): state.Allocate | state.Write,
+		string(storage.DatasetKey(d.Dataset)): state.Read | state.Write,
+		string(storage.AssetKey(d.Dataset)):   state.Read,
+		string(storage.AssetKey(actionID)):    state.Allocate | state.Write,
 	}
 }
 
 func (*PublishDatasetMarketplace) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.DatasetChunks, storage.AssetChunks, storage.BalanceChunks}
+	return []uint16{storage.DatasetChunks, storage.AssetChunks}
 }
 
 func (d *PublishDatasetMarketplace) Execute(
@@ -85,13 +85,13 @@ func (d *PublishDatasetMarketplace) Execute(
 	if !exists {
 		return nil, ErrAssetNotFound
 	}
-	name = combineWithPrefix([]byte("Dataset-Marketplace-"), name, MaxMetadataSize)
-	symbol = combineWithPrefix([]byte("DM-"), symbol, MaxTextSize)
+	name = nchain.CombineWithPrefix([]byte("Dataset-Marketplace-"), name, MaxMetadataSize)
+	symbol = nchain.CombineWithPrefix([]byte("DM-"), symbol, MaxTextSize)
 
 	// Create an asset that represents that this dataset is published to the marketplace
 	// This is a special type of token that cannot be manually created/minted
 	metadata = []byte("{\"dataset\":\"" + d.Dataset.String() + "\",\"datasetPricePerBlock\":\"" + fmt.Sprint(d.BasePrice) + "\",\"assetForPayment\":\"" + d.BaseAsset.String() + "\",\"publisher\":\"" + codec.MustAddressBech32(nconsts.HRP, actor) + "\"}")
-	if err := storage.SetAsset(ctx, mu, actionID, nconsts.AssetMarketplaceTokenID, name, symbol, 0, metadata, d.Dataset[:], 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
+	if err := storage.SetAsset(ctx, mu, actionID, nconsts.AssetMarketplaceTokenID, name, symbol, 0, metadata, []byte(d.Dataset.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}
 
@@ -115,7 +115,7 @@ func (d *PublishDatasetMarketplace) Marshal(p *codec.Packer) {
 func UnmarshalPublishDatasetMarketplace(p *codec.Packer) (chain.Action, error) {
 	var publish PublishDatasetMarketplace
 	p.UnpackID(true, &publish.Dataset)
-	p.UnpackID(true, &publish.BaseAsset)
+	p.UnpackID(false, &publish.BaseAsset)
 	publish.BasePrice = p.UnpackUint64(false)
 	return &publish, p.Err()
 }
@@ -123,22 +123,4 @@ func UnmarshalPublishDatasetMarketplace(p *codec.Packer) (chain.Action, error) {
 func (*PublishDatasetMarketplace) ValidRange(chain.Rules) (int64, int64) {
 	// Returning -1, -1 means that the action is always valid.
 	return -1, -1
-}
-
-// Function to combine the prefix with the name byte slice
-func combineWithPrefix(prefix, name []byte, maxLength int) []byte {
-	prefixLen := len(prefix)
-
-	// Calculate the maximum allowable length for the name
-	maxNameLen := maxLength - prefixLen
-
-	// Truncate the name if it's too long
-	if len(name) > maxNameLen {
-		name = name[:maxNameLen]
-	}
-
-	// Combine the prefix with the (potentially truncated) name
-	prefix = append(prefix, name...)
-
-	return prefix
 }

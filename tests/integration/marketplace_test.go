@@ -6,12 +6,14 @@ package integration
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/hypersdk/chain"
+	"github.com/ava-labs/hypersdk/codec"
 
 	"github.com/nuklai/nuklaivm/actions"
 	nchain "github.com/nuklai/nuklaivm/chain"
@@ -179,6 +181,124 @@ var _ = ginkgo.Describe("marketplace", func() {
 		require.Equal(uniqueID, totalSupply-1)
 		require.Equal([]byte(uri), []byte("d01"))
 		require.Equal([]byte(metadata), []byte("{\"dataLocation\":\"default\",\"dataIdentifier\":\"id1\"}"))
+		require.Equal(owner, sender)
+	})
+
+	ginkgo.It("publish dataset to marketplace", func() {
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		// Complete contribution to dataset
+		submit, tx, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.PublishDatasetMarketplace{
+				Dataset:   dataset1ID,
+				BaseAsset: ids.Empty,
+				BasePrice: 100,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		marketplace1ID = chain.CreateActionID(tx.ID(), 0)
+
+		// Check updated dataset info
+		exists, _, _, _, _, _, _, _, _, saleID, baseAsset, basePrice, _, _, _, _, _, err := instances[0].ncli.Dataset(context.TODO(), dataset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(saleID, marketplace1ID.String())
+		require.Equal(baseAsset, ids.Empty.String())
+		require.Equal(basePrice, uint64(100))
+
+		// Check the newly created marketplace asset
+		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), marketplace1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(assetType, nconsts.AssetMarketplaceTokenDesc)
+		require.Equal([]byte(name), nchain.CombineWithPrefix([]byte("Dataset-Marketplace-"), []byte(asset1), 256))
+		symbolBytes := nchain.CombineWithPrefix([]byte(""), asset1, 8)
+		symbolBytes = nchain.CombineWithPrefix([]byte("DM-"), symbolBytes, 8)
+		require.Equal([]byte(symbol), symbolBytes)
+		require.Equal(decimals, uint8(0))
+		require.Equal([]byte(metadata), []byte("{\"dataset\":\""+dataset1ID.String()+"\",\"datasetPricePerBlock\":\""+"100"+"\",\"assetForPayment\":\""+ids.Empty.String()+"\",\"publisher\":\""+sender+"\"}"))
+		require.Equal(uri, dataset1ID.String())
+		require.Zero(totalSupply)
+		require.Zero(maxSupply)
+		emptyAddress := codec.MustAddressBech32(nconsts.HRP, codec.EmptyAddress)
+		require.Equal(admin, emptyAddress)
+		require.Equal(mintActor, emptyAddress)
+		require.Equal(pauseUnpauseActor, emptyAddress)
+		require.Equal(freezeUnfreezeActor, emptyAddress)
+		require.Equal(enableDisableKYCAccountActor, emptyAddress)
+	})
+
+	ginkgo.It("subscribe to a dataset in the marketplace", func() {
+		// Save balance before contribution
+		balanceBefore, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
+		require.NoError(err)
+
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		// Complete contribution to dataset
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.SubscribeDatasetMarketplace{
+				Dataset:              dataset1ID,
+				MarketplaceID:        marketplace1ID,
+				AssetForPayment:      ids.Empty,
+				NumBlocksToSubscribe: 5,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		// Check updated dataset info
+		exists, _, _, _, _, _, _, _, _, _, _, basePrice, _, _, _, _, _, err := instances[0].ncli.Dataset(context.TODO(), dataset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(basePrice, uint64(100))
+
+		totalCost := 5 * basePrice
+
+		// Check balance after for the asset used for payment
+		balanceAfter, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
+		require.NoError(err)
+		require.Less(balanceAfter, balanceBefore-uint64(100)) // totalCost is deducted + fees
+
+		// Check NFT balance
+		nftID := nchain.GenerateIDWithAddress(marketplace1ID, rsender)
+		balance, err := instances[0].ncli.Balance(context.TODO(), sender, nftID.String())
+		require.NoError(err)
+		require.Equal(balance, uint64(1))
+
+		// Check the  marketplace asset info
+		exists, assetType, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := instances[0].ncli.Asset(context.TODO(), marketplace1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(assetType, nconsts.AssetMarketplaceTokenDesc)
+		require.Equal(totalSupply, uint64(1))
+
+		// Check NFT info
+		exists, collectionID, uniqueID, uri, metadata, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+		require.Equal(collectionID, marketplace1ID.String())
+		require.Equal(uniqueID, totalSupply)
+		require.Equal(uri, dataset1ID.String())
+		require.Equal([]byte(metadata), []byte("{\"dataset\":\""+dataset1ID.String()+"\",\"marketplaceID\":\""+marketplace1ID.String()+"\",\"datasetPricePerBlock\":\""+fmt.Sprint(basePrice)+"\",\"totalCost\":\""+fmt.Sprint(totalCost)+"\",\"assetForPayment\":\""+ids.Empty.String()+"\",\"numBlocksToSubscribe\":\""+"5"+"\"}"))
 		require.Equal(owner, sender)
 	})
 })

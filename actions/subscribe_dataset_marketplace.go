@@ -129,7 +129,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 
 	// Mint the NFT for the subscription
 	metadataNFT := []byte("{\"dataset\":\"" + d.Dataset.String() + "\",\"marketplaceID\":\"" + d.MarketplaceID.String() + "\",\"datasetPricePerBlock\":\"" + fmt.Sprint(basePrice) + "\",\"totalCost\":\"" + fmt.Sprint(totalCost) + "\",\"assetForPayment\":\"" + d.AssetForPayment.String() + "\",\"numBlocksToSubscribe\":\"" + fmt.Sprint(d.NumBlocksToSubscribe) + "\"}")
-	if err := storage.SetAssetNFT(ctx, mu, d.MarketplaceID, totalSupply, nftID, d.Dataset[:], metadataNFT, actor); err != nil {
+	if err := storage.SetAssetNFT(ctx, mu, d.MarketplaceID, totalSupply, nftID, []byte(d.Dataset.String()), metadataNFT, actor); err != nil {
 		return nil, err
 	}
 
@@ -177,8 +177,8 @@ func UnmarshalSubscribeDatasetMarketplace(p *codec.Packer) (chain.Action, error)
 	var subscribe SubscribeDatasetMarketplace
 	p.UnpackID(true, &subscribe.Dataset)
 	p.UnpackID(true, &subscribe.MarketplaceID)
-	p.UnpackID(true, &subscribe.AssetForPayment)
-	subscribe.NumBlocksToSubscribe = p.UnpackUint64(false)
+	p.UnpackID(false, &subscribe.AssetForPayment)
+	subscribe.NumBlocksToSubscribe = p.UnpackUint64(true)
 	return &subscribe, p.Err()
 }
 

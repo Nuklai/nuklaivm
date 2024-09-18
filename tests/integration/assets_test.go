@@ -388,7 +388,6 @@ var _ = ginkgo.Describe("assets", func() {
 			require.Zero(balance)
 
 			exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := instances[0].ncli.Asset(context.TODO(), asset3ID.String(), false)
-
 			require.NoError(err)
 			require.True(exists)
 			require.Equal(assetType, nconsts.AssetDatasetTokenDesc)

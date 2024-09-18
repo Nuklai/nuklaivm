@@ -26,3 +26,21 @@ func GenerateIDWithAddress(id ids.ID, addr codec.Address) ids.ID {
 	copy(actionBytes[ids.IDLen:], addr[:])
 	return utils.ToID(actionBytes)
 }
+
+// Function to combine the prefix with the name byte slice
+func CombineWithPrefix(prefix, name []byte, maxLength int) []byte {
+	prefixLen := len(prefix)
+
+	// Calculate the maximum allowable length for the name
+	maxNameLen := maxLength - prefixLen
+
+	// Truncate the name if it's too long
+	if len(name) > maxNameLen {
+		name = name[:maxNameLen]
+	}
+
+	// Combine the prefix with the (potentially truncated) name
+	prefix = append(prefix, name...)
+
+	return prefix
+}

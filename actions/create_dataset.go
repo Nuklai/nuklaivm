@@ -124,7 +124,8 @@ func (c *CreateDataset) Execute(
 		}
 
 		// Create a new asset for the dataset
-		if err := storage.SetAsset(ctx, mu, assetID, nconsts.AssetDatasetTokenID, c.Name, c.Name, 0, c.Description, c.Description, 1, 0, actor, actor, actor, actor, actor); err != nil {
+		symbol := nchain.CombineWithPrefix([]byte(""), c.Name, MaxTextSize)
+		if err := storage.SetAsset(ctx, mu, assetID, nconsts.AssetDatasetTokenID, c.Name, symbol, 0, c.Description, c.Description, 1, 0, actor, actor, actor, actor, actor); err != nil {
 			return nil, err
 		}
 

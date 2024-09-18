@@ -22,6 +22,6 @@ func GetDatasetConfig() DatasetConfig {
 
 	return DatasetConfig{
 		CollateralForDataContribution: collateralForDataContribution,
-		MinBlocksToSubscribe:          100, // TODO: 720(1 hour) for production
+		MinBlocksToSubscribe:          5, // TODO: 720(1 hour) for production
 	}
 }

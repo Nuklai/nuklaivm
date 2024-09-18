@@ -107,6 +107,8 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 		reply.AssetType = nconsts.AssetNonFungibleTokenDesc
 	case nconsts.AssetDatasetTokenID:
 		reply.AssetType = nconsts.AssetDatasetTokenDesc
+	case nconsts.AssetMarketplaceTokenID:
+		reply.AssetType = nconsts.AssetMarketplaceTokenDesc
 	}
 	reply.Name = string(name)
 	reply.Symbol = string(symbol)
