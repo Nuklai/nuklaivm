@@ -16,6 +16,7 @@ import (
 
 	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/marketplace"
 	"github.com/nuklai/nuklaivm/storage"
 )
@@ -127,8 +128,12 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	// Calculate the total cost of the subscription
 	totalCost := d.NumBlocksToSubscribe * basePrice
 
+	// Get the emission instance
+	emissionInstance := emission.GetEmission()
+	currentBlock := emissionInstance.GetLastAcceptedBlockHeight()
+
 	// Mint the NFT for the subscription
-	metadataNFT := []byte("{\"dataset\":\"" + d.Dataset.String() + "\",\"marketplaceID\":\"" + d.MarketplaceID.String() + "\",\"datasetPricePerBlock\":\"" + fmt.Sprint(basePrice) + "\",\"totalCost\":\"" + fmt.Sprint(totalCost) + "\",\"assetForPayment\":\"" + d.AssetForPayment.String() + "\",\"numBlocksToSubscribe\":\"" + fmt.Sprint(d.NumBlocksToSubscribe) + "\"}")
+	metadataNFT := []byte("{\"dataset\":\"" + d.Dataset.String() + "\",\"marketplaceID\":\"" + d.MarketplaceID.String() + "\",\"datasetPricePerBlock\":\"" + fmt.Sprint(basePrice) + "\",\"totalCost\":\"" + fmt.Sprint(totalCost) + "\",\"assetForPayment\":\"" + d.AssetForPayment.String() + "\",\"expirationBlock\":\"" + fmt.Sprint(currentBlock+d.NumBlocksToSubscribe) + "\",\"numBlocksToSubscribe\":\"" + fmt.Sprint(d.NumBlocksToSubscribe) + "\"}")
 	if err := storage.SetAssetNFT(ctx, mu, d.MarketplaceID, totalSupply, nftID, []byte(d.Dataset.String()), metadataNFT, actor); err != nil {
 		return nil, err
 	}

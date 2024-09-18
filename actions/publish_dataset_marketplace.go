@@ -38,7 +38,7 @@ func (*PublishDatasetMarketplace) GetTypeID() uint8 {
 	return nconsts.PublishDatasetMarketplaceID
 }
 
-func (d *PublishDatasetMarketplace) StateKeys(actor codec.Address, actionID ids.ID) state.Keys {
+func (d *PublishDatasetMarketplace) StateKeys(_ codec.Address, actionID ids.ID) state.Keys {
 	return state.Keys{
 		string(storage.DatasetKey(d.Dataset)): state.Read | state.Write,
 		string(storage.AssetKey(d.Dataset)):   state.Read,

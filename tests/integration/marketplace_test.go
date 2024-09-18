@@ -221,12 +221,12 @@ var _ = ginkgo.Describe("marketplace", func() {
 		require.NoError(err)
 		require.True(exists)
 		require.Equal(assetType, nconsts.AssetMarketplaceTokenDesc)
-		require.Equal([]byte(name), nchain.CombineWithPrefix([]byte("Dataset-Marketplace-"), []byte(asset1), 256))
+		require.Equal([]byte(name), nchain.CombineWithPrefix([]byte("Dataset-Marketplace-"), asset1, 256))
 		symbolBytes := nchain.CombineWithPrefix([]byte(""), asset1, 8)
 		symbolBytes = nchain.CombineWithPrefix([]byte("DM-"), symbolBytes, 8)
 		require.Equal([]byte(symbol), symbolBytes)
 		require.Equal(decimals, uint8(0))
-		require.Equal([]byte(metadata), []byte("{\"dataset\":\""+dataset1ID.String()+"\",\"datasetPricePerBlock\":\""+"100"+"\",\"assetForPayment\":\""+ids.Empty.String()+"\",\"publisher\":\""+sender+"\"}"))
+		require.Equal(metadata, "{\"dataset\":\""+dataset1ID.String()+"\",\"datasetPricePerBlock\":\""+"100"+"\",\"assetForPayment\":\""+ids.Empty.String()+"\",\"publisher\":\""+sender+"\"}")
 		require.Equal(uri, dataset1ID.String())
 		require.Zero(totalSupply)
 		require.Zero(maxSupply)
@@ -242,6 +242,9 @@ var _ = ginkgo.Describe("marketplace", func() {
 		// Save balance before contribution
 		balanceBefore, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
 		require.NoError(err)
+
+		// Save block number before contribution
+		currentBlock := instances[0].emission.GetLastAcceptedBlockHeight()
 
 		parser, err := instances[0].ncli.Parser(context.Background())
 		require.NoError(err)
@@ -298,7 +301,8 @@ var _ = ginkgo.Describe("marketplace", func() {
 		require.Equal(collectionID, marketplace1ID.String())
 		require.Equal(uniqueID, totalSupply)
 		require.Equal(uri, dataset1ID.String())
-		require.Equal([]byte(metadata), []byte("{\"dataset\":\""+dataset1ID.String()+"\",\"marketplaceID\":\""+marketplace1ID.String()+"\",\"datasetPricePerBlock\":\""+fmt.Sprint(basePrice)+"\",\"totalCost\":\""+fmt.Sprint(totalCost)+"\",\"assetForPayment\":\""+ids.Empty.String()+"\",\"numBlocksToSubscribe\":\""+"5"+"\"}"))
+		require.NoError(err)
+		require.Equal(metadata, "{\"dataset\":\""+dataset1ID.String()+"\",\"marketplaceID\":\""+marketplace1ID.String()+"\",\"datasetPricePerBlock\":\""+fmt.Sprint(basePrice)+"\",\"totalCost\":\""+fmt.Sprint(totalCost)+"\",\"assetForPayment\":\""+ids.Empty.String()+"\",\"expirationBlock\":\""+fmt.Sprint(currentBlock+5)+"\",\"numBlocksToSubscribe\":\""+"5"+"\"}")
 		require.Equal(owner, sender)
 	})
 })

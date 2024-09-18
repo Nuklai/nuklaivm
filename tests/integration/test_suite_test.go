@@ -43,6 +43,7 @@ import (
 	"github.com/nuklai/nuklaivm/auth"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/controller"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/marketplace"
 	nrpc "github.com/nuklai/nuklaivm/rpc"
@@ -52,6 +53,7 @@ type instance struct {
 	chainID             ids.ID
 	nodeID              ids.NodeID
 	vm                  *vm.VM
+	emission            emission.Tracker
 	marketplace         marketplace.Hub
 	toEngine            chan common.Message
 	JSONRPCServer       *httptest.Server
@@ -278,10 +280,17 @@ var _ = ginkgo.BeforeSuite(func() {
 		webSocketServer := httptest.NewServer(hd[rpc.WebSocketEndpoint])
 		mockLogger := logging.NewLogger("", logging.NewWrappedCore(logging.Info, logging.Discard, logging.Plain.ConsoleEncoder()))
 		mockController := &MockController{logger: mockLogger}
+		totalSupply := uint64(0)
+		for _, alloc := range gen.CustomAllocation {
+			totalSupply += alloc.Balance
+		}
+		emissionAddr, err := codec.ParseAddressBech32(nconsts.HRP, gen.EmissionBalancer.EmissionAddress)
+		require.NoError(err)
 		instances[i] = instance{
 			chainID:             snowCtx.ChainID,
 			nodeID:              snowCtx.NodeID,
 			vm:                  v,
+			emission:            emission.NewEmission(mockController, v, totalSupply, gen.EmissionBalancer.MaxSupply, emissionAddr),
 			marketplace:         marketplace.NewMarketplace(mockController, v),
 			toEngine:            toEngine,
 			JSONRPCServer:       jsonRPCServer,
