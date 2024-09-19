@@ -7,6 +7,7 @@ package integration
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/ava-labs/avalanchego/ids"
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
+	hutils "github.com/ava-labs/hypersdk/utils"
 
 	"github.com/nuklai/nuklaivm/actions"
 	nchain "github.com/nuklai/nuklaivm/chain"
@@ -226,7 +228,19 @@ var _ = ginkgo.Describe("marketplace", func() {
 		symbolBytes = nchain.CombineWithPrefix([]byte("DM-"), symbolBytes, 8)
 		require.Equal([]byte(symbol), symbolBytes)
 		require.Equal(decimals, uint8(0))
-		require.Equal(metadata, "{\"dataset\":\""+dataset1ID.String()+"\",\"datasetPricePerBlock\":\""+"100"+"\",\"assetForPayment\":\""+ids.Empty.String()+"\",\"publisher\":\""+sender+"\"}")
+		metadataMap, err := nchain.JsonToMap(metadata)
+		require.NoError(err)
+		require.True(mapsEqual(metadataMap, map[string]string{
+			"dataset":              dataset1ID.String(),
+			"marketplaceID":        marketplace1ID.String(),
+			"datasetPricePerBlock": "100",
+			"assetForPayment":      ids.Empty.String(),
+			"publisher":            sender,
+			"lastClaimedBlock":     "0",
+			"subscriptions":        "0",
+			"paymentRemaining":     "0",
+			"paymentClaimed":       "0",
+		}))
 		require.Equal(uri, dataset1ID.String())
 		require.Zero(totalSupply)
 		require.Zero(maxSupply)
@@ -249,6 +263,7 @@ var _ = ginkgo.Describe("marketplace", func() {
 		parser, err := instances[0].ncli.Parser(context.Background())
 		require.NoError(err)
 		// Complete contribution to dataset
+		numBlocksToSubscribe := uint64(5)
 		submit, _, _, err := instances[0].cli.GenerateTransaction(
 			context.Background(),
 			parser,
@@ -256,7 +271,7 @@ var _ = ginkgo.Describe("marketplace", func() {
 				Dataset:              dataset1ID,
 				MarketplaceID:        marketplace1ID,
 				AssetForPayment:      ids.Empty,
-				NumBlocksToSubscribe: 5,
+				NumBlocksToSubscribe: numBlocksToSubscribe,
 			}},
 			factory,
 		)
@@ -274,12 +289,12 @@ var _ = ginkgo.Describe("marketplace", func() {
 		require.True(exists)
 		require.Equal(basePrice, uint64(100))
 
-		totalCost := 5 * basePrice
+		totalCost := numBlocksToSubscribe * basePrice
 
 		// Check balance after for the asset used for payment
 		balanceAfter, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
 		require.NoError(err)
-		require.Less(balanceAfter, balanceBefore-uint64(100)) // totalCost is deducted + fees
+		require.Less(balanceAfter, balanceBefore-totalCost) // totalCost is deducted + fees
 
 		// Check NFT balance
 		nftID := nchain.GenerateIDWithAddress(marketplace1ID, rsender)
@@ -288,11 +303,24 @@ var _ = ginkgo.Describe("marketplace", func() {
 		require.Equal(balance, uint64(1))
 
 		// Check the  marketplace asset info
-		exists, assetType, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := instances[0].ncli.Asset(context.TODO(), marketplace1ID.String(), false)
+		exists, assetType, _, _, _, metadata, _, totalSupply, _, _, _, _, _, _, err := instances[0].ncli.Asset(context.TODO(), marketplace1ID.String(), false)
 		require.NoError(err)
 		require.True(exists)
 		require.Equal(assetType, nconsts.AssetMarketplaceTokenDesc)
 		require.Equal(totalSupply, uint64(1))
+		metadataMap, err := nchain.JsonToMap(metadata)
+		require.NoError(err)
+		require.True(mapsEqual(metadataMap, map[string]string{
+			"dataset":              dataset1ID.String(),
+			"marketplaceID":        marketplace1ID.String(),
+			"datasetPricePerBlock": "100",
+			"assetForPayment":      ids.Empty.String(),
+			"publisher":            sender,
+			"lastClaimedBlock":     fmt.Sprint(currentBlock),
+			"subscriptions":        "1",
+			"paymentRemaining":     fmt.Sprint(totalCost),
+			"paymentClaimed":       "0",
+		}))
 
 		// Check NFT info
 		exists, collectionID, uniqueID, uri, metadata, owner, err := instances[0].ncli.AssetNFT(context.TODO(), nftID.String(), false)
@@ -302,7 +330,89 @@ var _ = ginkgo.Describe("marketplace", func() {
 		require.Equal(uniqueID, totalSupply)
 		require.Equal(uri, dataset1ID.String())
 		require.NoError(err)
-		require.Equal(metadata, "{\"dataset\":\""+dataset1ID.String()+"\",\"marketplaceID\":\""+marketplace1ID.String()+"\",\"datasetPricePerBlock\":\""+fmt.Sprint(basePrice)+"\",\"totalCost\":\""+fmt.Sprint(totalCost)+"\",\"assetForPayment\":\""+ids.Empty.String()+"\",\"expirationBlock\":\""+fmt.Sprint(currentBlock+5)+"\",\"numBlocksToSubscribe\":\""+"5"+"\"}")
+		metadataMap, err = nchain.JsonToMap(metadata)
+		require.NoError(err)
+		require.True(mapsEqual(metadataMap, map[string]string{
+			"dataset":              dataset1ID.String(),
+			"marketplaceID":        marketplace1ID.String(),
+			"datasetPricePerBlock": "100",
+			"totalCost":            fmt.Sprint(totalCost),
+			"assetForPayment":      ids.Empty.String(),
+			"issuanceBlock":        fmt.Sprint(currentBlock),
+			"expirationBlock":      fmt.Sprint(currentBlock + 5),
+			"numBlocksToSubscribe": "5",
+		}))
 		require.Equal(owner, sender)
+	})
+
+	ginkgo.It("claim accumulated payment from the subscriptions", func() {
+		// Save balance before payment claim
+		balanceBefore, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
+		require.NoError(err)
+
+		// Save block number before payment claim
+		currentBlockHeight := instances[0].emission.GetLastAcceptedBlockHeight()
+
+		parser, err := instances[0].ncli.Parser(context.Background())
+		require.NoError(err)
+		// Complete contribution to dataset
+		submit, _, _, err := instances[0].cli.GenerateTransaction(
+			context.Background(),
+			parser,
+			[]chain.Action{&actions.ClaimMarketplacePayment{
+				Dataset:         dataset1ID,
+				MarketplaceID:   marketplace1ID,
+				AssetForPayment: ids.Empty,
+			}},
+			factory,
+		)
+		require.NoError(err)
+		require.NoError(submit(context.Background()))
+
+		accept := expectBlk(instances[0])
+		results := accept(false)
+		require.Len(results, 1)
+		require.True(results[0].Success)
+
+		// Get dataset info
+		exists, _, _, _, _, _, _, _, _, _, _, basePrice, _, _, _, _, _, err := instances[0].ncli.Dataset(context.TODO(), dataset1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+
+		totalCost := 1 * basePrice
+
+		// Check the updated marketplace asset info
+		exists, _, _, _, _, metadata, _, _, _, _, _, _, _, _, err := instances[0].ncli.Asset(context.TODO(), marketplace1ID.String(), false)
+		require.NoError(err)
+		require.True(exists)
+
+		metadataMap, err := nchain.JsonToMap(metadata)
+		require.NoError(err)
+		paymentRemaining, err := strconv.ParseUint(metadataMap["paymentRemaining"], 10, 64)
+		require.NoError(err)
+		paymentClaimed, err := strconv.ParseUint(metadataMap["paymentClaimed"], 10, 64)
+		require.NoError(err)
+		lastClaimedBlock, err := strconv.ParseUint(metadataMap["lastClaimedBlock"], 10, 64)
+		require.NoError(err)
+		baseValueOfOneUnit, _ := hutils.ParseBalance("1", nconsts.Decimals)
+		numBlocksSubscribed := currentBlockHeight - lastClaimedBlock
+		totalAccumulatedReward := numBlocksSubscribed * baseValueOfOneUnit
+
+		require.True(mapsEqual(metadataMap, map[string]string{
+			"dataset":              dataset1ID.String(),
+			"marketplaceID":        marketplace1ID.String(),
+			"datasetPricePerBlock": "100",
+			"assetForPayment":      ids.Empty.String(),
+			"publisher":            sender,
+			"lastClaimedBlock":     fmt.Sprint(currentBlockHeight),
+			"subscriptions":        "1",
+			"paymentRemaining":     fmt.Sprint(paymentRemaining - totalAccumulatedReward),
+			"paymentClaimed":       fmt.Sprint(paymentClaimed + totalAccumulatedReward),
+		}))
+
+		// Check balance after for the asset that was rewarded
+		balanceAfter, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
+		require.NoError(err)
+		require.GreaterOrEqual(balanceAfter, balanceBefore+uint64(totalCost)-uint64(100_000)) // Reward is claimed but fees is taken
 	})
 })

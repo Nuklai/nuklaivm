@@ -5,7 +5,9 @@ package actions
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/ava-labs/avalanchego/ids"
 	smath "github.com/ava-labs/avalanchego/utils/math"
@@ -54,7 +56,7 @@ func (d *SubscribeDatasetMarketplace) StateKeys(actor codec.Address, _ ids.ID) s
 }
 
 func (*SubscribeDatasetMarketplace) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.DatasetChunks, storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks}
+	return []uint16{storage.DatasetChunks, storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks, storage.BalanceChunks, storage.BalanceChunks}
 }
 
 func (d *SubscribeDatasetMarketplace) Execute(
@@ -133,13 +135,45 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	currentBlock := emissionInstance.GetLastAcceptedBlockHeight()
 
 	// Mint the NFT for the subscription
-	metadataNFT := []byte("{\"dataset\":\"" + d.Dataset.String() + "\",\"marketplaceID\":\"" + d.MarketplaceID.String() + "\",\"datasetPricePerBlock\":\"" + fmt.Sprint(basePrice) + "\",\"totalCost\":\"" + fmt.Sprint(totalCost) + "\",\"assetForPayment\":\"" + d.AssetForPayment.String() + "\",\"expirationBlock\":\"" + fmt.Sprint(currentBlock+d.NumBlocksToSubscribe) + "\",\"numBlocksToSubscribe\":\"" + fmt.Sprint(d.NumBlocksToSubscribe) + "\"}")
+	metadataNFT := []byte("{\"dataset\":\"" + d.Dataset.String() + "\",\"marketplaceID\":\"" + d.MarketplaceID.String() + "\",\"datasetPricePerBlock\":\"" + fmt.Sprint(basePrice) + "\",\"totalCost\":\"" + fmt.Sprint(totalCost) + "\",\"assetForPayment\":\"" + d.AssetForPayment.String() + "\",\"issuanceBlock\":\"" + fmt.Sprint(currentBlock) + "\",\"expirationBlock\":\"" + fmt.Sprint(currentBlock+d.NumBlocksToSubscribe) + "\",\"numBlocksToSubscribe\":\"" + fmt.Sprint(d.NumBlocksToSubscribe) + "\"}")
 	if err := storage.SetAssetNFT(ctx, mu, d.MarketplaceID, totalSupply, nftID, []byte(d.Dataset.String()), metadataNFT, actor); err != nil {
 		return nil, err
 	}
 
-	// Update the asset with the new total supply
-	if err := storage.SetAsset(ctx, mu, d.MarketplaceID, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
+	// Unmarshal the metadata JSON into a map
+	var metadataMap map[string]string
+	if err := json.Unmarshal(metadata, &metadataMap); err != nil {
+		return nil, err
+	}
+
+	// Update the paymentRemaining, subscriptions and lastClaimedBlock fields
+	prevPaymentRemaining, err := strconv.ParseUint(metadataMap["paymentRemaining"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	metadataMap["paymentRemaining"] = fmt.Sprint(prevPaymentRemaining + totalCost)
+
+	prevSubscriptions, err := strconv.ParseUint(metadataMap["subscriptions"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	metadataMap["subscriptions"] = fmt.Sprint(prevSubscriptions + 1)
+
+	prevStartSubscriptionBlock, err := strconv.ParseUint(metadataMap["lastClaimedBlock"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	if prevStartSubscriptionBlock == 0 {
+		metadataMap["lastClaimedBlock"] = fmt.Sprint(currentBlock)
+	}
+	// Marshal the map back to a JSON byte slice
+	updatedMetadata, err := json.Marshal(metadataMap)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update the asset with the new total supply and updated metadata
+	if err := storage.SetAsset(ctx, mu, d.MarketplaceID, assetType, name, symbol, decimals, updatedMetadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
 		return nil, err
 	}
 

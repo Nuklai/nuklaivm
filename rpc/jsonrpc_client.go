@@ -300,6 +300,23 @@ func (cli *JSONRPCClient) DataContributionPending(ctx context.Context, dataset s
 	return resp.Contributions, nil
 }
 
+func (cli *JSONRPCClient) DatasetInfoFromMarketplace(ctx context.Context, dataset string) ([]DataContribution, error) {
+	resp := new(DataContributionPendingReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"datasetInfoFromMarketplace",
+		&DatasetArgs{
+			Dataset: dataset,
+		},
+		resp,
+	)
+	if err != nil {
+		return []DataContribution{}, err
+	}
+
+	return resp.Contributions, nil
+}
+
 func (cli *JSONRPCClient) WaitForBalance(
 	ctx context.Context,
 	addr string,

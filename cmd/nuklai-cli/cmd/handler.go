@@ -19,6 +19,7 @@ import (
 	hutils "github.com/ava-labs/hypersdk/utils"
 
 	"github.com/nuklai/nuklaivm/auth"
+	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
 	nrpc "github.com/nuklai/nuklaivm/rpc"
@@ -385,13 +386,18 @@ func (*Handler) GetDatasetInfo(
 	cli *nrpc.JSONRPCClient,
 	datasetID ids.ID,
 ) (string, string, string, string, string, string, string, bool, string, string, uint64, uint8, uint8, uint8, uint8, string, error) {
-	_, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := cli.Dataset(ctx, datasetID.String(), false)
+	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := cli.Dataset(ctx, datasetID.String(), false)
 	if err != nil {
 		return "", "", "", "", "", "", "", false, "", "", 0, 0, 0, 0, 0, "", err
 	}
+	if !exists {
+		hutils.Outf("{{red}}%s does not exist{{/}}\n", datasetID)
+		hutils.Outf("{{red}}exiting...{{/}}\n")
+		return "", "", "", "", "", "", "", false, "", "", 0, 0, 0, 0, 0, "", nil
+	}
 
 	hutils.Outf(
-		"{{blue}}dataset info: {{/}}\nName=%s Description=%s Categories=%s LicenseName=%s LicenseSymbol=%s LicenseURL=%s Metadata=%s IsCommunityDataset=%t OnSale=%t BaseAsset=%s BasePrice=%d RevenueModelDataShare=%d RevenueModelMetadataShare=%d RevenueModelDataOwnerCut=%d RevenueModelMetadataOwnerCut=%d Owner=%s\n",
+		"{{blue}}dataset info: {{/}}\nName=%s Description=%s Categories=%s LicenseName=%s LicenseSymbol=%s LicenseURL=%s Metadata=%s IsCommunityDataset=%t SaleID=%s BaseAsset=%s BasePrice=%d RevenueModelDataShare=%d RevenueModelMetadataShare=%d RevenueModelDataOwnerCut=%d RevenueModelMetadataOwnerCut=%d Owner=%s\n",
 		name,
 		description,
 		categories,
@@ -431,6 +437,68 @@ func (*Handler) GetDataContributionPendingInfo(
 		)
 	}
 	return contributions, nil
+}
+
+func (*Handler) GetDatasetInfoFromMarketplace(
+	ctx context.Context,
+	cli *nrpc.JSONRPCClient,
+	datasetID ids.ID,
+) (string, string, bool, string, string, uint64, string, string, string, string, string, uint64, uint64, string, map[string]string, error) {
+	exists, datasetName, description, _, _, _, _, _, isCommunityDataset, saleID, baseAsset, basePrice, _, _, _, _, owner, err := cli.Dataset(ctx, datasetID.String(), false)
+	if !exists {
+		hutils.Outf("{{red}}Dataset '%s' does not exist{{/}}\n", datasetID)
+		hutils.Outf("{{red}}exiting...{{/}}\n")
+		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
+	}
+	if saleID == ids.Empty.String() {
+		hutils.Outf("{{red}}Dataset '%s' is not on sale{{/}}\n", datasetID)
+		hutils.Outf("{{red}}exiting...{{/}}\n")
+		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
+	}
+
+	_, assetType, assetName, symbol, _, metadata, uri, totalSupply, maxSupply, admin, _, _, _, _, err := cli.Asset(ctx, saleID, false)
+	if err != nil {
+		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
+	}
+
+	metadataMap, err := nchain.JsonToMap(metadata)
+	if err != nil {
+		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
+	}
+	hutils.Outf(
+		"{{blue}}dataset info from marketplace: {{/}}\nDatasetName=%s DatasetDescription=%s IsCommunityDataset=%t SaleID=%s AssetForPayment=%s PricePerBlock=%d DatasetOwner=%s\n{{blue}}marketplace asset info: {{/}}\nAssetType=%s AssetName=%s AssetSymbol=%s AssetURI=%s TotalSupply=%d MaxSupply=%d Owner=%s\nAssetMetadata=%#v\n",
+		datasetName,
+		description,
+		isCommunityDataset,
+		saleID,
+		baseAsset,
+		basePrice,
+		owner,
+		assetType,
+		assetName,
+		symbol,
+		uri,
+		totalSupply,
+		maxSupply,
+		admin,
+		metadataMap,
+	)
+	return datasetName,
+		description,
+		isCommunityDataset,
+		saleID,
+		baseAsset,
+		basePrice,
+		owner,
+		assetType,
+		assetName,
+		symbol,
+		uri,
+		totalSupply,
+		maxSupply,
+		admin,
+		metadataMap,
+		err
 }
 
 type Controller struct {

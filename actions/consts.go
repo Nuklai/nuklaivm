@@ -23,6 +23,7 @@ const (
 	CompleteContributeDatasetComputeUnits   = 5
 	PublishDatasetMarketplaceComputeUnits   = 5
 	SubscribeDatasetMarketplaceComputeUnits = 5
+	ClaimMarketplacePaymentComputeUnits     = 5
 
 	MaxTextSize            = 8
 	MaxMemoSize            = 256

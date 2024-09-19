@@ -30,6 +30,7 @@ const (
 	CompleteContributeDatasetID   uint8 = 18
 	PublishDatasetMarketplaceID   uint8 = 19
 	SubscribeDatasetMarketplaceID uint8 = 20
+	ClaimMarketplacePaymentID     uint8 = 21
 
 	// Asset TypeIDs
 	AssetFungibleTokenID    uint8 = 0

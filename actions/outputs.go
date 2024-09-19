@@ -83,4 +83,5 @@ var (
 	ErrDatasetNotOnSale                  = errors.New("dataset not on sale")
 	ErrOutputNumBlocksToSubscribeInvalid = errors.New("num blocks to subscribe is invalid")
 	ErrMarketplaceIDInvalid              = errors.New("marketplace ID is invalid")
+	ErrNoPaymentRemaining                = errors.New("no payment remaining")
 )

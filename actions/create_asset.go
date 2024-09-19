@@ -71,7 +71,7 @@ func (*CreateAsset) StateKeys(actor codec.Address, actionID ids.ID) state.Keys {
 }
 
 func (*CreateAsset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks}
+	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks, storage.BalanceChunks}
 
 	// return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.AssetCollectionPageChunks, storage.AssetCollectionPageCountChunks, storage.BalanceChunks}
 }

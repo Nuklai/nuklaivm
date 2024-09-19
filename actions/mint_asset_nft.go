@@ -53,7 +53,7 @@ func (m *MintAssetNFT) StateKeys(codec.Address, ids.ID) state.Keys {
 }
 
 func (*MintAssetNFT) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks}
+	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks, storage.BalanceChunks}
 }
 
 func (m *MintAssetNFT) Execute(

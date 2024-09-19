@@ -42,7 +42,7 @@ func (u *UndelegateUserStake) StateKeys(actor codec.Address, _ ids.ID) state.Key
 }
 
 func (*UndelegateUserStake) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.DelegateUserStakeChunks}
+	return []uint16{storage.BalanceChunks, storage.BalanceChunks, storage.DelegateUserStakeChunks}
 }
 
 func (*UndelegateUserStake) OutputsWarpMessage() bool {

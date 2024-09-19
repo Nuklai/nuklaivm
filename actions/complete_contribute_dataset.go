@@ -49,7 +49,7 @@ func (d *CompleteContributeDataset) StateKeys(_ codec.Address, _ ids.ID) state.K
 }
 
 func (*CompleteContributeDataset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.DatasetChunks, storage.BalanceChunks}
+	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.DatasetChunks, storage.BalanceChunks, storage.BalanceChunks, storage.BalanceChunks}
 }
 
 func (d *CompleteContributeDataset) Execute(
@@ -61,7 +61,7 @@ func (d *CompleteContributeDataset) Execute(
 	_ ids.ID,
 ) ([][]byte, error) {
 	// Check if the dataset exists
-	exists, _, description, _, _, _, _, _, _, _, _, _, _, _, _, _, owner, err := storage.GetDataset(ctx, mu, d.Dataset)
+	exists, _, description, _, _, _, _, _, _, saleID, _, _, _, _, _, _, owner, err := storage.GetDataset(ctx, mu, d.Dataset)
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +70,11 @@ func (d *CompleteContributeDataset) Execute(
 	}
 	if actor != owner {
 		return nil, ErrNotDatasetOwner
+	}
+
+	// Check if the dataset is already on sale
+	if saleID != ids.Empty {
+		return nil, ErrDatasetAlreadyOnSale
 	}
 
 	// Check if the nftID already exists

@@ -42,7 +42,7 @@ func (u *WithdrawValidatorStake) StateKeys(actor codec.Address, _ ids.ID) state.
 }
 
 func (*WithdrawValidatorStake) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.RegisterValidatorStakeChunks}
+	return []uint16{storage.BalanceChunks, storage.BalanceChunks, storage.RegisterValidatorStakeChunks}
 }
 
 func (u *WithdrawValidatorStake) Execute(

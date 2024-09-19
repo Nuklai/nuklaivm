@@ -41,7 +41,7 @@ func (b *BurnAssetNFT) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
 }
 
 func (*BurnAssetNFT) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks}
+	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks, storage.BalanceChunks}
 }
 
 func (b *BurnAssetNFT) Execute(

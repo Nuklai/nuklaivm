@@ -64,7 +64,7 @@ func (c *CreateDataset) StateKeys(actor codec.Address, actionID ids.ID) state.Ke
 }
 
 func (*CreateDataset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.DatasetChunks, storage.AssetNFTChunks, storage.BalanceChunks}
+	return []uint16{storage.AssetChunks, storage.DatasetChunks, storage.AssetNFTChunks, storage.BalanceChunks, storage.BalanceChunks}
 }
 
 func (c *CreateDataset) Execute(

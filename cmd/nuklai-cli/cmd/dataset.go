@@ -11,6 +11,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/chain"
+	"github.com/ava-labs/hypersdk/consts"
 	hutils "github.com/ava-labs/hypersdk/utils"
 
 	"github.com/nuklai/nuklaivm/actions"
@@ -175,7 +176,11 @@ var updateDatasetCmd = &cobra.Command{
 		}
 
 		// Select dataset ID to update
-		datasetID, err := handler.Root().PromptAsset("datasetID", true)
+		datasetIDStr, err := handler.Root().PromptString("datasetID", 1, consts.MaxInt)
+		if err != nil {
+			return err
+		}
+		datasetID, err := ids.FromString(datasetIDStr)
 		if err != nil {
 			return err
 		}
@@ -229,7 +234,11 @@ var getDatasetCmd = &cobra.Command{
 		ncli := nclients[0]
 
 		// Select dataset to look up
-		datasetID, err := handler.Root().PromptAsset("datasetID", false)
+		datasetIDStr, err := handler.Root().PromptString("datasetID", 1, consts.MaxInt)
+		if err != nil {
+			return err
+		}
+		datasetID, err := ids.FromString(datasetIDStr)
 		if err != nil {
 			return err
 		}
@@ -262,7 +271,11 @@ var initiateContributeDatasetCmd = &cobra.Command{
 		}
 
 		// Select dataset ID to contribute to
-		datasetID, err := handler.Root().PromptAsset("datasetID", true)
+		datasetIDStr, err := handler.Root().PromptString("datasetID", 1, consts.MaxInt)
+		if err != nil {
+			return err
+		}
+		datasetID, err := ids.FromString(datasetIDStr)
 		if err != nil {
 			return err
 		}
@@ -306,7 +319,11 @@ var getDataContributionPendingCmd = &cobra.Command{
 		ncli := nclients[0]
 
 		// Select dataset to look up
-		datasetID, err := handler.Root().PromptAsset("datasetID", false)
+		datasetIDStr, err := handler.Root().PromptString("datasetID", 1, consts.MaxInt)
+		if err != nil {
+			return err
+		}
+		datasetID, err := ids.FromString(datasetIDStr)
 		if err != nil {
 			return err
 		}
@@ -336,7 +353,11 @@ var completeContributeDatasetCmd = &cobra.Command{
 		}
 
 		// Select dataset ID
-		datasetID, err := handler.Root().PromptAsset("datasetID", true)
+		datasetIDStr, err := handler.Root().PromptString("datasetID", 1, consts.MaxInt)
+		if err != nil {
+			return err
+		}
+		datasetID, err := ids.FromString(datasetIDStr)
 		if err != nil {
 			return err
 		}

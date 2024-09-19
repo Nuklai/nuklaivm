@@ -47,7 +47,7 @@ func (d *PublishDatasetMarketplace) StateKeys(_ codec.Address, actionID ids.ID) 
 }
 
 func (*PublishDatasetMarketplace) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.DatasetChunks, storage.AssetChunks}
+	return []uint16{storage.DatasetChunks, storage.AssetChunks, storage.AssetChunks}
 }
 
 func (d *PublishDatasetMarketplace) Execute(
@@ -90,7 +90,7 @@ func (d *PublishDatasetMarketplace) Execute(
 
 	// Create an asset that represents that this dataset is published to the marketplace
 	// This is a special type of token that cannot be manually created/minted
-	metadata = []byte("{\"dataset\":\"" + d.Dataset.String() + "\",\"datasetPricePerBlock\":\"" + fmt.Sprint(d.BasePrice) + "\",\"assetForPayment\":\"" + d.BaseAsset.String() + "\",\"publisher\":\"" + codec.MustAddressBech32(nconsts.HRP, actor) + "\"}")
+	metadata = []byte("{\"dataset\":\"" + d.Dataset.String() + "\",\"marketplaceID\":\"" + actionID.String() + "\",\"datasetPricePerBlock\":\"" + fmt.Sprint(d.BasePrice) + "\",\"assetForPayment\":\"" + d.BaseAsset.String() + "\",\"publisher\":\"" + codec.MustAddressBech32(nconsts.HRP, actor) + "\",\"lastClaimedBlock\":\"" + "0" + "\",\"subscriptions\":\"" + "0" + "\",\"paymentRemaining\":\"" + "0" + "\",\"paymentClaimed\":\"" + "0" + "\"}")
 	if err := storage.SetAsset(ctx, mu, actionID, nconsts.AssetMarketplaceTokenID, name, symbol, 0, metadata, []byte(d.Dataset.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}
