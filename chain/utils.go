@@ -47,7 +47,7 @@ func CombineWithPrefix(prefix, name []byte, maxLength int) []byte {
 }
 
 // Function to convert a JSON string to map[string]string
-func JsonToMap(jsonStr string) (map[string]string, error) {
+func JSONToMap(jsonStr string) (map[string]string, error) {
 	// Create a map to hold the unmarshaled JSON
 	var result map[string]string
 

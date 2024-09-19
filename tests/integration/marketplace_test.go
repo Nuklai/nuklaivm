@@ -228,7 +228,7 @@ var _ = ginkgo.Describe("marketplace", func() {
 		symbolBytes = nchain.CombineWithPrefix([]byte("DM-"), symbolBytes, 8)
 		require.Equal([]byte(symbol), symbolBytes)
 		require.Equal(decimals, uint8(0))
-		metadataMap, err := nchain.JsonToMap(metadata)
+		metadataMap, err := nchain.JSONToMap(metadata)
 		require.NoError(err)
 		require.True(mapsEqual(metadataMap, map[string]string{
 			"dataset":              dataset1ID.String(),
@@ -308,7 +308,7 @@ var _ = ginkgo.Describe("marketplace", func() {
 		require.True(exists)
 		require.Equal(assetType, nconsts.AssetMarketplaceTokenDesc)
 		require.Equal(totalSupply, uint64(1))
-		metadataMap, err := nchain.JsonToMap(metadata)
+		metadataMap, err := nchain.JSONToMap(metadata)
 		require.NoError(err)
 		require.True(mapsEqual(metadataMap, map[string]string{
 			"dataset":              dataset1ID.String(),
@@ -330,7 +330,7 @@ var _ = ginkgo.Describe("marketplace", func() {
 		require.Equal(uniqueID, totalSupply)
 		require.Equal(uri, dataset1ID.String())
 		require.NoError(err)
-		metadataMap, err = nchain.JsonToMap(metadata)
+		metadataMap, err = nchain.JSONToMap(metadata)
 		require.NoError(err)
 		require.True(mapsEqual(metadataMap, map[string]string{
 			"dataset":              dataset1ID.String(),
@@ -386,7 +386,7 @@ var _ = ginkgo.Describe("marketplace", func() {
 		require.NoError(err)
 		require.True(exists)
 
-		metadataMap, err := nchain.JsonToMap(metadata)
+		metadataMap, err := nchain.JSONToMap(metadata)
 		require.NoError(err)
 		paymentRemaining, err := strconv.ParseUint(metadataMap["paymentRemaining"], 10, 64)
 		require.NoError(err)
@@ -413,6 +413,6 @@ var _ = ginkgo.Describe("marketplace", func() {
 		// Check balance after for the asset that was rewarded
 		balanceAfter, err := instances[0].ncli.Balance(context.TODO(), sender, nconsts.Symbol)
 		require.NoError(err)
-		require.GreaterOrEqual(balanceAfter, balanceBefore+uint64(totalCost)-uint64(100_000)) // Reward is claimed but fees is taken
+		require.GreaterOrEqual(balanceAfter, balanceBefore+totalCost-uint64(100_000)) // Reward is claimed but fees is taken
 	})
 })
