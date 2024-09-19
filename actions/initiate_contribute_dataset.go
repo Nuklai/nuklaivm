@@ -53,7 +53,7 @@ func (d *InitiateContributeDataset) Execute(
 	_ ids.ID,
 ) ([][]byte, error) {
 	// Check if the dataset exists
-	exists, _, _, _, _, _, _, _, isCommunityDataset, _, _, _, _, _, _, _, _, err := storage.GetDataset(ctx, mu, d.Dataset)
+	exists, _, _, _, _, _, _, _, isCommunityDataset, saleID, _, _, _, _, _, _, _, err := storage.GetDataset(ctx, mu, d.Dataset)
 	if err != nil {
 		return nil, err
 	}
@@ -62,6 +62,11 @@ func (d *InitiateContributeDataset) Execute(
 	}
 	if !isCommunityDataset {
 		return nil, ErrDatasetNotOpenForContribution
+	}
+
+	// Check if the dataset is already on sale
+	if saleID != ids.Empty {
+		return nil, ErrDatasetAlreadyOnSale
 	}
 
 	// Check if the data location is valid

@@ -11,6 +11,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/chain"
+	"github.com/ava-labs/hypersdk/consts"
 	hutils "github.com/ava-labs/hypersdk/utils"
 
 	"github.com/nuklai/nuklaivm/actions"
@@ -85,7 +86,7 @@ var createDatasetCmd = &cobra.Command{
 		hutils.Outf("{{green}}assetID:{{/}} %s\n", datasetID)
 
 		// Print nftID
-		nftID := nchain.GenerateID(datasetID, 0)
+		nftID := nchain.GenerateIDWithIndex(datasetID, 0)
 		hutils.Outf("{{green}}nftID:{{/}} %s\n", nftID)
 
 		return nil
@@ -158,7 +159,7 @@ var createDatasetFromExistingAssetCmd = &cobra.Command{
 		hutils.Outf("{{green}}assetID:{{/}} %s\n", assetID)
 
 		// Print nftID
-		nftID := nchain.GenerateID(assetID, 0)
+		nftID := nchain.GenerateIDWithIndex(assetID, 0)
 		hutils.Outf("{{green}}nftID:{{/}} %s\n", nftID)
 
 		return nil
@@ -175,7 +176,11 @@ var updateDatasetCmd = &cobra.Command{
 		}
 
 		// Select dataset ID to update
-		datasetID, err := handler.Root().PromptAsset("datasetID", true)
+		datasetIDStr, err := handler.Root().PromptString("datasetID", 1, consts.MaxInt)
+		if err != nil {
+			return err
+		}
+		datasetID, err := ids.FromString(datasetIDStr)
 		if err != nil {
 			return err
 		}
@@ -229,7 +234,11 @@ var getDatasetCmd = &cobra.Command{
 		ncli := nclients[0]
 
 		// Select dataset to look up
-		datasetID, err := handler.Root().PromptAsset("datasetID", false)
+		datasetIDStr, err := handler.Root().PromptString("datasetID", 1, consts.MaxInt)
+		if err != nil {
+			return err
+		}
+		datasetID, err := ids.FromString(datasetIDStr)
 		if err != nil {
 			return err
 		}
@@ -262,7 +271,11 @@ var initiateContributeDatasetCmd = &cobra.Command{
 		}
 
 		// Select dataset ID to contribute to
-		datasetID, err := handler.Root().PromptAsset("datasetID", true)
+		datasetIDStr, err := handler.Root().PromptString("datasetID", 1, consts.MaxInt)
+		if err != nil {
+			return err
+		}
+		datasetID, err := ids.FromString(datasetIDStr)
 		if err != nil {
 			return err
 		}
@@ -306,16 +319,24 @@ var getDataContributionPendingCmd = &cobra.Command{
 		ncli := nclients[0]
 
 		// Select dataset to look up
-		datasetID, err := handler.Root().PromptAsset("datasetID", false)
+		datasetIDStr, err := handler.Root().PromptString("datasetID", 1, consts.MaxInt)
+		if err != nil {
+			return err
+		}
+		datasetID, err := ids.FromString(datasetIDStr)
 		if err != nil {
 			return err
 		}
 
 		// Get pending data contributions info
 		hutils.Outf("Retrieving pending data contributions info for datasetID: %s\n", datasetID)
-		_, err = handler.GetDataContributionPendingInfo(ctx, ncli, datasetID)
+		contributions, err := handler.GetDataContributionPendingInfo(ctx, ncli, datasetID)
 		if err != nil {
 			return err
+		}
+		if len(contributions) == 0 {
+			hutils.Outf("{{red}}This contribution does not exist{{/}}\n")
+			hutils.Outf("{{red}}exiting...{{/}}\n")
 		}
 
 		return nil
@@ -332,7 +353,11 @@ var completeContributeDatasetCmd = &cobra.Command{
 		}
 
 		// Select dataset ID
-		datasetID, err := handler.Root().PromptAsset("datasetID", true)
+		datasetIDStr, err := handler.Root().PromptString("datasetID", 1, consts.MaxInt)
+		if err != nil {
+			return err
+		}
+		datasetID, err := ids.FromString(datasetIDStr)
 		if err != nil {
 			return err
 		}
@@ -370,7 +395,7 @@ var completeContributeDatasetCmd = &cobra.Command{
 		}
 
 		// Print nftID
-		nftID := nchain.GenerateID(datasetID, uniqueID)
+		nftID := nchain.GenerateIDWithIndex(datasetID, uniqueID)
 		hutils.Outf("{{green}}nftID:{{/}} %s\n", nftID)
 
 		return nil

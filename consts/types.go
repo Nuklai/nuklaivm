@@ -24,19 +24,24 @@ const (
 	ClaimDelegationStakeRewards  uint8 = 13
 	UndelegateUserStakeID        uint8 = 14
 
-	CreateDatasetID             uint8 = 15
-	UpdateDatasetID             uint8 = 16
-	InitiateContributeDatasetID uint8 = 17
-	CompleteContributeDatasetID uint8 = 18
+	CreateDatasetID               uint8 = 15
+	UpdateDatasetID               uint8 = 16
+	InitiateContributeDatasetID   uint8 = 17
+	CompleteContributeDatasetID   uint8 = 18
+	PublishDatasetMarketplaceID   uint8 = 19
+	SubscribeDatasetMarketplaceID uint8 = 20
+	ClaimMarketplacePaymentID     uint8 = 21
 
 	// Asset TypeIDs
 	AssetFungibleTokenID    uint8 = 0
 	AssetNonFungibleTokenID uint8 = 1
 	AssetDatasetTokenID     uint8 = 2
+	AssetMarketplaceTokenID uint8 = 3
 	// Asset Names for TypeIDs
 	AssetFungibleTokenDesc    = "Fungible Token"     // #nosec
 	AssetNonFungibleTokenDesc = "Non-Fungible Token" // #nosec
 	AssetDatasetTokenDesc     = "Dataset Token"      // #nosec
+	AssetMarketplaceTokenDesc = "Marketplace Token"  // #nosec
 
 	// Auth TypeIDs
 	ED25519ID   uint8 = 0

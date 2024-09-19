@@ -104,7 +104,7 @@ var createAssetCmd = &cobra.Command{
 
 		// Print nftID if it's a dataset
 		if uint8(assetType) == nconsts.AssetDatasetTokenID {
-			nftID := nchain.GenerateID(assetID, 0)
+			nftID := nchain.GenerateIDWithIndex(assetID, 0)
 			hutils.Outf("{{green}}nftID:{{/}} %s\n", nftID)
 		}
 		return nil
@@ -314,7 +314,7 @@ var mintAssetNFTCmd = &cobra.Command{
 			return err
 		}
 		// Print nftID
-		nftID := nchain.GenerateID(assetID, uniqueID)
+		nftID := nchain.GenerateIDWithIndex(assetID, uniqueID)
 		hutils.Outf("{{green}}NFT ID:{{/}} %s\n", nftID)
 		return nil
 	},

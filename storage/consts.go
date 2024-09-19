@@ -74,7 +74,7 @@ const (
 	AssetDatasetChunks             uint16 = 3
 	RegisterValidatorStakeChunks   uint16 = 4
 	DelegateUserStakeChunks        uint16 = 2
-	DatasetChunks                  uint16 = 101
+	DatasetChunks                  uint16 = 103
 )
 
 var (

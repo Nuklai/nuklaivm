@@ -107,6 +107,8 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 		reply.AssetType = nconsts.AssetNonFungibleTokenDesc
 	case nconsts.AssetDatasetTokenID:
 		reply.AssetType = nconsts.AssetDatasetTokenDesc
+	case nconsts.AssetMarketplaceTokenID:
+		reply.AssetType = nconsts.AssetMarketplaceTokenDesc
 	}
 	reply.Name = string(name)
 	reply.Symbol = string(symbol)
@@ -343,7 +345,7 @@ type DatasetReply struct {
 	LicenseURL                   string `json:"licenseURL"`
 	Metadata                     string `json:"metadata"`
 	IsCommunityDataset           bool   `json:"isCommunityDataset"`
-	OnSale                       bool   `json:"onSale"`
+	SaleID                       string `json:"saleID"`
 	BaseAsset                    string `json:"baseAsset"`
 	BasePrice                    uint64 `json:"basePrice"`
 	RevenueModelDataShare        uint8  `json:"revenueModelDataShare"`
@@ -361,7 +363,7 @@ func (j *JSONRPCServer) Dataset(req *http.Request, args *DatasetArgs, reply *Dat
 	if err != nil {
 		return err
 	}
-	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadatOwnerCut, owner, err := j.c.GetDatasetFromState(ctx, datasetID)
+	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadatOwnerCut, owner, err := j.c.GetDatasetFromState(ctx, datasetID)
 	if err != nil {
 		return err
 	}
@@ -376,7 +378,7 @@ func (j *JSONRPCServer) Dataset(req *http.Request, args *DatasetArgs, reply *Dat
 	reply.LicenseURL = string(licenseURL)
 	reply.Metadata = string(metadata)
 	reply.IsCommunityDataset = isCommunityDataset
-	reply.OnSale = onSale
+	reply.SaleID = saleID.String()
 	reply.BaseAsset = baseAsset.String()
 	reply.BasePrice = basePrice
 	reply.RevenueModelDataShare = revenueModelDataShare

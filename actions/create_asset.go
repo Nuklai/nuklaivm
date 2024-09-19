@@ -59,7 +59,7 @@ func (*CreateAsset) GetTypeID() uint8 {
 }
 
 func (*CreateAsset) StateKeys(actor codec.Address, actionID ids.ID) state.Keys {
-	nftID := nchain.GenerateID(actionID, 0)
+	nftID := nchain.GenerateIDWithIndex(actionID, 0)
 	return state.Keys{
 		string(storage.AssetKey(actionID)): state.Allocate | state.Write,
 		string(storage.AssetNFTKey(nftID)): state.Allocate | state.Write,
@@ -71,7 +71,7 @@ func (*CreateAsset) StateKeys(actor codec.Address, actionID ids.ID) state.Keys {
 }
 
 func (*CreateAsset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks}
+	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks, storage.BalanceChunks}
 
 	// return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.AssetCollectionPageChunks, storage.AssetCollectionPageCountChunks, storage.BalanceChunks}
 }
@@ -125,7 +125,7 @@ func (c *CreateAsset) Execute(
 	totalSupply := uint64(0)
 	if c.AssetType == nconsts.AssetDatasetTokenID {
 		// Mint the parent NFT for the dataset(fractionalized asset)
-		nftID := nchain.GenerateID(actionID, 0)
+		nftID := nchain.GenerateIDWithIndex(actionID, 0)
 		if err := storage.SetAssetNFT(ctx, mu, actionID, 0, nftID, c.URI, c.Metadata, actor); err != nil {
 			return nil, err
 		}

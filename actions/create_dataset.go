@@ -53,7 +53,7 @@ func (c *CreateDataset) StateKeys(actor codec.Address, actionID ids.ID) state.Ke
 	if c.AssetID != ids.Empty {
 		assetID = c.AssetID
 	}
-	nftID := nchain.GenerateID(actionID, 0)
+	nftID := nchain.GenerateIDWithIndex(actionID, 0)
 	return state.Keys{
 		string(storage.AssetKey(assetID)):          state.Allocate | state.Write,
 		string(storage.DatasetKey(assetID)):        state.Allocate | state.Write,
@@ -64,7 +64,7 @@ func (c *CreateDataset) StateKeys(actor codec.Address, actionID ids.ID) state.Ke
 }
 
 func (*CreateDataset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.DatasetChunks, storage.AssetNFTChunks, storage.BalanceChunks}
+	return []uint16{storage.AssetChunks, storage.DatasetChunks, storage.AssetNFTChunks, storage.BalanceChunks, storage.BalanceChunks}
 }
 
 func (c *CreateDataset) Execute(
@@ -118,13 +118,14 @@ func (c *CreateDataset) Execute(
 		assetID = actionID
 
 		// Mint the parent NFT for the dataset(fractionalized asset)
-		nftID := nchain.GenerateID(assetID, 0)
+		nftID := nchain.GenerateIDWithIndex(assetID, 0)
 		if err := storage.SetAssetNFT(ctx, mu, assetID, 0, nftID, c.Description, c.Description, actor); err != nil {
 			return nil, err
 		}
 
 		// Create a new asset for the dataset
-		if err := storage.SetAsset(ctx, mu, assetID, nconsts.AssetDatasetTokenID, c.Name, c.Name, 0, c.Description, c.Description, 1, 0, actor, actor, actor, actor, actor); err != nil {
+		symbol := nchain.CombineWithPrefix([]byte(""), c.Name, MaxTextSize)
+		if err := storage.SetAsset(ctx, mu, assetID, nconsts.AssetDatasetTokenID, c.Name, symbol, 0, c.Description, c.Description, 1, 0, actor, actor, actor, actor, actor); err != nil {
 			return nil, err
 		}
 
@@ -151,7 +152,7 @@ func (c *CreateDataset) Execute(
 	// revenueModelMetadataShare = 0
 	// revenueModelDataOwnerCut = 10 for community datasets, 100 for sole contributor datasets
 	// revenueModelMetadataOwnerCut = 0
-	if err := storage.SetDataset(ctx, mu, assetID, c.Name, c.Description, c.Categories, c.LicenseName, c.LicenseSymbol, c.LicenseURL, c.Metadata, c.IsCommunityDataset, false, ids.Empty, 0, uint8(revenueModelDataShare), 0, uint8(revenueModelDataOwnerCut), 0, actor); err != nil {
+	if err := storage.SetDataset(ctx, mu, assetID, c.Name, c.Description, c.Categories, c.LicenseName, c.LicenseSymbol, c.LicenseURL, c.Metadata, c.IsCommunityDataset, ids.Empty, ids.Empty, 0, uint8(revenueModelDataShare), 0, uint8(revenueModelDataOwnerCut), 0, actor); err != nil {
 		return nil, err
 	}
 

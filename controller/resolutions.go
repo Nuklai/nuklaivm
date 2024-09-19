@@ -104,7 +104,7 @@ func (c *Controller) GetDelegatedUserStakeFromState(ctx context.Context, owner c
 func (c *Controller) GetDatasetFromState(
 	ctx context.Context,
 	datasetID ids.ID,
-) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
+) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, ids.ID, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
 	return storage.GetDatasetFromState(ctx, c.inner.ReadState, datasetID)
 }
 

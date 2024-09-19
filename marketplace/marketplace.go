@@ -8,8 +8,6 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/state"
-	"go.uber.org/zap"
 )
 
 var _ Hub = (*Marketplace)(nil)
@@ -126,14 +124,4 @@ func (m *Marketplace) GetDataContribution(datasetID ids.ID, owner codec.Address)
 
 	// Return an error if no contribution is found for the specified owner
 	return nil, ErrContributionNotFound
-}
-
-func (m *Marketplace) GetVMMutableState() (state.Mutable, error) {
-	m.c.Logger().Info("fetching VM state")
-	stateDB, err := m.nuklaivm.State()
-	if err != nil {
-		m.c.Logger().Error("error fetching VM state", zap.Error(err))
-		return nil, err
-	}
-	return state.NewSimpleMutable(stateDB), nil
 }

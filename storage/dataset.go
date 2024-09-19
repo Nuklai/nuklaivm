@@ -29,7 +29,7 @@ func GetDatasetFromState(
 	ctx context.Context,
 	f ReadState,
 	datasetID ids.ID,
-) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
+) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, ids.ID, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
 	values, errs := f(ctx, [][]byte{DatasetKey(datasetID)})
 	return innerGetDataset(values[0], errs[0])
 }
@@ -38,17 +38,17 @@ func GetDataset(
 	ctx context.Context,
 	im state.Immutable,
 	datasetID ids.ID,
-) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
+) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, ids.ID, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
 	k := DatasetKey(datasetID)
 	return innerGetDataset(im.GetValue(ctx, k))
 }
 
-func innerGetDataset(v []byte, err error) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, bool, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
+func innerGetDataset(v []byte, err error) (bool, []byte, []byte, []byte, []byte, []byte, []byte, []byte, bool, ids.ID, ids.ID, uint64, uint8, uint8, uint8, uint8, codec.Address, error) {
 	if errors.Is(err, database.ErrNotFound) {
-		return false, nil, nil, nil, nil, nil, nil, nil, false, false, ids.Empty, 0, 0, 0, 0, 0, codec.EmptyAddress, nil
+		return false, nil, nil, nil, nil, nil, nil, nil, false, ids.Empty, ids.Empty, 0, 0, 0, 0, 0, codec.EmptyAddress, nil
 	}
 	if err != nil {
-		return false, nil, nil, nil, nil, nil, nil, nil, false, false, ids.Empty, 0, 0, 0, 0, 0, codec.EmptyAddress, err
+		return false, nil, nil, nil, nil, nil, nil, nil, false, ids.Empty, ids.Empty, 0, 0, 0, 0, 0, codec.EmptyAddress, err
 	}
 
 	offset := uint16(0)
@@ -83,12 +83,16 @@ func innerGetDataset(v []byte, err error) (bool, []byte, []byte, []byte, []byte,
 
 	isCommunityDataset := v[offset] == successByte
 	offset += consts.BoolLen
-	onSale := v[offset] == successByte
-	offset += consts.BoolLen
+
+	saleID, err := ids.ToID(v[offset : offset+ids.IDLen])
+	if err != nil {
+		return false, nil, nil, nil, nil, nil, nil, nil, false, ids.Empty, ids.Empty, 0, 0, 0, 0, 0, codec.EmptyAddress, err
+	}
+	offset += ids.IDLen
 
 	baseAsset, err := ids.ToID(v[offset : offset+ids.IDLen])
 	if err != nil {
-		return false, nil, nil, nil, nil, nil, nil, nil, false, false, ids.Empty, 0, 0, 0, 0, 0, codec.EmptyAddress, err
+		return false, nil, nil, nil, nil, nil, nil, nil, false, ids.Empty, ids.Empty, 0, 0, 0, 0, 0, codec.EmptyAddress, err
 	}
 	offset += ids.IDLen
 
@@ -105,10 +109,10 @@ func innerGetDataset(v []byte, err error) (bool, []byte, []byte, []byte, []byte,
 
 	var owner codec.Address
 	copy(owner[:], v[offset:])
-	return true, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, nil
+	return true, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, nil
 }
 
-func SetDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID, name []byte, description []byte, categories []byte, licenseName []byte, licenseSymbol []byte, licenseURL []byte, metadata []byte, isCommunityDataset bool, onSale bool, baseAsset ids.ID, basePrice uint64, revenueModelDataShare uint8, revenueModelMetadataShare uint8, revenueModeldataOwnerCut uint8, revenueModelMetadataOwnerCut uint8, owner codec.Address) error {
+func SetDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID, name []byte, description []byte, categories []byte, licenseName []byte, licenseSymbol []byte, licenseURL []byte, metadata []byte, isCommunityDataset bool, saleID ids.ID, baseAsset ids.ID, basePrice uint64, revenueModelDataShare uint8, revenueModelMetadataShare uint8, revenueModeldataOwnerCut uint8, revenueModelMetadataOwnerCut uint8, owner codec.Address) error {
 	k := DatasetKey(datasetID)
 	nameLen := len(name)
 	descriptionLen := len(description)
@@ -118,7 +122,7 @@ func SetDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID, name []
 	licenseURLLen := len(licenseURL)
 	metadataLen := len(metadata)
 
-	v := make([]byte, consts.Uint16Len+nameLen+consts.Uint16Len+descriptionLen+consts.Uint16Len+categoriesLen+consts.Uint16Len+licenseNameLen+consts.Uint16Len+licenseSymbolLen+consts.Uint16Len+licenseURLLen+consts.Uint16Len+metadataLen+consts.BoolLen+consts.BoolLen+ids.IDLen+consts.Uint64Len+consts.Uint8Len+consts.Uint8Len+consts.Uint8Len+consts.Uint8Len+codec.AddressLen)
+	v := make([]byte, consts.Uint16Len+nameLen+consts.Uint16Len+descriptionLen+consts.Uint16Len+categoriesLen+consts.Uint16Len+licenseNameLen+consts.Uint16Len+licenseSymbolLen+consts.Uint16Len+licenseURLLen+consts.Uint16Len+metadataLen+consts.BoolLen+ids.IDLen+ids.IDLen+consts.Uint64Len+consts.Uint8Len+consts.Uint8Len+consts.Uint8Len+consts.Uint8Len+codec.AddressLen)
 
 	offset := 0
 	binary.BigEndian.PutUint16(v[offset:], uint16(nameLen))
@@ -156,12 +160,9 @@ func SetDataset(ctx context.Context, mu state.Mutable, datasetID ids.ID, name []
 		v[offset] = failureByte
 	}
 	offset += consts.BoolLen
-	if onSale {
-		v[offset] = successByte
-	} else {
-		v[offset] = failureByte
-	}
-	offset += consts.BoolLen
+
+	copy(v[offset:], saleID[:])
+	offset += ids.IDLen
 
 	copy(v[offset:], baseAsset[:])
 	offset += ids.IDLen

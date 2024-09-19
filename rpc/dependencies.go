@@ -57,7 +57,7 @@ type Controller interface {
 		[]byte, // licenseURL
 		[]byte, // metadata
 		bool, // isCommunityDataset
-		bool, // onSale
+		ids.ID, // saleID
 		ids.ID, // baseAsset
 		uint64, // basePrice
 		uint8, // revenueModelDataShare
