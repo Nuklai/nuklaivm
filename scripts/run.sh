@@ -183,7 +183,7 @@ rm -f "${TMPDIR}"/nuklaivm.config
 rm -rf "${TMPDIR}"/nuklaivm-e2e-profiles
 cat <<EOF > "${TMPDIR}"/nuklaivm.config
 {
-  "mempoolSize": 10000000,
+  "mempoolSize": 2147483648,
   "mempoolSponsorSize": 10000000,
   "mempoolExemptSponsors":["${INITIAL_OWNER_ADDRESS}", "${EMISSION_ADDRESS}"],
   "authVerificationCores": 2,

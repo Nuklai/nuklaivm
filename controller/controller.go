@@ -300,8 +300,30 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 	return batch.Write()
 }
 
-func (*Controller) Rejected(context.Context, *chain.StatelessBlock) error {
-	return nil
+func (c *Controller) Rejected(ctx context.Context, blk *chain.StatelessBlock) error {
+	batch := c.metaDB.NewBatch()
+	defer batch.Reset()
+
+	results := blk.Results()
+	for i, tx := range blk.Txs {
+		result := results[i]
+		if c.config.GetStoreTransactions() {
+			err := storage.StoreTransaction(
+				ctx,
+				batch,
+				tx.ID(),
+				blk.GetTimestamp(),
+				result.Success,
+				result.Units,
+				result.Fee,
+				tx.Auth.Actor(),
+			)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return batch.Write()
 }
 
 func (*Controller) Shutdown(context.Context) error {
