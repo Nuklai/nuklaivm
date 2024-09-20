@@ -56,6 +56,9 @@ func (c *ClaimDelegationStakeRewards) Execute(
 	if err != nil {
 		return nil, ErrOutputInvalidNodeID
 	}
+	if _, err := codec.AddressBech32(nconsts.HRP, c.UserStakeAddress); err != nil {
+		return nil, err
+	}
 
 	exists, stakeStartBlock, _, _, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, mu, c.UserStakeAddress, nodeID)
 	if !exists {

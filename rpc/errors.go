@@ -14,4 +14,6 @@ var (
 
 	// delegate_user_stake
 	ErrUserStakeNotFound = errors.New("user stake not found")
+
+	ErrDatasetNotFound = errors.New("dataset not found")
 )

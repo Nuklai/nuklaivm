@@ -463,7 +463,7 @@ var _ = ginkgo.Describe("[Test]", func() {
 			require.NoError(submit(context.Background()))
 			hutils.Outf("{{yellow}}submitted transaction{{/}}\n")
 			ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-			success, fee, err := instances[0].ncli.WaitForTransaction(ctx, tx.ID())
+			success, fee, _, err := instances[0].ncli.WaitForTransaction(ctx, tx.ID())
 			cancel()
 			require.NoError(err)
 			require.True(success)
@@ -800,7 +800,7 @@ func acceptTransaction(cli *hrpc.JSONRPCClient, ncli *nrpc.JSONRPCClient) {
 		require.NoError(submit(context.Background()))
 		hutils.Outf("{{yellow}}submitted transaction{{/}}\n")
 		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-		success, _, err := ncli.WaitForTransaction(ctx, tx.ID())
+		success, _, _, err := ncli.WaitForTransaction(ctx, tx.ID())
 		cancel()
 		if err != nil {
 			hutils.Outf("{{red}}cannot find transaction: %v{{/}}\n", err)

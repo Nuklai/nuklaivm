@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
+	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/storage"
 )
@@ -40,14 +41,27 @@ func (*Transfer) GetTypeID() uint8 {
 }
 
 func (t *Transfer) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
-	return state.Keys{
-		string(storage.BalanceKey(actor, t.Asset)): state.Read | state.Write,
-		string(storage.BalanceKey(t.To, t.Asset)):  state.All,
+	if t.Asset != ids.Empty {
+		return state.Keys{
+			string(storage.BalanceKey(actor, t.Asset)): state.Read | state.Write,
+			string(storage.BalanceKey(t.To, t.Asset)):  state.All,
+			string(storage.AssetKey(t.Asset)):          state.Read | state.Write,
+			string(storage.AssetNFTKey(t.Asset)):       state.Read | state.Write,
+		}
+	} else {
+		return state.Keys{
+			string(storage.BalanceKey(actor, ids.Empty)): state.All,
+			string(storage.BalanceKey(t.To, ids.Empty)):  state.All,
+		}
 	}
 }
 
-func (*Transfer) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.BalanceChunks}
+func (t *Transfer) StateKeysMaxChunks() []uint16 {
+	if t.Asset != ids.Empty {
+		return []uint16{storage.BalanceChunks, storage.BalanceChunks, storage.AssetChunks, storage.AssetNFTChunks}
+	} else {
+		return []uint16{storage.BalanceChunks, storage.BalanceChunks}
+	}
 }
 
 func (t *Transfer) Execute(
@@ -58,19 +72,42 @@ func (t *Transfer) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) ([][]byte, error) {
-	if t.Value == 0 {
+	amountOfToken := t.Value
+
+	// Handle NFT transfers
+	if t.Asset != ids.Empty {
+		exists, collectionID, uniqueID, uri, metadata, owner, _ := storage.GetAssetNFT(ctx, mu, t.Asset)
+		if exists {
+			// Check if the sender is the owner of the NFT
+			if owner != actor {
+				return nil, ErrOutputWrongOwner
+			}
+			amountOfToken = 1
+			// Add the balance to NFT collection
+			if err := storage.AddBalance(ctx, mu, t.To, collectionID, amountOfToken, true); err != nil {
+				return nil, err
+			}
+			// Update the NFT Info
+			nftID := nchain.GenerateIDWithIndex(collectionID, uniqueID)
+			if err := storage.SetAssetNFT(ctx, mu, collectionID, uniqueID, nftID, uri, metadata, t.To); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if amountOfToken == 0 {
 		return nil, ErrOutputValueZero
 	}
 	if len(t.Memo) > MaxMemoSize {
 		return nil, ErrOutputMemoTooLarge
 	}
-	if err := storage.SubBalance(ctx, mu, actor, t.Asset, t.Value); err != nil {
+	if err := storage.SubBalance(ctx, mu, actor, t.Asset, amountOfToken); err != nil {
 		return nil, err
 	}
 	// TODO: allow sender to configure whether they will pay to create
-	if err := storage.AddBalance(ctx, mu, t.To, t.Asset, t.Value, true); err != nil {
+	if err := storage.AddBalance(ctx, mu, t.To, t.Asset, amountOfToken, true); err != nil {
 		return nil, err
 	}
+
 	return nil, nil
 }
 

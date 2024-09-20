@@ -53,7 +53,10 @@ func init() {
 		keyCmd,
 		chainCmd,
 		actionCmd,
+		assetCmd,
 		emissionCmd,
+		datasetCmd,
+		marketplaceCmd,
 		spamCmd,
 		prometheusCmd,
 	)
@@ -131,6 +134,7 @@ func init() {
 		importKeyCmd,
 		setKeyCmd,
 		balanceKeyCmd,
+		balanceNFTKeyCmd,
 		vanityAddressCmd,
 	)
 
@@ -154,10 +158,6 @@ func init() {
 	actionCmd.AddCommand(
 		transferCmd,
 
-		createAssetCmd,
-		mintAssetCmd,
-		// burnAssetCmd,
-
 		registerValidatorStakeCmd,
 		getValidatorStakeCmd,
 		claimValidatorStakeRewardCmd,
@@ -169,11 +169,40 @@ func init() {
 		undelegateUserStakeCmd,
 	)
 
+	// asset
+	assetCmd.AddCommand(
+		createAssetCmd,
+		updateAssetCmd,
+		mintAssetFTCmd,
+		mintAssetNFTCmd,
+		burnAssetFTCmd,
+		burnAssetNFTCmd,
+	)
+
 	// emission
 	emissionCmd.AddCommand(
 		emissionInfoCmd,
 		emissionAllValidatorsCmd,
 		emissionStakedValidatorsCmd,
+	)
+
+	// dataset
+	datasetCmd.AddCommand(
+		createDatasetCmd,
+		createDatasetFromExistingAssetCmd,
+		updateDatasetCmd,
+		getDatasetCmd,
+		initiateContributeDatasetCmd,
+		getDataContributionPendingCmd,
+		completeContributeDatasetCmd,
+	)
+
+	// marketplace
+	marketplaceCmd.AddCommand(
+		publishDatasetMarketplaceCmd,
+		subscribeDatasetMarketplaceCmd,
+		infoDatasetMarketplaceCmd,
+		claimPaymentMarketplaceCmd,
 	)
 
 	// spam

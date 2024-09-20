@@ -12,13 +12,16 @@ import (
 	"github.com/ava-labs/hypersdk/fees"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
+	"github.com/nuklai/nuklaivm/marketplace"
 )
 
 type Controller interface {
 	Genesis() *genesis.Genesis
 	Tracer() trace.Tracer
-	GetTransaction(context.Context, ids.ID) (bool, int64, bool, fees.Dimensions, uint64, error)
-	GetAssetFromState(context.Context, ids.ID) (bool, []byte, uint8, []byte, uint64, codec.Address, error)
+	GetTransaction(context.Context, ids.ID) (bool, int64, bool, fees.Dimensions, uint64, codec.Address, error)
+	GetAssetFromState(context.Context, ids.ID) (bool, uint8, []byte, []byte, uint8, []byte, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error)
+	GetAssetNFTFromState(context.Context, ids.ID) (bool, ids.ID, uint64, []byte, []byte, codec.Address, error)
+
 	GetBalanceFromState(context.Context, codec.Address, ids.ID) (uint64, error)
 
 	GetEmissionInfo() (uint64, uint64, uint64, uint64, uint64, emission.EmissionAccount, emission.EpochTracker, error)
@@ -43,4 +46,26 @@ type Controller interface {
 		codec.Address, // OwnerAddress
 		error,
 	)
+
+	GetDatasetFromState(ctx context.Context, datasetID ids.ID) (
+		bool, // exists
+		[]byte, // name
+		[]byte, // description
+		[]byte, // categories
+		[]byte, // licenseName
+		[]byte, // licenseSymbol
+		[]byte, // licenseURL
+		[]byte, // metadata
+		bool, // isCommunityDataset
+		ids.ID, // saleID
+		ids.ID, // baseAsset
+		uint64, // basePrice
+		uint8, // revenueModelDataShare
+		uint8, // revenueModelMetadataShare
+		uint8, // revenueModelDataOwnerCut
+		uint8, // revenueModelMetadataOwnerCut
+		codec.Address, // Owner
+		error,
+	)
+	GetDataContributionPending(ctx context.Context, datasetID ids.ID, contributor codec.Address) ([]marketplace.DataContribution, error)
 }

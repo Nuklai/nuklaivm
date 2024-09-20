@@ -18,32 +18,32 @@ import (
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
-var _ chain.Action = (*BurnAsset)(nil)
+var _ chain.Action = (*BurnAssetFT)(nil)
 
-type BurnAsset struct {
-	// Asset is the [TxID] that created the asset.
+type BurnAssetFT struct {
+	// Asset ID of the asset to burn.
 	Asset ids.ID `json:"asset"`
 
-	// Number of assets to mint to [To].
+	// Number of assets to burn
 	Value uint64 `json:"value"`
 }
 
-func (*BurnAsset) GetTypeID() uint8 {
-	return nconsts.BurnAssetID
+func (*BurnAssetFT) GetTypeID() uint8 {
+	return nconsts.BurnAssetFTID
 }
 
-func (b *BurnAsset) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (b *BurnAssetFT) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
 	return state.Keys{
 		string(storage.AssetKey(b.Asset)):          state.Read | state.Write,
 		string(storage.BalanceKey(actor, b.Asset)): state.Read | state.Write,
 	}
 }
 
-func (*BurnAsset) StateKeysMaxChunks() []uint16 {
+func (*BurnAssetFT) StateKeysMaxChunks() []uint16 {
 	return []uint16{storage.AssetChunks, storage.BalanceChunks}
 }
 
-func (b *BurnAsset) Execute(
+func (b *BurnAssetFT) Execute(
 	ctx context.Context,
 	_ chain.Rules,
 	mu state.Mutable,
@@ -54,47 +54,54 @@ func (b *BurnAsset) Execute(
 	if b.Value == 0 {
 		return nil, ErrOutputValueZero
 	}
-	if err := storage.SubBalance(ctx, mu, actor, b.Asset, b.Value); err != nil {
-		return nil, err
-	}
-	exists, symbol, decimals, metadata, supply, owner, err := storage.GetAsset(ctx, mu, b.Asset)
+
+	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAsset(ctx, mu, b.Asset)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
 		return nil, ErrOutputAssetMissing
 	}
-	newSupply, err := smath.Sub(supply, b.Value)
+	if assetType != nconsts.AssetFungibleTokenID {
+		return nil, ErrOutputWrongAssetType
+	}
+
+	newSupply, err := smath.Sub(totalSupply, b.Value)
 	if err != nil {
 		return nil, err
 	}
-	if err := storage.SetAsset(ctx, mu, b.Asset, symbol, decimals, metadata, newSupply, owner); err != nil {
+	if err := storage.SetAsset(ctx, mu, b.Asset, assetType, name, symbol, decimals, metadata, uri, newSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
 		return nil, err
 	}
+
+	if err := storage.SubBalance(ctx, mu, actor, b.Asset, b.Value); err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 
-func (*BurnAsset) ComputeUnits(chain.Rules) uint64 {
+func (*BurnAssetFT) ComputeUnits(chain.Rules) uint64 {
 	return BurnAssetComputeUnits
 }
 
-func (*BurnAsset) Size() int {
+func (*BurnAssetFT) Size() int {
 	return ids.IDLen + consts.Uint64Len
 }
 
-func (b *BurnAsset) Marshal(p *codec.Packer) {
+func (b *BurnAssetFT) Marshal(p *codec.Packer) {
 	p.PackID(b.Asset)
 	p.PackUint64(b.Value)
 }
 
-func UnmarshalBurnAsset(p *codec.Packer) (chain.Action, error) {
-	var burn BurnAsset
+func UnmarshalBurnAssetFT(p *codec.Packer) (chain.Action, error) {
+	var burn BurnAssetFT
 	p.UnpackID(false, &burn.Asset) // can burn native asset
-	burn.Value = p.UnpackUint64(true)
+	burn.Value = p.UnpackUint64(false)
 	return &burn, p.Err()
 }
 
-func (*BurnAsset) ValidRange(chain.Rules) (int64, int64) {
+func (*BurnAssetFT) ValidRange(chain.Rules) (int64, int64) {
 	// Returning -1, -1 means that the action is always valid.
 	return -1, -1
 }

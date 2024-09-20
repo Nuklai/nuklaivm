@@ -19,6 +19,7 @@ import (
 	hutils "github.com/ava-labs/hypersdk/utils"
 
 	"github.com/nuklai/nuklaivm/auth"
+	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
 	nrpc "github.com/nuklai/nuklaivm/rpc"
@@ -44,7 +45,7 @@ func (h *Handler) ImportCLI(cliPath string) error {
 		return err
 	}
 	if len(oldChains) > 0 {
-		hutils.Outf("{{yellow}}deleted old chains:{{/}} %+v\n", oldChains)
+		hutils.Outf("{{blue}}deleted old chains:{{/}} %+v\n", oldChains)
 	}
 
 	// Load yaml file
@@ -57,7 +58,7 @@ func (h *Handler) ImportCLI(cliPath string) error {
 			return err
 		}
 		hutils.Outf(
-			"{{yellow}}[%s] stored chainID:{{/}} %s {{yellow}}uri:{{/}} %s\n",
+			"{{blue}}[%s] stored chainID:{{/}} %s {{blue}}uri:{{/}} %s\n",
 			name,
 			chainID,
 			uri,
@@ -72,49 +73,107 @@ func (*Handler) GetAssetInfo(
 	addr codec.Address,
 	assetID ids.ID,
 	checkBalance bool,
-) (string, uint8, uint64, string, error) {
-	var sourceChainID ids.ID
-	exists, symbol, decimals, metadata, supply, _, err := cli.Asset(ctx, assetID.String(), false)
+) (uint64, string, string, string, uint8, string, uint64, uint64, string, string, string, string, string, error) {
+	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := cli.Asset(ctx, assetID.String(), false)
 	if err != nil {
-		return "", 0, 0, "", err
+		return 0, "", "", "", 0, "", 0, 0, "", "", "", "", "", err
 	}
 	if assetID != ids.Empty {
 		if !exists {
 			hutils.Outf("{{red}}%s does not exist{{/}}\n", assetID)
 			hutils.Outf("{{red}}exiting...{{/}}\n")
-			return "", 0, 0, "", nil
+			return 0, "", "", "", 0, "", 0, 0, "", "", "", "", "", nil
 		}
 		hutils.Outf(
-			"{{yellow}}symbol:{{/}} %s {{yellow}}decimals:{{/}} %d {{yellow}}metadata:{{/}} %s {{yellow}}supply:{{/}} %d\n",
+			"{{blue}}assetType: {{/}} %s name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}uri:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}admin:{{/}} %s {{blue}}mintActor:{{/}} %s {{blue}}pauseUnpauseActor:{{/}} %s {{blue}}freezeUnfreezeActor:{{/}} %s {{blue}}enableDisableKYCAccountActor:{{/}} %s\n",
+			assetType,
+			name,
 			symbol,
 			decimals,
 			metadata,
-			supply,
+			uri,
+			totalSupply,
+			maxSupply,
+			admin,
+			mintActor,
+			pauseUnpauseActor,
+			freezeUnfreezeActor,
+			enableDisableKYCAccountActor,
 		)
 	}
 	if !checkBalance {
-		return symbol, decimals, 0, sourceChainID.String(), nil
+		return 0, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, nil
 	}
 	saddr, err := codec.AddressBech32(nconsts.HRP, addr)
 	if err != nil {
-		return "", 0, 0, "", err
+		return 0, "", "", "", 0, "", 0, 0, "", "", "", "", "", err
 	}
 	balance, err := cli.Balance(ctx, saddr, assetID.String())
 	if err != nil {
-		return "", 0, 0, "", err
+		return 0, "", "", "", 0, "", 0, 0, "", "", "", "", "", err
 	}
 	if balance == 0 {
-		hutils.Outf("{{red}}balance:{{/}} 0 %s\n", assetID)
+		hutils.Outf("{{red}}assetID:{{/}} %s\n", assetID)
+		hutils.Outf("{{red}}name:{{/}} %s\n", name)
+		hutils.Outf("{{red}}symbol:{{/}} %s\n", symbol)
+		hutils.Outf("{{red}}balance:{{/}} 0\n")
 		hutils.Outf("{{red}}please send funds to %s{{/}}\n", saddr)
 		hutils.Outf("{{red}}exiting...{{/}}\n")
 	} else {
 		hutils.Outf(
-			"{{yellow}}balance:{{/}} %s %s\n",
+			"{{blue}}balance:{{/}} %s %s\n",
 			hutils.FormatBalance(balance, decimals),
 			symbol,
 		)
 	}
-	return symbol, decimals, balance, sourceChainID.String(), nil
+	return balance, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, nil
+}
+
+func (*Handler) GetAssetNFTInfo(
+	ctx context.Context,
+	cli *nrpc.JSONRPCClient,
+	addr codec.Address,
+	nftID ids.ID,
+	checkBalance bool,
+) (bool, string, uint64, string, string, string, error) {
+	exists, collectionID, uniqueID, uri, metadata, ownerAddress, err := cli.AssetNFT(ctx, nftID.String(), false)
+	if err != nil {
+		return false, "", 0, "", "", "", err
+	}
+	if !exists {
+		hutils.Outf("{{red}}%s does not exist{{/}}\n", nftID)
+		hutils.Outf("{{red}}exiting...{{/}}\n")
+		return false, "", 0, "", "", "", nil
+	}
+	if nftID == ids.Empty {
+		hutils.Outf("{{red}}%s is a native asset. Please pass in NFT ID{{/}}\n", nftID)
+		hutils.Outf("{{red}}exiting...{{/}}\n")
+		return false, "", 0, "", "", "", nil
+	}
+
+	if !checkBalance {
+		return false, collectionID, uniqueID, uri, metadata, ownerAddress, nil
+	}
+	saddr, err := codec.AddressBech32(nconsts.HRP, addr)
+	if err != nil {
+		return false, "", 0, "", "", "", err
+	}
+	balance, err := cli.Balance(ctx, saddr, nftID.String())
+	if err != nil {
+		return false, "", 0, "", "", "", err
+	}
+	hutils.Outf("{{blue}}collectionID:{{/}} %s\n", collectionID)
+	hutils.Outf("{{blue}}uniqueID:{{/}} %d\n", uniqueID)
+	hutils.Outf("{{blue}}uri:{{/}} %s\n", uri)
+	hutils.Outf("{{blue}}metadata:{{/}} %s\n", metadata)
+	hutils.Outf("{{blue}}ownerAddress:{{/}} %s\n", ownerAddress)
+	if address := codec.MustAddressBech32(nconsts.HRP, addr); ownerAddress != address || balance == 0 {
+		hutils.Outf("{{red}}You do not own this NFT{{/}}\n")
+		hutils.Outf("{{red}}exiting...{{/}}\n")
+	} else {
+		hutils.Outf("{{blue}}You own this NFT{{/}}\n")
+	}
+	return true, collectionID, uniqueID, uri, metadata, ownerAddress, nil
 }
 
 func (h *Handler) DefaultActor() (
@@ -201,7 +260,7 @@ func (*Handler) GetEmissionInfo(
 	}
 
 	hutils.Outf(
-		"{{yellow}}emission info: {{/}}\nCurrentBlockHeight=%d TotalSupply=%d MaxSupply=%d TotalStaked=%d RewardsPerEpoch=%d NumBlocksInEpoch=%d EmissionAddress=%s EmissionAccumulatedReward=%d\n",
+		"{{blue}}emission info: {{/}}\nCurrentBlockHeight=%d TotalSupply=%d MaxSupply=%d TotalStaked=%d RewardsPerEpoch=%d NumBlocksInEpoch=%d EmissionAddress=%s EmissionAccumulatedReward=%d\n",
 		currentBlockHeight,
 		totalSupply,
 		maxSupply,
@@ -228,7 +287,7 @@ func (*Handler) GetAllValidators(
 			return nil, err
 		}
 		hutils.Outf(
-			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s StakedAmount=%d AccumulatedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d AccumulatedDelegatedReward=%d\n",
+			"{{blue}}validator %d:{{/}} NodeID=%s PublicKey=%s StakedAmount=%d AccumulatedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d AccumulatedDelegatedReward=%d\n",
 			index,
 			validator.NodeID,
 			base64.StdEncoding.EncodeToString(publicKey.Compress()),
@@ -256,7 +315,7 @@ func (*Handler) GetStakedValidators(
 			return nil, err
 		}
 		hutils.Outf(
-			"{{yellow}}validator %d:{{/}} NodeID=%s PublicKey=%s Active=%t StakedAmount=%d AccumulatedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d AccumulatedDelegatedReward=%d\n",
+			"{{blue}}validator %d:{{/}} NodeID=%s PublicKey=%s Active=%t StakedAmount=%d AccumulatedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d AccumulatedDelegatedReward=%d\n",
 			index,
 			validator.NodeID,
 			base64.StdEncoding.EncodeToString(publicKey.Compress()),
@@ -282,7 +341,7 @@ func (*Handler) GetValidatorStake(
 	}
 
 	hutils.Outf(
-		"{{yellow}}validator stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d DelegationFeeRate=%d RewardAddress=%s OwnerAddress=%s\n",
+		"{{blue}}validator stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d DelegationFeeRate=%d RewardAddress=%s OwnerAddress=%s\n",
 		stakeStartBlock,
 		stakeEndBlock,
 		stakedAmount,
@@ -307,7 +366,7 @@ func (*Handler) GetUserStake(ctx context.Context,
 		return 0, 0, 0, "", "", err
 	}
 	hutils.Outf(
-		"{{yellow}}user stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
+		"{{blue}}user stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
 		stakeStartBlock,
 		stakeEndBlock,
 		stakedAmount,
@@ -319,6 +378,126 @@ func (*Handler) GetUserStake(ctx context.Context,
 		stakedAmount,
 		rewardAddress,
 		ownerAddress,
+		err
+}
+
+func (*Handler) GetDatasetInfo(
+	ctx context.Context,
+	cli *nrpc.JSONRPCClient,
+	datasetID ids.ID,
+) (string, string, string, string, string, string, string, bool, string, string, uint64, uint8, uint8, uint8, uint8, string, error) {
+	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := cli.Dataset(ctx, datasetID.String(), false)
+	if err != nil {
+		return "", "", "", "", "", "", "", false, "", "", 0, 0, 0, 0, 0, "", err
+	}
+	if !exists {
+		hutils.Outf("{{red}}%s does not exist{{/}}\n", datasetID)
+		hutils.Outf("{{red}}exiting...{{/}}\n")
+		return "", "", "", "", "", "", "", false, "", "", 0, 0, 0, 0, 0, "", nil
+	}
+
+	hutils.Outf(
+		"{{blue}}dataset info: {{/}}\nName=%s Description=%s Categories=%s LicenseName=%s LicenseSymbol=%s LicenseURL=%s Metadata=%s IsCommunityDataset=%t SaleID=%s BaseAsset=%s BasePrice=%d RevenueModelDataShare=%d RevenueModelMetadataShare=%d RevenueModelDataOwnerCut=%d RevenueModelMetadataOwnerCut=%d Owner=%s\n",
+		name,
+		description,
+		categories,
+		licenseName,
+		licenseSymbol,
+		licenseURL,
+		metadata,
+		isCommunityDataset,
+		saleID,
+		baseAsset,
+		basePrice,
+		revenueModelDataShare,
+		revenueModelMetadataShare,
+		revenueModelDataOwnerCut,
+		revenueModelMetadataOwnerCut,
+		owner,
+	)
+	return name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err
+}
+
+func (*Handler) GetDataContributionPendingInfo(
+	ctx context.Context,
+	cli *nrpc.JSONRPCClient,
+	datasetID ids.ID,
+) ([]nrpc.DataContribution, error) {
+	contributions, err := cli.DataContributionPending(ctx, datasetID.String())
+	if err != nil {
+		return nil, err
+	}
+	for index, contribution := range contributions {
+		hutils.Outf(
+			"{{blue}}Contribution %d:{{/}} Contributor=%s DataLocation=%s DataIdentifier=%s\n",
+			index,
+			contribution.Contributor,
+			contribution.DataLocation,
+			contribution.DataIdentifier,
+		)
+	}
+	return contributions, nil
+}
+
+func (*Handler) GetDatasetInfoFromMarketplace(
+	ctx context.Context,
+	cli *nrpc.JSONRPCClient,
+	datasetID ids.ID,
+) (string, string, bool, string, string, uint64, string, string, string, string, string, uint64, uint64, string, map[string]string, error) {
+	exists, datasetName, description, _, _, _, _, _, isCommunityDataset, saleID, baseAsset, basePrice, _, _, _, _, owner, err := cli.Dataset(ctx, datasetID.String(), false)
+	if !exists {
+		hutils.Outf("{{red}}Dataset '%s' does not exist{{/}}\n", datasetID)
+		hutils.Outf("{{red}}exiting...{{/}}\n")
+		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
+	}
+	if saleID == ids.Empty.String() {
+		hutils.Outf("{{red}}Dataset '%s' is not on sale{{/}}\n", datasetID)
+		hutils.Outf("{{red}}exiting...{{/}}\n")
+		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
+	}
+
+	_, assetType, assetName, symbol, _, metadata, uri, totalSupply, maxSupply, admin, _, _, _, _, err := cli.Asset(ctx, saleID, false)
+	if err != nil {
+		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
+	}
+
+	metadataMap, err := nchain.JSONToMap(metadata)
+	if err != nil {
+		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
+	}
+	hutils.Outf(
+		"{{blue}}dataset info from marketplace: {{/}}\nDatasetName=%s DatasetDescription=%s IsCommunityDataset=%t SaleID=%s AssetForPayment=%s PricePerBlock=%d DatasetOwner=%s\n{{blue}}marketplace asset info: {{/}}\nAssetType=%s AssetName=%s AssetSymbol=%s AssetURI=%s TotalSupply=%d MaxSupply=%d Owner=%s\nAssetMetadata=%#v\n",
+		datasetName,
+		description,
+		isCommunityDataset,
+		saleID,
+		baseAsset,
+		basePrice,
+		owner,
+		assetType,
+		assetName,
+		symbol,
+		uri,
+		totalSupply,
+		maxSupply,
+		admin,
+		metadataMap,
+	)
+	return datasetName,
+		description,
+		isCommunityDataset,
+		saleID,
+		baseAsset,
+		basePrice,
+		owner,
+		assetType,
+		assetName,
+		symbol,
+		uri,
+		totalSupply,
+		maxSupply,
+		admin,
+		metadataMap,
 		err
 }
 
