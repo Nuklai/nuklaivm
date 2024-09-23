@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	"github.com/ava-labs/hypersdk/cli"
 	"github.com/ava-labs/hypersdk/utils"
-	"github.com/spf13/cobra"
 )
 
 const (
@@ -23,25 +24,21 @@ var (
 
 	dbPath                string
 	genesisFile           string
-	minBlockGap           int64
 	minUnitPrice          []string
 	maxBlockUnits         []string
 	windowTargetUnits     []string
+	minBlockGap           int64
 	hideTxs               bool
-	randomRecipient       bool
-	maxTxBacklog          int
 	checkAllChains        bool
 	prometheusBaseURI     string
 	prometheusOpenBrowser bool
 	prometheusFile        string
 	prometheusData        string
 	startPrometheus       bool
-	maxFee                int64
-	numCores              int
 
 	rootCmd = &cobra.Command{
 		Use:        "nuklai-cli",
-		Short:      "NuklaiVM CLI",
+		Short:      "VmWithContracts CLI",
 		SuggestFor: []string{"nuklai-cli", "nuklaicli"},
 	}
 )
@@ -53,10 +50,6 @@ func init() {
 		keyCmd,
 		chainCmd,
 		actionCmd,
-		assetCmd,
-		emissionCmd,
-		datasetCmd,
-		marketplaceCmd,
 		spamCmd,
 		prometheusCmd,
 	)
@@ -123,19 +116,11 @@ func init() {
 		false,
 		"check all chains",
 	)
-	balanceKeyCmd.PersistentFlags().IntVar(
-		&numCores,
-		"num-cores",
-		4,
-		"num-cores",
-	)
 	keyCmd.AddCommand(
 		genKeyCmd,
 		importKeyCmd,
 		setKeyCmd,
 		balanceKeyCmd,
-		balanceNFTKeyCmd,
-		vanityAddressCmd,
 	)
 
 	// chain
@@ -147,8 +132,6 @@ func init() {
 	)
 	chainCmd.AddCommand(
 		importChainCmd,
-		importANRChainCmd,
-		importAvalancheCliChainCmd,
 		setChainCmd,
 		chainInfoCmd,
 		watchChainCmd,
@@ -157,73 +140,12 @@ func init() {
 	// actions
 	actionCmd.AddCommand(
 		transferCmd,
-
-		registerValidatorStakeCmd,
-		getValidatorStakeCmd,
-		claimValidatorStakeRewardCmd,
-		withdrawValidatorStakeCmd,
-
-		delegateUserStakeCmd,
-		getUserStakeCmd,
-		claimUserStakeRewardCmd,
-		undelegateUserStakeCmd,
-	)
-
-	// asset
-	assetCmd.AddCommand(
-		createAssetCmd,
-		updateAssetCmd,
-		mintAssetFTCmd,
-		mintAssetNFTCmd,
-		burnAssetFTCmd,
-		burnAssetNFTCmd,
-	)
-
-	// emission
-	emissionCmd.AddCommand(
-		emissionInfoCmd,
-		emissionAllValidatorsCmd,
-		emissionStakedValidatorsCmd,
-	)
-
-	// dataset
-	datasetCmd.AddCommand(
-		createDatasetCmd,
-		createDatasetFromExistingAssetCmd,
-		updateDatasetCmd,
-		getDatasetCmd,
-		initiateContributeDatasetCmd,
-		getDataContributionPendingCmd,
-		completeContributeDatasetCmd,
-	)
-
-	// marketplace
-	marketplaceCmd.AddCommand(
-		publishDatasetMarketplaceCmd,
-		subscribeDatasetMarketplaceCmd,
-		infoDatasetMarketplaceCmd,
-		claimPaymentMarketplaceCmd,
+		callCmd,
+		publishFileCmd,
+		deployCmd,
 	)
 
 	// spam
-	runSpamCmd.PersistentFlags().BoolVar(
-		&randomRecipient,
-		"random-recipient",
-		false,
-		"random recipient",
-	)
-	runSpamCmd.PersistentFlags().IntVar(
-		&maxTxBacklog,
-		"max-tx-backlog",
-		72_000,
-		"max tx backlog",
-	)
-	runSpamCmd.PersistentFlags().Int64Var(
-		&maxFee,
-		"max-fee",
-		-1,
-		"max fee per tx",
-	)
 	spamCmd.AddCommand(
 		runSpamCmd,
 	)

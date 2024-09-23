@@ -1,4 +1,4 @@
-# Copyright (C) 2024, ANuklaillianceBlock. All rights reserved.
+# Copyright (C) 2024, Nuklai. All rights reserved.
 # See the file LICENSE for licensing terms.
 
 # ref. https://goreleaser.com/customization/build/
@@ -71,5 +71,5 @@ release:
   make_latest: false # Should be done manually
   mode: 'keep-existing' # Should not override releases
   github:
-    owner: Nuklai
-    name: nuklaivm
+    owner: kpachhai
+    name: KP

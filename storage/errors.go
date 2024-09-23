@@ -6,7 +6,6 @@ package storage
 import "errors"
 
 var (
+	ErrInvalidAddress = errors.New("invalid address")
 	ErrInvalidBalance = errors.New("invalid balance")
-	ErrInvalidStake   = errors.New("invalid stake")
-	ErrStakeNotFound  = errors.New("stake not found")
 )

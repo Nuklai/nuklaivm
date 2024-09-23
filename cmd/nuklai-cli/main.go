@@ -7,8 +7,9 @@ package main
 import (
 	"os"
 
-	"github.com/ava-labs/hypersdk/utils"
 	"github.com/nuklai/nuklaivm/cmd/nuklai-cli/cmd"
+
+	"github.com/ava-labs/hypersdk/utils"
 )
 
 func main() {

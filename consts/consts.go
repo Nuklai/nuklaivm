@@ -5,8 +5,7 @@ package consts
 
 import (
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/hypersdk/chain"
-	"github.com/ava-labs/hypersdk/codec"
+	"github.com/ava-labs/avalanchego/version"
 )
 
 const (
@@ -28,9 +27,8 @@ func init() {
 	ID = vmID
 }
 
-// Instantiate registry here so it can be imported by any package. We set these
-// values in [controller/registry].
-var (
-	ActionRegistry *codec.TypeParser[chain.Action, bool]
-	AuthRegistry   *codec.TypeParser[chain.Auth, bool]
-)
+var Version = &version.Semantic{
+	Major: 0,
+	Minor: 0,
+	Patch: 1,
+}

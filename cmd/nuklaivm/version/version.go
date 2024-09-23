@@ -6,10 +6,8 @@ package version
 import (
 	"fmt"
 
+	"github.com/nuklai/nuklaivm/consts"
 	"github.com/spf13/cobra"
-
-	nconsts "github.com/nuklai/nuklaivm/consts"
-	"github.com/nuklai/nuklaivm/version"
 )
 
 func init() {
@@ -27,6 +25,6 @@ func NewCommand() *cobra.Command {
 }
 
 func versionFunc(*cobra.Command, []string) error {
-	fmt.Printf("%s@%s (%s)\n", nconsts.Name, version.Version, nconsts.ID)
+	fmt.Printf("%s@%s (%s)\n", consts.Name, consts.Version, consts.ID)
 	return nil
 }

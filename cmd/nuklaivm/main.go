@@ -8,14 +8,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
-
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/ava-labs/avalanchego/utils/ulimit"
 	"github.com/ava-labs/avalanchego/vms/rpcchainvm"
-
 	"github.com/nuklai/nuklaivm/cmd/nuklaivm/version"
-	"github.com/nuklai/nuklaivm/controller"
+	"github.com/nuklai/nuklaivm/vm"
+	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
@@ -47,5 +45,10 @@ func runFunc(*cobra.Command, []string) error {
 	if err := ulimit.Set(ulimit.DefaultFDLimit, logging.NoLog{}); err != nil {
 		return fmt.Errorf("%w: failed to set fd limit correctly", err)
 	}
-	return rpcchainvm.Serve(context.TODO(), controller.New())
+
+	controller, err := vm.New()
+	if err != nil {
+		return err
+	}
+	return rpcchainvm.Serve(context.TODO(), controller)
 }
