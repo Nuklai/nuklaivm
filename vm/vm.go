@@ -58,18 +58,9 @@ func init() {
 		AuthParser.Register(&auth.SECP256R1{}, auth.UnmarshalSECP256R1),
 		AuthParser.Register(&auth.BLS{}, auth.UnmarshalBLS),
 
-		OutputParser.Register(&actions.TransferResult{}, nil),
 		OutputParser.Register(&actions.ContractCallResult{}, nil),
 		OutputParser.Register(&actions.ContractDeployResult{}, nil),
 		OutputParser.Register(&actions.ContractPublishResult{}, nil),
-		OutputParser.Register(&actions.CreateAssetResult{}, nil),
-		OutputParser.Register(&actions.UpdateAssetResult{}, nil),
-		OutputParser.Register(&actions.MintAssetFTResult{}, nil),
-		OutputParser.Register(&actions.MintAssetNFTResult{}, nil),
-		OutputParser.Register(&actions.BurnAssetFTResult{}, nil),
-		OutputParser.Register(&actions.BurnAssetNFTResult{}, nil),
-		OutputParser.Register(&actions.CreateDatasetResult{}, nil),
-		OutputParser.Register(&actions.UpdateDatasetResult{}, nil),
 	)
 	if errs.Errored() {
 		panic(errs.Err)
