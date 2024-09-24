@@ -19,7 +19,7 @@ import (
 	mconsts "github.com/nuklai/nuklaivm/consts"
 )
 
-var _ chain.Action = (*Call)(nil)
+var _ chain.Action = (*ContractCall)(nil)
 
 const MaxCallDataSize = units.MiB
 
@@ -28,7 +28,7 @@ type StateKeyPermission struct {
 	Permission state.Permissions
 }
 
-type Call struct {
+type ContractCall struct {
 	// contract is the address of the contract to be called
 	ContractAddress codec.Address `json:"contractAddress"`
 
@@ -48,11 +48,11 @@ type Call struct {
 	r *runtime.WasmRuntime
 }
 
-func (*Call) GetTypeID() uint8 {
-	return mconsts.CallContractID
+func (*ContractCall) GetTypeID() uint8 {
+	return mconsts.ContractCallID
 }
 
-func (t *Call) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
+func (t *ContractCall) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
 	result := state.Keys{}
 	for _, stateKeyPermission := range t.SpecifiedStateKeys {
 		result.Add(stateKeyPermission.Key, stateKeyPermission.Permission)
@@ -60,7 +60,7 @@ func (t *Call) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
 	return result
 }
 
-func (t *Call) StateKeysMaxChunks() []uint16 {
+func (t *ContractCall) StateKeysMaxChunks() []uint16 {
 	result := make([]uint16, 0, len(t.SpecifiedStateKeys))
 	for range t.SpecifiedStateKeys {
 		result = append(result, 1)
@@ -68,7 +68,7 @@ func (t *Call) StateKeysMaxChunks() []uint16 {
 	return result
 }
 
-func (t *Call) Execute(
+func (t *ContractCall) Execute(
 	ctx context.Context,
 	_ chain.Rules,
 	mu state.Mutable,
@@ -89,18 +89,25 @@ func (t *Call) Execute(
 	if err != nil {
 		return nil, err
 	}
-	return &Result{Value: resutBytes}, nil
+	return &ContractCallResult{Value: resutBytes}, nil
 }
 
-func (t *Call) ComputeUnits(chain.Rules) uint64 {
+func (t *ContractCall) ComputeUnits(chain.Rules) uint64 {
 	return t.Fuel / 1000
 }
 
-func (t *Call) Size() int {
+func (*ContractCall) ValidRange(chain.Rules) (int64, int64) {
+	// Returning -1, -1 means that the action is always valid.
+	return -1, -1
+}
+
+var _ chain.Marshaler = (*ContractCall)(nil)
+
+func (t *ContractCall) Size() int {
 	return codec.AddressLen + 2*consts.Uint64Len + len(t.CallData) + len(t.Function) + len(t.SpecifiedStateKeys)
 }
 
-func (t *Call) Marshal(p *codec.Packer) {
+func (t *ContractCall) Marshal(p *codec.Packer) {
 	p.PackUint64(t.Value)
 	p.PackUint64(t.Fuel)
 	p.PackAddress(t.ContractAddress)
@@ -116,7 +123,7 @@ func (t *Call) Marshal(p *codec.Packer) {
 
 func UnmarshalCallContract(r *runtime.WasmRuntime) func(p *codec.Packer) (chain.Action, error) {
 	return func(p *codec.Packer) (chain.Action, error) {
-		callContract := Call{r: r}
+		callContract := ContractCall{r: r}
 		callContract.Value = p.UnpackUint64(false)
 		callContract.Fuel = p.UnpackUint64(true)
 		p.UnpackAddress(&callContract.ContractAddress) // we do not verify the typeID is valid
@@ -136,15 +143,12 @@ func UnmarshalCallContract(r *runtime.WasmRuntime) func(p *codec.Packer) (chain.
 	}
 }
 
-func (*Call) ValidRange(chain.Rules) (int64, int64) {
-	// Returning -1, -1 means that the action is always valid.
-	return -1, -1
-}
+var _ codec.Typed = (*ContractCallResult)(nil)
 
-type Result struct {
+type ContractCallResult struct {
 	Value []byte `serialize:"true" json:"value"`
 }
 
-func (*Result) GetTypeID() uint8 {
-	return mconsts.ResultOutputID
+func (*ContractCallResult) GetTypeID() uint8 {
+	return mconsts.ContractCallResultID
 }

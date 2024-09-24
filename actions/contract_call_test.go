@@ -22,7 +22,7 @@ func TestCallAction(t *testing.T) {
 		{
 			Name:  "No Statekeys",
 			Actor: codec.EmptyAddress,
-			Action: &Call{
+			Action: &ContractCall{
 				ContractAddress: addr,
 				Value:           0,
 			},

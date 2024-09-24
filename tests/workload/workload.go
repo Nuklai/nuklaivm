@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/actions"
+	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/vm"
 	"github.com/stretchr/testify/require"
 
@@ -139,7 +140,7 @@ func (g *simpleTxWorkload) GenerateTxWithAssertion(ctx context.Context) (*chain.
 		require.NoError(err)
 		require.True(success)
 		lcli := vm.NewJSONRPCClient(uri)
-		balance, err := lcli.Balance(ctx, aother)
+		balance, err := lcli.Balance(ctx, aother.String(), consts.Symbol)
 		require.NoError(err)
 		require.Equal(uint64(1), balance)
 	}, nil
@@ -235,7 +236,7 @@ func (g *mixedAuthWorkload) GenerateTxWithAssertion(ctx context.Context) (*chain
 		require.NoError(err)
 		require.True(success)
 		lcli := vm.NewJSONRPCClient(uri)
-		balance, err := lcli.Balance(ctx, receiver.address)
+		balance, err := lcli.Balance(ctx, receiver.address.String(), consts.Symbol)
 		require.NoError(err)
 		require.Equal(expectedBalance, balance)
 		// TODO check tx fee + units (not currently available via API)

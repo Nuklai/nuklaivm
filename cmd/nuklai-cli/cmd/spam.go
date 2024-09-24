@@ -11,6 +11,7 @@ import (
 	"github.com/nuklai/nuklaivm/vm"
 	"github.com/spf13/cobra"
 
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/api/ws"
 	"github.com/ava-labs/hypersdk/auth"
 	"github.com/ava-labs/hypersdk/chain"
@@ -65,7 +66,7 @@ func (sh *SpamHelper) GetParser(ctx context.Context) (chain.Parser, error) {
 }
 
 func (sh *SpamHelper) LookupBalance(choice int, address codec.Address) (uint64, error) {
-	balance, err := sh.cli.Balance(context.TODO(), address)
+	balance, err := sh.cli.Balance(context.TODO(), address.String(), ids.Empty.String())
 	if err != nil {
 		return 0, err
 	}

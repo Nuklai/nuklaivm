@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/status-im/keycard-go/hexutils"
 
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/cli/prompt"
 	"github.com/ava-labs/hypersdk/codec"
@@ -30,13 +31,19 @@ var transferCmd = &cobra.Command{
 	Use: "transfer",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, priv, factory, cli, bcli, ws, err := handler.DefaultActor()
+		_, priv, factory, cli, ncli, ws, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+
+		// Get assetID
+		assetID, err := prompt.Asset("assetID", consts.Symbol, true)
 		if err != nil {
 			return err
 		}
 
 		// Get balance info
-		balance, err := handler.GetBalance(ctx, bcli, priv.Address)
+		balance, _, _, _, decimals, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, assetID, true)
 		if balance == 0 || err != nil {
 			return err
 		}
@@ -48,7 +55,11 @@ var transferCmd = &cobra.Command{
 		}
 
 		// Select amount
-		amount, err := prompt.Amount("amount", consts.Decimals, balance, nil)
+		decimalsToUse := uint8(consts.Decimals)
+		if assetID != ids.Empty {
+			decimalsToUse = decimals
+		}
+		amount, err := prompt.Amount("amount", decimalsToUse, balance, nil)
 		if err != nil {
 			return err
 		}
@@ -63,7 +74,7 @@ var transferCmd = &cobra.Command{
 		_, err = sendAndWait(ctx, []chain.Action{&actions.Transfer{
 			To:    recipient,
 			Value: amount,
-		}}, cli, bcli, ws, factory)
+		}}, cli, ncli, ws, factory)
 		return err
 	},
 }
@@ -94,7 +105,7 @@ var publishFileCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		result, err := sendAndWait(ctx, []chain.Action{&actions.Publish{
+		result, err := sendAndWait(ctx, []chain.Action{&actions.ContractPublish{
 			ContractBytes: bytes,
 		}}, cli, bcli, ws, factory)
 
@@ -115,7 +126,7 @@ var callCmd = &cobra.Command{
 		}
 
 		// Get balance info
-		balance, err := handler.GetBalance(ctx, bcli, priv.Address)
+		balance, err := handler.GetBalance(ctx, bcli, priv.Address, ids.Empty)
 		if balance == 0 || err != nil {
 			return err
 		}
@@ -138,7 +149,7 @@ var callCmd = &cobra.Command{
 			return err
 		}
 
-		action := &actions.Call{
+		action := &actions.ContractCall{
 			ContractAddress: contractAddress,
 			Value:           amount,
 			Function:        function,
@@ -217,7 +228,7 @@ var deployCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		result, err := sendAndWait(ctx, []chain.Action{&actions.Deploy{
+		result, err := sendAndWait(ctx, []chain.Action{&actions.ContractDeploy{
 			ContractID:   contractID,
 			CreationInfo: creationInfo,
 		}}, cli, bcli, ws, factory)

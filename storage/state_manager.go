@@ -6,6 +6,7 @@ package storage
 import (
 	"context"
 
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/state"
@@ -29,7 +30,7 @@ func (*StateManager) FeeKey() []byte {
 
 func (*StateManager) SponsorStateKeys(addr codec.Address) state.Keys {
 	return state.Keys{
-		string(BalanceKey(addr)): state.Read | state.Write,
+		string(BalanceKey(addr, ids.Empty)): state.Read | state.Write,
 	}
 }
 
@@ -39,7 +40,7 @@ func (*StateManager) CanDeduct(
 	im state.Immutable,
 	amount uint64,
 ) error {
-	bal, err := GetBalance(ctx, im, addr)
+	bal, err := GetBalance(ctx, im, addr, ids.Empty)
 	if err != nil {
 		return err
 	}
@@ -55,7 +56,7 @@ func (*StateManager) Deduct(
 	mu state.Mutable,
 	amount uint64,
 ) error {
-	_, err := SubBalance(ctx, mu, addr, amount)
+	_, err := SubBalance(ctx, mu, addr, ids.Empty, amount)
 	return err
 }
 
@@ -66,6 +67,6 @@ func (*StateManager) AddBalance(
 	amount uint64,
 	createAccount bool,
 ) error {
-	_, err := AddBalance(ctx, mu, addr, amount, createAccount)
+	_, err := AddBalance(ctx, mu, addr, ids.Empty, amount, createAccount)
 	return err
 }

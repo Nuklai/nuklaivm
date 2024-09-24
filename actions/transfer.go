@@ -15,23 +15,27 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
-	mconsts "github.com/nuklai/nuklaivm/consts"
+	nchain "github.com/nuklai/nuklaivm/chain"
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 const (
 	TransferComputeUnits = 1
-	MaxMemoSize          = 256
 )
 
 var (
 	ErrOutputValueZero                 = errors.New("value is zero")
 	ErrOutputMemoTooLarge              = errors.New("memo is too large")
+	ErrOutputWrongOwner                = errors.New("wrong owner")
 	_                     chain.Action = (*Transfer)(nil)
 )
 
 type Transfer struct {
 	// To is the recipient of the [Value].
 	To codec.Address `serialize:"true" json:"to"`
+
+	// Asset to transfer.
+	Asset ids.ID `serialize:"true" json:"asset"`
 
 	// Amount are transferred to [To].
 	Value uint64 `serialize:"true" json:"value"`
@@ -41,18 +45,35 @@ type Transfer struct {
 }
 
 func (*Transfer) GetTypeID() uint8 {
-	return mconsts.TransferID
+	return nconsts.TransferID
 }
 
 func (t *Transfer) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
-	return state.Keys{
-		string(storage.BalanceKey(actor)): state.Read | state.Write,
-		string(storage.BalanceKey(t.To)):  state.All,
+	// Initialize the base stateKeys map
+	stateKeys := state.Keys{
+		string(storage.BalanceKey(actor, t.Asset)): state.Read | state.Write,
+		string(storage.BalanceKey(t.To, t.Asset)):  state.All,
 	}
+
+	// Check if t.Asset is not empty, then add to stateKeys
+	if t.Asset != ids.Empty {
+		stateKeys[string(storage.AssetKey(t.Asset))] = state.Read | state.Write
+		stateKeys[string(storage.AssetNFTKey(t.Asset))] = state.Read | state.Write
+	}
+
+	// Return the modified stateKeys
+	return stateKeys
 }
 
-func (*Transfer) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.BalanceChunks}
+func (t *Transfer) StateKeysMaxChunks() []uint16 {
+	stateKeysChunks := make([]uint16, 0)
+	stateKeysChunks = append(stateKeysChunks, storage.BalanceChunks)
+	stateKeysChunks = append(stateKeysChunks, storage.BalanceChunks)
+	if t.Asset != ids.Empty {
+		stateKeysChunks = append(stateKeysChunks, storage.AssetChunks)
+		stateKeysChunks = append(stateKeysChunks, storage.AssetNFTChunks)
+	}
+	return stateKeysChunks
 }
 
 func (t *Transfer) Execute(
@@ -63,17 +84,44 @@ func (t *Transfer) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-	if t.Value == 0 {
+	amountOfToken := t.Value
+
+	// Handle NFT transfers
+	if t.Asset != ids.Empty {
+		exists, collectionID, uniqueID, uri, metadata, owner, _ := storage.GetAssetNFT(ctx, mu, t.Asset)
+		if exists {
+			// Check if the sender is the owner of the NFT
+			if owner != actor {
+				return nil, ErrOutputWrongOwner
+			}
+			amountOfToken = 1
+			// Subtract the balance from NFT collection for the original NFT owner
+			if _, err := storage.SubBalance(ctx, mu, actor, collectionID, amountOfToken); err != nil {
+				return nil, err
+			}
+			// Add the balance to NFT collection for the new NFT owner
+			if _, err := storage.AddBalance(ctx, mu, t.To, collectionID, amountOfToken, true); err != nil {
+				return nil, err
+			}
+			// Update the NFT Info
+			nftID := nchain.GenerateIDWithIndex(collectionID, uniqueID)
+			if err := storage.SetAssetNFT(ctx, mu, collectionID, uniqueID, nftID, uri, metadata, t.To); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	if amountOfToken == 0 {
 		return nil, ErrOutputValueZero
 	}
 	if len(t.Memo) > MaxMemoSize {
 		return nil, ErrOutputMemoTooLarge
 	}
-	senderBalance, err := storage.SubBalance(ctx, mu, actor, t.Value)
+	senderBalance, err := storage.SubBalance(ctx, mu, actor, t.Asset, amountOfToken)
 	if err != nil {
 		return nil, err
 	}
-	receiverBalance, err := storage.AddBalance(ctx, mu, t.To, t.Value, true)
+	receiverBalance, err := storage.AddBalance(ctx, mu, t.To, t.Asset, amountOfToken, true)
 	if err != nil {
 		return nil, err
 	}
@@ -97,11 +145,12 @@ func (*Transfer) ValidRange(chain.Rules) (int64, int64) {
 var _ chain.Marshaler = (*Transfer)(nil)
 
 func (t *Transfer) Size() int {
-	return codec.AddressLen + consts.Uint64Len + codec.BytesLen(t.Memo)
+	return codec.AddressLen + ids.IDLen + consts.Uint64Len + codec.BytesLen(t.Memo)
 }
 
 func (t *Transfer) Marshal(p *codec.Packer) {
 	p.PackAddress(t.To)
+	p.PackID(t.Asset)
 	p.PackLong(t.Value)
 	p.PackBytes(t.Memo)
 }
@@ -109,6 +158,7 @@ func (t *Transfer) Marshal(p *codec.Packer) {
 func UnmarshalTransfer(p *codec.Packer) (chain.Action, error) {
 	var transfer Transfer
 	p.UnpackAddress(&transfer.To)
+	p.UnpackID(false, &transfer.Asset) // empty ID is the native asset
 	transfer.Value = p.UnpackUint64(true)
 	p.UnpackBytes(MaxMemoSize, false, &transfer.Memo)
 	return &transfer, p.Err()
@@ -122,5 +172,5 @@ type TransferResult struct {
 }
 
 func (*TransferResult) GetTypeID() uint8 {
-	return mconsts.TransferID // Common practice is to use the action ID
+	return nconsts.TransferID // Common practice is to use the action ID
 }

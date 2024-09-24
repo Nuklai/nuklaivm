@@ -19,21 +19,21 @@ import (
 	mconsts "github.com/nuklai/nuklaivm/consts"
 )
 
-var _ chain.Action = (*Deploy)(nil)
+var _ chain.Action = (*ContractDeploy)(nil)
 
 const MAXCREATIONSIZE = units.MiB
 
-type Deploy struct {
+type ContractDeploy struct {
 	ContractID   runtime.ContractID `json:"contractID"`
 	CreationInfo []byte             `json:"creationInfo"`
 	address      codec.Address
 }
 
-func (*Deploy) GetTypeID() uint8 {
-	return mconsts.DeployID
+func (*ContractDeploy) GetTypeID() uint8 {
+	return mconsts.ContractDeployID
 }
 
-func (d *Deploy) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
+func (d *ContractDeploy) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
 	if d.address == codec.EmptyAddress {
 		d.address = storage.GetAddressForDeploy(0, d.CreationInfo)
 	}
@@ -43,11 +43,11 @@ func (d *Deploy) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
 	}
 }
 
-func (*Deploy) StateKeysMaxChunks() []uint16 {
+func (*ContractDeploy) StateKeysMaxChunks() []uint16 {
 	return []uint16{storage.BalanceChunks}
 }
 
-func (d *Deploy) Execute(
+func (d *ContractDeploy) Execute(
 	ctx context.Context,
 	_ chain.Rules,
 	mu state.Mutable,
@@ -57,24 +57,31 @@ func (d *Deploy) Execute(
 ) (codec.Typed, error) {
 	result, err := (&storage.ContractStateManager{Mutable: mu}).
 		NewAccountWithContract(ctx, d.ContractID, d.CreationInfo)
-	return &AddressOutput{Address: result}, err
+	return &ContractDeployResult{Address: result}, err
 }
 
-func (*Deploy) ComputeUnits(chain.Rules) uint64 {
+func (*ContractDeploy) ComputeUnits(chain.Rules) uint64 {
 	return 1
 }
 
-func (d *Deploy) Size() int {
+func (*ContractDeploy) ValidRange(chain.Rules) (int64, int64) {
+	// Returning -1, -1 means that the action is always valid.
+	return -1, -1
+}
+
+var _ chain.Marshaler = (*ContractDeploy)(nil)
+
+func (d *ContractDeploy) Size() int {
 	return len(d.CreationInfo) + len(d.ContractID)
 }
 
-func (d *Deploy) Marshal(p *codec.Packer) {
+func (d *ContractDeploy) Marshal(p *codec.Packer) {
 	p.PackBytes(d.ContractID)
 	p.PackBytes(d.CreationInfo)
 }
 
 func UnmarshalDeployContract(p *codec.Packer) (chain.Action, error) {
-	var deployContract Deploy
+	var deployContract ContractDeploy
 	p.UnpackBytes(36, true, (*[]byte)(&deployContract.ContractID))
 	p.UnpackBytes(MAXCREATIONSIZE, false, &deployContract.CreationInfo)
 	deployContract.address = storage.GetAddressForDeploy(0, deployContract.CreationInfo)
@@ -85,15 +92,12 @@ func UnmarshalDeployContract(p *codec.Packer) (chain.Action, error) {
 	return &deployContract, nil
 }
 
-func (*Deploy) ValidRange(chain.Rules) (int64, int64) {
-	// Returning -1, -1 means that the action is always valid.
-	return -1, -1
-}
+var _ codec.Typed = (*ContractDeployResult)(nil)
 
-type AddressOutput struct {
+type ContractDeployResult struct {
 	Address codec.Address `serialize:"true" json:"address"`
 }
 
-func (*AddressOutput) GetTypeID() uint8 {
-	return mconsts.AddressOutputID
+func (*ContractDeployResult) GetTypeID() uint8 {
+	return mconsts.ContractDeployResultID
 }

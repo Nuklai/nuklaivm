@@ -54,6 +54,7 @@ func TestTransferAction(t *testing.T) {
 					context.Background(),
 					s,
 					codec.EmptyAddress,
+					ids.Empty,
 					0,
 					true,
 				)
@@ -71,11 +72,11 @@ func TestTransferAction(t *testing.T) {
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				require.NoError(t, storage.SetBalance(context.Background(), store, codec.EmptyAddress, 1))
+				require.NoError(t, storage.SetBalance(context.Background(), store, codec.EmptyAddress, ids.Empty, 1))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
-				balance, err := storage.GetBalance(ctx, store, codec.EmptyAddress)
+				balance, err := storage.GetBalance(ctx, store, codec.EmptyAddress, ids.Empty)
 				require.NoError(t, err)
 				require.Equal(t, balance, uint64(1))
 			},
@@ -93,7 +94,7 @@ func TestTransferAction(t *testing.T) {
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				require.NoError(t, storage.SetBalance(context.Background(), store, codec.EmptyAddress, 1))
+				require.NoError(t, storage.SetBalance(context.Background(), store, codec.EmptyAddress, ids.Empty, 1))
 				return store
 			}(),
 			ExpectedErr: storage.ErrInvalidBalance,
@@ -107,14 +108,14 @@ func TestTransferAction(t *testing.T) {
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				require.NoError(t, storage.SetBalance(context.Background(), store, codec.EmptyAddress, 1))
+				require.NoError(t, storage.SetBalance(context.Background(), store, codec.EmptyAddress, ids.Empty, 1))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
-				receiverBalance, err := storage.GetBalance(ctx, store, addr)
+				receiverBalance, err := storage.GetBalance(ctx, store, addr, ids.Empty)
 				require.NoError(t, err)
 				require.Equal(t, receiverBalance, uint64(1))
-				senderBalance, err := storage.GetBalance(ctx, store, codec.EmptyAddress)
+				senderBalance, err := storage.GetBalance(ctx, store, codec.EmptyAddress, ids.Empty)
 				require.NoError(t, err)
 				require.Equal(t, senderBalance, uint64(0))
 			},
@@ -144,16 +145,16 @@ func BenchmarkSimpleTransfer(b *testing.B) {
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
-			err := storage.SetBalance(context.Background(), store, from, 1)
+			err := storage.SetBalance(context.Background(), store, from, ids.Empty, 1)
 			require.NoError(err)
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
-			toBalance, err := storage.GetBalance(ctx, store, to)
+			toBalance, err := storage.GetBalance(ctx, store, to, ids.Empty)
 			require.NoError(err)
 			require.Equal(uint64(1), toBalance)
 
-			fromBalance, err := storage.GetBalance(ctx, store, from)
+			fromBalance, err := storage.GetBalance(ctx, store, from, ids.Empty)
 			require.NoError(err)
 			require.Equal(uint64(0), fromBalance)
 		},
