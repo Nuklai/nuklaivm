@@ -7,13 +7,13 @@ import (
 	"context"
 	"os"
 
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/near/borsh-go"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
 	"github.com/spf13/cobra"
 	"github.com/status-im/keycard-go/hexutils"
 
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/cli/prompt"
 	"github.com/ava-labs/hypersdk/codec"

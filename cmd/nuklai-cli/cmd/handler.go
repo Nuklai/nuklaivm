@@ -7,7 +7,6 @@ import (
 	"context"
 
 	"github.com/ava-labs/avalanchego/ids"
-	nchain "github.com/nuklai/nuklaivm/chain"
 	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/vm"
 
@@ -22,6 +21,8 @@ import (
 	"github.com/ava-labs/hypersdk/crypto/secp256r1"
 	"github.com/ava-labs/hypersdk/pubsub"
 	"github.com/ava-labs/hypersdk/utils"
+
+	nchain "github.com/nuklai/nuklaivm/chain"
 )
 
 var _ cli.Controller = (*Controller)(nil)

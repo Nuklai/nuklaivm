@@ -7,13 +7,13 @@ import (
 	"context"
 
 	"github.com/ava-labs/avalanchego/ids"
-	smath "github.com/ava-labs/avalanchego/utils/math"
+	"github.com/nuklai/nuklaivm/storage"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/state"
-	"github.com/nuklai/nuklaivm/storage"
 
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -21,9 +21,7 @@ const (
 	BurnAssetNFTComputeUnits = 1
 )
 
-var (
-	_ chain.Action = (*BurnAssetNFT)(nil)
-)
+var _ chain.Action = (*BurnAssetNFT)(nil)
 
 type BurnAssetNFT struct {
 	// AssetID ID of the asset to burn(this is the nft collection ID)

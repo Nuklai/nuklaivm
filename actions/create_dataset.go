@@ -8,6 +8,8 @@ import (
 	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/nuklai/nuklaivm/storage"
+
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
@@ -15,7 +17,6 @@ import (
 
 	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
-	"github.com/nuklai/nuklaivm/storage"
 )
 
 const (

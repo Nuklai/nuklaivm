@@ -7,14 +7,14 @@ import (
 	"context"
 
 	"github.com/ava-labs/avalanchego/ids"
-	smath "github.com/ava-labs/avalanchego/utils/math"
+	"github.com/nuklai/nuklaivm/storage"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
-	"github.com/nuklai/nuklaivm/storage"
 
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -22,9 +22,7 @@ const (
 	BurnAssetFTComputeUnits = 1
 )
 
-var (
-	_ chain.Action = (*BurnAssetFT)(nil)
-)
+var _ chain.Action = (*BurnAssetFT)(nil)
 
 type BurnAssetFT struct {
 	// AssetID ID of the asset to burn.
