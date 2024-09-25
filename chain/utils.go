@@ -27,6 +27,7 @@ func GenerateRandomID() (ids.ID, error) {
 
 	return ids.ToID(randomBytes)
 }
+
 func GenerateIDWithIndex(id ids.ID, i uint64) ids.ID {
 	actionBytes := make([]byte, ids.IDLen+consts.Uint64Len)
 	copy(actionBytes, id[:])

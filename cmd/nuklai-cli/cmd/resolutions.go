@@ -8,16 +8,17 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/actions"
-	nchain "github.com/nuklai/nuklaivm/chain"
 	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/vm"
 
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/api/jsonrpc"
 	"github.com/ava-labs/hypersdk/api/ws"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/utils"
+
+	nchain "github.com/nuklai/nuklaivm/chain"
 )
 
 // sendAndWait may not be used concurrently

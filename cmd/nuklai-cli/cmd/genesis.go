@@ -8,11 +8,11 @@ import (
 	"os"
 
 	"github.com/fatih/color"
+	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/spf13/cobra"
 
-	"github.com/nuklai/nuklaivm/genesis"
-
 	"github.com/ava-labs/hypersdk/fees"
+
 	hgenesis "github.com/ava-labs/hypersdk/genesis"
 )
 

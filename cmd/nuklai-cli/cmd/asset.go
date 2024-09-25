@@ -7,14 +7,14 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/nuklai/nuklaivm/actions"
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/cli/prompt"
 	"github.com/ava-labs/hypersdk/consts"
-	hutils "github.com/ava-labs/hypersdk/utils"
 
-	"github.com/nuklai/nuklaivm/actions"
+	hutils "github.com/ava-labs/hypersdk/utils"
 	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )

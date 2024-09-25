@@ -11,7 +11,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
-	ngenesis "github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/vm"
 	"github.com/stretchr/testify/require"
 
@@ -26,6 +25,8 @@ import (
 	"github.com/ava-labs/hypersdk/fees"
 	"github.com/ava-labs/hypersdk/genesis"
 	"github.com/ava-labs/hypersdk/tests/workload"
+
+	ngenesis "github.com/nuklai/nuklaivm/genesis"
 )
 
 const (
