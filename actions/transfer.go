@@ -24,18 +24,19 @@ const (
 )
 
 var (
-	ErrOutputValueZero                 = errors.New("value is zero")
-	ErrOutputMemoTooLarge              = errors.New("memo is too large")
-	ErrOutputWrongOwner                = errors.New("wrong owner")
-	_                     chain.Action = (*Transfer)(nil)
+	ErrOutputValueZero                      = errors.New("value is zero")
+	ErrOutputMemoTooLarge                   = errors.New("memo is too large")
+	ErrOutputWrongOwner                     = errors.New("wrong owner")
+	ErrOutputNFTValueMustBeOne              = errors.New("NFT value must be one")
+	_                          chain.Action = (*Transfer)(nil)
 )
 
 type Transfer struct {
 	// To is the recipient of the [Value].
 	To codec.Address `serialize:"true" json:"to"`
 
-	// Asset to transfer.
-	Asset ids.ID `serialize:"true" json:"asset"`
+	// AssetID to transfer.
+	AssetID ids.ID `serialize:"true" json:"asset_id"`
 
 	// Amount are transferred to [To].
 	Value uint64 `serialize:"true" json:"value"`
@@ -51,14 +52,14 @@ func (*Transfer) GetTypeID() uint8 {
 func (t *Transfer) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
 	// Initialize the base stateKeys map
 	stateKeys := state.Keys{
-		string(storage.BalanceKey(actor, t.Asset)): state.Read | state.Write,
-		string(storage.BalanceKey(t.To, t.Asset)):  state.All,
+		string(storage.BalanceKey(actor, t.AssetID)): state.Read | state.Write,
+		string(storage.BalanceKey(t.To, t.AssetID)):  state.All,
 	}
 
 	// Check if t.Asset is not empty, then add to stateKeys
-	if t.Asset != ids.Empty {
-		stateKeys[string(storage.AssetKey(t.Asset))] = state.Read | state.Write
-		stateKeys[string(storage.AssetNFTKey(t.Asset))] = state.Read | state.Write
+	if t.AssetID != ids.Empty {
+		stateKeys[string(storage.AssetKey(t.AssetID))] = state.Read | state.Write
+		stateKeys[string(storage.AssetNFTKey(t.AssetID))] = state.Read | state.Write
 	}
 
 	// Return the modified stateKeys
@@ -69,7 +70,7 @@ func (t *Transfer) StateKeysMaxChunks() []uint16 {
 	stateKeysChunks := make([]uint16, 0)
 	stateKeysChunks = append(stateKeysChunks, storage.BalanceChunks)
 	stateKeysChunks = append(stateKeysChunks, storage.BalanceChunks)
-	if t.Asset != ids.Empty {
+	if t.AssetID != ids.Empty {
 		stateKeysChunks = append(stateKeysChunks, storage.AssetChunks)
 		stateKeysChunks = append(stateKeysChunks, storage.AssetNFTChunks)
 	}
@@ -84,23 +85,23 @@ func (t *Transfer) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-	amountOfToken := t.Value
-
 	// Handle NFT transfers
-	if t.Asset != ids.Empty {
-		exists, collectionID, uniqueID, uri, metadata, owner, _ := storage.GetAssetNFT(ctx, mu, t.Asset)
+	if t.AssetID != ids.Empty {
+		exists, collectionID, uniqueID, uri, metadata, owner, _ := storage.GetAssetNFT(ctx, mu, t.AssetID)
 		if exists {
 			// Check if the sender is the owner of the NFT
 			if owner != actor {
 				return nil, ErrOutputWrongOwner
 			}
-			amountOfToken = 1
+			if t.Value != 1 {
+				return nil, ErrOutputNFTValueMustBeOne
+			}
 			// Subtract the balance from NFT collection for the original NFT owner
-			if _, err := storage.SubBalance(ctx, mu, actor, collectionID, amountOfToken); err != nil {
+			if _, err := storage.SubBalance(ctx, mu, actor, collectionID, t.Value); err != nil {
 				return nil, err
 			}
 			// Add the balance to NFT collection for the new NFT owner
-			if _, err := storage.AddBalance(ctx, mu, t.To, collectionID, amountOfToken, true); err != nil {
+			if _, err := storage.AddBalance(ctx, mu, t.To, collectionID, t.Value, true); err != nil {
 				return nil, err
 			}
 			// Update the NFT Info
@@ -111,17 +112,17 @@ func (t *Transfer) Execute(
 		}
 	}
 
-	if amountOfToken == 0 {
+	if t.Value == 0 {
 		return nil, ErrOutputValueZero
 	}
 	if len(t.Memo) > MaxMemoSize {
 		return nil, ErrOutputMemoTooLarge
 	}
-	senderBalance, err := storage.SubBalance(ctx, mu, actor, t.Asset, amountOfToken)
+	senderBalance, err := storage.SubBalance(ctx, mu, actor, t.AssetID, t.Value)
 	if err != nil {
 		return nil, err
 	}
-	receiverBalance, err := storage.AddBalance(ctx, mu, t.To, t.Asset, amountOfToken, true)
+	receiverBalance, err := storage.AddBalance(ctx, mu, t.To, t.AssetID, t.Value, true)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +151,7 @@ func (t *Transfer) Size() int {
 
 func (t *Transfer) Marshal(p *codec.Packer) {
 	p.PackAddress(t.To)
-	p.PackID(t.Asset)
+	p.PackID(t.AssetID)
 	p.PackLong(t.Value)
 	p.PackBytes(t.Memo)
 }
@@ -158,7 +159,7 @@ func (t *Transfer) Marshal(p *codec.Packer) {
 func UnmarshalTransfer(p *codec.Packer) (chain.Action, error) {
 	var transfer Transfer
 	p.UnpackAddress(&transfer.To)
-	p.UnpackID(false, &transfer.Asset) // empty ID is the native asset
+	p.UnpackID(false, &transfer.AssetID) // empty ID is the native asset
 	transfer.Value = p.UnpackUint64(true)
 	p.UnpackBytes(MaxMemoSize, false, &transfer.Memo)
 	return &transfer, p.Err()

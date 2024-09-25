@@ -55,11 +55,7 @@ var transferCmd = &cobra.Command{
 		}
 
 		// Select amount
-		decimalsToUse := uint8(consts.Decimals)
-		if assetID != ids.Empty {
-			decimalsToUse = decimals
-		}
-		amount, err := prompt.Amount("amount", decimalsToUse, balance, nil)
+		amount, err := prompt.Amount("amount", decimals, balance, nil)
 		if err != nil {
 			return err
 		}
@@ -71,10 +67,25 @@ var transferCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, err = sendAndWait(ctx, []chain.Action{&actions.Transfer{
-			To:    recipient,
-			Value: amount,
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.Transfer{
+			AssetID: assetID,
+			To:      recipient,
+			Value:   amount,
 		}}, cli, ncli, ws, factory)
+
+		if result != nil && result.Success {
+			for _, output := range result.Outputs {
+
+				// Unmarshal output to TransferResult
+				transferResult := actions.TransferResult{}
+				if err := borsh.Deserialize(&transferResult, output); err != nil {
+					return err
+				}
+				utils.Outf("transferResult: %+v\n", transferResult)
+
+				utils.Outf("{{yellow}}fee:{{/}} %s assetID:{{/}} %s amount: %s receiver: %s senderBalance:{{/}} %s {{yellow}}receiverBalance:{{/}} %s\n", utils.FormatBalance(result.Fee, consts.Decimals), assetID, utils.FormatBalance(amount, decimals), recipient, utils.FormatBalance(transferResult.SenderBalance, decimals), utils.FormatBalance(transferResult.ReceiverBalance, decimals))
+			}
+		}
 		return err
 	},
 }
@@ -105,7 +116,7 @@ var publishFileCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		result, err := sendAndWait(ctx, []chain.Action{&actions.ContractPublish{
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.ContractPublish{
 			ContractBytes: bytes,
 		}}, cli, bcli, ws, factory)
 
@@ -173,8 +184,7 @@ var callCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		result, err := sendAndWait(ctx, []chain.Action{action}, cli, bcli, ws, factory)
-
+		result, _, err := sendAndWait(ctx, []chain.Action{action}, cli, bcli, ws, factory)
 		if result != nil && result.Success {
 			utils.Outf(hexutils.BytesToHex(result.Outputs[0]) + "\n")
 			switch function {
@@ -228,7 +238,7 @@ var deployCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		result, err := sendAndWait(ctx, []chain.Action{&actions.ContractDeploy{
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.ContractDeploy{
 			ContractID:   contractID,
 			CreationInfo: creationInfo,
 		}}, cli, bcli, ws, factory)

@@ -16,8 +16,24 @@ var chainCmd = &cobra.Command{
 
 var importChainCmd = &cobra.Command{
 	Use: "import",
-	RunE: func(*cobra.Command, []string) error {
-		return handler.Root().ImportChain()
+	RunE: func(_ *cobra.Command, args []string) error {
+		if len(args) == 1 {
+			return handler.ImportChain(args[0])
+		}
+		return handler.ImportChain("http://127.0.0.1:9650/ext/bc/nuklaivm")
+	},
+}
+
+var importCliChainCmd = &cobra.Command{
+	Use: "import-cli [path]",
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return ErrInvalidArgs
+		}
+		return nil
+	},
+	RunE: func(_ *cobra.Command, args []string) error {
+		return handler.ImportCLI(args[0])
 	},
 }
 

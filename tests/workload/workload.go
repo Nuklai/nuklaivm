@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
+	ngenesis "github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/vm"
 	"github.com/stretchr/testify/require"
 
@@ -28,7 +29,8 @@ import (
 )
 
 const (
-	initialBalance  uint64 = 10_000_000_000_000
+	initialBalance  uint64 = 853_000_000_000_000_000
+	maxSupply       uint64 = 10_000_000_000_000_000_000
 	txCheckInterval        = 100 * time.Millisecond
 )
 
@@ -63,7 +65,7 @@ type workloadFactory struct {
 	addrs     []codec.Address
 }
 
-func New(minBlockGap int64) (*genesis.DefaultGenesis, workload.TxWorkloadFactory, error) {
+func New(minBlockGap int64) (*ngenesis.Genesis, workload.TxWorkloadFactory, error) {
 	customAllocs := make([]*genesis.CustomAllocation, 0, len(ed25519Addrs))
 	for _, prefundedAddrStr := range ed25519Addrs {
 		customAllocs = append(customAllocs, &genesis.CustomAllocation{
@@ -72,7 +74,12 @@ func New(minBlockGap int64) (*genesis.DefaultGenesis, workload.TxWorkloadFactory
 		})
 	}
 
-	genesis := genesis.NewDefaultGenesis(customAllocs)
+	emissionBalancer := ngenesis.EmissionBalancer{
+		MaxSupply:       maxSupply,
+		EmissionAddress: ed25519Addrs[0].String(),
+	}
+
+	genesis := ngenesis.NewGenesis(customAllocs, emissionBalancer)
 	// Set WindowTargetUnits to MaxUint64 for all dimensions to iterate full mempool during block building.
 	genesis.Rules.WindowTargetUnits = fees.Dimensions{math.MaxUint64, math.MaxUint64, math.MaxUint64, math.MaxUint64, math.MaxUint64}
 	// Set all limits to MaxUint64 to avoid limiting block size for all dimensions except bandwidth. Must limit bandwidth to avoid building
@@ -121,6 +128,7 @@ func (g *simpleTxWorkload) GenerateTxWithAssertion(ctx context.Context) (*chain.
 	if err != nil {
 		return nil, nil, err
 	}
+
 	_, tx, _, err := g.cli.GenerateTransaction(
 		ctx,
 		parser,

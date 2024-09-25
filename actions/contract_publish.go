@@ -26,7 +26,7 @@ var _ chain.Action = (*ContractPublish)(nil)
 const MAXCONTRACTSIZE = 2 * units.MiB
 
 type ContractPublish struct {
-	ContractBytes []byte `json:"contractBytes"`
+	ContractBytes []byte `serialize:"true" json:"contractBytes"`
 	id            runtime.ContractID
 }
 

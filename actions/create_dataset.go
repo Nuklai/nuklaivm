@@ -34,7 +34,7 @@ var (
 
 type CreateDataset struct {
 	// Asset id if it was already created
-	AssetID ids.ID `serialize:"true" json:"assetID"`
+	AssetID ids.ID `serialize:"true" json:"asset_id"`
 
 	// The title of the dataset
 	Name []byte `serialize:"true" json:"name"`

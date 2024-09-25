@@ -25,8 +25,6 @@ import (
 	nchain "github.com/nuklai/nuklaivm/chain"
 )
 
-var _ cli.Controller = (*Controller)(nil)
-
 type Handler struct {
 	h *cli.Handler
 }
@@ -37,6 +35,49 @@ func NewHandler(h *cli.Handler) *Handler {
 
 func (h *Handler) Root() *cli.Handler {
 	return h.h
+}
+
+func (h *Handler) ImportChain(uri string) error {
+	client := jsonrpc.NewJSONRPCClient(uri)
+	_, _, chainID, err := client.Network(context.TODO())
+	if err != nil {
+		return err
+	}
+	if err := h.h.StoreChain(chainID, uri); err != nil {
+		return err
+	}
+	if err := h.h.StoreDefaultChain(chainID); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h *Handler) ImportCLI(cliPath string) error {
+	oldChains, err := h.h.DeleteChains()
+	if err != nil {
+		return err
+	}
+	if len(oldChains) > 0 {
+		utils.Outf("{{blue}}deleted old chains:{{/}} %+v\n", oldChains)
+	}
+
+	// Load yaml file
+	chainID, nodes, err := ReadCLIFile(cliPath)
+	if err != nil {
+		return err
+	}
+	for name, uri := range nodes {
+		if err := h.h.StoreChain(chainID, uri); err != nil {
+			return err
+		}
+		utils.Outf(
+			"{{blue}}[%s] stored chainID:{{/}} %s {{blue}}uri:{{/}} %s\n",
+			name,
+			chainID,
+			uri,
+		)
+	}
+	return h.h.StoreDefaultChain(chainID)
 }
 
 func (h *Handler) DefaultActor() (
@@ -84,6 +125,22 @@ func (h *Handler) DefaultActor() (
 		), ws, nil
 }
 
+func (h *Handler) DefaultNuklaiVMJSONRPCClient(checkAllChains bool) ([]*vm.JSONRPCClient, error) {
+	clients := make([]*vm.JSONRPCClient, 0)
+	_, uris, err := h.h.GetDefaultChain(true)
+	if err != nil {
+		return nil, err
+	}
+	max := len(uris)
+	if !checkAllChains {
+		max = 1
+	}
+	for _, uri := range uris[:max] {
+		clients = append(clients, vm.NewJSONRPCClient(uri))
+	}
+	return clients, nil
+}
+
 func (*Handler) GetBalance(
 	ctx context.Context,
 	cli *vm.JSONRPCClient,
@@ -115,7 +172,7 @@ func (*Handler) GetAssetInfo(
 	assetID ids.ID,
 	checkBalance bool,
 ) (uint64, string, string, string, uint8, string, uint64, uint64, string, string, string, string, string, error) {
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := cli.Asset(ctx, assetID.String(), false)
+	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := cli.Asset(ctx, assetID.String(), false)
 	if err != nil {
 		return 0, "", "", "", 0, "", 0, 0, "", "", "", "", "", err
 	}
@@ -126,7 +183,7 @@ func (*Handler) GetAssetInfo(
 			return 0, "", "", "", 0, "", 0, 0, "", "", "", "", "", nil
 		}
 		utils.Outf(
-			"{{blue}}assetType: {{/}} %s name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}uri:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}admin:{{/}} %s {{blue}}mintActor:{{/}} %s {{blue}}pauseUnpauseActor:{{/}} %s {{blue}}freezeUnfreezeActor:{{/}} %s {{blue}}enableDisableKYCAccountActor:{{/}} %s\n",
+			"{{blue}}assetType: {{/}} %s name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}uri:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}owner:{{/}} %s {{blue}}mintAdmin:{{/}} %s {{blue}}pauseUnpauseAdmin:{{/}} %s {{blue}}freezeUnfreezeAdmin:{{/}} %s {{blue}}enableDisableKYCAccountAdmin:{{/}} %s\n",
 			assetType,
 			name,
 			symbol,
@@ -135,15 +192,15 @@ func (*Handler) GetAssetInfo(
 			uri,
 			totalSupply,
 			maxSupply,
-			admin,
-			mintActor,
-			pauseUnpauseActor,
-			freezeUnfreezeActor,
-			enableDisableKYCAccountActor,
+			owner,
+			mintAdmin,
+			pauseUnpauseAdmin,
+			freezeUnfreezeAdmin,
+			enableDisableKYCAccountAdmin,
 		)
 	}
 	if !checkBalance {
-		return 0, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, nil
+		return 0, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, nil
 	}
 	balance, err := cli.Balance(ctx, addr.String(), assetID.String())
 	if err != nil {
@@ -163,7 +220,7 @@ func (*Handler) GetAssetInfo(
 			symbol,
 		)
 	}
-	return balance, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, nil
+	return balance, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, nil
 }
 
 func (*Handler) GetAssetNFTInfo(
@@ -328,6 +385,8 @@ func (*Handler) GetDatasetInfoFromMarketplace(
 		metadataMap,
 		err
 }
+
+var _ cli.Controller = (*Controller)(nil)
 
 type Controller struct {
 	databasePath string

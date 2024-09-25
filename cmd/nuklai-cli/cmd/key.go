@@ -4,12 +4,22 @@
 package cmd
 
 import (
+	"context"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
+	"os"
+	"runtime"
+	"sync"
 
+	"github.com/nuklai/nuklaivm/chain"
+	"github.com/nuklai/nuklaivm/consts"
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/hypersdk/auth"
 	"github.com/ava-labs/hypersdk/cli"
+	"github.com/ava-labs/hypersdk/cli/prompt"
+	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
 	"github.com/ava-labs/hypersdk/crypto/secp256r1"
@@ -133,9 +143,26 @@ var genKeyCmd = &cobra.Command{
 			return err
 		}
 		utils.Outf(
-			"{{green}}created address:{{/}} %s",
+			"{{green}}created address:{{/}} %s\n",
 			priv.Address,
 		)
+
+		// Convert the private key bytes to a base64 encoded string
+		privKeyString := base64.StdEncoding.EncodeToString(priv.Bytes)
+		utils.Outf("{{yellow}}Private Key String:{{/}} %s\n", privKeyString)
+
+		// Create the directory with permissions (if it doesn't exist)
+		err = os.MkdirAll("./test_accounts", 0o755)
+		if err != nil {
+			panic(err)
+		}
+		// Construct the filename with Address
+		filename := fmt.Sprintf("./test_accounts/%s-%s.pk", priv.Address, args[0])
+		// Write the byte slice to the file
+		err = os.WriteFile(filename, priv.Bytes, 0o600)
+		if err != nil {
+			panic(err)
+		}
 		return nil
 	},
 }
@@ -175,8 +202,160 @@ var setKeyCmd = &cobra.Command{
 }
 
 var balanceKeyCmd = &cobra.Command{
-	Use: "balance",
-	RunE: func(*cobra.Command, []string) error {
-		return handler.Root().Balance(checkAllChains)
+	Use: "balance [address]",
+	RunE: func(_ *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return handler.Root().Balance(checkAllChains)
+		}
+		addr, err := codec.StringToAddress(args[0])
+		if err != nil {
+			return err
+		}
+		utils.Outf("{{yellow}}address:{{/}} %s\n", addr)
+		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
+		if err != nil {
+			return err
+		}
+		assetID, err := prompt.Asset("assetID", consts.Symbol, true)
+		if err != nil {
+			return err
+		}
+		for _, ncli := range nclients {
+			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, assetID, true); err != nil {
+				return err
+			}
+		}
+		return nil
 	},
+}
+
+var balanceNFTKeyCmd = &cobra.Command{
+	Use: "balanceNFT [address]",
+	RunE: func(_ *cobra.Command, args []string) error {
+		var (
+			addr codec.Address
+			err  error
+		)
+		if len(args) != 1 {
+			addr, err = prompt.Address("address")
+		} else {
+			addr, err = codec.StringToAddress(args[0])
+		}
+		if err != nil {
+			return err
+		}
+		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
+		if err != nil {
+			return err
+		}
+		nftID, err := prompt.ID("datasetID")
+		if err != nil {
+			return err
+		}
+		for _, ncli := range nclients {
+			if _, _, _, _, _, _, err := handler.GetAssetNFTInfo(context.TODO(), ncli, addr, nftID, true); err != nil {
+				return err
+			}
+		}
+		return nil
+	},
+}
+
+var vanityAddressCmd = &cobra.Command{
+	Use: "generate-vanity-address",
+	RunE: func(_ *cobra.Command, args []string) error {
+		prefix := "nuklai"
+		if len(args) == 1 {
+			prefix = args[0]
+		}
+
+		// Call GenerateVanityAddress to create the vanity address
+		vanityAddress, err := generateVanityAddress(prefix)
+		if err != nil {
+			return err
+		}
+
+		// Output the generated vanity address
+		utils.Outf("{{yellow}}Vanity Address: %s{{/}}\n", vanityAddress.String())
+
+		return nil
+	},
+}
+
+// GenerateVanityAddress generates an address that matches the given vanity prefix.
+// This address is not associated with any private key, so there is no risk of
+// collision when searching for addresses.
+func generateVanityAddress(prefix string) (codec.Address, error) {
+	const batchSize = 1000 // Number of addresses to generate in each batch
+	if len(prefix) > codec.AddressLen*2 {
+		return codec.EmptyAddress, fmt.Errorf("prefix too long, max length is %d", codec.AddressLen*2)
+	}
+
+	typeID := uint8(255) // Set the typeID to 255 for a standard address
+	numWorkers := runtime.NumCPU()
+	fmt.Printf("Using %d workers to generate vanity address\n", numWorkers)
+
+	resultChan := make(chan codec.Address)
+	errChan := make(chan error)
+	wg := sync.WaitGroup{}
+
+	// Start workers
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				// Generate a batch of random IDs
+				for j := 0; j < batchSize; j++ {
+					// Generate a random ID instead of sequentially
+					randomID, err := chain.GenerateRandomID()
+					if err != nil {
+						errChan <- err
+						return
+					}
+
+					// Create the address using the random ID
+					address := codec.CreateAddress(typeID, randomID)
+
+					// Perform byte-level comparison for the prefix (no string conversion)
+					if matchPrefix(address[:], prefix) {
+						resultChan <- address
+						return
+					}
+				}
+			}
+		}()
+	}
+
+	// Wait for the result or an error
+	go func() {
+		wg.Wait()
+		close(resultChan)
+		close(errChan)
+	}()
+
+	// Block until result is found
+	select {
+	case address := <-resultChan:
+		return address, nil
+	case err := <-errChan:
+		return codec.EmptyAddress, err
+	}
+}
+
+// matchPrefix compares the first bytes of the address against the hex representation of the prefix.
+func matchPrefix(addressBytes []byte, prefix string) bool {
+	// Convert prefix to bytes for comparison
+	prefixBytes, _ := hex.DecodeString(prefix)
+
+	// Compare bytes without converting the full address to a string
+	if len(prefixBytes) > len(addressBytes) {
+		return false
+	}
+	for i := 0; i < len(prefixBytes); i++ {
+		if addressBytes[i] != prefixBytes[i] {
+			return false
+		}
+	}
+	return true
 }

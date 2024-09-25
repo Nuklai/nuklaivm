@@ -7,6 +7,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/wrappers"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/storage"
 
 	"github.com/ava-labs/hypersdk/api/indexer"
@@ -16,7 +17,6 @@ import (
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/extension/externalsubscriber"
-	"github.com/ava-labs/hypersdk/genesis"
 	"github.com/ava-labs/hypersdk/vm"
 	"github.com/ava-labs/hypersdk/x/contracts/runtime"
 
@@ -88,7 +88,7 @@ func NewWithOptions(options ...vm.Option) (*vm.VM, error) {
 	}, options...)
 	return vm.New(
 		consts.Version,
-		genesis.DefaultGenesisFactory{},
+		genesis.GenesisFactory{},
 		&storage.StateManager{},
 		ActionParser,
 		AuthParser,

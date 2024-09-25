@@ -38,7 +38,7 @@ var (
 
 	rootCmd = &cobra.Command{
 		Use:        "nuklai-cli",
-		Short:      "VmWithContracts CLI",
+		Short:      "Nuklai CLI",
 		SuggestFor: []string{"nuklai-cli", "nuklaicli"},
 	}
 )
@@ -50,6 +50,8 @@ func init() {
 		keyCmd,
 		chainCmd,
 		actionCmd,
+		assetCmd,
+		datasetCmd,
 		spamCmd,
 		prometheusCmd,
 	)
@@ -121,6 +123,8 @@ func init() {
 		importKeyCmd,
 		setKeyCmd,
 		balanceKeyCmd,
+		balanceNFTKeyCmd,
+		vanityAddressCmd,
 	)
 
 	// chain
@@ -132,6 +136,7 @@ func init() {
 	)
 	chainCmd.AddCommand(
 		importChainCmd,
+		importCliChainCmd,
 		setChainCmd,
 		chainInfoCmd,
 		watchChainCmd,
@@ -143,6 +148,27 @@ func init() {
 		callCmd,
 		publishFileCmd,
 		deployCmd,
+	)
+
+	// asset
+	assetCmd.AddCommand(
+		createAssetCmd,
+		updateAssetCmd,
+		mintAssetFTCmd,
+		mintAssetNFTCmd,
+		burnAssetFTCmd,
+		burnAssetNFTCmd,
+	)
+
+	// dataset
+	datasetCmd.AddCommand(
+		createDatasetCmd,
+		createDatasetFromExistingAssetCmd,
+		updateDatasetCmd,
+		getDatasetCmd,
+		initiateContributeDatasetCmd,
+		getDataContributionPendingCmd,
+		completeContributeDatasetCmd,
 	)
 
 	// spam

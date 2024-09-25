@@ -13,12 +13,12 @@ import (
 
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/storage"
 
 	"github.com/ava-labs/hypersdk/api/jsonrpc"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/genesis"
 	"github.com/ava-labs/hypersdk/requester"
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/ava-labs/hypersdk/utils"
@@ -28,7 +28,7 @@ const balanceCheckInterval = 500 * time.Millisecond
 
 type JSONRPCClient struct {
 	requester *requester.EndpointRequester
-	g         *genesis.DefaultGenesis
+	g         *genesis.Genesis
 	assetsL   sync.Mutex
 	assets    map[string]*AssetReply
 	assetsNFT map[string]*AssetNFTReply
@@ -48,7 +48,7 @@ func NewJSONRPCClient(uri string) *JSONRPCClient {
 	}
 }
 
-func (cli *JSONRPCClient) Genesis(ctx context.Context) (*genesis.DefaultGenesis, error) {
+func (cli *JSONRPCClient) Genesis(ctx context.Context) (*genesis.Genesis, error) {
 	if cli.g != nil {
 		return cli.g, nil
 	}
@@ -255,7 +255,7 @@ func (cli *JSONRPCClient) Parser(ctx context.Context) (chain.Parser, error) {
 var _ chain.Parser = (*Parser)(nil)
 
 type Parser struct {
-	genesis *genesis.DefaultGenesis
+	genesis *genesis.Genesis
 }
 
 func (p *Parser) Rules(_ int64) chain.Rules {
@@ -278,13 +278,13 @@ func (*Parser) StateManager() chain.StateManager {
 	return &storage.StateManager{}
 }
 
-func NewParser(genesis *genesis.DefaultGenesis) chain.Parser {
+func NewParser(genesis *genesis.Genesis) chain.Parser {
 	return &Parser{genesis: genesis}
 }
 
 // Used as a lambda function for creating ExternalSubscriberServer parser
 func CreateParser(genesisBytes []byte) (chain.Parser, error) {
-	var genesis genesis.DefaultGenesis
+	var genesis genesis.Genesis
 	if err := json.Unmarshal(genesisBytes, &genesis); err != nil {
 		return nil, err
 	}

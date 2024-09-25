@@ -10,8 +10,10 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/nuklai/nuklaivm/genesis"
+
 	"github.com/ava-labs/hypersdk/fees"
-	"github.com/ava-labs/hypersdk/genesis"
+	hgenesis "github.com/ava-labs/hypersdk/genesis"
 )
 
 var genesisCmd = &cobra.Command{
@@ -35,11 +37,23 @@ var genGenesisCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		var allocs []*genesis.CustomAllocation
+		// Read custom allocations file
+		var allocs []*hgenesis.CustomAllocation
 		if err := json.Unmarshal(a, &allocs); err != nil {
 			return err
 		}
-		genesis := genesis.NewDefaultGenesis(allocs)
+
+		// Read emission balancer file
+		eb, err := os.ReadFile(args[1])
+		if err != nil {
+			return err
+		}
+		var emissionBalancer genesis.EmissionBalancer
+		if err := json.Unmarshal(eb, &emissionBalancer); err != nil {
+			return err
+		}
+
+		genesis := genesis.NewGenesis(allocs, emissionBalancer)
 		if len(minUnitPrice) > 0 {
 			d, err := fees.ParseDimensions(minUnitPrice)
 			if err != nil {

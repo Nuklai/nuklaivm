@@ -4,8 +4,10 @@
 package chain
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 
@@ -14,6 +16,17 @@ import (
 	"github.com/ava-labs/hypersdk/utils"
 )
 
+// generateRandomID creates a random [ids.ID] for use in generating random addresses.
+func GenerateRandomID() (ids.ID, error) {
+	// Create a byte slice with the length of ids.ID
+	randomBytes := make([]byte, ids.IDLen)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return ids.Empty, fmt.Errorf("failed to generate random bytes: %w", err)
+	}
+
+	return ids.ToID(randomBytes)
+}
 func GenerateIDWithIndex(id ids.ID, i uint64) ids.ID {
 	actionBytes := make([]byte, ids.IDLen+consts.Uint64Len)
 	copy(actionBytes, id[:])

@@ -12,11 +12,11 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/storage"
 
 	"github.com/ava-labs/hypersdk/api"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/genesis"
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/ava-labs/hypersdk/x/contracts/runtime"
 )
@@ -44,11 +44,11 @@ func NewJSONRPCServer(vm api.VM) *JSONRPCServer {
 }
 
 type GenesisReply struct {
-	Genesis *genesis.DefaultGenesis `json:"genesis"`
+	Genesis *genesis.Genesis `json:"genesis"`
 }
 
 func (j *JSONRPCServer) Genesis(_ *http.Request, _ *struct{}, reply *GenesisReply) (err error) {
-	reply.Genesis = j.vm.Genesis().(*genesis.DefaultGenesis)
+	reply.Genesis = j.vm.Genesis().(*genesis.Genesis)
 	return nil
 }
 
