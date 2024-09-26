@@ -73,7 +73,7 @@ func (u *UpdateDataset) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the dataset exists
-	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := storage.GetDataset(ctx, mu, u.DatasetID)
+	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := storage.GetDataset(ctx, mu, u.DatasetID)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func (u *UpdateDataset) Execute(
 	}
 
 	// Update the dataset
-	if err := storage.SetDataset(ctx, mu, u.DatasetID, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, u.IsCommunityDataset, onSale, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
+	if err := storage.SetDataset(ctx, mu, u.DatasetID, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, u.IsCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
 		return nil, err
 	}
 

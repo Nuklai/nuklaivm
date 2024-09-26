@@ -1,0 +1,30 @@
+{
+  "stateBranchFactor": 16,
+  "minBlockGap": 250,
+  "minEmptyBlockGap": 2500,
+  "minUnitPrice": [100, 100, 100, 100, 100],
+  "unitPriceChangeDenominator": [48, 48, 48, 48, 48],
+  "windowTargetUnits": [40000000, 450000, 450000, 450000, 450000],
+  "maxBlockUnits": [1800000, 1800000, 1800000, 1800000, 1800000],
+  "validityWindow": 60000,
+  "baseUnits": 1,
+  "baseWarpUnits": 1024,
+  "warpUnitsPerSigner": 128,
+  "outgoingWarpComputeUnits": 1024,
+  "storageKeyReadUnits": 5,
+  "storageValueReadUnits": 2,
+  "storageKeyAllocateUnits": 20,
+  "storageValueAllocateUnits": 5,
+  "storageKeyWriteUnits": 10,
+  "storageValueWriteUnits": 3,
+  "customAllocation": [
+    {
+      "address": "nuklai1qpg4ecapjymddcde8sfq06dshzpxltqnl47tvfz0hnkesjz7t0p35d5fnr3",
+      "balance": 853000000000000000
+    }
+  ],
+  "emissionBalancer": {
+    "maxSupply": 1e19,
+    "emissionAddress": "nuklai1qr4hhj8vfrnmzghgfnqjss0ns9tv7pjhhhggfm2zeagltnlmu4a6sgh6dqn"
+  }
+}

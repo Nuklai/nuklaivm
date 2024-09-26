@@ -26,6 +26,7 @@ const (
 var (
 	ErrOutputAssetNotFound                                    = errors.New("asset not found")
 	ErrOutputMustUpdateAtLeastOneField                        = errors.New("must update at least one field")
+	ErrOutputMaxSupplyInvalid                                 = errors.New("max supply must be greater than or equal to total supply")
 	ErrOutputOwnerInvalid                                     = errors.New("owner is invalid")
 	ErrOutputMintAdminInvalid                                 = errors.New("mint admin is invalid")
 	ErrOutputPauseUnpauseAdminInvalid                         = errors.New("pause/unpause admin is invalid")
@@ -105,8 +106,20 @@ func (u *UpdateAsset) Execute(
 		return nil, ErrOutputWrongOwner
 	}
 
+	// Note that maxSupply can never be set to 0 on an update.
+	// It can only be increased or decreased.
+	// If maxSupply is set to 0, it will be set to the current maxSupply.
+	if u.MaxSupply == 0 {
+		u.MaxSupply = maxSupply
+	} else {
+		// Ensure that the max supply is greater than or equal to the total supply
+		if u.MaxSupply < totalSupply {
+			return nil, ErrOutputMaxSupplyInvalid
+		}
+	}
+
 	// Ensure that at least one field is being updated
-	if (len(u.Name) == 0 || bytes.Equal(u.Name, name)) && (len(u.Symbol) == 0 || bytes.Equal(u.Symbol, symbol)) && (len(u.Metadata) == 0 || bytes.Equal(u.Metadata, metadata)) && (len(u.URI) == 0 || bytes.Equal(u.URI, uri)) && u.MaxSupply == maxSupply && (len(u.Owner) == 0 || bytes.Equal(u.Owner, owner[:])) && (len(u.MintAdmin) == 0 || bytes.Equal(u.MintAdmin, mintAdmin[:])) && (len(u.PauseUnpauseAdmin) == 0 || bytes.Equal(u.PauseUnpauseAdmin, pauseUnpauseAdmin[:])) && (len(u.FreezeUnfreezeAdmin) == 0 || bytes.Equal(u.FreezeUnfreezeAdmin, freezeUnfreezeAdmin[:])) && (len(u.EnableDisableKYCAccountAdmin) == 0 || bytes.Equal(u.EnableDisableKYCAccountAdmin, enableDisableKYCAccountAdmin[:])) {
+	if (len(u.Name) == 0 || bytes.Equal(u.Name, name)) && (len(u.Symbol) == 0 || bytes.Equal(u.Symbol, symbol)) && (len(u.Metadata) == 0 || bytes.Equal(u.Metadata, metadata)) && (len(u.URI) == 0 || bytes.Equal(u.URI, uri)) && (u.MaxSupply == maxSupply) && (len(u.Owner) == 0 || string(u.Owner) != owner.String()) && (len(u.MintAdmin) == 0 || bytes.Equal(u.MintAdmin, mintAdmin[:])) && (len(u.PauseUnpauseAdmin) == 0 || bytes.Equal(u.PauseUnpauseAdmin, pauseUnpauseAdmin[:])) && (len(u.FreezeUnfreezeAdmin) == 0 || bytes.Equal(u.FreezeUnfreezeAdmin, freezeUnfreezeAdmin[:])) && (len(u.EnableDisableKYCAccountAdmin) == 0 || bytes.Equal(u.EnableDisableKYCAccountAdmin, enableDisableKYCAccountAdmin[:])) {
 		return nil, ErrOutputMustUpdateAtLeastOneField
 	}
 

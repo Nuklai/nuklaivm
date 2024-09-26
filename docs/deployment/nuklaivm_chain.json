@@ -1,0 +1,30 @@
+{
+  "chunkBuildFrequency": 250,
+  "targetChunkBuildDuration": 250,
+  "blockBuildFrequency": 100,
+  "mempoolSize": 2147483648,
+  "mempoolSponsorSize": 10000000,
+  "authExecutionCores": 2,
+  "precheckCores": 2,
+  "actionExecutionCores": 2,
+  "missingChunkFetchers": 48,
+  "verifyAuth": true,
+  "authRPCCores": 2,
+  "authRPCBacklog": 10000000,
+  "authGossipCores": 2,
+  "authGossipBacklog": 10000000,
+  "chunkStorageCores": 2,
+  "chunkStorageBacklog": 10000000,
+  "streamingBacklogSize": 10000000,
+  "continuousProfilerDir": "/home/ubuntu/nuklaivm-profiles",
+  "logLevel": "INFO",
+  "mempoolExemptSponsors": [
+    "nuklai1qpg4ecapjymddcde8sfq06dshzpxltqnl47tvfz0hnkesjz7t0p35d5fnr3",
+    "nuklai1qr4hhj8vfrnmzghgfnqjss0ns9tv7pjhhhggfm2zeagltnlmu4a6sgh6dqn"
+  ],
+  "authVerificationCores": 2,
+  "rootGenerationCores": 2,
+  "transactionExecutionCores": 2,
+  "storeTransactions": false,
+  "stateSyncServerDelay": 0
+}

@@ -158,7 +158,7 @@ func (c *CreateDataset) Execute(
 		revenueModelDataOwnerCut = 10
 	}
 	// Create a new dataset with the following parameters:
-	// onSale = false
+	// saleID = ids.Empty
 	// baseAsset = ids.Empty
 	// basePrice = 0
 	// revenueModelDataShare = 100
