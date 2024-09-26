@@ -111,11 +111,9 @@ func (u *UpdateAsset) Execute(
 	// If maxSupply is set to 0, it will be set to the current maxSupply.
 	if u.MaxSupply == 0 {
 		u.MaxSupply = maxSupply
-	} else {
+	} else if u.MaxSupply < totalSupply {
 		// Ensure that the max supply is greater than or equal to the total supply
-		if u.MaxSupply < totalSupply {
-			return nil, ErrOutputMaxSupplyInvalid
-		}
+		return nil, ErrOutputMaxSupplyInvalid
 	}
 
 	// Ensure that at least one field is being updated

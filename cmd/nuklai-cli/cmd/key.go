@@ -12,11 +12,11 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/chain"
 	"github.com/nuklai/nuklaivm/vm"
 	"github.com/spf13/cobra"
 
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/auth"
 	"github.com/ava-labs/hypersdk/cli"
 	"github.com/ava-labs/hypersdk/cli/prompt"

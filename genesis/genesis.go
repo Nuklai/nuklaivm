@@ -98,7 +98,7 @@ type GenesisFactory struct {
 }
 
 // Update the Load function to return the proper type
-func (g GenesisFactory) Load(genesisBytes []byte, _ []byte, networkID uint32, chainID ids.ID) (genesis.Genesis, genesis.RuleFactory, error) {
+func (GenesisFactory) Load(genesisBytes []byte, _ []byte, networkID uint32, chainID ids.ID) (genesis.Genesis, genesis.RuleFactory, error) {
 	ngenesis := &Genesis{} // This is Nuklai's custom Genesis
 	if err := json.Unmarshal(genesisBytes, ngenesis); err != nil {
 		return nil, nil, err

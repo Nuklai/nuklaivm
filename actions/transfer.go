@@ -179,7 +179,7 @@ func (*TransferResult) GetTypeID() uint8 {
 	return nconsts.TransferID
 }
 
-func (t *TransferResult) Size() int {
+func (*TransferResult) Size() int {
 	return consts.Uint64Len * 2
 }
 

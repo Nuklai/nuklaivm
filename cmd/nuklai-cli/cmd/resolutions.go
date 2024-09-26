@@ -80,7 +80,7 @@ func handleTx(tx *chain.Transaction, result *chain.Result) {
 
 	for _, action := range tx.Actions {
 		var summaryStr string
-		switch act := action.(type) { //nolint:gocritic
+		switch act := action.(type) {
 		case *actions.Transfer:
 			summaryStr = fmt.Sprintf("assetID: %s amount: %d -> %s", act.AssetID, act.Value, act.To)
 			if len(act.Memo) > 0 {
