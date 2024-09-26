@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/hypersdk/auth"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/cli"
+	"github.com/ava-labs/hypersdk/cli/prompt"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
@@ -78,6 +79,34 @@ func (h *Handler) ImportCLI(cliPath string) error {
 		)
 	}
 	return h.h.StoreDefaultChain(chainID)
+}
+
+func (h *Handler) BalanceAsset(checkAllChains bool, isNFT bool, printBalance func(string, codec.Address, ids.ID, bool) error) error {
+	addr, _, err := h.h.GetDefaultKey(true)
+	if err != nil {
+		return err
+	}
+	_, uris, err := h.h.GetDefaultChain(true)
+	if err != nil {
+		return err
+	}
+
+	assetID, err := prompt.ID("assetID")
+	if err != nil {
+		return err
+	}
+
+	max := len(uris)
+	if !checkAllChains {
+		max = 1
+	}
+	for _, uri := range uris[:max] {
+		utils.Outf("{{yellow}}uri:{{/}} %s\n", uri)
+		if err := printBalance(uri, addr, assetID, isNFT); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (h *Handler) DefaultActor() (

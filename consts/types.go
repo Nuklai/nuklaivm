@@ -5,19 +5,16 @@ package consts
 
 const (
 	// Action TypeIDs
-	TransferID uint8 = 0
-
-	ContractCallID    uint8 = 1
-	ContractDeployID  uint8 = 2
-	ContractPublishID uint8 = 3
-
-	CreateAssetID  uint8 = 4
-	UpdateAssetID  uint8 = 5
-	MintAssetFTID  uint8 = 6
-	MintAssetNFTID uint8 = 7
-	BurnAssetFTID  uint8 = 8
-	BurnAssetNFTID uint8 = 9
-
+	TransferID                    uint8 = 0
+	ContractCallID                uint8 = 1
+	ContractDeployID              uint8 = 2
+	ContractPublishID             uint8 = 3
+	CreateAssetID                 uint8 = 4
+	UpdateAssetID                 uint8 = 5
+	MintAssetFTID                 uint8 = 6
+	MintAssetNFTID                uint8 = 7
+	BurnAssetFTID                 uint8 = 8
+	BurnAssetNFTID                uint8 = 9
 	CreateDatasetID               uint8 = 10
 	UpdateDatasetID               uint8 = 11
 	InitiateContributeDatasetID   uint8 = 12
@@ -25,11 +22,6 @@ const (
 	PublishDatasetMarketplaceID   uint8 = 14
 	SubscribeDatasetMarketplaceID uint8 = 15
 	ClaimMarketplacePaymentID     uint8 = 16
-
-	// Output TypeIDs
-	ContractCallResultID    uint8 = 0
-	ContractDeployResultID  uint8 = 1
-	ContractPublishResultID uint8 = 2
 
 	// Asset TypeIDs
 	AssetFungibleTokenID    uint8 = 0

@@ -13,9 +13,10 @@ import (
 	"sync"
 
 	"github.com/nuklai/nuklaivm/chain"
-	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/vm"
 	"github.com/spf13/cobra"
 
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/auth"
 	"github.com/ava-labs/hypersdk/cli"
 	"github.com/ava-labs/hypersdk/cli/prompt"
@@ -202,10 +203,29 @@ var setKeyCmd = &cobra.Command{
 }
 
 var balanceKeyCmd = &cobra.Command{
-	Use: "balance [address]",
+	Use: "balance",
+	RunE: func(*cobra.Command, []string) error {
+		return handler.Root().Balance(checkAllChains)
+	},
+}
+
+func lookupKeyBalance(uri string, addr codec.Address, assetID ids.ID, isNFT bool) error {
+	var err error
+	if isNFT {
+		_, _, _, _, _, _, err = handler.GetAssetNFTInfo(context.TODO(), vm.NewJSONRPCClient(uri), addr, assetID, true)
+	} else {
+		_, _, _, _, _, _, _, _, _, _, _, _, _, err = handler.GetAssetInfo(
+			context.TODO(), vm.NewJSONRPCClient(uri),
+			addr, assetID, true)
+	}
+	return err
+}
+
+var balanceFTKeyCmd = &cobra.Command{
+	Use: "balance-ft [address]",
 	RunE: func(_ *cobra.Command, args []string) error {
 		if len(args) != 1 {
-			return handler.Root().Balance(checkAllChains)
+			return handler.BalanceAsset(checkAllChains, false, lookupKeyBalance)
 		}
 		addr, err := codec.StringToAddress(args[0])
 		if err != nil {
@@ -216,7 +236,7 @@ var balanceKeyCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		assetID, err := prompt.Asset("assetID", consts.Symbol, true)
+		assetID, err := prompt.ID("assetID")
 		if err != nil {
 			return err
 		}
@@ -230,25 +250,21 @@ var balanceKeyCmd = &cobra.Command{
 }
 
 var balanceNFTKeyCmd = &cobra.Command{
-	Use: "balanceNFT [address]",
+	Use: "balance-nft [address]",
 	RunE: func(_ *cobra.Command, args []string) error {
-		var (
-			addr codec.Address
-			err  error
-		)
 		if len(args) != 1 {
-			addr, err = prompt.Address("address")
-		} else {
-			addr, err = codec.StringToAddress(args[0])
+			return handler.BalanceAsset(checkAllChains, true, lookupKeyBalance)
 		}
+		addr, err := codec.StringToAddress(args[0])
 		if err != nil {
 			return err
 		}
+		utils.Outf("{{yellow}}address:{{/}} %s\n", addr)
 		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
 		if err != nil {
 			return err
 		}
-		nftID, err := prompt.ID("datasetID")
+		nftID, err := prompt.ID("nftID")
 		if err != nil {
 			return err
 		}

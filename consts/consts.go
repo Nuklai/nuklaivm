@@ -9,7 +9,6 @@ import (
 )
 
 const (
-	HRP      = "nuklai"
 	Name     = "nuklaivm"
 	Symbol   = "NAI"
 	Decimals = 9

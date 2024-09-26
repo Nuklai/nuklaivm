@@ -165,7 +165,10 @@ func UnmarshalTransfer(p *codec.Packer) (chain.Action, error) {
 	return &transfer, p.Err()
 }
 
-var _ codec.Typed = (*TransferResult)(nil)
+var (
+	_ codec.Typed     = (*TransferResult)(nil)
+	_ chain.Marshaler = (*TransferResult)(nil)
+)
 
 type TransferResult struct {
 	SenderBalance   uint64 `serialize:"true" json:"sender_balance"`
@@ -173,5 +176,21 @@ type TransferResult struct {
 }
 
 func (*TransferResult) GetTypeID() uint8 {
-	return nconsts.TransferID // Common practice is to use the action ID
+	return nconsts.TransferID
+}
+
+func (t *TransferResult) Size() int {
+	return consts.Uint64Len * 2
+}
+
+func (t *TransferResult) Marshal(p *codec.Packer) {
+	p.PackLong(t.SenderBalance)
+	p.PackLong(t.ReceiverBalance)
+}
+
+func UnmarshalTransferResult(p *codec.Packer) (codec.Typed, error) {
+	var transferResult TransferResult
+	transferResult.SenderBalance = p.UnpackUint64(false)
+	transferResult.ReceiverBalance = p.UnpackUint64(false)
+	return &transferResult, p.Err()
 }

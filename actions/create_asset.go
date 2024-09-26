@@ -5,7 +5,6 @@ package actions
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -131,26 +130,26 @@ func (c *CreateAsset) Execute(
 		return nil, ErrOutputURIInvalid
 	}
 	mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin := codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress
-	if decoded, err := json.Marshal(c.MintAdmin); err == nil && len(decoded) == codec.AddressLen {
+	if c.MintAdmin != mintAdmin {
 		mintAdmin = c.MintAdmin
 	}
-	if decoded, err := json.Marshal(c.PauseUnpauseAdmin); err == nil && len(decoded) == codec.AddressLen {
+	if c.PauseUnpauseAdmin != pauseUnpauseAdmin {
 		pauseUnpauseAdmin = c.PauseUnpauseAdmin
 	}
-	if decoded, err := json.Marshal(c.FreezeUnfreezeAdmin); err == nil && len(decoded) == codec.AddressLen {
+	if c.FreezeUnfreezeAdmin != freezeUnfreezeAdmin {
 		freezeUnfreezeAdmin = c.FreezeUnfreezeAdmin
 	}
-	if decoded, err := json.Marshal(c.EnableDisableKYCAccountAdmin); err == nil && len(decoded) == codec.AddressLen {
+	if c.EnableDisableKYCAccountAdmin != enableDisableKYCAccountAdmin {
 		enableDisableKYCAccountAdmin = c.EnableDisableKYCAccountAdmin
 	}
 
 	totalSupply := uint64(0)
 	assetBalanceResult := uint64(0)
-	nftIDResult := ""
+	nftIDResult := ids.Empty
 	if c.AssetType == nconsts.AssetDatasetTokenID {
 		// Mint the parent NFT for the dataset(fractionalized asset)
 		nftID := nchain.GenerateIDWithIndex(actionID, 0)
-		nftIDResult = nftID.String()
+		nftIDResult = nftID
 		if err := storage.SetAssetNFT(ctx, mu, actionID, 0, nftID, c.URI, c.Metadata, actor); err != nil {
 			return nil, err
 		}
@@ -173,7 +172,7 @@ func (c *CreateAsset) Execute(
 	}
 
 	return &CreateAssetResult{
-		AssetID:      actionID.String(),
+		AssetID:      actionID,
 		AssetBalance: assetBalanceResult,
 		NftID:        nftIDResult,
 	}, nil
@@ -227,9 +226,9 @@ func UnmarshalCreateAsset(p *codec.Packer) (chain.Action, error) {
 var _ codec.Typed = (*CreateAssetResult)(nil)
 
 type CreateAssetResult struct {
-	AssetID      string `serialize:"true" json:"asset_id"`
+	AssetID      ids.ID `serialize:"true" json:"asset_id"`
 	AssetBalance uint64 `serialize:"true" json:"asset_balance"`
-	NftID        string `serialize:"true" json:"nft_id"`
+	NftID        ids.ID `serialize:"true" json:"nft_id"`
 }
 
 func (*CreateAssetResult) GetTypeID() uint8 {

@@ -7,14 +7,16 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/near/borsh-go"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/spf13/cobra"
+	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/cli/prompt"
 	"github.com/ava-labs/hypersdk/consts"
+	"github.com/ava-labs/hypersdk/utils"
 
-	hutils "github.com/ava-labs/hypersdk/utils"
 	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
@@ -41,9 +43,9 @@ var createAssetCmd = &cobra.Command{
 			return err
 		}
 		if assetType < 0 || assetType > 2 {
-			hutils.Outf("{{red}}assetType:%s does not exist{{/}}\n", assetType)
-			hutils.Outf("{{red}}fungible=0 non-fungible=1 dataset=2{{/}}\n")
-			hutils.Outf("{{red}}exiting...{{/}}\n")
+			utils.Outf("{{red}}assetType:%s does not exist{{/}}\n", assetType)
+			utils.Outf("{{red}}fungible=0 non-fungible=1 dataset=2{{/}}\n")
+			utils.Outf("{{red}}exiting...{{/}}\n")
 			return nil
 		}
 
@@ -81,7 +83,7 @@ var createAssetCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, txID, err := sendAndWait(ctx, []chain.Action{&actions.CreateAsset{
+		result, txID, err := sendAndWait(ctx, []chain.Action{&actions.CreateAsset{
 			AssetType:                    uint8(assetType),
 			Name:                         []byte(name),
 			Symbol:                       []byte(symbol),
@@ -94,20 +96,29 @@ var createAssetCmd = &cobra.Command{
 			FreezeUnfreezeAdmin:          owner,
 			EnableDisableKYCAccountAdmin: owner,
 		}}, cli, ncli, ws, factory)
-		if err != nil {
-			return err
-		}
 
 		// Print assetID
 		assetID := chain.CreateActionID(txID, 0)
-		hutils.Outf("{{green}}assetID:{{/}} %s\n", assetID)
+		utils.Outf("{{green}}assetID:{{/}} %s\n", assetID)
 
 		// Print nftID if it's a dataset
 		if uint8(assetType) == nconsts.AssetDatasetTokenID {
 			nftID := nchain.GenerateIDWithIndex(assetID, 0)
-			hutils.Outf("{{green}}nftID:{{/}} %s\n", nftID)
+			utils.Outf("{{green}}nftID:{{/}} %s\n", nftID)
 		}
-		return nil
+
+		if result != nil && result.Success {
+			utils.Outf("{{green}}fee consumed:{{/}} %s\n", utils.FormatBalance(result.Fee, nconsts.Decimals))
+			utils.Outf(hexutils.BytesToHex(result.Outputs[0]) + "\n")
+			output := new(actions.CreateAssetResult)
+			if err := borsh.Deserialize(output, result.Outputs[0]); err != nil {
+				return err
+			}
+			utils.Outf("{{green}}assetID:{{/}} %s\n", output.AssetID)
+			utils.Outf("{{green}}assetBalance:{{/}} %d\n", output.AssetBalance)
+			utils.Outf("{{green}}nftID:{{/}} %s\n", output.NftID)
+		}
+		return err
 	},
 }
 
@@ -176,16 +187,16 @@ var mintAssetFTCmd = &cobra.Command{
 			return err
 		}
 		if !exists {
-			hutils.Outf("{{red}}assetID:%s does not exist{{/}}\n", assetID)
-			hutils.Outf("{{red}}exiting...{{/}}\n")
+			utils.Outf("{{red}}assetID:%s does not exist{{/}}\n", assetID)
+			utils.Outf("{{red}}exiting...{{/}}\n")
 			return nil
 		}
 		if mintAdmin != priv.Address.String() {
-			hutils.Outf("{{red}}%s has permission to mint asset '%s' with assetID '%s', you are not{{/}}\n", mintAdmin, name, assetID)
-			hutils.Outf("{{red}}exiting...{{/}}\n")
+			utils.Outf("{{red}}%s has permission to mint asset '%s' with assetID '%s', you are not{{/}}\n", mintAdmin, name, assetID)
+			utils.Outf("{{red}}exiting...{{/}}\n")
 			return nil
 		}
-		hutils.Outf(
+		utils.Outf(
 			"{{blue}}assetType:{{/}} %s name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}uri:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}admin:{{/}} %s {{blue}}mintActor:{{/}} %s {{blue}}pauseUnpauseActor:{{/}} %s {{blue}}freezeUnfreezeActor:{{/}} %s {{blue}}enableDisableKYCAccountActor:{{/}} %s\n",
 			assetType,
 			name,
@@ -249,16 +260,16 @@ var mintAssetNFTCmd = &cobra.Command{
 			return err
 		}
 		if !exists {
-			hutils.Outf("{{red}}name: %s with assetID:%s does not exist{{/}}\n", name, assetID)
-			hutils.Outf("{{red}}exiting...{{/}}\n")
+			utils.Outf("{{red}}name: %s with assetID:%s does not exist{{/}}\n", name, assetID)
+			utils.Outf("{{red}}exiting...{{/}}\n")
 			return nil
 		}
 		if mintAdmin != priv.Address.String() {
-			hutils.Outf("{{red}}%s has permission to mint asset '%s' with assetID '%s', you are not{{/}}\n", mintAdmin, name, assetID)
-			hutils.Outf("{{red}}exiting...{{/}}\n")
+			utils.Outf("{{red}}%s has permission to mint asset '%s' with assetID '%s', you are not{{/}}\n", mintAdmin, name, assetID)
+			utils.Outf("{{red}}exiting...{{/}}\n")
 			return nil
 		}
-		hutils.Outf(
+		utils.Outf(
 			"{{blue}}assetType:{{/}} %s name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}uri:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}admin:{{/}} %s {{blue}}mintActor:{{/}} %s {{blue}}pauseUnpauseActor:{{/}} %s {{blue}}freezeUnfreezeActor:{{/}} %s {{blue}}enableDisableKYCAccountActor:{{/}} %s\n",
 			assetType,
 			name,
@@ -315,7 +326,7 @@ var mintAssetNFTCmd = &cobra.Command{
 		}
 		// Print nftID
 		nftID := nchain.GenerateIDWithIndex(assetID, uniqueID)
-		hutils.Outf("{{green}}NFT ID:{{/}} %s\n", nftID)
+		utils.Outf("{{green}}NFT ID:{{/}} %s\n", nftID)
 		return nil
 	},
 }
@@ -339,11 +350,11 @@ var burnAssetFTCmd = &cobra.Command{
 			return err
 		}
 		if !exists {
-			hutils.Outf("{{red}}assetID:%s does not exist{{/}}\n", assetID)
-			hutils.Outf("{{red}}exiting...{{/}}\n")
+			utils.Outf("{{red}}assetID:%s does not exist{{/}}\n", assetID)
+			utils.Outf("{{red}}exiting...{{/}}\n")
 			return nil
 		}
-		hutils.Outf(
+		utils.Outf(
 			"{{blue}}assetType:{{/}} %s name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}uri:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}admin:{{/}} %s {{blue}}mintActor:{{/}} %s {{blue}}pauseUnpauseActor:{{/}} %s {{blue}}freezeUnfreezeActor:{{/}} %s {{blue}}enableDisableKYCAccountActor:{{/}} %s\n",
 			assetType,
 			name,

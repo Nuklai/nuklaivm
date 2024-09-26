@@ -102,5 +102,5 @@ type ContractPublishResult struct {
 }
 
 func (*ContractPublishResult) GetTypeID() uint8 {
-	return mconsts.ContractPublishResultID
+	return mconsts.ContractPublishID
 }

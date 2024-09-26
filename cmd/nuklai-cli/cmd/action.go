@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"os"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -74,18 +75,28 @@ var transferCmd = &cobra.Command{
 		}}, cli, ncli, ws, factory)
 
 		if result != nil && result.Success {
-			for _, output := range result.Outputs {
+			utils.Outf("{{green}}fee consumed:{{/}} %s\n", utils.FormatBalance(result.Fee, consts.Decimals))
 
-				// Unmarshal output to TransferResult
-				transferResult := actions.TransferResult{}
-				if err := borsh.Deserialize(&transferResult, output); err != nil {
-					return err
-				}
-				utils.Outf("transferResult: %+v\n", transferResult)
+			// Use NewReader to create a Packer from the result output
+			packer := codec.NewReader(result.Outputs[0], len(result.Outputs[0]))
 
-				utils.Outf("{{yellow}}fee:{{/}} %s assetID:{{/}} %s amount: %s receiver: %s senderBalance:{{/}} %s {{yellow}}receiverBalance:{{/}} %s\n", utils.FormatBalance(result.Fee, consts.Decimals), assetID, utils.FormatBalance(amount, decimals), recipient, utils.FormatBalance(transferResult.SenderBalance, decimals), utils.FormatBalance(transferResult.ReceiverBalance, decimals))
+			// Unmarshal the transfer result using the custom UnmarshalTransferResult method
+			typedResult, err := actions.UnmarshalTransferResult(packer)
+			if err != nil {
+				return err
 			}
+
+			// Type assert the result to TransferResult
+			output, ok := typedResult.(*actions.TransferResult)
+			if !ok {
+				return errors.New("failed to assert typed result to TransferResult")
+			}
+
+			// Output the results
+			utils.Outf("{{green}}senderBalance:{{/}} %s\n", utils.FormatBalance(output.SenderBalance, decimals))
+			utils.Outf("{{green}}receiverBalance:{{/}} %s\n", utils.FormatBalance(output.ReceiverBalance, decimals))
 		}
+
 		return err
 	},
 }

@@ -8,7 +8,7 @@ Note that there are 3 types of assets you can create:
 
 - Fungible token (similar to erc20)
 - Non-Fungible token (similar to erc721)
-- Dataset token (fractionalized where there's 1 parent NFT and child NFTs)
+- Dataset token (fractionalized where there's 1 parent NFT and corresponding child NFTs)
 
 To do so, we do:
 

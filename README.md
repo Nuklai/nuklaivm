@@ -369,14 +369,15 @@ The `nuklai-cli` will emit the following logs when the transfer is successful:
 
 ```bash
 address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
-chainID: 2F1QmuxSSVntNHXnEevYHBZzyhsNGvAE5Y2pqJW2a4iBugTMWd
+chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
 assetID (use NAI for native token): NAI
-balance: 852999998.999967813 NAI
-✔ recipient: 01b27c7ce992cdb7ff039294d7901851902394bb85fa4f3dc4cbb960b07284b7f9█
+balance: 853000000.000000000 NAI
+recipient: 01b27c7ce992cdb7ff039294d7901851902394bb85fa4f3dc4cbb960b07284b7f9
 amount: 100
 continue (y/n): y
-✅ txID: mJNCxFmCKnctRi3kKSujRh5et2RXif6oPU2aqfvU91NYVc4FP
-fee: 0.000032100 assetID: 11111111111111111111111111111111LpoYY amount: 100.000000000 receiver: 01b27c7ce992cdb7ff039294d7901851902394bb85fa4f3dc4cbb960b07284b7f9 senderBalance: 15228224927.021009445 receiverBalance: 16750655127.672586441
+✅ txID: rFgZtF9fXioJmoGJprH8XEjRNmKYPrrhJF4PMb3sFFtZnAxX7
+fee consumed: 0.000032100
+output: &{SenderBalance:1941544997557242624 ReceiverBalance:16750655127672586396}
 ```
 
 ### Bonus: Watch Activity in Real-Time

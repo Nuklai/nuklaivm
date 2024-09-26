@@ -99,5 +99,5 @@ type ContractDeployResult struct {
 }
 
 func (*ContractDeployResult) GetTypeID() uint8 {
-	return mconsts.ContractDeployResultID
+	return mconsts.ContractDeployID
 }

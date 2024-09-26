@@ -232,5 +232,5 @@ type UpdateDatasetResult struct {
 }
 
 func (*UpdateDatasetResult) GetTypeID() uint8 {
-	return nconsts.UpdateAssetID
+	return nconsts.UpdateDatasetID
 }
