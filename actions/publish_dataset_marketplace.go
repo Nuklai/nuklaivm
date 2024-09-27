@@ -8,6 +8,8 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/nuklai/nuklaivm/storage"
+
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
@@ -15,16 +17,13 @@ import (
 
 	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
-	"github.com/nuklai/nuklaivm/storage"
 )
 
 const (
 	PublishDatasetMarketplaceComputeUnits = 5
 )
 
-var (
-	_ chain.Action = (*PublishDatasetMarketplace)(nil)
-)
+var _ chain.Action = (*PublishDatasetMarketplace)(nil)
 
 type PublishDatasetMarketplace struct {
 	// DatasetID ID

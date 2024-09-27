@@ -10,11 +10,12 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"go.uber.org/zap"
+
 	"github.com/ava-labs/hypersdk/api"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/vm"
-	"go.uber.org/zap"
 )
 
 var _ Tracker = (*Emission)(nil)
@@ -44,7 +45,6 @@ type Emission struct {
 // and indices map.
 func NewEmission(log logging.Logger, vm *vm.VM, totalSupply, maxSupply uint64, emissionAddress codec.Address) *Emission {
 	once.Do(func() {
-
 		if maxSupply == 0 {
 			maxSupply = GetStakingConfig().RewardConfig.SupplyCap // Use the staking config's supply cap if maxSupply is not specified
 		}

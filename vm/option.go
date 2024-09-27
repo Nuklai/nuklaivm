@@ -6,12 +6,13 @@ package vm
 import (
 	"encoding/json"
 
-	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/vm"
-	"github.com/ava-labs/hypersdk/x/contracts/runtime"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/marketplace"
+
+	"github.com/ava-labs/hypersdk/codec"
+	"github.com/ava-labs/hypersdk/vm"
+	"github.com/ava-labs/hypersdk/x/contracts/runtime"
 
 	safemath "github.com/ava-labs/avalanchego/utils/math"
 )

@@ -8,10 +8,11 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"go.uber.org/zap"
+
 	"github.com/ava-labs/hypersdk/api"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/vm"
-	"go.uber.org/zap"
 )
 
 var _ Hub = (*Marketplace)(nil)

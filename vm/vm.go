@@ -5,7 +5,6 @@ package vm
 
 import (
 	"github.com/ava-labs/avalanchego/utils/wrappers"
-
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/api/indexer"
 	"github.com/ava-labs/hypersdk/api/jsonrpc"
-	staterpc "github.com/ava-labs/hypersdk/api/state"
 	"github.com/ava-labs/hypersdk/api/ws"
 	"github.com/ava-labs/hypersdk/auth"
 	"github.com/ava-labs/hypersdk/chain"
@@ -23,6 +21,8 @@ import (
 	"github.com/ava-labs/hypersdk/extension/externalsubscriber"
 	"github.com/ava-labs/hypersdk/vm"
 	"github.com/ava-labs/hypersdk/x/contracts/runtime"
+
+	staterpc "github.com/ava-labs/hypersdk/api/state"
 )
 
 var (

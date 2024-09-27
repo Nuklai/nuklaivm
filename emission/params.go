@@ -7,7 +7,6 @@ import (
 	"time"
 
 	hutils "github.com/ava-labs/hypersdk/utils"
-
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
