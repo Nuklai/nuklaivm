@@ -66,7 +66,7 @@ var transferCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		result, _, err := sendAndWait(ctx, []chain.Action{&actions.Transfer{
+		result, txID, err := sendAndWait(ctx, []chain.Action{&actions.Transfer{
 			AssetID: assetID,
 			To:      recipient,
 			Value:   amount,
@@ -74,6 +74,7 @@ var transferCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		utils.Outf("{{green}}txID: {{/}}%s\n", txID)
 		return processResult(result)
 	},
 }
