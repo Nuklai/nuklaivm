@@ -5,20 +5,14 @@ package cmd
 
 import (
 	"context"
-	"strconv"
 
-	"github.com/near/borsh-go"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/spf13/cobra"
-	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/cli/prompt"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/utils"
-
-	nchain "github.com/nuklai/nuklaivm/chain"
-	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 var assetCmd = &cobra.Command{
@@ -83,7 +77,7 @@ var createAssetCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		result, txID, err := sendAndWait(ctx, []chain.Action{&actions.CreateAsset{
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.CreateAsset{
 			AssetType:                    uint8(assetType),
 			Name:                         []byte(name),
 			Symbol:                       []byte(symbol),
@@ -96,29 +90,10 @@ var createAssetCmd = &cobra.Command{
 			FreezeUnfreezeAdmin:          owner,
 			EnableDisableKYCAccountAdmin: owner,
 		}}, cli, ncli, ws, factory)
-
-		// Print assetID
-		assetID := chain.CreateActionID(txID, 0)
-		utils.Outf("{{green}}assetID:{{/}} %s\n", assetID)
-
-		// Print nftID if it's a dataset
-		if uint8(assetType) == nconsts.AssetDatasetTokenID {
-			nftID := nchain.GenerateIDWithIndex(assetID, 0)
-			utils.Outf("{{green}}nftID:{{/}} %s\n", nftID)
+		if err != nil {
+			return err
 		}
-
-		if result != nil && result.Success {
-			utils.Outf("{{green}}fee consumed:{{/}} %s\n", utils.FormatBalance(result.Fee, nconsts.Decimals))
-			utils.Outf(hexutils.BytesToHex(result.Outputs[0]) + "\n")
-			output := new(actions.CreateAssetResult)
-			if err := borsh.Deserialize(output, result.Outputs[0]); err != nil {
-				return err
-			}
-			utils.Outf("{{green}}assetID:{{/}} %s\n", output.AssetID)
-			utils.Outf("{{green}}assetBalance:{{/}} %d\n", output.AssetBalance)
-			utils.Outf("{{green}}nftID:{{/}} %s\n", output.NftID)
-		}
-		return err
+		return processResult(result)
 	},
 }
 
@@ -156,7 +131,7 @@ var updateAssetCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, []chain.Action{&actions.UpdateAsset{
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.UpdateAsset{
 			AssetID: assetID,
 			Name:    []byte(name),
 			Symbol:  []byte(symbol),
@@ -164,7 +139,7 @@ var updateAssetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return nil
+		return processResult(result)
 	},
 }
 
@@ -232,12 +207,15 @@ var mintAssetFTCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, []chain.Action{&actions.MintAssetFT{
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.MintAssetFT{
 			AssetID: assetID,
 			To:      recipient,
 			Value:   amount,
 		}}, cli, ncli, ws, factory)
-		return err
+		if err != nil {
+			return err
+		}
+		return processResult(result)
 	},
 }
 
@@ -293,17 +271,13 @@ var mintAssetNFTCmd = &cobra.Command{
 		}
 
 		// Choose unique id for the NFT
-		uniqueIDStr, err := prompt.String("unique nft #", 1, actions.MaxTextSize)
-		if err != nil {
-			return err
-		}
-		uniqueID, err := strconv.ParseUint(uniqueIDStr, 10, 64)
+		uniqueID, err := prompt.Int("unique nft #", consts.MaxInt)
 		if err != nil {
 			return err
 		}
 
-		// Add URI for the NFT
-		uriNFT, err := prompt.String("uri", 1, actions.MaxTextSize)
+		// Add metadata for the NFT
+		metadataNFT, err := prompt.String("metadata", 1, actions.MaxMetadataSize)
 		if err != nil {
 			return err
 		}
@@ -315,19 +289,20 @@ var mintAssetNFTCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, []chain.Action{&actions.MintAssetNFT{
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.MintAssetNFT{
 			AssetID:  assetID,
+			UniqueID: uint64(uniqueID),
 			To:       recipient,
-			UniqueID: uniqueID,
-			URI:      []byte(uriNFT),
+			URI:      []byte(metadataNFT),
+			Metadata: []byte(metadataNFT),
 		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err
 		}
-		// Print nftID
-		nftID := nchain.GenerateIDWithIndex(assetID, uniqueID)
-		utils.Outf("{{green}}NFT ID:{{/}} %s\n", nftID)
-		return nil
+		if err != nil {
+			return err
+		}
+		return processResult(result)
 	},
 }
 
@@ -384,14 +359,14 @@ var burnAssetFTCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, []chain.Action{&actions.BurnAssetFT{
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.BurnAssetFT{
 			AssetID: assetID,
 			Value:   amount,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err
 		}
-		return nil
+		return processResult(result)
 	},
 }
 
@@ -427,13 +402,13 @@ var burnAssetNFTCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, []chain.Action{&actions.BurnAssetNFT{
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.BurnAssetNFT{
 			AssetID: assetID,
 			NftID:   nftID,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err
 		}
-		return nil
+		return processResult(result)
 	},
 }

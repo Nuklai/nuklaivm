@@ -100,7 +100,7 @@ func TestBurnAssetFTAction(t *testing.T) {
 				require.Equal(t, uint64(500), balance)
 			},
 			ExpectedOutputs: &BurnAssetFTResult{
-				From:             addr.String(),
+				From:             addr,
 				OldBalance:       1000,
 				NewBalance:       500,
 				AssetTotalSupply: 4500,

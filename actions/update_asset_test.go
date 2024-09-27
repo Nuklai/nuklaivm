@@ -103,30 +103,9 @@ func TestUpdateAssetAction(t *testing.T) {
 				require.Equal(t, codec.EmptyAddress, enableDisableKYCAccountAdmin)
 			},
 			ExpectedOutputs: &UpdateAssetResult{
-				OldAssetInfo: AssetInfo{
-					Name:                         "My Token",
-					Symbol:                       "MYT",
-					Metadata:                     "Metadata",
-					URI:                          "uri",
-					MaxSupply:                    1000,
-					Owner:                        addr.String(),
-					MintAdmin:                    codec.EmptyAddress.String(),
-					PauseUnpauseAdmin:            codec.EmptyAddress.String(),
-					FreezeUnfreezeAdmin:          codec.EmptyAddress.String(),
-					EnableDisableKYCAccountAdmin: codec.EmptyAddress.String(),
-				},
-				NewAssetInfo: AssetInfo{
-					Name:                         "Updated Name",
-					Symbol:                       "UPD",
-					Metadata:                     "Metadata",
-					URI:                          "uri",
-					MaxSupply:                    1000,
-					Owner:                        addr.String(),
-					MintAdmin:                    codec.EmptyAddress.String(),
-					PauseUnpauseAdmin:            codec.EmptyAddress.String(),
-					FreezeUnfreezeAdmin:          codec.EmptyAddress.String(),
-					EnableDisableKYCAccountAdmin: codec.EmptyAddress.String(),
-				},
+				Name:      []byte("Updated Name"),
+				Symbol:    []byte("UPD"),
+				MaxSupply: 1000,
 			},
 		},
 	}

@@ -372,12 +372,12 @@ address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
 chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
 assetID (use NAI for native token): NAI
 balance: 853000000.000000000 NAI
-recipient: 01b27c7ce992cdb7ff039294d7901851902394bb85fa4f3dc4cbb960b07284b7f9
-amount: 100
+recipient: 00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a
+amount: 1
 continue (y/n): y
-✅ txID: rFgZtF9fXioJmoGJprH8XEjRNmKYPrrhJF4PMb3sFFtZnAxX7
+✅ txID: X4HTZbkvrXy8Ka3VBdEJLGj1eUVNQf9LoWZyLZCxham1D1zND
 fee consumed: 0.000032100
-output: &{SenderBalance:1941544997557242624 ReceiverBalance:16750655127672586396}
+output:  &{SenderBalance:852999998999967900 ReceiverBalance:1000000000}
 ```
 
 ### Bonus: Watch Activity in Real-Time

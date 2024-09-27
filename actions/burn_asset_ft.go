@@ -84,7 +84,7 @@ func (b *BurnAssetFT) Execute(
 	}
 
 	return &BurnAssetFTResult{
-		From:             actor.String(),
+		From:             actor,
 		OldBalance:       newBalance + b.Value,
 		NewBalance:       newBalance,
 		AssetTotalSupply: newSupply,
@@ -118,15 +118,38 @@ func UnmarshalBurnAssetFT(p *codec.Packer) (chain.Action, error) {
 	return &burn, p.Err()
 }
 
-var _ codec.Typed = (*BurnAssetFTResult)(nil)
+var (
+	_ codec.Typed     = (*BurnAssetFTResult)(nil)
+	_ chain.Marshaler = (*BurnAssetFTResult)(nil)
+)
 
 type BurnAssetFTResult struct {
-	From             string `serialize:"true" json:"from"`
-	OldBalance       uint64 `serialize:"true" json:"old_balance"`
-	NewBalance       uint64 `serialize:"true" json:"new_balance"`
-	AssetTotalSupply uint64 `serialize:"true" json:"asset_total_supply"`
+	From             codec.Address `serialize:"true" json:"from"`
+	OldBalance       uint64        `serialize:"true" json:"old_balance"`
+	NewBalance       uint64        `serialize:"true" json:"new_balance"`
+	AssetTotalSupply uint64        `serialize:"true" json:"asset_total_supply"`
 }
 
 func (*BurnAssetFTResult) GetTypeID() uint8 {
 	return nconsts.BurnAssetFTID
+}
+
+func (*BurnAssetFTResult) Size() int {
+	return codec.AddressLen + consts.Uint64Len*3
+}
+
+func (r *BurnAssetFTResult) Marshal(p *codec.Packer) {
+	p.PackAddress(r.From)
+	p.PackUint64(r.OldBalance)
+	p.PackUint64(r.NewBalance)
+	p.PackUint64(r.AssetTotalSupply)
+}
+
+func UnmarshalBurnAssetFTResult(p *codec.Packer) (codec.Typed, error) {
+	var result BurnAssetFTResult
+	p.UnpackAddress(&result.From)
+	result.OldBalance = p.UnpackUint64(false)
+	result.NewBalance = p.UnpackUint64(false)
+	result.AssetTotalSupply = p.UnpackUint64(false)
+	return &result, p.Err()
 }

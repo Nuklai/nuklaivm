@@ -151,8 +151,8 @@ func TestCreateDatasetAction(t *testing.T) {
 				require.Equal(t, addr, nftOwner)
 			},
 			ExpectedOutputs: &CreateDatasetResult{
-				DatasetID:   datasetID.String(),
-				ParentNftID: nchain.GenerateIDWithIndex(datasetID, 0).String(),
+				DatasetID:          datasetID,
+				DatasetParentNftID: nchain.GenerateIDWithIndex(datasetID, 0),
 			},
 		},
 	}

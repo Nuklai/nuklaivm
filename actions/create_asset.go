@@ -143,19 +143,21 @@ func (c *CreateAsset) Execute(
 		enableDisableKYCAccountAdmin = c.EnableDisableKYCAccountAdmin
 	}
 
+	output := CreateAssetResult{
+		AssetID:      actionID,
+		AssetBalance: uint64(0),
+	}
 	totalSupply := uint64(0)
-	assetBalanceResult := uint64(0)
-	nftIDResult := ids.Empty
 	if c.AssetType == nconsts.AssetDatasetTokenID {
 		// Mint the parent NFT for the dataset(fractionalized asset)
 		nftID := nchain.GenerateIDWithIndex(actionID, 0)
-		nftIDResult = nftID
+		output.DatasetParentNftID = nftID
 		if err := storage.SetAssetNFT(ctx, mu, actionID, 0, nftID, c.URI, c.Metadata, actor); err != nil {
 			return nil, err
 		}
 		amountOfToken := uint64(1)
 		totalSupply += amountOfToken
-		assetBalanceResult = amountOfToken
+		output.AssetBalance = amountOfToken
 		// Add the balance to NFT collection
 		if _, err := storage.AddBalance(ctx, mu, actor, actionID, amountOfToken, true); err != nil {
 			return nil, err
@@ -171,11 +173,7 @@ func (c *CreateAsset) Execute(
 		return nil, err
 	}
 
-	return &CreateAssetResult{
-		AssetID:      actionID,
-		AssetBalance: assetBalanceResult,
-		NftID:        nftIDResult,
-	}, nil
+	return &output, nil
 }
 
 func (*CreateAsset) ComputeUnits(chain.Rules) uint64 {
@@ -223,14 +221,35 @@ func UnmarshalCreateAsset(p *codec.Packer) (chain.Action, error) {
 	return &create, p.Err()
 }
 
-var _ codec.Typed = (*CreateAssetResult)(nil)
+var (
+	_ codec.Typed     = (*CreateAssetResult)(nil)
+	_ chain.Marshaler = (*CreateAssetResult)(nil)
+)
 
 type CreateAssetResult struct {
-	AssetID      ids.ID `serialize:"true" json:"asset_id"`
-	AssetBalance uint64 `serialize:"true" json:"asset_balance"`
-	NftID        ids.ID `serialize:"true" json:"nft_id"`
+	AssetID            ids.ID `serialize:"true" json:"asset_id"`
+	AssetBalance       uint64 `serialize:"true" json:"asset_balance"`
+	DatasetParentNftID ids.ID `serialize:"true" json:"nft_id"`
 }
 
 func (*CreateAssetResult) GetTypeID() uint8 {
 	return nconsts.CreateAssetID
+}
+
+func (*CreateAssetResult) Size() int {
+	return ids.IDLen + consts.Uint64Len + ids.IDLen
+}
+
+func (r *CreateAssetResult) Marshal(p *codec.Packer) {
+	p.PackID(r.AssetID)
+	p.PackUint64(r.AssetBalance)
+	p.PackID(r.DatasetParentNftID)
+}
+
+func UnmarshalCreateAssetResult(p *codec.Packer) (codec.Typed, error) {
+	var result CreateAssetResult
+	p.UnpackID(true, &result.AssetID)
+	result.AssetBalance = p.UnpackUint64(false)
+	p.UnpackID(false, &result.DatasetParentNftID)
+	return &result, p.Err()
 }

@@ -92,7 +92,10 @@ func UnmarshalDeployContract(p *codec.Packer) (chain.Action, error) {
 	return &deployContract, nil
 }
 
-var _ codec.Typed = (*ContractDeployResult)(nil)
+var (
+	_ codec.Typed     = (*ContractDeployResult)(nil)
+	_ chain.Marshaler = (*ContractDeployResult)(nil)
+)
 
 type ContractDeployResult struct {
 	Address codec.Address `serialize:"true" json:"address"`
@@ -100,4 +103,18 @@ type ContractDeployResult struct {
 
 func (*ContractDeployResult) GetTypeID() uint8 {
 	return mconsts.ContractDeployID
+}
+
+func (*ContractDeployResult) Size() int {
+	return codec.AddressLen
+}
+
+func (r *ContractDeployResult) Marshal(p *codec.Packer) {
+	p.PackAddress(r.Address)
+}
+
+func UnmarshalContractDeployResult(p *codec.Packer) (codec.Typed, error) {
+	var result ContractDeployResult
+	p.UnpackAddress(&result.Address)
+	return &result, p.Err()
 }

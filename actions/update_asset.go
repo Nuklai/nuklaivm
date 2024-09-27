@@ -108,7 +108,8 @@ func (u *UpdateAsset) Execute(
 
 	// Note that maxSupply can never be set to 0 on an update.
 	// It can only be increased or decreased.
-	// If maxSupply is set to 0, it will be set to the current maxSupply.
+	// If you want to set the max supply to 0, you should set this value
+	// to be the max value of a uint64.
 	if u.MaxSupply == 0 {
 		u.MaxSupply = maxSupply
 	} else if u.MaxSupply < totalSupply {
@@ -121,32 +122,7 @@ func (u *UpdateAsset) Execute(
 		return nil, ErrOutputMustUpdateAtLeastOneField
 	}
 
-	updateAssetResult := UpdateAssetResult{
-		OldAssetInfo: AssetInfo{
-			Name:                         string(name),
-			Symbol:                       string(symbol),
-			Metadata:                     string(metadata),
-			URI:                          string(uri),
-			MaxSupply:                    maxSupply,
-			Owner:                        owner.String(),
-			MintAdmin:                    mintAdmin.String(),
-			PauseUnpauseAdmin:            pauseUnpauseAdmin.String(),
-			FreezeUnfreezeAdmin:          freezeUnfreezeAdmin.String(),
-			EnableDisableKYCAccountAdmin: enableDisableKYCAccountAdmin.String(),
-		},
-		NewAssetInfo: AssetInfo{
-			Name:                         string(name),
-			Symbol:                       string(symbol),
-			Metadata:                     string(metadata),
-			URI:                          string(uri),
-			MaxSupply:                    maxSupply,
-			Owner:                        owner.String(),
-			MintAdmin:                    mintAdmin.String(),
-			PauseUnpauseAdmin:            pauseUnpauseAdmin.String(),
-			FreezeUnfreezeAdmin:          freezeUnfreezeAdmin.String(),
-			EnableDisableKYCAccountAdmin: enableDisableKYCAccountAdmin.String(),
-		},
-	}
+	var updateAssetResult UpdateAssetResult
 
 	// if u.Name is passed, update the dataset name
 	// otherwise, keep the existing name
@@ -155,7 +131,7 @@ func (u *UpdateAsset) Execute(
 			return nil, ErrOutputNameInvalid
 		}
 		name = u.Name
-		updateAssetResult.NewAssetInfo.Name = string(u.Name)
+		updateAssetResult.Name = u.Name
 	}
 
 	if len(u.Symbol) > 0 {
@@ -163,7 +139,7 @@ func (u *UpdateAsset) Execute(
 			return nil, ErrOutputSymbolInvalid
 		}
 		symbol = u.Symbol
-		updateAssetResult.NewAssetInfo.Symbol = string(u.Symbol)
+		updateAssetResult.Symbol = u.Symbol
 	}
 
 	if len(u.Metadata) > 0 {
@@ -171,7 +147,7 @@ func (u *UpdateAsset) Execute(
 			return nil, ErrOutputMetadataInvalid
 		}
 		metadata = u.Metadata
-		updateAssetResult.NewAssetInfo.Metadata = string(u.Metadata)
+		updateAssetResult.Metadata = u.Metadata
 	}
 
 	if len(u.URI) > 0 {
@@ -179,43 +155,43 @@ func (u *UpdateAsset) Execute(
 			return nil, ErrOutputURIInvalid
 		}
 		uri = u.URI
-		updateAssetResult.NewAssetInfo.URI = string(u.URI)
+		updateAssetResult.URI = u.URI
 	}
 
 	if u.MaxSupply > 0 {
 		maxSupply = u.MaxSupply
-		updateAssetResult.NewAssetInfo.MaxSupply = u.MaxSupply
+		updateAssetResult.MaxSupply = u.MaxSupply
 	}
 
 	if len(u.Owner) > 0 {
 		if owner, err = codec.ToAddress(u.Owner); err != nil {
 			return nil, ErrOutputOwnerInvalid
 		}
-		updateAssetResult.NewAssetInfo.Owner = string(u.Owner)
+		updateAssetResult.Owner = u.Owner
 	}
 	if len(u.MintAdmin) > 0 {
 		if mintAdmin, err = codec.ToAddress(u.MintAdmin); err != nil {
 			return nil, ErrOutputMintAdminInvalid
 		}
-		updateAssetResult.NewAssetInfo.MintAdmin = string(u.MintAdmin)
+		updateAssetResult.MintAdmin = u.MintAdmin
 	}
 	if len(u.PauseUnpauseAdmin) > 0 {
 		if pauseUnpauseAdmin, err = codec.ToAddress(u.PauseUnpauseAdmin); err != nil {
 			return nil, ErrOutputPauseUnpauseAdminInvalid
 		}
-		updateAssetResult.NewAssetInfo.PauseUnpauseAdmin = string(u.PauseUnpauseAdmin)
+		updateAssetResult.PauseUnpauseAdmin = u.PauseUnpauseAdmin
 	}
 	if len(u.FreezeUnfreezeAdmin) > 0 {
 		if freezeUnfreezeAdmin, err = codec.ToAddress(u.FreezeUnfreezeAdmin); err != nil {
 			return nil, ErrOutputFreezeUnfreezeAdminInvalid
 		}
-		updateAssetResult.NewAssetInfo.FreezeUnfreezeAdmin = string(u.FreezeUnfreezeAdmin)
+		updateAssetResult.FreezeUnfreezeAdmin = u.FreezeUnfreezeAdmin
 	}
 	if len(u.EnableDisableKYCAccountAdmin) > 0 {
 		if enableDisableKYCAccountAdmin, err = codec.ToAddress(u.EnableDisableKYCAccountAdmin); err != nil {
 			return nil, ErrOutputEnableDisableKYCAccountAdminInvalid
 		}
-		updateAssetResult.NewAssetInfo.EnableDisableKYCAccountAdmin = string(u.EnableDisableKYCAccountAdmin)
+		updateAssetResult.EnableDisableKYCAccountAdmin = u.EnableDisableKYCAccountAdmin
 	}
 
 	if err := storage.SetAsset(ctx, mu, u.AssetID, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin); err != nil {
@@ -270,26 +246,56 @@ func UnmarshalUpdateAsset(p *codec.Packer) (chain.Action, error) {
 	return &create, p.Err()
 }
 
-var _ codec.Typed = (*UpdateAssetResult)(nil)
-
-type AssetInfo struct {
-	Name                         string `serialize:"true" json:"name"`
-	Symbol                       string `serialize:"true" json:"symbol"`
-	Metadata                     string `serialize:"true" json:"metadata"`
-	URI                          string `serialize:"true" json:"uri"`
-	MaxSupply                    uint64 `serialize:"true" json:"max_supply"`
-	Owner                        string `serialize:"true" json:"owner"`
-	MintAdmin                    string `serialize:"true" json:"mint_admin"`
-	PauseUnpauseAdmin            string `serialize:"true" json:"pause_unpause_admin"`
-	FreezeUnfreezeAdmin          string `serialize:"true" json:"freeze_unfreeze_admin"`
-	EnableDisableKYCAccountAdmin string `serialize:"true" json:"enable_disable_kyc_account_admin"`
-}
+var (
+	_ codec.Typed     = (*UpdateAssetResult)(nil)
+	_ chain.Marshaler = (*UpdateAssetResult)(nil)
+)
 
 type UpdateAssetResult struct {
-	OldAssetInfo AssetInfo `serialize:"true" json:"old_asset_info"`
-	NewAssetInfo AssetInfo `serialize:"true" json:"new_asset_info"`
+	Name                         []byte `serialize:"true" json:"name"`
+	Symbol                       []byte `serialize:"true" json:"symbol"`
+	Metadata                     []byte `serialize:"true" json:"metadata"`
+	URI                          []byte `serialize:"true" json:"uri"`
+	MaxSupply                    uint64 `serialize:"true" json:"max_supply"`
+	Owner                        []byte `serialize:"true" json:"owner"`
+	MintAdmin                    []byte `serialize:"true" json:"mint_admin"`
+	PauseUnpauseAdmin            []byte `serialize:"true" json:"pause_unpause_admin"`
+	FreezeUnfreezeAdmin          []byte `serialize:"true" json:"freeze_unfreeze_admin"`
+	EnableDisableKYCAccountAdmin []byte `serialize:"true" json:"enable_disable_kyc_account_admin"`
 }
 
 func (*UpdateAssetResult) GetTypeID() uint8 {
 	return nconsts.UpdateAssetID
+}
+
+func (r *UpdateAssetResult) Size() int {
+	return codec.BytesLen(r.Name) + codec.BytesLen(r.Symbol) + codec.BytesLen(r.Metadata) + codec.BytesLen(r.URI) + consts.Uint64Len + codec.AddressLen*5
+}
+
+func (r *UpdateAssetResult) Marshal(p *codec.Packer) {
+	p.PackBytes(r.Name)
+	p.PackBytes(r.Symbol)
+	p.PackBytes(r.Metadata)
+	p.PackBytes(r.URI)
+	p.PackUint64(r.MaxSupply)
+	p.PackBytes(r.Owner)
+	p.PackBytes(r.MintAdmin)
+	p.PackBytes(r.PauseUnpauseAdmin)
+	p.PackBytes(r.FreezeUnfreezeAdmin)
+	p.PackBytes(r.EnableDisableKYCAccountAdmin)
+}
+
+func UnmarshalUpdateAssetResult(p *codec.Packer) (codec.Typed, error) {
+	var result UpdateAssetResult
+	p.UnpackBytes(MaxMetadataSize, false, &result.Name)
+	p.UnpackBytes(MaxTextSize, false, &result.Symbol)
+	p.UnpackBytes(MaxMetadataSize, false, &result.Metadata)
+	p.UnpackBytes(MaxMetadataSize, false, &result.URI)
+	result.MaxSupply = p.UnpackUint64(false)
+	p.UnpackBytes(codec.AddressLen, false, &result.Owner)
+	p.UnpackBytes(codec.AddressLen, false, &result.MintAdmin)
+	p.UnpackBytes(codec.AddressLen, false, &result.PauseUnpauseAdmin)
+	p.UnpackBytes(codec.AddressLen, false, &result.FreezeUnfreezeAdmin)
+	p.UnpackBytes(codec.AddressLen, false, &result.EnableDisableKYCAccountAdmin)
+	return &result, p.Err()
 }

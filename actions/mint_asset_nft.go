@@ -138,8 +138,8 @@ func (m *MintAssetNFT) Execute(
 	}
 
 	return &MintAssetNFTResult{
-		NftID:            nftID.String(),
-		To:               m.To.String(),
+		NftID:            nftID,
+		To:               m.To,
 		OldBalance:       newBalance - amountOfToken,
 		NewBalance:       newBalance,
 		AssetTotalSupply: newSupply,
@@ -158,7 +158,7 @@ func (*MintAssetNFT) ValidRange(chain.Rules) (int64, int64) {
 var _ chain.Marshaler = (*MintAssetNFT)(nil)
 
 func (m *MintAssetNFT) Size() int {
-	return codec.AddressLen + ids.IDLen + consts.Uint64Len + codec.BytesLen(m.URI) + codec.BytesLen(m.Metadata)
+	return ids.IDLen + consts.Uint64Len + codec.BytesLen(m.URI) + codec.BytesLen(m.Metadata) + codec.AddressLen
 }
 
 func (m *MintAssetNFT) Marshal(p *codec.Packer) {
@@ -179,16 +179,41 @@ func UnmarshalMintAssetNFT(p *codec.Packer) (chain.Action, error) {
 	return &mint, p.Err()
 }
 
-var _ codec.Typed = (*MintAssetNFTResult)(nil)
+var (
+	_ codec.Typed     = (*MintAssetNFTResult)(nil)
+	_ chain.Marshaler = (*MintAssetNFTResult)(nil)
+)
 
 type MintAssetNFTResult struct {
-	NftID            string `serialize:"true" json:"nft_id"`
-	To               string `serialize:"true" json:"to"`
-	OldBalance       uint64 `serialize:"true" json:"old_balance"`
-	NewBalance       uint64 `serialize:"true" json:"new_balance"`
-	AssetTotalSupply uint64 `serialize:"true" json:"asset_total_supply"`
+	NftID            ids.ID        `serialize:"true" json:"nft_id"`
+	To               codec.Address `serialize:"true" json:"to"`
+	OldBalance       uint64        `serialize:"true" json:"old_balance"`
+	NewBalance       uint64        `serialize:"true" json:"new_balance"`
+	AssetTotalSupply uint64        `serialize:"true" json:"asset_total_supply"`
 }
 
 func (*MintAssetNFTResult) GetTypeID() uint8 {
 	return nconsts.MintAssetNFTID
+}
+
+func (*MintAssetNFTResult) Size() int {
+	return ids.IDLen + codec.AddressLen + consts.Uint64Len*3
+}
+
+func (r *MintAssetNFTResult) Marshal(p *codec.Packer) {
+	p.PackID(r.NftID)
+	p.PackAddress(r.To)
+	p.PackUint64(r.OldBalance)
+	p.PackUint64(r.NewBalance)
+	p.PackUint64(r.AssetTotalSupply)
+}
+
+func UnmarshalMintAssetNFTResult(p *codec.Packer) (codec.Typed, error) {
+	var result MintAssetNFTResult
+	p.UnpackID(true, &result.NftID)
+	p.UnpackAddress(&result.To)
+	result.OldBalance = p.UnpackUint64(false)
+	result.NewBalance = p.UnpackUint64(false)
+	result.AssetTotalSupply = p.UnpackUint64(false)
+	return &result, p.Err()
 }

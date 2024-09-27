@@ -130,7 +130,7 @@ func TestMintAssetFTAction(t *testing.T) {
 				require.Equal(t, uint64(1000), balance)
 			},
 			ExpectedOutputs: &MintAssetFTResult{
-				To:               addr.String(),
+				To:               addr,
 				OldBalance:       0,
 				NewBalance:       1000,
 				AssetTotalSupply: 6000,

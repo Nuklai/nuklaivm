@@ -83,24 +83,8 @@ func TestUpdateDatasetAction(t *testing.T) {
 				require.Equal(t, addr, owner)
 			},
 			ExpectedOutputs: &UpdateDatasetResult{
-				OldDatasetInfo: DatasetInfo{
-					Name:               "Dataset Name",
-					Description:        "Description",
-					Categories:         "Science",
-					LicenseName:        "MIT",
-					LicenseSymbol:      "MIT",
-					LicenseURL:         "http://license-url.com",
-					IsCommunityDataset: false,
-				},
-				NewDatasetInfo: DatasetInfo{
-					Name:               "Updated Name",
-					Description:        "Updated Description",
-					Categories:         "Science",
-					LicenseName:        "MIT",
-					LicenseSymbol:      "MIT",
-					LicenseURL:         "http://license-url.com",
-					IsCommunityDataset: false,
-				},
+				Name:        []byte("Updated Name"),
+				Description: []byte("Updated Description"),
 			},
 		},
 	}

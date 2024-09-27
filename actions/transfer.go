@@ -183,14 +183,14 @@ func (*TransferResult) Size() int {
 	return consts.Uint64Len * 2
 }
 
-func (t *TransferResult) Marshal(p *codec.Packer) {
-	p.PackLong(t.SenderBalance)
-	p.PackLong(t.ReceiverBalance)
+func (r *TransferResult) Marshal(p *codec.Packer) {
+	p.PackLong(r.SenderBalance)
+	p.PackLong(r.ReceiverBalance)
 }
 
 func UnmarshalTransferResult(p *codec.Packer) (codec.Typed, error) {
-	var transferResult TransferResult
-	transferResult.SenderBalance = p.UnpackUint64(false)
-	transferResult.ReceiverBalance = p.UnpackUint64(false)
-	return &transferResult, p.Err()
+	var result TransferResult
+	result.SenderBalance = p.UnpackUint64(false)
+	result.ReceiverBalance = p.UnpackUint64(false)
+	return &result, p.Err()
 }

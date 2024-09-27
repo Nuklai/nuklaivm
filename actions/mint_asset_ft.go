@@ -104,7 +104,7 @@ func (m *MintAssetFT) Execute(
 	}
 
 	return &MintAssetFTResult{
-		To:               m.To.String(),
+		To:               m.To,
 		OldBalance:       newBalance - m.Value,
 		NewBalance:       newBalance,
 		AssetTotalSupply: newSupply,
@@ -140,15 +140,38 @@ func UnmarshalMintAssetFT(p *codec.Packer) (chain.Action, error) {
 	return &mint, p.Err()
 }
 
-var _ codec.Typed = (*MintAssetFTResult)(nil)
+var (
+	_ codec.Typed     = (*MintAssetFTResult)(nil)
+	_ chain.Marshaler = (*MintAssetFTResult)(nil)
+)
 
 type MintAssetFTResult struct {
-	To               string `serialize:"true" json:"to"`
-	OldBalance       uint64 `serialize:"true" json:"old_balance"`
-	NewBalance       uint64 `serialize:"true" json:"new_balance"`
-	AssetTotalSupply uint64 `serialize:"true" json:"asset_total_supply"`
+	To               codec.Address `serialize:"true" json:"to"`
+	OldBalance       uint64        `serialize:"true" json:"old_balance"`
+	NewBalance       uint64        `serialize:"true" json:"new_balance"`
+	AssetTotalSupply uint64        `serialize:"true" json:"asset_total_supply"`
 }
 
 func (*MintAssetFTResult) GetTypeID() uint8 {
 	return nconsts.MintAssetFTID
+}
+
+func (*MintAssetFTResult) Size() int {
+	return codec.AddressLen + consts.Uint64Len*3
+}
+
+func (r *MintAssetFTResult) Marshal(p *codec.Packer) {
+	p.PackAddress(r.To)
+	p.PackUint64(r.OldBalance)
+	p.PackUint64(r.NewBalance)
+	p.PackUint64(r.AssetTotalSupply)
+}
+
+func UnmarshalMintAssetFTResult(p *codec.Packer) (codec.Typed, error) {
+	var result MintAssetFTResult
+	p.UnpackAddress(&result.To)
+	result.OldBalance = p.UnpackUint64(false)
+	result.NewBalance = p.UnpackUint64(false)
+	result.AssetTotalSupply = p.UnpackUint64(false)
+	return &result, p.Err()
 }

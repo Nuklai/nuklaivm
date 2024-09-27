@@ -68,7 +68,7 @@ func (c *CreateDataset) StateKeys(actor codec.Address, actionID ids.ID) state.Ke
 	}
 	nftID := nchain.GenerateIDWithIndex(actionID, 0)
 	return state.Keys{
-		string(storage.AssetKey(assetID)):          state.Read | state.Write,
+		string(storage.AssetKey(assetID)):          state.Allocate | state.Write,
 		string(storage.DatasetKey(assetID)):        state.Allocate | state.Write,
 		string(storage.AssetNFTKey(nftID)):         state.Allocate | state.Write,
 		string(storage.BalanceKey(actor, assetID)): state.Allocate | state.Write,
@@ -170,8 +170,8 @@ func (c *CreateDataset) Execute(
 	}
 
 	return &CreateDatasetResult{
-		DatasetID:   assetID.String(),
-		ParentNftID: nchain.GenerateIDWithIndex(assetID, 0).String(),
+		DatasetID:          assetID,
+		DatasetParentNftID: nchain.GenerateIDWithIndex(assetID, 0),
 	}, nil
 }
 
@@ -216,13 +216,32 @@ func UnmarshalCreateDataset(p *codec.Packer) (chain.Action, error) {
 	return &create, p.Err()
 }
 
-var _ codec.Typed = (*CreateDatasetResult)(nil)
+var (
+	_ codec.Typed     = (*CreateDatasetResult)(nil)
+	_ chain.Marshaler = (*CreateDatasetResult)(nil)
+)
 
 type CreateDatasetResult struct {
-	DatasetID   string `serialize:"true" json:"dataset_id"`
-	ParentNftID string `serialize:"true" json:"parent_nft_id"`
+	DatasetID          ids.ID `serialize:"true" json:"dataset_id"`
+	DatasetParentNftID ids.ID `serialize:"true" json:"parent_nft_id"`
 }
 
 func (*CreateDatasetResult) GetTypeID() uint8 {
 	return nconsts.CreateDatasetID
+}
+
+func (*CreateDatasetResult) Size() int {
+	return ids.IDLen * 2
+}
+
+func (r *CreateDatasetResult) Marshal(p *codec.Packer) {
+	p.PackID(r.DatasetID)
+	p.PackID(r.DatasetParentNftID)
+}
+
+func UnmarshalCreateDatasetResult(p *codec.Packer) (codec.Typed, error) {
+	var result CreateDatasetResult
+	p.UnpackID(true, &result.DatasetID)
+	p.UnpackID(true, &result.DatasetParentNftID)
+	return &result, p.Err()
 }

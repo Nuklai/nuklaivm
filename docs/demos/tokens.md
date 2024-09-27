@@ -21,17 +21,20 @@ To do so, we do:
 When you are done, the output should look something like this:
 
 ```bash
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 24YK3t6WsiXeQTtTPEtPfSnZVoodZdN4wRRr1oMGdQHTKdF7bK
-✔ assetType(0 for fungible, 1 for non-fungible and 2 for dataset): 0█
-name: Kiran
+address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
+assetType(0 for fungible, 1 for non-fungible and 2 for dataset): 0
+name: Kiran1
 symbol: KP1
 decimals: 0
-✔ metadata: test█
+✔ metadata: test1█
 continue (y/n): y
-✅ txID: tmQc4mxt5FC1Ts9hW6rvdDDxQAUw1sTJscVQF4mTfWk59SJXN
-assetID: djTHcsCKqbbdNNt1JwafXfju8UKJ7oCkHY4nwWcbDF31S3MZv
+✅ txID: 26o6ti2ua2uBwkzGL66FPK2fUju1uoTDqy7uDUxC9mfaXmNvTG
+fee consumed: 0.000064000 NAI
+output:  &{AssetID:2Q7FsxpvScd1vf2UweTiE4iUrAPeQiwgjbUhq5B28Y6shTTPb3 AssetBalance:0 DatasetParentNftID:11111111111111111111111111111111LpoYY}
 ```
+
+Note that the DatasetParentNftID value is `11111111111111111111111111111111LpoYY` which is an empty ID. An NFT is only generated when you create an asset of type "dataset".
 
 ### Create an asset of type "non-fungible"
 
@@ -42,17 +45,19 @@ assetID: djTHcsCKqbbdNNt1JwafXfju8UKJ7oCkHY4nwWcbDF31S3MZv
 When you are done, the output should look something like this:
 
 ```bash
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 24YK3t6WsiXeQTtTPEtPfSnZVoodZdN4wRRr1oMGdQHTKdF7bK
-✔ assetType(0 for fungible, 1 for non-fungible and 2 for dataset): 1█
-name: Kiran
-symbol: KP2
-decimals: 0
-✔ metadata: test█
+address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
+assetType(0 for fungible, 1 for non-fungible and 2 for dataset): 1
+name: Kiran2
+✔ symbol: KP2█
+✔ metadata: test2█
 continue (y/n): y
-✅ txID: 24vUfjLCA674Qo2Paq24buu8nBY3YChFKHn8SfirgqWkRhcmx4
-assetID: BK8Ghu86S6YkB4dHcQb7guJdbj5KZCXJdjPdF8XVxP7v4KHKW
+✅ txID: 92yiBuztAEw7BRiQGcDnWYzkLJQDn9rCfAaNNawQKpRqPdeL1
+fee consumed: 0.000082000 NAI
+output:  &{AssetID:2m4LK7CNSpqZg35spCaLyYTbCdtpce7w4GMraLVXzjhNkS5WfX AssetBalance:0 DatasetParentNftID:11111111111111111111111111111111LpoYY}
 ```
+
+Note that the DatasetParentNftID value is `11111111111111111111111111111111LpoYY` which is an empty ID. An NFT is only generated when you create an asset of type "dataset".
 
 ### Create an asset of type "dataset"
 
@@ -63,16 +68,17 @@ assetID: BK8Ghu86S6YkB4dHcQb7guJdbj5KZCXJdjPdF8XVxP7v4KHKW
 When you are done, the output should look something like this:
 
 ```bash
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-assetType(0 for fungible, 1 for non-fungible and 2 for dataset): 2✔ assetType(0 for fungible, 1 for non-fungible and 2 for dataset): 2█
-name: Kiran
-symbol: KP4
-✔ decimals: 0█
-metadata: test
+address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
+assetType(0 for fungible, 1 for non-fungible and 2 for dataset): 2
+✔ name: Dataset0█
+symbol: DS0
+decimals: 0
+metadata: test0
 continue (y/n): y
-✅ txID: 2pwpuuz1fbAbXndHbYzY4oczVDRkKcP69TdKc8bc1c6xQrFZQF
-assetID: YywWmuyTGzDAPYPKNgXy4yk4gbjbNQU7qjyCD3RMuoAoWazsM
-nftID: ZXvW9q7sFS3XzTmK2uQ4T6M6dngdGG3engYBJH9rrrki4HMpu
+✅ txID: JRxtYf9v5NQS7MyZM6MQjK7psghistzR89Av3E5AZoCabiZMJ
+fee consumed: 0.000082200 NAI
+output:  &{AssetID:np331YT7K3XdGKFriWNzwf9ieWeSMga6SZhZSaRCB9FU3QZq2 AssetBalance:1 DatasetParentNftID:res9ukBitVz9pkiy2nmZNQcYM8BYr1uTUvZCAbrjACHyPVCP2}
 ```
 
 Since it's a fractionalized asset type, nuklai automatically mints the parent NFT at the same time.
@@ -93,14 +99,15 @@ When you are done, the output should look something like this (usually easiest
 just to mint to yourself).
 
 ```bash
-chainID: 24YK3t6WsiXeQTtTPEtPfSnZVoodZdN4wRRr1oMGdQHTKdF7bK
-assetID: djTHcsCKqbbdNNt1JwafXfju8UKJ7oCkHY4nwWcbDF31S3MZv
-assetType: Fungible Token name: Kiran symbol: KP1 decimals: 0 metadata: test uri: https://nukl.ai totalSupply: 0 maxSupply: 0 admin: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx mintActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx pauseUnpauseActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx freezeUnfreezeActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx enableDisableKYCAccountActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-recipient: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-amount: 1010█
-✔ amount: 10█
-continue (y/n): y
-✅ txID: 2iJfeGv5K6W4diY9nWcuMsARdePEs9rGHq1RUBAesqusiuhfqo
+address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
+✔ assetID: 2Q7FsxpvScd1vf2UweTiE4iUrAPeQiwgjbUhq5B28Y6shTTPb3█
+assetType: Fungible Token name: Kiran1 symbol: KP1 decimals: 0 metadata: test1 uri: https://nukl.ai totalSupply: 0 maxSupply: 0 admin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 mintActor: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 pauseUnpauseActor: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 freezeUnfreezeActor: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 enableDisableKYCAccountActor: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+recipient: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+amount: 100
+✔ continue (y/n): y█
+✅ txID: 2iaokSRAbwkc7Pcqia75gMZbPJfQCd7Qzh9kTH7dfYTULiRgpU
+fee consumed: 0.000051600 NAI
 ```
 
 ### Mint a non-fungible token
@@ -113,16 +120,17 @@ When you are done, the output should look something like this (usually easiest
 just to mint to yourself).
 
 ```bash
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 24YK3t6WsiXeQTtTPEtPfSnZVoodZdN4wRRr1oMGdQHTKdF7bK
-assetID: BK8Ghu86S6YkB4dHcQb7guJdbj5KZCXJdjPdF8XVxP7v4KHKW
-assetType: Non-Fungible Token name: Kiran symbol: KP2 decimals: 0 metadata: test uri: https://nukl.ai totalSupply: 0 maxSupply: 0 admin: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx mintActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx pauseUnpauseActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx freezeUnfreezeActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx enableDisableKYCAccountActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-recipient: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-unique nft #: 0
-✔ uri: test█
+address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
+assetID: 2m4LK7CNSpqZg35spCaLyYTbCdtpce7w4GMraLVXzjhNkS5WfX
+assetType: Non-Fungible Token name: Kiran2 symbol: KP2 decimals: 0 metadata: test2 uri: https://nukl.ai totalSupply: 0 maxSupply: 0 admin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 mintActor: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 pauseUnpauseActor: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 freezeUnfreezeActor: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 enableDisableKYCAccountActor: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+✔ recipient: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9█
+unique nft #: 1
+✔ metadata: https://metadata█
 continue (y/n): y
-✅ txID: kJMvtujNWjmbzxdVbY5VL9Tnyj2PPYcvTawEFuydJLCSmXzoo
-NFT ID: XbA9tWs3o1VUm3eMeKwZiWvsoAPdHXzyY4awZeAwvJ64e8VjH
+✅ txID: MnL68d4bLpwQ2Z6qLwSUobceEL9Fs557Pgwn1JNaqDwRamAsk
+fee consumed: 0.000073600 NAI
+output:  &{NftID:ubza6ioqMZQ4ESuTtMbe6jcKTkYdaQWaEfEvYb39muKsNeS6v To:00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 OldBalance:0 NewBalance:1 AssetTotalSupply:1}
 ```
 
 ## Step 3: View Your Balance
@@ -133,52 +141,54 @@ so by running the following command from this location:
 ### Check balance of our fungible token
 
 ```bash
-./build/nuklai-cli key balance
+./build/nuklai-cli key balance-ft
 ```
 
 When you are done, the output should look something like this:
 
 ```bash
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 24YK3t6WsiXeQTtTPEtPfSnZVoodZdN4wRRr1oMGdQHTKdF7bK
-assetID (use NAI for native token): djTHcsCKqbbdNNt1JwafXfju8UKJ7oCkHY4nwWcbDF31S3MZv
-uri: http://127.0.0.1:9658/ext/bc/24YK3t6WsiXeQTtTPEtPfSnZVoodZdN4wRRr1oMGdQHTKdF7bK
-assetType: {{/} Fungible Token name: Kiran symbol: KP1 decimals: 0 metadata: test uri: https://nukl.ai totalSupply: 10 maxSupply: 0 admin: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx mintActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx pauseUnpauseActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx freezeUnfreezeActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx enableDisableKYCAccountActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-balance: 10 KP1
+address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
+assetID: 2Q7FsxpvScd1vf2UweTiE4iUrAPeQiwgjbUhq5B28Y6shTTPb3
+uri: http://127.0.0.1:9650/ext/bc/nuklaivm
+assetType:  Fungible Token name: Kiran1 symbol: KP1 decimals: 0 metadata: test1 uri: https://nukl.ai totalSupply: 100 maxSupply: 0 owner: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 mintAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 pauseUnpauseAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 freezeUnfreezeAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 enableDisableKYCAccountAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+balance: 100 KP1
 ```
 
 ### Check balance of our non-fungible token
 
 ```bash
-./build/nuklai-cli key balance
+./build/nuklai-cli key balance-ft
 ```
 
 When you are done, the output should look something like this:
 
 ```bash
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: 24YK3t6WsiXeQTtTPEtPfSnZVoodZdN4wRRr1oMGdQHTKdF7bK
-assetID (use NAI for native token): BK8Ghu86S6YkB4dHcQb7guJdbj5KZCXJdjPdF8XVxP7v4KHKW
-uri: http://127.0.0.1:9658/ext/bc/24YK3t6WsiXeQTtTPEtPfSnZVoodZdN4wRRr1oMGdQHTKdF7bK
-assetType: {{/} Non-Fungible Token name: Kiran symbol: KP2 decimals: 0 metadata: test uri: https://nukl.ai totalSupply: 1 maxSupply: 0 admin: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx mintActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx pauseUnpauseActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx freezeUnfreezeActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx enableDisableKYCAccountActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
+assetID: 2m4LK7CNSpqZg35spCaLyYTbCdtpce7w4GMraLVXzjhNkS5WfX
+uri: http://127.0.0.1:9650/ext/bc/nuklaivm
+assetType:  Non-Fungible Token name: Kiran2 symbol: KP2 decimals: 0 metadata: test2 uri: https://nukl.ai totalSupply: 1 maxSupply: 0 owner: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 mintAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 pauseUnpauseAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 freezeUnfreezeAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 enableDisableKYCAccountAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
 balance: 1 KP2
 ```
 
 ### Check the NFT info
 
 ```bash
-./build/nuklai-cli key balanceNFT
+./build/nuklai-cli key balance-nft
 ```
 
 The output should be something like:
 
 ```bash
-✔ address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx█
-chainID: 24YK3t6WsiXeQTtTPEtPfSnZVoodZdN4wRRr1oMGdQHTKdF7bK
-nftID: XbA9tWs3o1VUm3eMeKwZiWvsoAPdHXzyY4awZeAwvJ64e8VjH
-collectionID: BK8Ghu86S6YkB4dHcQb7guJdbj5KZCXJdjPdF8XVxP7v4KHKW
-uniqueID: 0
-uri: test
-ownerAddress: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
+assetID: ubza6ioqMZQ4ESuTtMbe6jcKTkYdaQWaEfEvYb39muKsNeS6v
+uri: http://127.0.0.1:9650/ext/bc/nuklaivm
+collectionID: 2m4LK7CNSpqZg35spCaLyYTbCdtpce7w4GMraLVXzjhNkS5WfX
+uniqueID: 1
+uri: https://metadata
+metadata: https://metadata
+ownerAddress: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
 You own this NFT
 ```

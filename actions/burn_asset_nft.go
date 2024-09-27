@@ -11,6 +11,7 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
+	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	smath "github.com/ava-labs/avalanchego/utils/math"
@@ -100,7 +101,7 @@ func (b *BurnAssetNFT) Execute(
 	}
 
 	return &BurnAssetNFTResult{
-		From:             actor.String(),
+		From:             actor,
 		OldBalance:       newBalance + amountOfToken,
 		NewBalance:       newBalance,
 		AssetTotalSupply: newSupply,
@@ -134,15 +135,38 @@ func UnmarshalBurnAssetNFT(p *codec.Packer) (chain.Action, error) {
 	return &burn, p.Err()
 }
 
-var _ codec.Typed = (*BurnAssetNFTResult)(nil)
+var (
+	_ codec.Typed     = (*BurnAssetNFTResult)(nil)
+	_ chain.Marshaler = (*BurnAssetNFTResult)(nil)
+)
 
 type BurnAssetNFTResult struct {
-	From             string `serialize:"true" json:"from"`
-	OldBalance       uint64 `serialize:"true" json:"old_balance"`
-	NewBalance       uint64 `serialize:"true" json:"new_balance"`
-	AssetTotalSupply uint64 `serialize:"true" json:"asset_total_supply"`
+	From             codec.Address `serialize:"true" json:"from"`
+	OldBalance       uint64        `serialize:"true" json:"old_balance"`
+	NewBalance       uint64        `serialize:"true" json:"new_balance"`
+	AssetTotalSupply uint64        `serialize:"true" json:"asset_total_supply"`
 }
 
 func (*BurnAssetNFTResult) GetTypeID() uint8 {
 	return nconsts.BurnAssetNFTID
+}
+
+func (*BurnAssetNFTResult) Size() int {
+	return codec.AddressLen + consts.Uint64Len*3
+}
+
+func (r *BurnAssetNFTResult) Marshal(p *codec.Packer) {
+	p.PackAddress(r.From)
+	p.PackUint64(r.OldBalance)
+	p.PackUint64(r.NewBalance)
+	p.PackUint64(r.AssetTotalSupply)
+}
+
+func UnmarshalBurnAssetNFTResult(p *codec.Packer) (codec.Typed, error) {
+	var result BurnAssetNFTResult
+	p.UnpackAddress(&result.From)
+	result.OldBalance = p.UnpackUint64(false)
+	result.NewBalance = p.UnpackUint64(false)
+	result.AssetTotalSupply = p.UnpackUint64(false)
+	return &result, p.Err()
 }

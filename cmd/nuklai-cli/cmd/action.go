@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"os"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -17,7 +16,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/cli/prompt"
-	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/utils"
 )
 
@@ -73,31 +71,10 @@ var transferCmd = &cobra.Command{
 			To:      recipient,
 			Value:   amount,
 		}}, cli, ncli, ws, factory)
-
-		if result != nil && result.Success {
-			utils.Outf("{{green}}fee consumed:{{/}} %s\n", utils.FormatBalance(result.Fee, consts.Decimals))
-
-			// Use NewReader to create a Packer from the result output
-			packer := codec.NewReader(result.Outputs[0], len(result.Outputs[0]))
-
-			// Unmarshal the transfer result using the custom UnmarshalTransferResult method
-			typedResult, err := actions.UnmarshalTransferResult(packer)
-			if err != nil {
-				return err
-			}
-
-			// Type assert the result to TransferResult
-			output, ok := typedResult.(*actions.TransferResult)
-			if !ok {
-				return errors.New("failed to assert typed result to TransferResult")
-			}
-
-			// Output the results
-			utils.Outf("{{green}}senderBalance:{{/}} %s\n", utils.FormatBalance(output.SenderBalance, decimals))
-			utils.Outf("{{green}}receiverBalance:{{/}} %s\n", utils.FormatBalance(output.ReceiverBalance, decimals))
+		if err != nil {
+			return err
 		}
-
-		return err
+		return processResult(result)
 	},
 }
 
@@ -132,6 +109,8 @@ var publishFileCmd = &cobra.Command{
 		}}, cli, bcli, ws, factory)
 
 		if result != nil && result.Success {
+			utils.Outf("{{green}}fee consumed:{{/}} %s\n", utils.FormatBalance(result.Fee, consts.Decimals))
+
 			utils.Outf(hexutils.BytesToHex(result.Outputs[0]) + "\n")
 		}
 		return err
@@ -197,6 +176,8 @@ var callCmd = &cobra.Command{
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{action}, cli, bcli, ws, factory)
 		if result != nil && result.Success {
+			utils.Outf("{{green}}fee consumed:{{/}} %s\n", utils.FormatBalance(result.Fee, consts.Decimals))
+
 			utils.Outf(hexutils.BytesToHex(result.Outputs[0]) + "\n")
 			switch function {
 			case "balance":
@@ -253,14 +234,9 @@ var deployCmd = &cobra.Command{
 			ContractID:   contractID,
 			CreationInfo: creationInfo,
 		}}, cli, bcli, ws, factory)
-
-		if result != nil && result.Success {
-			address, err := codec.ToAddress(result.Outputs[0])
-			if err != nil {
-				return err
-			}
-			utils.Outf(address.String() + "\n")
+		if err != nil {
+			return err
 		}
-		return err
+		return processResult(result)
 	},
 }

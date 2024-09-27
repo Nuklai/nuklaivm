@@ -152,8 +152,8 @@ func TestMintAssetNFTAction(t *testing.T) {
 				require.Equal(t, uint64(1), balance)
 			},
 			ExpectedOutputs: &MintAssetNFTResult{
-				NftID:            nftID.String(),
-				To:               addr.String(),
+				NftID:            nftID,
+				To:               addr,
 				OldBalance:       0,
 				NewBalance:       1,
 				AssetTotalSupply: 1,

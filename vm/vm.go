@@ -60,16 +60,16 @@ func init() {
 
 		OutputParser.Register(&actions.TransferResult{}, actions.UnmarshalTransferResult),
 		OutputParser.Register(&actions.ContractCallResult{}, nil),
-		OutputParser.Register(&actions.ContractDeployResult{}, nil),
+		OutputParser.Register(&actions.ContractDeployResult{}, actions.UnmarshalContractDeployResult),
 		OutputParser.Register(&actions.ContractPublishResult{}, nil),
-		OutputParser.Register(&actions.CreateAssetResult{}, nil),
-		OutputParser.Register(&actions.UpdateAssetResult{}, nil),
-		OutputParser.Register(&actions.MintAssetFTResult{}, nil),
-		OutputParser.Register(&actions.MintAssetNFTResult{}, nil),
-		OutputParser.Register(&actions.BurnAssetFTResult{}, nil),
-		OutputParser.Register(&actions.BurnAssetNFTResult{}, nil),
-		OutputParser.Register(&actions.CreateDatasetResult{}, nil),
-		OutputParser.Register(&actions.UpdateDatasetResult{}, nil),
+		OutputParser.Register(&actions.CreateAssetResult{}, actions.UnmarshalCreateAssetResult),
+		OutputParser.Register(&actions.UpdateAssetResult{}, actions.UnmarshalUpdateAssetResult),
+		OutputParser.Register(&actions.MintAssetFTResult{}, actions.UnmarshalMintAssetFTResult),
+		OutputParser.Register(&actions.MintAssetNFTResult{}, actions.UnmarshalMintAssetNFTResult),
+		OutputParser.Register(&actions.BurnAssetFTResult{}, actions.UnmarshalBurnAssetFTResult),
+		OutputParser.Register(&actions.BurnAssetNFTResult{}, actions.UnmarshalBurnAssetNFTResult),
+		OutputParser.Register(&actions.CreateDatasetResult{}, actions.UnmarshalCreateDatasetResult),
+		OutputParser.Register(&actions.UpdateDatasetResult{}, actions.UnmarshalUpdateDatasetResult),
 	)
 	if errs.Errored() {
 		panic(errs.Err)

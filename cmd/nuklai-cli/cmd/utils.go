@@ -4,10 +4,16 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/hypersdk/chain"
+	"github.com/ava-labs/hypersdk/codec"
+	"github.com/ava-labs/hypersdk/utils"
+	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/vm"
 	"gopkg.in/yaml.v2"
 )
 
@@ -55,4 +61,28 @@ func ReadCLIFile(cliPath string) (ids.ID, map[string]string, error) {
 		nodes[name] = uri
 	}
 	return chainID, nodes, nil
+}
+
+// Helper function to process the transaction result
+func processResult(result *chain.Result) error {
+	if result != nil && result.Success {
+		utils.Outf("{{green}}fee consumed:{{/}} %s NAI\n", utils.FormatBalance(result.Fee, consts.Decimals))
+
+		// Use NewReader to create a Packer from the result output
+		packer := codec.NewReader(result.Outputs[0], len(result.Outputs[0]))
+		r, err := vm.OutputParser.Unmarshal(packer)
+		if err != nil {
+			return err
+		}
+
+		// Assert the output to the expected type
+		output, ok := r.(interface{})
+		if !ok {
+			return errors.New("failed to assert typed output to expected result type")
+		}
+
+		// Output the results
+		utils.Outf("{{green}}output: {{/}} %+v\n", output)
+	}
+	return nil
 }

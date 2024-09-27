@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 
 	hutils "github.com/ava-labs/hypersdk/utils"
-	nchain "github.com/nuklai/nuklaivm/chain"
 )
 
 var datasetCmd = &cobra.Command{
@@ -65,7 +64,7 @@ var createDatasetCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, txID, err := sendAndWait(ctx, []chain.Action{&actions.CreateDataset{
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.CreateDataset{
 			AssetID:            ids.Empty,
 			Name:               []byte(name),
 			Description:        []byte(description),
@@ -79,17 +78,7 @@ var createDatasetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-
-		// Print datasetID/assetID
-		datasetID := chain.CreateActionID(txID, 0)
-		hutils.Outf("{{green}}datasetID:{{/}} %s\n", datasetID)
-		hutils.Outf("{{green}}assetID:{{/}} %s\n", datasetID)
-
-		// Print nftID
-		nftID := nchain.GenerateIDWithIndex(datasetID, 0)
-		hutils.Outf("{{green}}nftID:{{/}} %s\n", nftID)
-
-		return nil
+		return processResult(result)
 	},
 }
 
@@ -139,7 +128,7 @@ var createDatasetFromExistingAssetCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, []chain.Action{&actions.CreateDataset{
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.CreateDataset{
 			AssetID:            assetID,
 			Name:               []byte(name),
 			Description:        []byte(description),
@@ -153,16 +142,7 @@ var createDatasetFromExistingAssetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-
-		// Print datasetID/assetID
-		hutils.Outf("{{green}}datasetID:{{/}} %s\n", assetID)
-		hutils.Outf("{{green}}assetID:{{/}} %s\n", assetID)
-
-		// Print nftID
-		nftID := nchain.GenerateIDWithIndex(assetID, 0)
-		hutils.Outf("{{green}}nftID:{{/}} %s\n", nftID)
-
-		return nil
+		return processResult(result)
 	},
 }
 
@@ -200,7 +180,7 @@ var updateDatasetCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		_, _, err = sendAndWait(ctx, []chain.Action{&actions.UpdateDataset{
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.UpdateDataset{
 			DatasetID:          datasetID,
 			Name:               []byte(name),
 			IsCommunityDataset: isCommunityDataset,
@@ -208,8 +188,7 @@ var updateDatasetCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-
-		return nil
+		return processResult(result)
 	},
 }
 
@@ -245,11 +224,7 @@ var getDatasetCmd = &cobra.Command{
 		// Get asset info
 		hutils.Outf("Retrieving asset info for assetID: %s\n", datasetID)
 		_, _, _, _, _, _, _, _, _, _, _, _, _, err = handler.GetAssetInfo(ctx, ncli, priv.Address, datasetID, true)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return err
 	},
 }
 
@@ -326,7 +301,6 @@ var getDataContributionPendingCmd = &cobra.Command{
 			hutils.Outf("{{red}}This contribution does not exist{{/}}\n")
 			hutils.Outf("{{red}}exiting...{{/}}\n")
 		}
-
 		return nil
 	},
 }
