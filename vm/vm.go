@@ -5,13 +5,17 @@ package vm
 
 import (
 	"github.com/ava-labs/avalanchego/utils/wrappers"
+
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
+	"github.com/nuklai/nuklaivm/marketplace"
 	"github.com/nuklai/nuklaivm/storage"
 
 	"github.com/ava-labs/hypersdk/api/indexer"
 	"github.com/ava-labs/hypersdk/api/jsonrpc"
+	staterpc "github.com/ava-labs/hypersdk/api/state"
 	"github.com/ava-labs/hypersdk/api/ws"
 	"github.com/ava-labs/hypersdk/auth"
 	"github.com/ava-labs/hypersdk/chain"
@@ -19,15 +23,15 @@ import (
 	"github.com/ava-labs/hypersdk/extension/externalsubscriber"
 	"github.com/ava-labs/hypersdk/vm"
 	"github.com/ava-labs/hypersdk/x/contracts/runtime"
-
-	staterpc "github.com/ava-labs/hypersdk/api/state"
 )
 
 var (
-	ActionParser *codec.TypeParser[chain.Action]
-	AuthParser   *codec.TypeParser[chain.Auth]
-	OutputParser *codec.TypeParser[codec.Typed]
-	wasmRuntime  *runtime.WasmRuntime
+	ActionParser      *codec.TypeParser[chain.Action]
+	AuthParser        *codec.TypeParser[chain.Auth]
+	OutputParser      *codec.TypeParser[codec.Typed]
+	emissionBalancer  emission.Tracker
+	nuklaiMarketplace marketplace.Hub
+	wasmRuntime       *runtime.WasmRuntime
 )
 
 // Setup types
@@ -52,6 +56,9 @@ func init() {
 		ActionParser.Register(&actions.BurnAssetNFT{}, actions.UnmarshalBurnAssetNFT),
 		ActionParser.Register(&actions.CreateDataset{}, actions.UnmarshalCreateDataset),
 		ActionParser.Register(&actions.UpdateDataset{}, actions.UnmarshalUpdateDataset),
+		ActionParser.Register(&actions.PublishDatasetMarketplace{}, actions.UnmarshalPublishDatasetMarketplace),
+		ActionParser.Register(&actions.SubscribeDatasetMarketplace{}, actions.UnmarshalSubscribeDatasetMarketplace),
+		ActionParser.Register(&actions.ClaimMarketplacePayment{}, actions.UnmarshalClaimMarketplacePayment),
 
 		// When registering new auth, ALWAYS make sure to append at the end.
 		AuthParser.Register(&auth.ED25519{}, auth.UnmarshalED25519),
@@ -70,6 +77,9 @@ func init() {
 		OutputParser.Register(&actions.BurnAssetNFTResult{}, actions.UnmarshalBurnAssetNFTResult),
 		OutputParser.Register(&actions.CreateDatasetResult{}, actions.UnmarshalCreateDatasetResult),
 		OutputParser.Register(&actions.UpdateDatasetResult{}, actions.UnmarshalUpdateDatasetResult),
+		OutputParser.Register(&actions.PublishDatasetMarketplaceResult{}, actions.UnmarshalPublishDatasetMarketplaceResult),
+		OutputParser.Register(&actions.SubscribeDatasetMarketplaceResult{}, actions.UnmarshalSubscribeDatasetMarketplaceResult),
+		OutputParser.Register(&actions.ClaimMarketplacePaymentResult{}, actions.UnmarshalClaimMarketplacePaymentResult),
 	)
 	if errs.Errored() {
 		panic(errs.Err)
@@ -94,6 +104,7 @@ func New(options ...vm.Option) (*vm.VM, error) {
 func NewWithOptions(options ...vm.Option) (*vm.VM, error) {
 	opts := append([]vm.Option{
 		WithRuntime(),
+		WithEmissionBalancer(),
 	}, options...)
 	return vm.New(
 		consts.Version,

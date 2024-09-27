@@ -375,7 +375,7 @@ func (*Handler) GetDatasetInfoFromMarketplace(
 		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
 	}
 
-	metadataMap, err := nchain.JSONToMap(metadata)
+	metadataMap, err := nchain.BytesToMap([]byte(metadata))
 	if err != nil {
 		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
 	}
