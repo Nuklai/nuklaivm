@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/storage"
 
@@ -242,40 +243,161 @@ type DataContributionPendingReply struct {
 }
 
 func (j *JSONRPCServer) DataContributionPending(req *http.Request, args *DatasetArgs, reply *DataContributionPendingReply) (err error) {
-	/*
-		ctx, span := j.vm.Tracer().Start(req.Context(), "Server.DataContributionPending")
-		defer span.End()
-
-		datasetID, err := getAssetIDBySymbol(args.Dataset)
-		if err != nil {
-			return err
-		}
-
-		// Get all contributions for the dataset
-		 	contributions, err := j.vm.GetDataContributionPending(ctx, datasetID, codec.EmptyAddress)
-		   	if err != nil {
-		   		return err
-		   	}
-
-		   	// Iterate over contributions and populate reply
-		   	for _, contrib := range contributions {
-		   		convertedContribution := DataContribution{
-		   			DataLocation:   string(contrib.DataLocation),                              // Convert []byte to string
-		   			DataIdentifier: string(contrib.DataIdentifier),                            // Convert []byte to string
-		   			Contributor:    codec.MustAddressBech32(nconsts.HRP, contrib.Contributor), // Convert codec.Address to string
-		   		}
-		   		reply.Contributions = append(reply.Contributions, convertedContribution)
-		   	}
-	*/
 
 	_, span := j.vm.Tracer().Start(req.Context(), "Server.DataContributionPending")
 	defer span.End()
 
-	_, err = getAssetIDBySymbol(args.Dataset)
+	datasetID, err := getAssetIDBySymbol(args.Dataset)
 	if err != nil {
 		return err
 	}
-	reply.Contributions = []DataContribution{}
+
+	// Get all contributions for the dataset
+	contributions, err := marketplaceHub.GetDataContribution(datasetID, codec.EmptyAddress)
+	if err != nil {
+		return err
+	}
+
+	// Iterate over contributions and populate reply
+	for _, contrib := range contributions {
+		convertedContribution := DataContribution{
+			DataLocation:   string(contrib.DataLocation),   // Convert []byte to string
+			DataIdentifier: string(contrib.DataIdentifier), // Convert []byte to string
+			Contributor:    contrib.Contributor.String(),   // Convert codec.Address to string
+		}
+		reply.Contributions = append(reply.Contributions, convertedContribution)
+	}
+	return nil
+}
+
+type EmissionAccount struct {
+	Address           string `json:"address"`
+	AccumulatedReward uint64 `json:"accumulatedReward"`
+}
+
+type EmissionReply struct {
+	CurrentBlockHeight uint64                `json:"currentBlockHeight"`
+	TotalSupply        uint64                `json:"totalSupply"`
+	MaxSupply          uint64                `json:"maxSupply"`
+	TotalStaked        uint64                `json:"totalStaked"`
+	RewardsPerEpoch    uint64                `json:"rewardsPerEpoch"`
+	EmissionAccount    EmissionAccount       `json:"emissionAccount"`
+	EpochTracker       emission.EpochTracker `json:"epochTracker"`
+}
+
+func (j *JSONRPCServer) EmissionInfo(req *http.Request, _ *struct{}, reply *EmissionReply) (err error) {
+	_, span := j.vm.Tracer().Start(req.Context(), "Server.EmissionInfo")
+	defer span.End()
+
+	emissionAccount, totalSupply, maxSupply, totalStaked, epochTracker := emissionTracker.GetInfo()
+
+	currentBlockHeight, totalSupply, maxSupply, totalStaked, rewardsPerEpoch, emissionAccount, epochTracker := emissionTracker.GetLastAcceptedBlockHeight(), totalSupply, maxSupply, totalStaked, emissionTracker.GetRewardsPerEpoch(), emissionAccount, epochTracker
+	reply.CurrentBlockHeight = currentBlockHeight
+	reply.TotalSupply = totalSupply
+	reply.MaxSupply = maxSupply
+	reply.TotalStaked = totalStaked
+	reply.RewardsPerEpoch = rewardsPerEpoch
+	reply.EmissionAccount.Address = emissionAccount.Address.String()
+	reply.EmissionAccount.AccumulatedReward = emissionAccount.AccumulatedReward
+	reply.EpochTracker = epochTracker
+	return nil
+}
+
+type ValidatorsReply struct {
+	Validators []*emission.Validator `json:"validators"`
+}
+
+func (j *JSONRPCServer) AllValidators(req *http.Request, _ *struct{}, reply *ValidatorsReply) (err error) {
+	ctx, span := j.vm.Tracer().Start(req.Context(), "Server.AllValidators")
+	defer span.End()
+
+	validators := emissionTracker.GetAllValidators(ctx)
+	reply.Validators = validators
+	return nil
+}
+
+func (j *JSONRPCServer) StakedValidators(req *http.Request, _ *struct{}, reply *ValidatorsReply) (err error) {
+	_, span := j.vm.Tracer().Start(req.Context(), "Server.StakedValidators")
+	defer span.End()
+
+	validators := emissionTracker.GetStakedValidator(ids.EmptyNodeID)
+	reply.Validators = validators
+	return nil
+}
+
+type ValidatorStakeArgs struct {
+	NodeID ids.NodeID `json:"nodeID"`
+}
+
+type ValidatorStakeReply struct {
+	StakeStartBlock   uint64 `json:"stakeStartBlock"`   // Start block of the stake
+	StakeEndBlock     uint64 `json:"stakeEndBlock"`     // End block of the stake
+	StakedAmount      uint64 `json:"stakedAmount"`      // Amount of NAI staked
+	DelegationFeeRate uint64 `json:"delegationFeeRate"` // Delegation fee rate
+	RewardAddress     string `json:"rewardAddress"`     // Address to receive rewards
+	OwnerAddress      string `json:"ownerAddress"`      // Address of the owner who registered the validator
+}
+
+func (j *JSONRPCServer) ValidatorStake(req *http.Request, args *ValidatorStakeArgs, reply *ValidatorStakeReply) (err error) {
+	ctx, span := j.vm.Tracer().Start(req.Context(), "Server.ValidatorStake")
+	defer span.End()
+
+	exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, err := storage.GetRegisterValidatorStakeFromState(ctx, j.vm.ReadState, args.NodeID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrValidatorStakeNotFound
+	}
+
+	reply.StakeStartBlock = stakeStartBlock
+	reply.StakeEndBlock = stakeEndBlock
+	reply.StakedAmount = stakedAmount
+	reply.DelegationFeeRate = delegationFeeRate
+	reply.RewardAddress = rewardAddress.String()
+	reply.OwnerAddress = ownerAddress.String()
+	return nil
+}
+
+type UserStakeArgs struct {
+	Owner  string `json:"owner"`
+	NodeID string `json:"nodeID"`
+}
+
+type UserStakeReply struct {
+	StakeStartBlock uint64 `json:"stakeStartBlock"` // Start block of the stake
+	StakeEndBlock   uint64 `json:"stakeEndBlock"`   // End block of the stake
+	StakedAmount    uint64 `json:"stakedAmount"`    // Amount of NAI staked
+	RewardAddress   string `json:"rewardAddress"`   // Address to receive rewards
+	OwnerAddress    string `json:"ownerAddress"`    // Address of the owner who delegated
+}
+
+func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply *UserStakeReply) (err error) {
+	ctx, span := j.vm.Tracer().Start(req.Context(), "Server.UserStake")
+	defer span.End()
+
+	ownerID, err := codec.StringToAddress(args.Owner)
+	if err != nil {
+		return err
+	}
+	nodeID, err := ids.NodeIDFromString(args.NodeID)
+	if err != nil {
+		return err
+	}
+
+	exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, ownerAddress, err := storage.GetDelegateUserStakeFromState(ctx, j.vm.ReadState, ownerID, nodeID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrUserStakeNotFound
+	}
+
+	reply.StakeStartBlock = stakeStartBlock
+	reply.StakeEndBlock = stakeEndBlock
+	reply.StakedAmount = stakedAmount
+	reply.RewardAddress = rewardAddress.String()
+	reply.OwnerAddress = ownerAddress.String()
 	return nil
 }
 

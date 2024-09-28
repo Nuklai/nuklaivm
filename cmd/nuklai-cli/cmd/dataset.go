@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/actions"
@@ -231,41 +232,40 @@ var getDatasetCmd = &cobra.Command{
 var initiateContributeDatasetCmd = &cobra.Command{
 	Use: "initiate-contribute",
 	RunE: func(*cobra.Command, []string) error {
-		/* 		ctx := context.Background()
-		   		_, _, factory, cli, ncli, ws, err := handler.DefaultActor()
-		   		if err != nil {
-		   			return err
-		   		}
+		ctx := context.Background()
+		_, _, factory, cli, ncli, ws, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
 
-		   		// Select dataset ID to contribute to
-		   		datasetID, err := prompt.ID("datasetID")
-		   		if err != nil {
-		   			return err
-		   		}
+		// Select dataset ID to contribute to
+		datasetID, err := prompt.ID("datasetID")
+		if err != nil {
+			return err
+		}
 
-		   		// Add data identifier to dataset
-		   		dataIdentifier, err := prompt.String("dataIdentifier", 1, actions.MaxMetadataSize-actions.MaxTextSize)
-		   		if err != nil {
-		   			return err
-		   		}
+		// Add data identifier to dataset
+		dataIdentifier, err := prompt.String("dataIdentifier", 1, actions.MaxMetadataSize-actions.MaxTextSize)
+		if err != nil {
+			return err
+		}
 
-		   		// Confirm action
-		   		cont, err := prompt.Continue()
-		   		if !cont || err != nil {
-		   			return err
-		   		}
+		// Confirm action
+		cont, err := prompt.Continue()
+		if !cont || err != nil {
+			return err
+		}
 
-		   		// Generate transaction
-		   		_, _, err = sendAndWait(ctx, []chain.Action{&actions.InitiateContributeDataset{
-		   			Dataset:        datasetID,
-		   			DataLocation:   []byte("default"),
-		   			DataIdentifier: []byte(dataIdentifier),
-		   		}}, cli, ncli, ws, factory)
-		   		if err != nil {
-		   			return err
-		   		} */
-
-		return nil
+		// Generate transaction
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.InitiateContributeDataset{
+			DatasetID:      datasetID,
+			DataLocation:   []byte("default"),
+			DataIdentifier: []byte(dataIdentifier),
+		}}, cli, ncli, ws, factory)
+		if err != nil {
+			return err
+		}
+		return processResult(result)
 	},
 }
 
@@ -308,54 +308,49 @@ var getDataContributionPendingCmd = &cobra.Command{
 var completeContributeDatasetCmd = &cobra.Command{
 	Use: "complete-contribute",
 	RunE: func(*cobra.Command, []string) error {
-		/* 		ctx := context.Background()
-		   		_, _, factory, cli, ncli, ws, err := handler.DefaultActor()
-		   		if err != nil {
-		   			return err
-		   		}
+		ctx := context.Background()
+		_, _, factory, cli, ncli, ws, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
 
-		   		// Select dataset ID
-		   		datasetID, err := prompt.ID("datasetID")
-		   		if err != nil {
-		   			return err
-		   		}
+		// Select dataset ID
+		datasetID, err := prompt.ID("datasetID")
+		if err != nil {
+			return err
+		}
 
-		   		// Select the contributor
-		   		contributor, err := prompt.Address("contributor")
-		   		if err != nil {
-		   			return err
-		   		}
+		// Select the contributor
+		contributor, err := prompt.Address("contributor")
+		if err != nil {
+			return err
+		}
 
-		   		// Choose unique id for the NFT to be minted
-		   		uniqueIDStr, err := prompt.String("unique nft #", 1, actions.MaxTextSize)
-		   		if err != nil {
-		   			return err
-		   		}
-		   		uniqueID, err := strconv.ParseUint(uniqueIDStr, 10, 64)
-		   		if err != nil {
-		   			return err
-		   		}
+		// Choose unique id for the NFT to be minted
+		uniqueIDStr, err := prompt.String("unique nft #", 1, actions.MaxTextSize)
+		if err != nil {
+			return err
+		}
+		uniqueID, err := strconv.ParseUint(uniqueIDStr, 10, 64)
+		if err != nil {
+			return err
+		}
 
-		   		// Confirm action
-		   		cont, err := prompt.Continue()
-		   		if !cont || err != nil {
-		   			return err
-		   		}
+		// Confirm action
+		cont, err := prompt.Continue()
+		if !cont || err != nil {
+			return err
+		}
 
-		   		// Generate transaction
-		   		_, _, err = sendAndWait(ctx, []chain.Action{&actions.CompleteContributeDataset{
-		   			Dataset:     datasetID,
-		   			Contributor: contributor,
-		   			UniqueNFTID: uniqueID,
-		   		}}, cli, ncli, ws, factory)
-		   		if err != nil {
-		   			return err
-		   		}
-
-		   		// Print nftID
-		   		nftID := nchain.GenerateIDWithIndex(datasetID, uniqueID)
-		   		hutils.Outf("{{green}}nftID:{{/}} %s\n", nftID) */
-
-		return nil
+		// Generate transaction
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.CompleteContributeDataset{
+			DatasetID:                 datasetID,
+			Contributor:               contributor,
+			UniqueNFTIDForContributor: uniqueID,
+		}}, cli, ncli, ws, factory)
+		if err != nil {
+			return err
+		}
+		return processResult(result)
 	},
 }

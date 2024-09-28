@@ -26,12 +26,12 @@ import (
 )
 
 var (
-	ActionParser      *codec.TypeParser[chain.Action]
-	AuthParser        *codec.TypeParser[chain.Auth]
-	OutputParser      *codec.TypeParser[codec.Typed]
-	emissionBalancer  emission.Tracker
-	nuklaiMarketplace marketplace.Hub
-	wasmRuntime       *runtime.WasmRuntime
+	ActionParser    *codec.TypeParser[chain.Action]
+	AuthParser      *codec.TypeParser[chain.Auth]
+	OutputParser    *codec.TypeParser[codec.Typed]
+	emissionTracker emission.Tracker
+	marketplaceHub  marketplace.Hub
+	wasmRuntime     *runtime.WasmRuntime
 )
 
 // Setup types
@@ -54,8 +54,16 @@ func init() {
 		ActionParser.Register(&actions.MintAssetNFT{}, actions.UnmarshalMintAssetNFT),
 		ActionParser.Register(&actions.BurnAssetFT{}, actions.UnmarshalBurnAssetFT),
 		ActionParser.Register(&actions.BurnAssetNFT{}, actions.UnmarshalBurnAssetNFT),
+		ActionParser.Register(&actions.RegisterValidatorStake{}, actions.UnmarshalRegisterValidatorStake),
+		ActionParser.Register(&actions.WithdrawValidatorStake{}, actions.UnmarshalWithdrawValidatorStake),
+		ActionParser.Register(&actions.ClaimValidatorStakeRewards{}, actions.UnmarshalClaimValidatorStakeRewards),
+		ActionParser.Register(&actions.DelegateUserStake{}, actions.UnmarshalDelegateUserStake),
+		ActionParser.Register(&actions.UndelegateUserStake{}, actions.UnmarshalUndelegateUserStake),
+		ActionParser.Register(&actions.ClaimDelegationStakeRewards{}, actions.UnmarshalClaimDelegationStakeRewards),
 		ActionParser.Register(&actions.CreateDataset{}, actions.UnmarshalCreateDataset),
 		ActionParser.Register(&actions.UpdateDataset{}, actions.UnmarshalUpdateDataset),
+		ActionParser.Register(&actions.InitiateContributeDataset{}, actions.UnmarshalInitiateContributeDataset),
+		ActionParser.Register(&actions.CompleteContributeDataset{}, actions.UnmarshalCompleteContributeDataset),
 		ActionParser.Register(&actions.PublishDatasetMarketplace{}, actions.UnmarshalPublishDatasetMarketplace),
 		ActionParser.Register(&actions.SubscribeDatasetMarketplace{}, actions.UnmarshalSubscribeDatasetMarketplace),
 		ActionParser.Register(&actions.ClaimMarketplacePayment{}, actions.UnmarshalClaimMarketplacePayment),
@@ -75,8 +83,16 @@ func init() {
 		OutputParser.Register(&actions.MintAssetNFTResult{}, actions.UnmarshalMintAssetNFTResult),
 		OutputParser.Register(&actions.BurnAssetFTResult{}, actions.UnmarshalBurnAssetFTResult),
 		OutputParser.Register(&actions.BurnAssetNFTResult{}, actions.UnmarshalBurnAssetNFTResult),
+		OutputParser.Register(&actions.RegisterValidatorStakeResult{}, actions.UnmarshalRegisterValidatorStakeResult),
+		OutputParser.Register(&actions.WithdrawValidatorStakeResult{}, actions.UnmarshalWithdrawValidatorStakeResult),
+		OutputParser.Register(&actions.ClaimValidatorStakeRewardsResult{}, actions.UnmarshalClaimValidatorStakeRewardsResult),
+		OutputParser.Register(&actions.DelegateUserStakeResult{}, actions.UnmarshalDelegateUserStakeResult),
+		OutputParser.Register(&actions.UndelegateUserStakeResult{}, actions.UnmarshalUndelegateUserStakeResult),
+		OutputParser.Register(&actions.ClaimDelegationStakeRewardsResult{}, actions.UnmarshalClaimDelegationStakeRewardsResult),
 		OutputParser.Register(&actions.CreateDatasetResult{}, actions.UnmarshalCreateDatasetResult),
 		OutputParser.Register(&actions.UpdateDatasetResult{}, actions.UnmarshalUpdateDatasetResult),
+		OutputParser.Register(&actions.InitiateContributeDatasetResult{}, actions.UnmarshalInitiateContributeDatasetResult),
+		OutputParser.Register(&actions.CompleteContributeDatasetResult{}, actions.UnmarshalCompleteContributeDatasetResult),
 		OutputParser.Register(&actions.PublishDatasetMarketplaceResult{}, actions.UnmarshalPublishDatasetMarketplaceResult),
 		OutputParser.Register(&actions.SubscribeDatasetMarketplaceResult{}, actions.UnmarshalSubscribeDatasetMarketplaceResult),
 		OutputParser.Register(&actions.ClaimMarketplacePaymentResult{}, actions.UnmarshalClaimMarketplacePaymentResult),

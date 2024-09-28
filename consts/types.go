@@ -15,13 +15,19 @@ const (
 	MintAssetNFTID                uint8 = 7
 	BurnAssetFTID                 uint8 = 8
 	BurnAssetNFTID                uint8 = 9
-	CreateDatasetID               uint8 = 10
-	UpdateDatasetID               uint8 = 11
-	InitiateContributeDatasetID   uint8 = 12
-	CompleteContributeDatasetID   uint8 = 13
-	PublishDatasetMarketplaceID   uint8 = 14
-	SubscribeDatasetMarketplaceID uint8 = 15
-	ClaimMarketplacePaymentID     uint8 = 16
+	RegisterValidatorStakeID      uint8 = 10
+	WithdrawValidatorStakeID      uint8 = 11
+	ClaimValidatorStakeRewardsID  uint8 = 12
+	DelegateUserStakeID           uint8 = 13
+	UndelegateUserStakeID         uint8 = 14
+	ClaimDelegationStakeRewards   uint8 = 15
+	CreateDatasetID               uint8 = 16
+	UpdateDatasetID               uint8 = 17
+	InitiateContributeDatasetID   uint8 = 18
+	CompleteContributeDatasetID   uint8 = 19
+	PublishDatasetMarketplaceID   uint8 = 20
+	SubscribeDatasetMarketplaceID uint8 = 21
+	ClaimMarketplacePaymentID     uint8 = 22
 
 	// Asset TypeIDs
 	AssetFungibleTokenID    uint8 = 0

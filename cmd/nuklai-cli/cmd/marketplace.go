@@ -6,7 +6,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -14,10 +13,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/hypersdk/chain"
+	"github.com/ava-labs/hypersdk/cli/prompt"
 	"github.com/ava-labs/hypersdk/consts"
 
 	hutils "github.com/ava-labs/hypersdk/utils"
-	nchain "github.com/nuklai/nuklaivm/chain"
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 var marketplaceCmd = &cobra.Command{
@@ -31,23 +31,19 @@ var publishDatasetMarketplaceCmd = &cobra.Command{
 	Use: "publish",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
+		_, priv, factory, cli, ncli, ws, err := handler.DefaultActor()
 		if err != nil {
 			return err
 		}
 
 		// Select dataset ID
-		datasetIDStr, err := handler.Root().PromptString("datasetID", 1, consts.MaxInt)
-		if err != nil {
-			return err
-		}
-		datasetID, err := ids.FromString(datasetIDStr)
+		datasetID, err := prompt.ID("datasetID")
 		if err != nil {
 			return err
 		}
 
 		// Select assetForPayment ID
-		assetForPayment, err := handler.Root().PromptAsset("assetForPayment", true)
+		assetForPayment, err := prompt.Asset("assetForPayment", nconsts.Symbol, true)
 		if err != nil {
 			return err
 		}
@@ -58,32 +54,27 @@ var publishDatasetMarketplaceCmd = &cobra.Command{
 		}
 
 		// Get priceAmountPerBlock
-		priceAmountPerBlock, err := handler.Root().PromptAmount("priceAmountPerBlock", decimals, balance, nil)
+		priceAmountPerBlock, err := prompt.Amount("priceAmountPerBlock", decimals, balance, nil)
 		if err != nil {
 			return err
 		}
 
 		// Confirm action
-		cont, err := handler.Root().PromptContinue()
+		cont, err := prompt.Continue()
 		if !cont || err != nil {
 			return err
 		}
 
 		// Generate transaction
-		txID, err := sendAndWait(ctx, []chain.Action{&actions.PublishDatasetMarketplace{
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.PublishDatasetMarketplace{
 			DatasetID:   datasetID,
 			BaseAssetID: assetForPayment,
 			BasePrice:   priceAmountPerBlock,
-		}}, hcli, hws, ncli, factory, true)
+		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err
 		}
-
-		// Print assetID for the marketplace token
-		assetID := chain.CreateActionID(txID, 0)
-		hutils.Outf("{{green}}assetID:{{/}} %s\n", assetID)
-
-		return nil
+		return processResult(result)
 	},
 }
 
@@ -91,20 +82,17 @@ var subscribeDatasetMarketplaceCmd = &cobra.Command{
 	Use: "subscribe",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, priv, factory, hcli, hws, ncli, err := handler.DefaultActor()
+		_, priv, factory, cli, ncli, ws, err := handler.DefaultActor()
 		if err != nil {
 			return err
 		}
 
 		// Select dataset ID
-		datasetIDStr, err := handler.Root().PromptString("datasetID", 1, consts.MaxInt)
+		datasetID, err := prompt.ID("datasetID")
 		if err != nil {
 			return err
 		}
-		datasetID, err := ids.FromString(datasetIDStr)
-		if err != nil {
-			return err
-		}
+
 		// Get dataset info
 		hutils.Outf("Retrieving dataset info for datasetID: %s\n", datasetID)
 		_, _, _, _, _, _, _, _, saleID, baseAsset, basePrice, _, _, _, _, _, err := handler.GetDatasetInfo(ctx, ncli, datasetID)
@@ -117,7 +105,7 @@ var subscribeDatasetMarketplaceCmd = &cobra.Command{
 		}
 
 		// Select assetForPayment ID
-		assetForPayment, err := handler.Root().PromptAsset("assetForPayment", true)
+		assetForPayment, err := prompt.Asset("assetForPayment", nconsts.Symbol, true)
 		if err != nil {
 			return err
 		}
@@ -126,11 +114,7 @@ var subscribeDatasetMarketplaceCmd = &cobra.Command{
 		}
 
 		// Get numBlocksToSubscribe
-		numBlocksToSubscribeStr, err := handler.Root().PromptString("numBlocksToSubscribe", 1, actions.MaxTextSize)
-		if err != nil {
-			return err
-		}
-		numBlocksToSubscribe, err := strconv.ParseUint(numBlocksToSubscribeStr, 10, 64)
+		numBlocksToSubscribe, err := prompt.Int("numBlocksToSubscribe", consts.MaxInt)
 		if err != nil {
 			return err
 		}
@@ -140,32 +124,27 @@ var subscribeDatasetMarketplaceCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		if balance < basePrice*numBlocksToSubscribe {
-			return fmt.Errorf("insufficient balance. Required: %d", basePrice*numBlocksToSubscribe)
+		if balance < basePrice*uint64(numBlocksToSubscribe) {
+			return fmt.Errorf("insufficient balance. Required: %d", basePrice*uint64(numBlocksToSubscribe))
 		}
 
 		// Confirm action
-		cont, err := handler.Root().PromptContinue()
+		cont, err := prompt.Continue()
 		if !cont || err != nil {
 			return err
 		}
 
 		// Generate transaction
-		_, err = sendAndWait(ctx, []chain.Action{&actions.SubscribeDatasetMarketplace{
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.SubscribeDatasetMarketplace{
 			DatasetID:            datasetID,
 			MarketplaceAssetID:   marketplaceID,
 			AssetForPayment:      assetForPayment,
-			NumBlocksToSubscribe: numBlocksToSubscribe,
-		}}, hcli, hws, ncli, factory, true)
+			NumBlocksToSubscribe: uint64(numBlocksToSubscribe),
+		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err
 		}
-
-		// Print nftID that the user received for the subscription
-		nftID := nchain.GenerateIDWithAddress(marketplaceID, priv.Address)
-		hutils.Outf("{{green}}nftID:{{/}} %s\n", nftID)
-
-		return nil
+		return processResult(result)
 	},
 }
 
@@ -181,11 +160,7 @@ var infoDatasetMarketplaceCmd = &cobra.Command{
 		ncli := nclients[0]
 
 		// Select dataset ID
-		datasetIDStr, err := handler.Root().PromptString("datasetID", 1, consts.MaxInt)
-		if err != nil {
-			return err
-		}
-		datasetID, err := ids.FromString(datasetIDStr)
+		datasetID, err := prompt.ID("datasetID")
 		if err != nil {
 			return err
 		}
@@ -203,17 +178,13 @@ var claimPaymentMarketplaceCmd = &cobra.Command{
 	Use: "claim-payment",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, _, factory, hcli, hws, ncli, err := handler.DefaultActor()
+		_, _, factory, cli, ncli, ws, err := handler.DefaultActor()
 		if err != nil {
 			return err
 		}
 
 		// Select dataset ID
-		datasetIDStr, err := handler.Root().PromptString("datasetID", 1, consts.MaxInt)
-		if err != nil {
-			return err
-		}
-		datasetID, err := ids.FromString(datasetIDStr)
+		datasetID, err := prompt.ID("datasetID")
 		if err != nil {
 			return err
 		}
@@ -231,27 +202,26 @@ var claimPaymentMarketplaceCmd = &cobra.Command{
 		}
 
 		// Select assetForPayment ID
-		assetForPayment, err := ids.FromString((baseAsset))
+		assetForPayment, err := ids.FromString(baseAsset)
 		if err != nil {
 			return err
 		}
 
 		// Confirm action
-		cont, err := handler.Root().PromptContinue()
+		cont, err := prompt.Continue()
 		if !cont || err != nil {
 			return err
 		}
 
 		// Generate transaction
-		_, err = sendAndWait(ctx, []chain.Action{&actions.ClaimMarketplacePayment{
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.ClaimMarketplacePayment{
 			DatasetID:          datasetID,
 			MarketplaceAssetID: marketplaceID,
 			AssetForPayment:    assetForPayment,
-		}}, hcli, hws, ncli, factory, true)
+		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err
 		}
-
-		return nil
+		return processResult(result)
 	},
 }

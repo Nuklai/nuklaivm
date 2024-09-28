@@ -106,6 +106,7 @@ func handleTx(tx *chain.Transaction, result *chain.Result) {
 			summaryStr = fmt.Sprintf("assetID: %s %d -> 🔥\n", act.AssetID, act.Value)
 		case *actions.BurnAssetNFT:
 			summaryStr = fmt.Sprintf("assetID: %s nftID: %s -> 🔥\n", act.AssetID, act.NftID)
+		// TODO: case *actions.RegisterValidatorStake:
 		case *actions.CreateDataset:
 			datasetID := tx.ID()
 			if act.AssetID != ids.Empty {
@@ -114,6 +115,16 @@ func handleTx(tx *chain.Transaction, result *chain.Result) {
 			summaryStr = fmt.Sprintf("datasetID: %s ParentNFTID: %s name: %s description: %s\n", datasetID, nchain.GenerateIDWithIndex(datasetID, 0), act.Name, act.Description)
 		case *actions.UpdateDataset:
 			summaryStr = fmt.Sprintf("datasetID: %s updated\n", act.DatasetID)
+		case *actions.InitiateContributeDataset:
+			summaryStr = fmt.Sprintf("datasetID: %s dataLocation: %s dataIdentifier: %s\n", act.DatasetID, act.DataLocation, act.DataIdentifier)
+		case *actions.CompleteContributeDataset:
+			summaryStr = fmt.Sprintf("datasetID: %s contributor: %s uniqueNFTIDForContributor: %d\n", act.DatasetID, act.Contributor, act.UniqueNFTIDForContributor)
+		case *actions.PublishDatasetMarketplace:
+			summaryStr = fmt.Sprintf("datasetID: %s baseAssetID: %s basePrice: %d\n", act.DatasetID, act.BaseAssetID, act.BasePrice)
+		case *actions.SubscribeDatasetMarketplace:
+			summaryStr = fmt.Sprintf("datasetID: %s marketplaceAssetID: %s assetForPayment: %s numBlocksToSubscribe: %d\n", act.DatasetID, act.MarketplaceAssetID, act.AssetForPayment, act.NumBlocksToSubscribe)
+		case *actions.ClaimMarketplacePayment:
+			summaryStr = fmt.Sprintf("datasetID: %s marketplaceAssetID: %s assetForPayment: %s\n", act.DatasetID, act.MarketplaceAssetID, act.AssetForPayment)
 		}
 		utils.Outf(
 			"%s {{yellow}}%s{{/}} {{yellow}}actor:{{/}} %s {{yellow}}summary (%s):{{/}} [%s] {{yellow}}fee (max %.2f%%):{{/}} %s %s {{yellow}}consumed:{{/}} [%s]\n",

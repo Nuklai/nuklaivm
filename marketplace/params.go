@@ -4,23 +4,28 @@
 package marketplace
 
 import (
+	"github.com/ava-labs/avalanchego/ids"
 	hutils "github.com/ava-labs/hypersdk/utils"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 type DatasetConfig struct {
+	// Collateral Asset ID for data contribution
+	CollateralAssetIDForDataContribution ids.ID `json:"collateralAssetIDForDataContribution"`
+
 	// Collateral needed to start the contribution process to the dataset
-	CollateralForDataContribution uint64 `json:"collateralForDataContribution"`
+	CollateralAmountForDataContribution uint64 `json:"collateralAmountForDataContribution"`
 
 	// Minimum amount of blocks to subscribe to
 	MinBlocksToSubscribe uint64 `json:"minBlocksToSubscribe"`
 }
 
 func GetDatasetConfig() DatasetConfig {
-	collateralForDataContribution, _ := hutils.ParseBalance("1", nconsts.Decimals) // 1 NAI
+	collateralAmountForDataContribution, _ := hutils.ParseBalance("1", nconsts.Decimals) // 1 NAI
 
 	return DatasetConfig{
-		CollateralForDataContribution: collateralForDataContribution,
-		MinBlocksToSubscribe:          5, // TODO: 720(1 hour) for production
+		CollateralAssetIDForDataContribution: ids.Empty, // Using NAI as collateral
+		CollateralAmountForDataContribution:  collateralAmountForDataContribution,
+		MinBlocksToSubscribe:                 5, // TODO: 720(1 hour) for production
 	}
 }

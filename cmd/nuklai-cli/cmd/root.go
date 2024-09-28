@@ -51,7 +51,9 @@ func init() {
 		chainCmd,
 		actionCmd,
 		assetCmd,
+		emissionCmd,
 		datasetCmd,
+		marketplaceCmd,
 		spamCmd,
 		prometheusCmd,
 	)
@@ -151,6 +153,13 @@ func init() {
 		deployCmd,
 	)
 
+	// emission
+	emissionCmd.AddCommand(
+		emissionInfoCmd,
+		emissionAllValidatorsCmd,
+		emissionStakedValidatorsCmd,
+	)
+
 	// asset
 	assetCmd.AddCommand(
 		createAssetCmd,
@@ -170,6 +179,14 @@ func init() {
 		initiateContributeDatasetCmd,
 		getDataContributionPendingCmd,
 		completeContributeDatasetCmd,
+	)
+
+	// marketplace
+	marketplaceCmd.AddCommand(
+		publishDatasetMarketplaceCmd,
+		subscribeDatasetMarketplaceCmd,
+		infoDatasetMarketplaceCmd,
+		claimPaymentMarketplaceCmd,
 	)
 
 	// spam

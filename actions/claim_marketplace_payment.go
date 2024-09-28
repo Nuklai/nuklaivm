@@ -184,7 +184,13 @@ func (c *ClaimMarketplacePayment) Execute(
 		return nil, err
 	}
 
-	return nil, nil
+	return &ClaimMarketplacePaymentResult{
+		LastClaimedBlock:  lastClaimedBlock,
+		PaymentClaimed:    paymentClaimed,
+		PaymentRemaining:  paymentRemaining,
+		DistributedReward: totalAccumulatedReward,
+		DistributedTo:     actor,
+	}, nil
 }
 
 func (*ClaimMarketplacePayment) ComputeUnits(chain.Rules) uint64 {

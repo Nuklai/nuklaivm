@@ -181,8 +181,8 @@ func (r *PublishDatasetMarketplaceResult) Marshal(p *codec.Packer) {
 func UnmarshalPublishDatasetMarketplaceResult(p *codec.Packer) (codec.Typed, error) {
 	var result PublishDatasetMarketplaceResult
 	p.UnpackID(true, &result.MarketplaceAssetID)
-	p.UnpackID(true, &result.AssetForPayment)
-	result.DatasetPricePerBlock = p.UnpackUint64(true)
+	p.UnpackID(false, &result.AssetForPayment)
+	result.DatasetPricePerBlock = p.UnpackUint64(false)
 	p.UnpackAddress(&result.Publisher)
 	return &result, p.Err()
 }

@@ -13,9 +13,11 @@ import (
 
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/storage"
 
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/api/jsonrpc"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
@@ -217,8 +219,83 @@ func (cli *JSONRPCClient) DatasetInfoFromMarketplace(ctx context.Context, datase
 	if err != nil {
 		return []DataContribution{}, err
 	}
-
 	return resp.Contributions, nil
+}
+
+func (cli *JSONRPCClient) EmissionInfo(ctx context.Context) (uint64, uint64, uint64, uint64, uint64, EmissionAccount, emission.EpochTracker, error) {
+	resp := new(EmissionReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"emissionInfo",
+		nil,
+		resp,
+	)
+	if err != nil {
+		return 0, 0, 0, 0, 0, EmissionAccount{}, emission.EpochTracker{}, err
+	}
+
+	return resp.CurrentBlockHeight, resp.TotalSupply, resp.MaxSupply, resp.TotalStaked, resp.RewardsPerEpoch, resp.EmissionAccount, resp.EpochTracker, err
+}
+
+func (cli *JSONRPCClient) AllValidators(ctx context.Context) ([]*emission.Validator, error) {
+	resp := new(ValidatorsReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"allValidators",
+		nil,
+		resp,
+	)
+	if err != nil {
+		return []*emission.Validator{}, err
+	}
+	return resp.Validators, err
+}
+
+func (cli *JSONRPCClient) StakedValidators(ctx context.Context) ([]*emission.Validator, error) {
+	resp := new(ValidatorsReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"stakedValidators",
+		nil,
+		resp,
+	)
+	if err != nil {
+		return []*emission.Validator{}, err
+	}
+	return resp.Validators, err
+}
+
+func (cli *JSONRPCClient) ValidatorStake(ctx context.Context, nodeID ids.NodeID) (uint64, uint64, uint64, uint64, string, string, error) {
+	resp := new(ValidatorStakeReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"validatorStake",
+		&ValidatorStakeArgs{
+			NodeID: nodeID,
+		},
+		resp,
+	)
+	if err != nil {
+		return 0, 0, 0, 0, "", "", err
+	}
+	return resp.StakeStartBlock, resp.StakeEndBlock, resp.StakedAmount, resp.DelegationFeeRate, resp.RewardAddress, resp.OwnerAddress, err
+}
+
+func (cli *JSONRPCClient) UserStake(ctx context.Context, owner string, nodeID string) (uint64, uint64, uint64, string, string, error) {
+	resp := new(UserStakeReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"userStake",
+		&UserStakeArgs{
+			Owner:  owner,
+			NodeID: nodeID,
+		},
+		resp,
+	)
+	if err != nil {
+		return 0, 0, 0, "", "", err
+	}
+	return resp.StakeStartBlock, resp.StakeEndBlock, resp.StakedAmount, resp.RewardAddress, resp.OwnerAddress, err
 }
 
 func (cli *JSONRPCClient) WaitForBalance(

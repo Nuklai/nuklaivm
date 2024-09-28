@@ -69,7 +69,7 @@ func WithEmissionBalancer() vm.Option {
 			return err
 		}
 
-		emissionBalancer = emission.NewEmission(v.Logger(), v, totalSupply, ngenesis.EmissionBalancer.MaxSupply, emissionAddress)
+		emissionTracker = emission.NewEmission(v.Logger(), v, totalSupply, ngenesis.EmissionBalancer.MaxSupply, emissionAddress)
 		return nil
 	})
 }
@@ -79,7 +79,7 @@ func WithNuklaiMarketplace() vm.Option {
 		if !config.Enabled {
 			return nil
 		}
-		nuklaiMarketplace = marketplace.NewMarketplace(v.Logger(), v)
+		marketplaceHub = marketplace.NewMarketplace(v.Logger(), v)
 		return nil
 	})
 }

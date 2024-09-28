@@ -5,9 +5,11 @@ package cmd
 
 import (
 	"context"
+	"encoding/base64"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/vm"
 
 	"github.com/ava-labs/hypersdk/api/jsonrpc"
@@ -295,6 +297,137 @@ func (*Handler) GetAssetNFTInfo(
 	return true, collectionID, uniqueID, uri, metadata, ownerAddress, nil
 }
 
+func (*Handler) GetEmissionInfo(
+	ctx context.Context,
+	cli *vm.JSONRPCClient,
+) (uint64, uint64, uint64, uint64, uint64, uint64, string, uint64, error) {
+	currentBlockHeight, totalSupply, maxSupply, totalStaked, rewardsPerEpoch, emissionAccount, epochTracker, err := cli.EmissionInfo(ctx)
+	if err != nil {
+		return 0, 0, 0, 0, 0, 0, "", 0, err
+	}
+
+	utils.Outf(
+		"{{blue}}emission info: {{/}}\nCurrentBlockHeight=%d TotalSupply=%d MaxSupply=%d TotalStaked=%d RewardsPerEpoch=%d NumBlocksInEpoch=%d EmissionAddress=%s EmissionAccumulatedReward=%d\n",
+		currentBlockHeight,
+		totalSupply,
+		maxSupply,
+		totalStaked,
+		rewardsPerEpoch,
+		epochTracker.EpochLength,
+		emissionAccount.Address,
+		emissionAccount.AccumulatedReward,
+	)
+	return currentBlockHeight, totalSupply, maxSupply, totalStaked, rewardsPerEpoch, epochTracker.EpochLength, emissionAccount.Address, emissionAccount.AccumulatedReward, err
+}
+
+func (*Handler) GetAllValidators(
+	ctx context.Context,
+	cli *vm.JSONRPCClient,
+) ([]*emission.Validator, error) {
+	validators, err := cli.AllValidators(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for index, validator := range validators {
+		publicKey, err := bls.PublicKeyFromBytes(validator.PublicKey)
+		if err != nil {
+			return nil, err
+		}
+		utils.Outf(
+			"{{blue}}validator %d:{{/}} NodeID=%s PublicKey=%s StakedAmount=%d AccumulatedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d AccumulatedDelegatedReward=%d\n",
+			index,
+			validator.NodeID,
+			base64.StdEncoding.EncodeToString(publicKey.Compress()),
+			validator.StakedAmount,
+			validator.AccumulatedStakedReward,
+			validator.DelegationFeeRate,
+			validator.DelegatedAmount,
+			validator.AccumulatedDelegatedReward,
+		)
+	}
+	return validators, nil
+}
+
+func (*Handler) GetStakedValidators(
+	ctx context.Context,
+	cli *vm.JSONRPCClient,
+) ([]*emission.Validator, error) {
+	validators, err := cli.StakedValidators(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for index, validator := range validators {
+		publicKey, err := bls.PublicKeyFromBytes(validator.PublicKey)
+		if err != nil {
+			return nil, err
+		}
+		utils.Outf(
+			"{{blue}}validator %d:{{/}} NodeID=%s PublicKey=%s Active=%t StakedAmount=%d AccumulatedStakedReward=%d DelegationFeeRate=%f DelegatedAmount=%d AccumulatedDelegatedReward=%d\n",
+			index,
+			validator.NodeID,
+			base64.StdEncoding.EncodeToString(publicKey.Compress()),
+			validator.IsActive,
+			validator.StakedAmount,
+			validator.AccumulatedStakedReward,
+			validator.DelegationFeeRate,
+			validator.DelegatedAmount,
+			validator.AccumulatedDelegatedReward,
+		)
+	}
+	return validators, nil
+}
+
+func (*Handler) GetValidatorStake(
+	ctx context.Context,
+	cli *vm.JSONRPCClient,
+	nodeID ids.NodeID,
+) (uint64, uint64, uint64, uint64, string, string, error) {
+	stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, err := cli.ValidatorStake(ctx, nodeID)
+	if err != nil {
+		return 0, 0, 0, 0, "", "", err
+	}
+
+	utils.Outf(
+		"{{blue}}validator stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d DelegationFeeRate=%d RewardAddress=%s OwnerAddress=%s\n",
+		stakeStartBlock,
+		stakeEndBlock,
+		stakedAmount,
+		delegationFeeRate,
+		rewardAddress,
+		ownerAddress,
+	)
+	return stakeStartBlock,
+		stakeEndBlock,
+		stakedAmount,
+		delegationFeeRate,
+		rewardAddress,
+		ownerAddress,
+		err
+}
+
+func (*Handler) GetUserStake(ctx context.Context,
+	cli *vm.JSONRPCClient, owner codec.Address, nodeID ids.NodeID,
+) (uint64, uint64, uint64, string, string, error) {
+	stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, ownerAddress, err := cli.UserStake(ctx, owner.String(), nodeID.String())
+	if err != nil {
+		return 0, 0, 0, "", "", err
+	}
+	utils.Outf(
+		"{{blue}}user stake: {{/}}\nStakeStartBlock=%d StakeEndBlock=%d StakedAmount=%d RewardAddress=%s OwnerAddress=%s\n",
+		stakeStartBlock,
+		stakeEndBlock,
+		stakedAmount,
+		rewardAddress,
+		ownerAddress,
+	)
+	return stakeStartBlock,
+		stakeEndBlock,
+		stakedAmount,
+		rewardAddress,
+		ownerAddress,
+		err
+}
+
 func (*Handler) GetDatasetInfo(
 	ctx context.Context,
 	cli *vm.JSONRPCClient,
@@ -380,7 +513,7 @@ func (*Handler) GetDatasetInfoFromMarketplace(
 		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
 	}
 	utils.Outf(
-		"{{blue}}dataset info from marketplace: {{/}}\nDatasetName=%s DatasetDescription=%s IsCommunityDataset=%t SaleID=%s AssetForPayment=%s PricePerBlock=%d DatasetOwner=%s\n{{blue}}marketplace asset info: {{/}}\nAssetType=%s AssetName=%s AssetSymbol=%s AssetURI=%s TotalSupply=%d MaxSupply=%d Owner=%s\nAssetMetadata=%#v\n",
+		"{{blue}}dataset info from marketplace: {{/}}\nDatasetName=%s DatasetDescription=%s IsCommunityDataset=%t MarketplaceAssetID=%s AssetForPayment=%s PricePerBlock=%d DatasetOwner=%s\n{{blue}}marketplace asset info: {{/}}\nAssetType=%s AssetName=%s AssetSymbol=%s AssetURI=%s TotalSupply=%d MaxSupply=%d Owner=%s\nAssetMetadata=%#v\n",
 		datasetName,
 		description,
 		isCommunityDataset,
