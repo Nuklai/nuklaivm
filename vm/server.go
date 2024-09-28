@@ -243,7 +243,6 @@ type DataContributionPendingReply struct {
 }
 
 func (j *JSONRPCServer) DataContributionPending(req *http.Request, args *DatasetArgs, reply *DataContributionPendingReply) (err error) {
-
 	_, span := j.vm.Tracer().Start(req.Context(), "Server.DataContributionPending")
 	defer span.End()
 
