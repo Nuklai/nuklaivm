@@ -84,7 +84,7 @@ func init() {
 		OutputParser.Register(&actions.BurnAssetFTResult{}, actions.UnmarshalBurnAssetFTResult),
 		OutputParser.Register(&actions.BurnAssetNFTResult{}, actions.UnmarshalBurnAssetNFTResult),
 		OutputParser.Register(&actions.RegisterValidatorStakeResult{}, actions.UnmarshalRegisterValidatorStakeResult),
-		OutputParser.Register(&actions.WithdrawValidatorStakeResult{}, actions.UnmarshalWithdrawValidatorStakeResult),
+		OutputParser.Register(&actions.UnstakeResult{}, actions.UnmarshalWithdrawValidatorStakeResult),
 		OutputParser.Register(&actions.ClaimValidatorStakeRewardsResult{}, actions.UnmarshalClaimValidatorStakeRewardsResult),
 		OutputParser.Register(&actions.DelegateUserStakeResult{}, actions.UnmarshalDelegateUserStakeResult),
 		OutputParser.Register(&actions.UndelegateUserStakeResult{}, actions.UnmarshalUndelegateUserStakeResult),

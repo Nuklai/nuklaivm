@@ -91,7 +91,7 @@ func (u *WithdrawValidatorStake) Execute(
 		return nil, err
 	}
 
-	return &WithdrawValidatorStakeResult{
+	return &UnstakeResult{
 		UnstakedAmount: stakedAmount,
 		RewardAmount:   rewardAmount,
 	}, nil
@@ -129,31 +129,46 @@ func UnmarshalWithdrawValidatorStake(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*WithdrawValidatorStakeResult)(nil)
-	_ chain.Marshaler = (*WithdrawValidatorStakeResult)(nil)
+	_ codec.Typed     = (*UnstakeResult)(nil)
+	_ chain.Marshaler = (*UnstakeResult)(nil)
 )
 
-type WithdrawValidatorStakeResult struct {
-	UnstakedAmount uint64 `serialize:"true" json:"unstaked_amount"`
-	RewardAmount   uint64 `serialize:"true" json:"reward_amount"`
+type UnstakeResult struct {
+	StakeStartBlock      uint64        `serialize:"true" json:"stake_start_block"`
+	StakeEndBlock        uint64        `serialize:"true" json:"stake_end_block"`
+	UnstakedAmount       uint64        `serialize:"true" json:"unstaked_amount"`
+	RewardAmount         uint64        `serialize:"true" json:"reward_amount"`
+	BalanceBeforeUnstake uint64        `serialize:"true" json:"balance_before_unstake"`
+	BalanceAfterUnstake  uint64        `serialize:"true" json:"balance_after_unstake"`
+	DistributedTo        codec.Address `serialize:"true" json:"distributed_to"`
 }
 
-func (*WithdrawValidatorStakeResult) GetTypeID() uint8 {
+func (*UnstakeResult) GetTypeID() uint8 {
 	return nconsts.WithdrawValidatorStakeID
 }
 
-func (*WithdrawValidatorStakeResult) Size() int {
-	return 2 * consts.Uint64Len
+func (*UnstakeResult) Size() int {
+	return 6*consts.Uint64Len + codec.AddressLen
 }
 
-func (r *WithdrawValidatorStakeResult) Marshal(p *codec.Packer) {
+func (r *UnstakeResult) Marshal(p *codec.Packer) {
+	p.PackUint64(r.StakeStartBlock)
+	p.PackUint64(r.StakeEndBlock)
 	p.PackUint64(r.UnstakedAmount)
 	p.PackUint64(r.RewardAmount)
+	p.PackUint64(r.BalanceBeforeUnstake)
+	p.PackUint64(r.BalanceAfterUnstake)
+	p.PackAddress(r.DistributedTo)
 }
 
 func UnmarshalWithdrawValidatorStakeResult(p *codec.Packer) (codec.Typed, error) {
-	var result WithdrawValidatorStakeResult
-	result.UnstakedAmount = p.UnpackUint64(true)
+	var result UnstakeResult
+	result.StakeStartBlock = p.UnpackUint64(true)
+	result.StakeEndBlock = p.UnpackUint64(true)
+	result.UnstakedAmount = p.UnpackUint64(false)
 	result.RewardAmount = p.UnpackUint64(false)
+	result.BalanceBeforeUnstake = p.UnpackUint64(false)
+	result.BalanceAfterUnstake = p.UnpackUint64(true)
+	p.UnpackAddress(&result.DistributedTo)
 	return &result, p.Err()
 }

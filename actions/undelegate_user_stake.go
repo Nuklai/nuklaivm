@@ -12,7 +12,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
@@ -85,13 +84,14 @@ func (u *UndelegateUserStake) Execute(
 	}
 
 	return &UndelegateUserStakeResult{
-		StakeStartBlock:      stakeStartBlock,
-		StakeEndBlock:        stakeEndBlock,
-		StakedAmount:         stakedAmount,
-		RewardAmount:         rewardAmount,
-		BalanceBeforeUnstake: balance - rewardAmount - stakedAmount,
-		BalanceAfterUnstake:  balance,
-		DistributedTo:        ownerAddress,
+		UnstakeResult: &UnstakeResult{
+			StakeStartBlock:      stakeStartBlock,
+			StakeEndBlock:        stakeEndBlock,
+			UnstakedAmount:       stakedAmount,
+			RewardAmount:         rewardAmount,
+			BalanceBeforeUnstake: balance - rewardAmount - stakedAmount,
+			BalanceAfterUnstake:  balance,
+		},
 	}, nil
 }
 
@@ -132,41 +132,21 @@ var (
 )
 
 type UndelegateUserStakeResult struct {
-	StakeStartBlock      uint64        `serialize:"true" json:"stake_start_block"`
-	StakeEndBlock        uint64        `serialize:"true" json:"stake_end_block"`
-	StakedAmount         uint64        `serialize:"true" json:"staked_amount"`
-	RewardAmount         uint64        `serialize:"true" json:"reward_amount"`
-	BalanceBeforeUnstake uint64        `serialize:"true" json:"balance_before_unstake"`
-	BalanceAfterUnstake  uint64        `serialize:"true" json:"balance_after_unstake"`
-	DistributedTo        codec.Address `serialize:"true" json:"distributed_to"`
+	*UnstakeResult
 }
 
 func (*UndelegateUserStakeResult) GetTypeID() uint8 {
 	return nconsts.UndelegateUserStakeID
 }
 
-func (*UndelegateUserStakeResult) Size() int {
-	return 6*consts.Uint64Len + codec.AddressLen
+func (r *UndelegateUserStakeResult) Size() int {
+	return r.UnstakeResult.Size()
 }
 
 func (r *UndelegateUserStakeResult) Marshal(p *codec.Packer) {
-	p.PackUint64(r.StakeStartBlock)
-	p.PackUint64(r.StakeEndBlock)
-	p.PackUint64(r.StakedAmount)
-	p.PackUint64(r.RewardAmount)
-	p.PackUint64(r.BalanceBeforeUnstake)
-	p.PackUint64(r.BalanceAfterUnstake)
-	p.PackAddress(r.DistributedTo)
+	r.UnstakeResult.Marshal(p)
 }
 
 func UnmarshalUndelegateUserStakeResult(p *codec.Packer) (codec.Typed, error) {
-	var result UndelegateUserStakeResult
-	result.StakeStartBlock = p.UnpackUint64(true)
-	result.StakeEndBlock = p.UnpackUint64(true)
-	result.StakedAmount = p.UnpackUint64(true)
-	result.RewardAmount = p.UnpackUint64(false)
-	result.BalanceBeforeUnstake = p.UnpackUint64(false)
-	result.BalanceAfterUnstake = p.UnpackUint64(true)
-	p.UnpackAddress(&result.DistributedTo)
-	return &result, p.Err()
+	return UnmarshalWithdrawValidatorStakeResult(p)
 }
