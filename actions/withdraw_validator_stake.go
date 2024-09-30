@@ -5,6 +5,7 @@ package actions
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/emission"
@@ -18,14 +19,18 @@ import (
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
-var _ chain.Action = (*WithdrawValidatorStake)(nil)
+const (
+	WithdrawValidatorStakeComputeUnits = 5
+)
+
+var (
+	ErrNotValidator                 = errors.New("node is not a validator")
+	ErrStakeNotStarted              = errors.New("stake not started")
+	_                  chain.Action = (*WithdrawValidatorStake)(nil)
+)
 
 type WithdrawValidatorStake struct {
-	NodeID        []byte        `json:"nodeID"`        // Node ID of the validator
-	RewardAddress codec.Address `json:"rewardAddress"` // Address to receive rewards
-
-	// TODO: add boolean to indicate whether sender will
-	// create recipient account
+	NodeID ids.NodeID `serialize:"true" json:"node_id"` // Node ID of the validator
 }
 
 func (*WithdrawValidatorStake) GetTypeID() uint8 {
@@ -33,17 +38,14 @@ func (*WithdrawValidatorStake) GetTypeID() uint8 {
 }
 
 func (u *WithdrawValidatorStake) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
-	// TODO: How to better handle a case where the NodeID is invalid?
-	nodeID, _ := ids.ToNodeID(u.NodeID)
 	return state.Keys{
-		string(storage.BalanceKey(actor, ids.Empty)):           state.Read | state.Write,
-		string(storage.BalanceKey(u.RewardAddress, ids.Empty)): state.All,
-		string(storage.RegisterValidatorStakeKey(nodeID)):      state.Read | state.Write,
+		string(storage.BalanceKey(actor, ids.Empty)):        state.Read | state.Write,
+		string(storage.RegisterValidatorStakeKey(u.NodeID)): state.Read | state.Write,
 	}
 }
 
 func (*WithdrawValidatorStake) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.BalanceChunks, storage.RegisterValidatorStakeChunks}
+	return []uint16{storage.BalanceChunks, storage.RegisterValidatorStakeChunks}
 }
 
 func (u *WithdrawValidatorStake) Execute(
@@ -53,20 +55,14 @@ func (u *WithdrawValidatorStake) Execute(
 	_ int64,
 	actor codec.Address,
 	_ ids.ID,
-) ([][]byte, error) {
-	// Check if it's a valid nodeID
-	nodeID, err := ids.ToNodeID(u.NodeID)
-	if err != nil {
-		return nil, ErrOutputInvalidNodeID
-	}
-
+) (codec.Typed, error) {
 	// Check if the validator was already registered
-	exists, _, stakeEndBlock, stakedAmount, _, _, ownerAddress, _ := storage.GetRegisterValidatorStake(ctx, mu, nodeID)
+	exists, _, stakeEndBlock, stakedAmount, _, _, ownerAddress, _ := storage.GetRegisterValidatorStake(ctx, mu, u.NodeID)
 	if !exists {
-		return nil, ErrOutputNotValidator
+		return nil, ErrNotValidator
 	}
 	if ownerAddress != actor {
-		return nil, ErrOutputUnauthorized
+		return nil, ErrNotValidatorOwner
 	}
 
 	// Get the emission instance
@@ -76,52 +72,33 @@ func (u *WithdrawValidatorStake) Execute(
 	lastBlockHeight := emissionInstance.GetLastAcceptedBlockHeight()
 	// Check that lastBlockTime is after stakeStartBlock
 	if lastBlockHeight < stakeEndBlock {
-		return nil, ErrOutputStakeNotStarted
+		return nil, ErrStakeNotStarted
 	}
 
 	// Withdraw in Emission Balancer
-	rewardAmount, err := emissionInstance.WithdrawValidatorStake(nodeID)
+	rewardAmount, err := emissionInstance.WithdrawValidatorStake(u.NodeID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := storage.AddBalance(ctx, mu, u.RewardAddress, ids.Empty, rewardAmount, true); err != nil {
+	if _, err := storage.AddBalance(ctx, mu, actor, ids.Empty, rewardAmount, true); err != nil {
 		return nil, err
 	}
-	if err := storage.DeleteRegisterValidatorStake(ctx, mu, nodeID); err != nil {
+	if err := storage.DeleteRegisterValidatorStake(ctx, mu, u.NodeID); err != nil {
 		return nil, err
 	}
-	if err := storage.AddBalance(ctx, mu, actor, ids.Empty, stakedAmount, true); err != nil {
-		return nil, err
-	}
-
-	sr := &WithdrawStakeResult{stakedAmount, rewardAmount}
-	output, err := sr.Marshal()
-	if err != nil {
+	if _, err := storage.AddBalance(ctx, mu, actor, ids.Empty, stakedAmount, true); err != nil {
 		return nil, err
 	}
 
-	return [][]byte{output}, nil
+	return &WithdrawValidatorStakeResult{
+		UnstakedAmount: stakedAmount,
+		RewardAmount:   rewardAmount,
+	}, nil
 }
 
 func (*WithdrawValidatorStake) ComputeUnits(chain.Rules) uint64 {
 	return WithdrawValidatorStakeComputeUnits
-}
-
-func (*WithdrawValidatorStake) Size() int {
-	return ids.NodeIDLen + codec.AddressLen
-}
-
-func (u *WithdrawValidatorStake) Marshal(p *codec.Packer) {
-	p.PackBytes(u.NodeID)
-	p.PackAddress(u.RewardAddress)
-}
-
-func UnmarshalWithdrawValidatorStake(p *codec.Packer) (chain.Action, error) {
-	var unstake WithdrawValidatorStake
-	p.UnpackBytes(ids.NodeIDLen, true, &unstake.NodeID)
-	p.UnpackAddress(&unstake.RewardAddress)
-	return &unstake, p.Err()
 }
 
 func (*WithdrawValidatorStake) ValidRange(chain.Rules) (int64, int64) {
@@ -129,22 +106,54 @@ func (*WithdrawValidatorStake) ValidRange(chain.Rules) (int64, int64) {
 	return -1, -1
 }
 
-type WithdrawStakeResult struct {
-	StakedAmount uint64
-	RewardAmount uint64
+var _ chain.Marshaler = (*WithdrawValidatorStake)(nil)
+
+func (*WithdrawValidatorStake) Size() int {
+	return ids.NodeIDLen
 }
 
-func UnmarshalWithdrawValidatorStakeResult(b []byte) (*WithdrawStakeResult, error) {
-	p := codec.NewReader(b, 2*consts.Uint64Len)
-	var result WithdrawStakeResult
-	result.StakedAmount = p.UnpackUint64(true)
+func (u *WithdrawValidatorStake) Marshal(p *codec.Packer) {
+	p.PackFixedBytes(u.NodeID.Bytes())
+}
+
+func UnmarshalWithdrawValidatorStake(p *codec.Packer) (chain.Action, error) {
+	var unstake WithdrawValidatorStake
+	nodeIDBytes := make([]byte, ids.NodeIDLen)
+	p.UnpackFixedBytes(ids.NodeIDLen, &nodeIDBytes)
+	nodeID, err := ids.ToNodeID(nodeIDBytes)
+	if err != nil {
+		return nil, err
+	}
+	unstake.NodeID = nodeID
+	return &unstake, p.Err()
+}
+
+var (
+	_ codec.Typed     = (*WithdrawValidatorStakeResult)(nil)
+	_ chain.Marshaler = (*WithdrawValidatorStakeResult)(nil)
+)
+
+type WithdrawValidatorStakeResult struct {
+	UnstakedAmount uint64 `serialize:"true" json:"unstaked_amount"`
+	RewardAmount   uint64 `serialize:"true" json:"reward_amount"`
+}
+
+func (*WithdrawValidatorStakeResult) GetTypeID() uint8 {
+	return nconsts.WithdrawValidatorStakeID
+}
+
+func (*WithdrawValidatorStakeResult) Size() int {
+	return 2 * consts.Uint64Len
+}
+
+func (r *WithdrawValidatorStakeResult) Marshal(p *codec.Packer) {
+	p.PackUint64(r.UnstakedAmount)
+	p.PackUint64(r.RewardAmount)
+}
+
+func UnmarshalWithdrawValidatorStakeResult(p *codec.Packer) (codec.Typed, error) {
+	var result WithdrawValidatorStakeResult
+	result.UnstakedAmount = p.UnpackUint64(true)
 	result.RewardAmount = p.UnpackUint64(false)
 	return &result, p.Err()
-}
-
-func (s *WithdrawStakeResult) Marshal() ([]byte, error) {
-	p := codec.NewWriter(2*consts.Uint64Len, 2*consts.Uint64Len)
-	p.PackUint64(s.StakedAmount)
-	p.PackUint64(s.RewardAmount)
-	return p.Bytes(), p.Err()
 }

@@ -148,9 +148,20 @@ func init() {
 	// actions
 	actionCmd.AddCommand(
 		transferCmd,
+
 		callCmd,
 		publishFileCmd,
 		deployCmd,
+
+		registerValidatorStakeCmd,
+		getValidatorStakeCmd,
+		claimValidatorStakeRewardCmd,
+		withdrawValidatorStakeCmd,
+
+		delegateUserStakeCmd,
+		getUserStakeCmd,
+		claimUserStakeRewardCmd,
+		undelegateUserStakeCmd,
 	)
 
 	// emission

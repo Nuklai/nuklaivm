@@ -5,11 +5,14 @@ package emission
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	safemath "github.com/ava-labs/avalanchego/utils/math"
+	"github.com/nuklai/nuklaivm/genesis"
 	"go.uber.org/zap"
 
 	"github.com/ava-labs/hypersdk/api"
@@ -43,7 +46,26 @@ type Emission struct {
 
 // NewEmission initializes the Emission struct with initial parameters and sets up the validators heap
 // and indices map.
-func NewEmission(log logging.Logger, vm *vm.VM, totalSupply, maxSupply uint64, emissionAddress codec.Address) *Emission {
+func NewEmission(log logging.Logger, vm *vm.VM) (*Emission, error) {
+	var genesis genesis.Genesis
+	if err := json.Unmarshal(vm.GenesisBytes, &genesis); err != nil {
+		return nil, err
+	}
+	// Get totalSupply
+	totalSupply := uint64(0)
+	for _, alloc := range genesis.CustomAllocation {
+		supply, err := safemath.Add(totalSupply, alloc.Balance)
+		if err != nil {
+			return nil, err
+		}
+		totalSupply = supply
+	}
+	emissionAddress, err := codec.StringToAddress(genesis.EmissionBalancer.EmissionAddress)
+	if err != nil {
+		return nil, err
+	}
+	maxSupply := genesis.EmissionBalancer.MaxSupply
+
 	once.Do(func() {
 		if maxSupply == 0 {
 			maxSupply = GetStakingConfig().RewardConfig.SupplyCap // Use the staking config's supply cap if maxSupply is not specified
@@ -71,7 +93,7 @@ func NewEmission(log logging.Logger, vm *vm.VM, totalSupply, maxSupply uint64, e
 			delegatorDeactivationEvents: make(map[uint64][]*DelegatorEvent),
 		}
 	})
-	return emission.(*Emission)
+	return emission.(*Emission), nil
 }
 
 // AddToTotalSupply increases the total supply of NAI by a specified amount, ensuring it

@@ -5,6 +5,7 @@ package actions
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/emission"
@@ -12,16 +13,21 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
+	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
-var _ chain.Action = (*ClaimDelegationStakeRewards)(nil)
+var (
+	ErrStakeMissing                  = errors.New("stake is missing")
+	ErrUnauthorizedUser              = errors.New("user is not authorized")
+	ErrStakeNotEnded                 = errors.New("stake has not ended")
+	_                   chain.Action = (*ClaimDelegationStakeRewards)(nil)
+)
 
 type ClaimDelegationStakeRewards struct {
-	NodeID           []byte        `json:"nodeID"`           // Node ID of the validator where NAI is staked
-	UserStakeAddress codec.Address `json:"userStakeAddress"` // The address of the user who delegated the stake
+	NodeID ids.NodeID `serialize:"true" json:"node_id"` // Node ID of the validator where NAI is staked
 }
 
 func (*ClaimDelegationStakeRewards) GetTypeID() uint8 {
@@ -29,11 +35,9 @@ func (*ClaimDelegationStakeRewards) GetTypeID() uint8 {
 }
 
 func (c *ClaimDelegationStakeRewards) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
-	// TODO: How to better handle a case where the NodeID is invalid?
-	nodeID, _ := ids.ToNodeID(c.NodeID)
 	return state.Keys{
-		string(storage.BalanceKey(actor, ids.Empty)):        state.All,
-		string(storage.DelegateUserStakeKey(actor, nodeID)): state.Read,
+		string(storage.BalanceKey(actor, ids.Empty)):          state.All,
+		string(storage.DelegateUserStakeKey(actor, c.NodeID)): state.Read,
 	}
 }
 
@@ -52,21 +56,13 @@ func (c *ClaimDelegationStakeRewards) Execute(
 	_ int64,
 	actor codec.Address,
 	_ ids.ID,
-) ([][]byte, error) {
-	nodeID, err := ids.ToNodeID(c.NodeID)
-	if err != nil {
-		return nil, ErrOutputInvalidNodeID
-	}
-	if _, err := codec.AddressBech32(nconsts.HRP, c.UserStakeAddress); err != nil {
-		return nil, err
-	}
-
-	exists, stakeStartBlock, _, _, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, mu, c.UserStakeAddress, nodeID)
+) (codec.Typed, error) {
+	exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, mu, actor, c.NodeID)
 	if !exists {
-		return nil, ErrOutputStakeMissing
+		return nil, ErrStakeMissing
 	}
 	if rewardAddress != actor {
-		return nil, ErrOutputUnauthorized
+		return nil, ErrUnauthorizedUser
 	}
 
 	// Get the emission instance
@@ -74,48 +70,99 @@ func (c *ClaimDelegationStakeRewards) Execute(
 
 	// Check that lastBlockHeight is after stakeStartBlock
 	if emissionInstance.GetLastAcceptedBlockHeight() < stakeStartBlock {
-		return nil, ErrOutputStakeNotEnded
+		return nil, ErrStakeNotEnded
 	}
 
 	// Claim rewards in Emission Balancer
-	rewardAmount, err := emissionInstance.ClaimStakingRewards(nodeID, c.UserStakeAddress)
+	rewardAmount, err := emissionInstance.ClaimStakingRewards(c.NodeID, actor)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := storage.AddBalance(ctx, mu, rewardAddress, ids.Empty, rewardAmount, true); err != nil {
-		return nil, err
-	}
-
-	sr := &ClaimRewardsResult{rewardAmount}
-	output, err := sr.Marshal()
+	balance, err := storage.AddBalance(ctx, mu, rewardAddress, ids.Empty, rewardAmount, true)
 	if err != nil {
 		return nil, err
 	}
-	return [][]byte{output}, nil
+
+	return &ClaimDelegationStakeRewardsResult{
+		StakeStartBlock:    stakeStartBlock,
+		StakeEndBlock:      stakeEndBlock,
+		StakedAmount:       stakedAmount,
+		BalanceBeforeClaim: balance - rewardAmount,
+		BalanceAfterClaim:  balance,
+		DistributedTo:      rewardAddress,
+	}, nil
 }
 
 func (*ClaimDelegationStakeRewards) ComputeUnits(chain.Rules) uint64 {
 	return ClaimStakingRewardComputeUnits
 }
 
+func (*ClaimDelegationStakeRewards) ValidRange(chain.Rules) (int64, int64) {
+	// Returning -1, -1 means that the action is always valid.
+	return -1, -1
+}
+
+var _ chain.Marshaler = (*ClaimDelegationStakeRewards)(nil)
+
 func (*ClaimDelegationStakeRewards) Size() int {
-	return ids.NodeIDLen + codec.AddressLen
+	return ids.NodeIDLen
 }
 
 func (c *ClaimDelegationStakeRewards) Marshal(p *codec.Packer) {
-	p.PackBytes(c.NodeID)
-	p.PackAddress(c.UserStakeAddress)
+	p.PackFixedBytes(c.NodeID.Bytes())
 }
 
 func UnmarshalClaimDelegationStakeRewards(p *codec.Packer) (chain.Action, error) {
 	var claimRewards ClaimDelegationStakeRewards
-	p.UnpackBytes(ids.NodeIDLen, true, &claimRewards.NodeID)
-	p.UnpackAddress(&claimRewards.UserStakeAddress)
+	nodeIDBytes := make([]byte, ids.NodeIDLen)
+	p.UnpackFixedBytes(ids.NodeIDLen, &nodeIDBytes)
+	nodeID, err := ids.ToNodeID(nodeIDBytes)
+	if err != nil {
+		return nil, err
+	}
+	claimRewards.NodeID = nodeID
 	return &claimRewards, p.Err()
 }
 
-func (*ClaimDelegationStakeRewards) ValidRange(chain.Rules) (int64, int64) {
-	// Returning -1, -1 means that the action is always valid.
-	return -1, -1
+var (
+	_ codec.Typed     = (*ClaimDelegationStakeRewardsResult)(nil)
+	_ chain.Marshaler = (*ClaimDelegationStakeRewardsResult)(nil)
+)
+
+type ClaimDelegationStakeRewardsResult struct {
+	StakeStartBlock    uint64        `serialize:"true" json:"stake_start_block"`
+	StakeEndBlock      uint64        `serialize:"true" json:"stake_end_block"`
+	StakedAmount       uint64        `serialize:"true" json:"staked_amount"`
+	BalanceBeforeClaim uint64        `serialize:"true" json:"balance_before_claim"`
+	BalanceAfterClaim  uint64        `serialize:"true" json:"balance_after_claim"`
+	DistributedTo      codec.Address `serialize:"true" json:"distributed_to"`
+}
+
+func (*ClaimDelegationStakeRewardsResult) GetTypeID() uint8 {
+	return nconsts.ClaimDelegationStakeRewards
+}
+
+func (*ClaimDelegationStakeRewardsResult) Size() int {
+	return 5*consts.Uint64Len + codec.AddressLen
+}
+
+func (r *ClaimDelegationStakeRewardsResult) Marshal(p *codec.Packer) {
+	p.PackUint64(r.StakeStartBlock)
+	p.PackUint64(r.StakeEndBlock)
+	p.PackUint64(r.StakedAmount)
+	p.PackUint64(r.BalanceBeforeClaim)
+	p.PackUint64(r.BalanceAfterClaim)
+	p.PackAddress(r.DistributedTo)
+}
+
+func UnmarshalClaimDelegationStakeRewardsResult(p *codec.Packer) (codec.Typed, error) {
+	var result ClaimDelegationStakeRewardsResult
+	result.StakeStartBlock = p.UnpackUint64(true)
+	result.StakeEndBlock = p.UnpackUint64(true)
+	result.StakedAmount = p.UnpackUint64(true)
+	result.BalanceBeforeClaim = p.UnpackUint64(false)
+	result.BalanceAfterClaim = p.UnpackUint64(true)
+	p.UnpackAddress(&result.DistributedTo)
+	return &result, p.Err()
 }

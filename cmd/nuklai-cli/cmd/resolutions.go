@@ -106,7 +106,18 @@ func handleTx(tx *chain.Transaction, result *chain.Result) {
 			summaryStr = fmt.Sprintf("assetID: %s %d -> 🔥\n", act.AssetID, act.Value)
 		case *actions.BurnAssetNFT:
 			summaryStr = fmt.Sprintf("assetID: %s nftID: %s -> 🔥\n", act.AssetID, act.NftID)
-		// TODO: case *actions.RegisterValidatorStake:
+		case *actions.RegisterValidatorStake:
+			summaryStr = fmt.Sprintf("nodeID: %s\n", act.NodeID)
+		case *actions.WithdrawValidatorStake:
+			summaryStr = fmt.Sprintf("nodeID: %s\n", act.NodeID)
+		case *actions.ClaimValidatorStakeRewards:
+			summaryStr = fmt.Sprintf("nodeID: %s\n", act.NodeID)
+		case *actions.DelegateUserStake:
+			summaryStr = fmt.Sprintf("nodeID: %s stakeStartBlock: %d stakeEndBlock: %d stakedAmount: %d\n", act.NodeID, act.StakeStartBlock, act.StakeEndBlock, act.StakedAmount)
+		case *actions.UndelegateUserStake:
+			summaryStr = fmt.Sprintf("nodeID: %s\n", act.NodeID)
+		case *actions.ClaimDelegationStakeRewards:
+			summaryStr = fmt.Sprintf("nodeID: %s\n", act.NodeID)
 		case *actions.CreateDataset:
 			datasetID := tx.ID()
 			if act.AssetID != ids.Empty {

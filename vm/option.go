@@ -4,17 +4,11 @@
 package vm
 
 import (
-	"encoding/json"
-
 	"github.com/nuklai/nuklaivm/emission"
-	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/marketplace"
 
-	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/vm"
 	"github.com/ava-labs/hypersdk/x/contracts/runtime"
-
-	safemath "github.com/ava-labs/avalanchego/utils/math"
 )
 
 const Namespace = "controller"
@@ -47,29 +41,17 @@ func WithRuntime() vm.Option {
 }
 
 func WithEmissionBalancer() vm.Option {
-	return vm.NewOption(Namespace+"emissionBalancer", NewDefaultConfig(), func(v *vm.VM, config Config) error {
+	return vm.NewOption(Namespace+emission.Namespace, NewDefaultConfig(), func(v *vm.VM, config Config) error {
 		if !config.Enabled {
 			return nil
 		}
-		var ngenesis genesis.Genesis
-		if err := json.Unmarshal(v.GenesisBytes, &ngenesis); err != nil {
-			return err
-		}
-		// Get totalSupply
-		totalSupply := uint64(0)
-		for _, alloc := range ngenesis.CustomAllocation {
-			supply, err := safemath.Add(totalSupply, alloc.Balance)
-			if err != nil {
-				return err
-			}
-			totalSupply = supply
-		}
-		emissionAddress, err := codec.StringToAddress(ngenesis.EmissionBalancer.EmissionAddress)
+		tracker, err := emission.NewEmission(v.Logger(), v)
 		if err != nil {
 			return err
 		}
-
-		emissionTracker = emission.NewEmission(v.Logger(), v, totalSupply, ngenesis.EmissionBalancer.MaxSupply, emissionAddress)
+		emissionFactory := emission.NewEmissionSubscriptionFactory(v.Logger(), tracker)
+		vm.WithBlockSubscriptions(emissionFactory)(v)
+		emissionTracker = tracker
 		return nil
 	})
 }

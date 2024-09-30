@@ -33,90 +33,6 @@ const (
 	blsKey       = "bls"
 )
 
-func checkKeyType(k string) error {
-	switch k {
-	case ed25519Key, secp256r1Key, blsKey:
-		return nil
-	default:
-		return fmt.Errorf("%w: %s", ErrInvalidKeyType, k)
-	}
-}
-
-func generatePrivateKey(k string) (*cli.PrivateKey, error) {
-	switch k {
-	case ed25519Key:
-		p, err := ed25519.GeneratePrivateKey()
-		if err != nil {
-			return nil, err
-		}
-		return &cli.PrivateKey{
-			Address: auth.NewED25519Address(p.PublicKey()),
-			Bytes:   p[:],
-		}, nil
-	case secp256r1Key:
-		p, err := secp256r1.GeneratePrivateKey()
-		if err != nil {
-			return nil, err
-		}
-		return &cli.PrivateKey{
-			Address: auth.NewSECP256R1Address(p.PublicKey()),
-			Bytes:   p[:],
-		}, nil
-	case blsKey:
-		p, err := bls.GeneratePrivateKey()
-		if err != nil {
-			return nil, err
-		}
-		return &cli.PrivateKey{
-			Address: auth.NewBLSAddress(bls.PublicFromPrivateKey(p)),
-			Bytes:   bls.PrivateKeyToBytes(p),
-		}, nil
-	default:
-		return nil, ErrInvalidKeyType
-	}
-}
-
-func loadPrivateKey(k string, path string) (*cli.PrivateKey, error) {
-	switch k {
-	case ed25519Key:
-		p, err := utils.LoadBytes(path, ed25519.PrivateKeyLen)
-		if err != nil {
-			return nil, err
-		}
-		pk := ed25519.PrivateKey(p)
-		return &cli.PrivateKey{
-			Address: auth.NewED25519Address(pk.PublicKey()),
-			Bytes:   p,
-		}, nil
-	case secp256r1Key:
-		p, err := utils.LoadBytes(path, secp256r1.PrivateKeyLen)
-		if err != nil {
-			return nil, err
-		}
-		pk := secp256r1.PrivateKey(p)
-		return &cli.PrivateKey{
-			Address: auth.NewSECP256R1Address(pk.PublicKey()),
-			Bytes:   p,
-		}, nil
-	case blsKey:
-		p, err := utils.LoadBytes(path, bls.PrivateKeyLen)
-		if err != nil {
-			return nil, err
-		}
-
-		privKey, err := bls.PrivateKeyFromBytes(p)
-		if err != nil {
-			return nil, err
-		}
-		return &cli.PrivateKey{
-			Address: auth.NewBLSAddress(bls.PublicFromPrivateKey(privKey)),
-			Bytes:   p,
-		}, nil
-	default:
-		return nil, ErrInvalidKeyType
-	}
-}
-
 var keyCmd = &cobra.Command{
 	Use: "key",
 	RunE: func(*cobra.Command, []string) error {
@@ -150,7 +66,7 @@ var genKeyCmd = &cobra.Command{
 
 		// Convert the private key bytes to a base64 encoded string
 		privKeyString := base64.StdEncoding.EncodeToString(priv.Bytes)
-		utils.Outf("{{yellow}}Private Key String:{{/}} %s\n", privKeyString)
+		utils.Outf("{{yellow}}Private Key String(Base64):{{/}} %s\n", privKeyString)
 
 		// Create the directory with permissions (if it doesn't exist)
 		err = os.MkdirAll("./test_accounts", 0o755)
@@ -169,7 +85,7 @@ var genKeyCmd = &cobra.Command{
 }
 
 var importKeyCmd = &cobra.Command{
-	Use: "import [type] [path]",
+	Use: "import [type] [path or encoded string]",
 	PreRunE: func(_ *cobra.Command, args []string) error {
 		if len(args) != 2 {
 			return ErrInvalidArgs
@@ -177,20 +93,35 @@ var importKeyCmd = &cobra.Command{
 		return checkKeyType(args[0])
 	},
 	RunE: func(_ *cobra.Command, args []string) error {
-		priv, err := loadPrivateKey(args[0], args[1])
-		if err != nil {
-			return err
+		keyType := args[0]
+		keyInput := args[1]
+
+		var priv *cli.PrivateKey
+
+		// Check if the provided argument is a file path or an encoded string
+		if _, err := os.Stat(keyInput); err == nil {
+			// It's a file path, load the private key from the file
+			priv, err = loadPrivateKeyFromPath(keyType, keyInput)
+			if err != nil {
+				return fmt.Errorf("failed to load private key from file: %w", err)
+			}
+		} else {
+			// It's not a valid file path, assume it's an encoded string (base64 or hex)
+			priv, err = loadPrivateKeyFromString(keyType, keyInput)
+			if err != nil {
+				return fmt.Errorf("failed to load private key from encoded string: %w", err)
+			}
 		}
+
+		// Store the private key in the key manager
 		if err := handler.h.StoreKey(priv); err != nil {
-			return err
+			return fmt.Errorf("failed to store key: %w", err)
 		}
 		if err := handler.h.StoreDefaultKey(priv.Address); err != nil {
-			return err
+			return fmt.Errorf("failed to set default key: %w", err)
 		}
-		utils.Outf(
-			"{{green}}imported address:{{/}} %s",
-			priv.Address,
-		)
+
+		utils.Outf("{{green}}imported address:{{/}} %s\n", priv.Address)
 		return nil
 	},
 }
@@ -296,6 +227,142 @@ var vanityAddressCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func checkKeyType(k string) error {
+	switch k {
+	case ed25519Key, secp256r1Key, blsKey:
+		return nil
+	default:
+		return fmt.Errorf("%w: %s", ErrInvalidKeyType, k)
+	}
+}
+
+func getKeyType(addr codec.Address) (string, error) {
+	switch addr[0] {
+	case auth.ED25519ID:
+		return ed25519Key, nil
+	case auth.SECP256R1ID:
+		return secp256r1Key, nil
+	case auth.BLSID:
+		return blsKey, nil
+	default:
+		return "", ErrInvalidKeyType
+	}
+}
+
+func generatePrivateKey(k string) (*cli.PrivateKey, error) {
+	switch k {
+	case ed25519Key:
+		p, err := ed25519.GeneratePrivateKey()
+		if err != nil {
+			return nil, err
+		}
+		return &cli.PrivateKey{
+			Address: auth.NewED25519Address(p.PublicKey()),
+			Bytes:   p[:],
+		}, nil
+	case secp256r1Key:
+		p, err := secp256r1.GeneratePrivateKey()
+		if err != nil {
+			return nil, err
+		}
+		return &cli.PrivateKey{
+			Address: auth.NewSECP256R1Address(p.PublicKey()),
+			Bytes:   p[:],
+		}, nil
+	case blsKey:
+		p, err := bls.GeneratePrivateKey()
+		if err != nil {
+			return nil, err
+		}
+		return &cli.PrivateKey{
+			Address: auth.NewBLSAddress(bls.PublicFromPrivateKey(p)),
+			Bytes:   bls.PrivateKeyToBytes(p),
+		}, nil
+	default:
+		return nil, ErrInvalidKeyType
+	}
+}
+
+func loadPrivateKeyFromPath(k string, path string) (*cli.PrivateKey, error) {
+	switch k {
+	case ed25519Key:
+		p, err := utils.LoadBytes(path, ed25519.PrivateKeyLen)
+		if err != nil {
+			return nil, err
+		}
+		pk := ed25519.PrivateKey(p)
+		return &cli.PrivateKey{
+			Address: auth.NewED25519Address(pk.PublicKey()),
+			Bytes:   p,
+		}, nil
+	case secp256r1Key:
+		p, err := utils.LoadBytes(path, secp256r1.PrivateKeyLen)
+		if err != nil {
+			return nil, err
+		}
+		pk := secp256r1.PrivateKey(p)
+		return &cli.PrivateKey{
+			Address: auth.NewSECP256R1Address(pk.PublicKey()),
+			Bytes:   p,
+		}, nil
+	case blsKey:
+		p, err := utils.LoadBytes(path, bls.PrivateKeyLen)
+		if err != nil {
+			return nil, err
+		}
+
+		privKey, err := bls.PrivateKeyFromBytes(p)
+		if err != nil {
+			return nil, err
+		}
+		return &cli.PrivateKey{
+			Address: auth.NewBLSAddress(bls.PublicFromPrivateKey(privKey)),
+			Bytes:   p,
+		}, nil
+	default:
+		return nil, ErrInvalidKeyType
+	}
+}
+
+// loadPrivateKeyFromString loads a private key from a base64 string.
+func loadPrivateKeyFromString(k, keyStr string) (*cli.PrivateKey, error) {
+	var decodedKey []byte
+	var err error
+
+	// Try to decode as base64 first
+	decodedKey, err = base64.StdEncoding.DecodeString(keyStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode private key string: %w", err)
+	}
+
+	// Create a private key object based on the decoded bytes and key type
+	switch k {
+	case ed25519Key:
+		pk := ed25519.PrivateKey(decodedKey)
+		return &cli.PrivateKey{
+			Address: auth.NewED25519Address(pk.PublicKey()),
+			Bytes:   decodedKey,
+		}, nil
+	case secp256r1Key:
+		pk := secp256r1.PrivateKey(decodedKey)
+		return &cli.PrivateKey{
+			Address: auth.NewSECP256R1Address(pk.PublicKey()),
+			Bytes:   decodedKey,
+		}, nil
+	case blsKey:
+		pk, err := bls.PrivateKeyFromBytes(decodedKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load BLS private key: %w", err)
+		}
+		return &cli.PrivateKey{
+			Address: auth.NewBLSAddress(bls.PublicFromPrivateKey(pk)),
+			Bytes:   bls.PrivateKeyToBytes(pk),
+		}, nil
+	default:
+		return nil, ErrInvalidKeyType
+	}
 }
 
 // GenerateVanityAddress generates an address that matches the given vanity prefix.
