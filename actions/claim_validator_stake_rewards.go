@@ -22,9 +22,7 @@ const (
 	ClaimStakingRewardComputeUnits = 5
 )
 
-var (
-	_ chain.Action = (*ClaimValidatorStakeRewards)(nil)
-)
+var _ chain.Action = (*ClaimValidatorStakeRewards)(nil)
 
 type ClaimValidatorStakeRewards struct {
 	NodeID ids.NodeID `serialize:"true" json:"node_id"` // Node ID of the validator where NAI

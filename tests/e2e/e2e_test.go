@@ -144,7 +144,7 @@ func copyStakingSignerKey(tc tests.TestContext, networkDir string) error {
 				return fmt.Errorf("failed to write signer.json to %s: %w", destSignerJSONPath, err)
 			}
 
-			fmt.Printf("Successfully copied signer key to %s and created signer.json at %s\n", destSignerKeyPath, destSignerJSONPath)
+			tc.Outf("Successfully copied signer key to %s and created signer.json at %s\n", destSignerKeyPath, destSignerJSONPath)
 		}
 	}
 	return nil

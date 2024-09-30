@@ -5,9 +5,10 @@ package emission
 
 import (
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"go.uber.org/zap"
+
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/event"
-	"go.uber.org/zap"
 )
 
 const (
@@ -15,9 +16,7 @@ const (
 	Namespace = "emissionBalancer"
 )
 
-var (
-	_ event.SubscriptionFactory[*chain.StatefulBlock] = (*EmissionSubscriptionFactory)(nil)
-)
+var _ event.SubscriptionFactory[*chain.StatefulBlock] = (*EmissionSubscriptionFactory)(nil)
 
 type EmissionSubscriptionFactory struct {
 	log      logging.Logger
@@ -53,7 +52,7 @@ func (e *EmissionSubscriptionFactory) Accept(blk *chain.StatefulBlock) error {
 	return nil
 }
 
-func (e *EmissionSubscriptionFactory) Close() error {
+func (*EmissionSubscriptionFactory) Close() error {
 	return nil
 }
 

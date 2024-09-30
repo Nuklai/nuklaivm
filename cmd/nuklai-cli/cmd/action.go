@@ -21,12 +21,13 @@ import (
 
 	"github.com/ava-labs/hypersdk/auth"
 	"github.com/ava-labs/hypersdk/chain"
-	hcli "github.com/ava-labs/hypersdk/cli"
 	"github.com/ava-labs/hypersdk/cli/prompt"
 	"github.com/ava-labs/hypersdk/codec"
-	hconsts "github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/utils"
+
+	hcli "github.com/ava-labs/hypersdk/cli"
+	hconsts "github.com/ava-labs/hypersdk/consts"
 )
 
 var actionCmd = &cobra.Command{
@@ -76,7 +77,7 @@ var transferCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		result, _, err := sendAndWait(ctx, []chain.Action{&actions.Transfer{
+		result, txID, err := sendAndWait(ctx, []chain.Action{&actions.Transfer{
 			AssetID: assetID,
 			To:      recipient,
 			Value:   amount,
@@ -84,6 +85,7 @@ var transferCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		utils.Outf("{{yellow}}txID:{{/}} %s\n", txID)
 		return processResult(result)
 	},
 }

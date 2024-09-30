@@ -22,9 +22,7 @@ const (
 	UndelegateUserStakeComputeUnits = 5
 )
 
-var (
-	_ chain.Action = (*UndelegateUserStake)(nil)
-)
+var _ chain.Action = (*UndelegateUserStake)(nil)
 
 type UndelegateUserStake struct {
 	NodeID ids.NodeID `serialize:"true" json:"node_id"` // Node ID of the validator where NAI is staked

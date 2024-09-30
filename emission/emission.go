@@ -11,7 +11,6 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
-	safemath "github.com/ava-labs/avalanchego/utils/math"
 	"github.com/nuklai/nuklaivm/genesis"
 	"go.uber.org/zap"
 
@@ -19,6 +18,8 @@ import (
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/vm"
+
+	safemath "github.com/ava-labs/avalanchego/utils/math"
 )
 
 var _ Tracker = (*Emission)(nil)
