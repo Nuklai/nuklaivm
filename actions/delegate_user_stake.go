@@ -6,6 +6,7 @@ package actions
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/emission"
@@ -89,6 +90,9 @@ func (s *DelegateUserStake) Execute(
 	emissionInstance := emission.GetEmission()
 
 	// Check if stakeStartBlock is smaller than the current block height
+	fmt.Println(emissionInstance.GetLastAcceptedBlockHeight())
+	fmt.Println(s.StakeStartBlock)
+	fmt.Println(stakeEndBlock)
 	if s.StakeStartBlock < emissionInstance.GetLastAcceptedBlockHeight() || s.StakeStartBlock >= stakeEndBlock {
 		return nil, ErrInvalidStakeStartBlock
 	}

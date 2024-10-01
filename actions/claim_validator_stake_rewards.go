@@ -65,7 +65,7 @@ func (c *ClaimValidatorStakeRewards) Execute(
 
 	// Check that lastBlockHeight is after stakeEndBlock
 	if emissionInstance.GetLastAcceptedBlockHeight() < stakeEndBlock {
-		return nil, ErrStakeNotEnded
+		return nil, ErrStakeNotStarted
 	}
 
 	// Claim rewards in Emission Balancer

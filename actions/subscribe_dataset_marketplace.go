@@ -129,7 +129,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	// Mint the subscription non-fungible token to represent the user is subscribed
 	// to the dataset
 	amountOfToken := uint64(1)
-	newSupply, err := smath.Add64(totalSupply, amountOfToken)
+	newSupply, err := smath.Add(totalSupply, amountOfToken)
 	if err != nil {
 		return nil, err
 	}

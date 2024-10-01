@@ -22,7 +22,6 @@ import (
 var (
 	ErrStakeMissing                  = errors.New("stake is missing")
 	ErrUnauthorizedUser              = errors.New("user is not authorized")
-	ErrStakeNotEnded                 = errors.New("stake has not ended")
 	_                   chain.Action = (*ClaimDelegationStakeRewards)(nil)
 )
 
@@ -70,7 +69,7 @@ func (c *ClaimDelegationStakeRewards) Execute(
 
 	// Check that lastBlockHeight is after stakeStartBlock
 	if emissionInstance.GetLastAcceptedBlockHeight() < stakeStartBlock {
-		return nil, ErrStakeNotEnded
+		return nil, ErrStakeNotStarted
 	}
 
 	// Claim rewards in Emission Balancer

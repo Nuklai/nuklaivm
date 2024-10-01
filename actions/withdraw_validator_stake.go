@@ -26,6 +26,7 @@ const (
 var (
 	ErrNotValidator                 = errors.New("node is not a validator")
 	ErrStakeNotStarted              = errors.New("stake not started")
+	ErrStakeNotEnded                = errors.New("stake has not ended")
 	_                  chain.Action = (*WithdrawValidatorStake)(nil)
 )
 
