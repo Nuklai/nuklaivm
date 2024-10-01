@@ -1,3 +1,6 @@
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 package emission
 
 import (
@@ -5,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
+
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/crypto/bls"
 )
