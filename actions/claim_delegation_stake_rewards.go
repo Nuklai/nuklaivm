@@ -31,7 +31,7 @@ type ClaimDelegationStakeRewards struct {
 }
 
 func (*ClaimDelegationStakeRewards) GetTypeID() uint8 {
-	return nconsts.ClaimDelegationStakeRewards
+	return nconsts.ClaimDelegationStakeRewardsID
 }
 
 func (c *ClaimDelegationStakeRewards) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
@@ -140,7 +140,7 @@ type ClaimDelegationStakeRewardsResult struct {
 }
 
 func (*ClaimDelegationStakeRewardsResult) GetTypeID() uint8 {
-	return nconsts.ClaimDelegationStakeRewards
+	return nconsts.ClaimDelegationStakeRewardsID
 }
 
 func (*ClaimDelegationStakeRewardsResult) Size() int {

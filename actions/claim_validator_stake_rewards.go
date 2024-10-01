@@ -52,7 +52,7 @@ func (c *ClaimValidatorStakeRewards) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check whether a validator is trying to claim its reward
-	exists, stakeStartBlock, stakeEndBlock, stakeAmount, delegationFeeRate, rewardAddress, ownerAddress, _ := storage.GetRegisterValidatorStake(ctx, mu, c.NodeID)
+	exists, stakeStartBlock, stakeEndBlock, stakeAmount, delegationFeeRate, rewardAddress, _, _ := storage.GetRegisterValidatorStake(ctx, mu, c.NodeID)
 	if !exists {
 		return nil, ErrStakeMissing
 	}
@@ -80,14 +80,13 @@ func (c *ClaimValidatorStakeRewards) Execute(
 	}
 
 	return &ClaimValidatorStakeRewardsResult{
-		StakeStartBlock:      stakeStartBlock,
-		StakeEndBlock:        stakeEndBlock,
-		StakedAmount:         stakeAmount,
-		DelegationFeeRate:    delegationFeeRate,
-		BalanceBeforeUnstake: balance - rewardAmount,
-		BalanceAfterUnstake:  balance,
-		DistributedTo:        rewardAddress,
-		ValidatorOwner:       ownerAddress,
+		StakeStartBlock:    stakeStartBlock,
+		StakeEndBlock:      stakeEndBlock,
+		StakedAmount:       stakeAmount,
+		DelegationFeeRate:  delegationFeeRate,
+		BalanceBeforeClaim: balance - rewardAmount,
+		BalanceAfterClaim:  balance,
+		DistributedTo:      rewardAddress,
 	}, nil
 }
 
@@ -128,14 +127,13 @@ var (
 )
 
 type ClaimValidatorStakeRewardsResult struct {
-	StakeStartBlock      uint64        `serialize:"true" json:"stake_start_block"`
-	StakeEndBlock        uint64        `serialize:"true" json:"stake_end_block"`
-	StakedAmount         uint64        `serialize:"true" json:"staked_amount"`
-	DelegationFeeRate    uint64        `serialize:"true" json:"delegation_fee_rate"`
-	BalanceBeforeUnstake uint64        `serialize:"true" json:"balance_before_unstake"`
-	BalanceAfterUnstake  uint64        `serialize:"true" json:"balance_after_unstake"`
-	DistributedTo        codec.Address `serialize:"true" json:"distributed_to"`
-	ValidatorOwner       codec.Address `serialize:"true" json:"validator_owner"`
+	StakeStartBlock    uint64        `serialize:"true" json:"stake_start_block"`
+	StakeEndBlock      uint64        `serialize:"true" json:"stake_end_block"`
+	StakedAmount       uint64        `serialize:"true" json:"staked_amount"`
+	DelegationFeeRate  uint64        `serialize:"true" json:"delegation_fee_rate"`
+	BalanceBeforeClaim uint64        `serialize:"true" json:"balance_before_claim"`
+	BalanceAfterClaim  uint64        `serialize:"true" json:"balance_after_claim"`
+	DistributedTo      codec.Address `serialize:"true" json:"distributed_to"`
 }
 
 func (*ClaimValidatorStakeRewardsResult) GetTypeID() uint8 {
@@ -143,7 +141,7 @@ func (*ClaimValidatorStakeRewardsResult) GetTypeID() uint8 {
 }
 
 func (*ClaimValidatorStakeRewardsResult) Size() int {
-	return 6*consts.Uint64Len + 2*codec.AddressLen
+	return 6*consts.Uint64Len + codec.AddressLen
 }
 
 func (r *ClaimValidatorStakeRewardsResult) Marshal(p *codec.Packer) {
@@ -151,10 +149,9 @@ func (r *ClaimValidatorStakeRewardsResult) Marshal(p *codec.Packer) {
 	p.PackUint64(r.StakeEndBlock)
 	p.PackUint64(r.StakedAmount)
 	p.PackUint64(r.DelegationFeeRate)
-	p.PackUint64(r.BalanceBeforeUnstake)
-	p.PackUint64(r.BalanceAfterUnstake)
+	p.PackUint64(r.BalanceBeforeClaim)
+	p.PackUint64(r.BalanceAfterClaim)
 	p.PackAddress(r.DistributedTo)
-	p.PackAddress(r.ValidatorOwner)
 }
 
 func UnmarshalClaimValidatorStakeRewardsResult(p *codec.Packer) (codec.Typed, error) {
@@ -163,9 +160,8 @@ func UnmarshalClaimValidatorStakeRewardsResult(p *codec.Packer) (codec.Typed, er
 	result.StakeEndBlock = p.UnpackUint64(true)
 	result.StakedAmount = p.UnpackUint64(true)
 	result.DelegationFeeRate = p.UnpackUint64(true)
-	result.BalanceBeforeUnstake = p.UnpackUint64(false)
-	result.BalanceAfterUnstake = p.UnpackUint64(true)
+	result.BalanceBeforeClaim = p.UnpackUint64(false)
+	result.BalanceAfterClaim = p.UnpackUint64(true)
 	p.UnpackAddress(&result.DistributedTo)
-	p.UnpackAddress(&result.ValidatorOwner)
 	return &result, p.Err()
 }

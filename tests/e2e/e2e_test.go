@@ -42,7 +42,7 @@ func init() {
 var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	require := require.New(ginkgo.GinkgoT())
 
-	gen, workloadFactory, err := workload.New(100 /* minBlockGap: 100ms */)
+	gen, workloadFactory, err := workload.New(250 /* minBlockGap: 250ms */)
 	require.NoError(err)
 
 	genesisBytes, err := json.Marshal(gen)

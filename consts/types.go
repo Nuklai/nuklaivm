@@ -20,7 +20,7 @@ const (
 	ClaimValidatorStakeRewardsID  uint8 = 12
 	DelegateUserStakeID           uint8 = 13
 	UndelegateUserStakeID         uint8 = 14
-	ClaimDelegationStakeRewards   uint8 = 15
+	ClaimDelegationStakeRewardsID uint8 = 15
 	CreateDatasetID               uint8 = 16
 	UpdateDatasetID               uint8 = 17
 	InitiateContributeDatasetID   uint8 = 18

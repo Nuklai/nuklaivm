@@ -57,7 +57,7 @@ func (u *WithdrawValidatorStake) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the validator was already registered
-	exists, _, stakeEndBlock, stakedAmount, _, _, ownerAddress, _ := storage.GetRegisterValidatorStake(ctx, mu, u.NodeID)
+	exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, _, ownerAddress, _ := storage.GetRegisterValidatorStake(ctx, mu, u.NodeID)
 	if !exists {
 		return nil, ErrNotValidator
 	}
@@ -91,9 +91,15 @@ func (u *WithdrawValidatorStake) Execute(
 		return nil, err
 	}
 
-	return &UnstakeResult{
-		UnstakedAmount: stakedAmount,
-		RewardAmount:   rewardAmount,
+	return &WithdrawValidatorStakeResult{
+		StakeStartBlock:      stakeStartBlock,
+		StakeEndBlock:        stakeEndBlock,
+		UnstakedAmount:       stakedAmount,
+		DelegationFeeRate:    delegationFeeRate,
+		RewardAmount:         rewardAmount,
+		BalanceBeforeUnstake: stakedAmount - rewardAmount - stakedAmount,
+		BalanceAfterUnstake:  stakedAmount,
+		DistributedTo:        actor,
 	}, nil
 }
 
@@ -129,32 +135,34 @@ func UnmarshalWithdrawValidatorStake(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*UnstakeResult)(nil)
-	_ chain.Marshaler = (*UnstakeResult)(nil)
+	_ codec.Typed     = (*WithdrawValidatorStakeResult)(nil)
+	_ chain.Marshaler = (*WithdrawValidatorStakeResult)(nil)
 )
 
-type UnstakeResult struct {
+type WithdrawValidatorStakeResult struct {
 	StakeStartBlock      uint64        `serialize:"true" json:"stake_start_block"`
 	StakeEndBlock        uint64        `serialize:"true" json:"stake_end_block"`
 	UnstakedAmount       uint64        `serialize:"true" json:"unstaked_amount"`
+	DelegationFeeRate    uint64        `serialize:"true" json:"delegation_fee_rate"`
 	RewardAmount         uint64        `serialize:"true" json:"reward_amount"`
 	BalanceBeforeUnstake uint64        `serialize:"true" json:"balance_before_unstake"`
 	BalanceAfterUnstake  uint64        `serialize:"true" json:"balance_after_unstake"`
 	DistributedTo        codec.Address `serialize:"true" json:"distributed_to"`
 }
 
-func (*UnstakeResult) GetTypeID() uint8 {
+func (*WithdrawValidatorStakeResult) GetTypeID() uint8 {
 	return nconsts.WithdrawValidatorStakeID
 }
 
-func (*UnstakeResult) Size() int {
-	return 6*consts.Uint64Len + codec.AddressLen
+func (*WithdrawValidatorStakeResult) Size() int {
+	return 7*consts.Uint64Len + codec.AddressLen
 }
 
-func (r *UnstakeResult) Marshal(p *codec.Packer) {
+func (r *WithdrawValidatorStakeResult) Marshal(p *codec.Packer) {
 	p.PackUint64(r.StakeStartBlock)
 	p.PackUint64(r.StakeEndBlock)
 	p.PackUint64(r.UnstakedAmount)
+	p.PackUint64(r.DelegationFeeRate)
 	p.PackUint64(r.RewardAmount)
 	p.PackUint64(r.BalanceBeforeUnstake)
 	p.PackUint64(r.BalanceAfterUnstake)
@@ -162,10 +170,11 @@ func (r *UnstakeResult) Marshal(p *codec.Packer) {
 }
 
 func UnmarshalWithdrawValidatorStakeResult(p *codec.Packer) (codec.Typed, error) {
-	var result UnstakeResult
+	var result WithdrawValidatorStakeResult
 	result.StakeStartBlock = p.UnpackUint64(true)
 	result.StakeEndBlock = p.UnpackUint64(true)
 	result.UnstakedAmount = p.UnpackUint64(false)
+	result.DelegationFeeRate = p.UnpackUint64(false)
 	result.RewardAmount = p.UnpackUint64(false)
 	result.BalanceBeforeUnstake = p.UnpackUint64(false)
 	result.BalanceAfterUnstake = p.UnpackUint64(true)

@@ -59,7 +59,7 @@ func (d *SubscribeDatasetMarketplace) StateKeys(actor codec.Address, _ ids.ID) s
 	return state.Keys{
 		string(storage.DatasetKey(d.DatasetID)):                 state.Read,
 		string(storage.AssetKey(d.MarketplaceAssetID)):          state.Read | state.Write,
-		string(storage.AssetNFTKey(nftID)):                      state.Allocate | state.Write,
+		string(storage.AssetNFTKey(nftID)):                      state.All,
 		string(storage.BalanceKey(actor, d.AssetForPayment)):    state.Read | state.Write,
 		string(storage.BalanceKey(actor, d.MarketplaceAssetID)): state.Allocate | state.Write,
 		string(storage.BalanceKey(actor, nftID)):                state.Allocate | state.Write,

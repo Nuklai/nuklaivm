@@ -37,12 +37,12 @@ assetID: 11111111111111111111111111111111LpoYY
 name: nuklaivm
 symbol: NAI
 balance: 0
-please send funds to 0213bab583ef405d7c12e3d0b0e0794a29a9d8c13f4b4aad2d7c382b4312fbe373
+please send funds to 02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754
 exiting...
 Balance of validator signer: 0.000000000
 ```
 
-So, all we need to do is send at least 100 NAI to `0213bab583ef405d7c12e3d0b0e0794a29a9d8c13f4b4aad2d7c382b4312fbe373`
+So, all we need to do is send at least 100 NAI to `02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754`
 
 After sending some NAI to this account using `./build/nuklai-cli action transfer`, let's try this again:
 
@@ -54,22 +54,23 @@ If successful, you should see something like:
 
 ```bash
 Loading private key for node1
-Validator Signer Address: 0213bab583ef405d7c12e3d0b0e0794a29a9d8c13f4b4aad2d7c382b4312fbe373
-chainID: 2vhqHF49srJytVGZm8uKbLZshNqoqWxBBrPYpkqoSPTZbjtEEi
+Validator Signer Address: 02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754
+chainID: 2VeYXe3bBXbxaxgW1ME46CFHLwgQ5ejdJcgtejyW6FGkfvduHY
 balance: 300.000000000 NAI
 Balance of validator signer: 300.000000000
-Loading validator signer key : 0213bab583ef405d7c12e3d0b0e0794a29a9d8c13f4b4aad2d7c382b4312fbe373
-address: 0213bab583ef405d7c12e3d0b0e0794a29a9d8c13f4b4aad2d7c382b4312fbe373
-chainID: 2vhqHF49srJytVGZm8uKbLZshNqoqWxBBrPYpkqoSPTZbjtEEi
-Validator Signer Address: 0213bab583ef405d7c12e3d0b0e0794a29a9d8c13f4b4aad2d7c382b4312fbe373
-Validator NodeID: NodeID-3CEtvCmZBYKwGnewYkAst7KopGk25j1Kv
+Loading validator signer key : 02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754
+address: 02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754
+chainID: 2VeYXe3bBXbxaxgW1ME46CFHLwgQ5ejdJcgtejyW6FGkfvduHY
+Validator Signer Address: 02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754
+Validator NodeID: NodeID-Ak5rbpMogUSVT5EAoHRJBxoFW8CstfSEm
 balance: 300.000000000 NAI
 ✔ Staked amount: 100█
 continue (y/n): y
-Register Validator Stake Info - stakeStartBlock: 66 stakeEndBlock: 216 delegationFeeRate: 50 rewardAddress: 0213bab583ef405d7c12e3d0b0e079✔ continue (y/n): y█
-✅ txID: xThHqzNUGiqnW6yokEDiWSm7pw1tzFHpHdVgnuFn4eSozEuQM
+Register Validator Stake Info - stakeStartBlock: 173 stakeEndBlock: 473 delegationFeeRate: 50 rewardAddress: 02da6ac369af5431778f509dc71e5continue (y/n): y
+): y█
+✅ txID: 2cZFW5xWKMBgx4L3WKKFjiaZAP5hgaqdEsGPBFfcFEhM4U5tkn
 fee consumed: 0.000058800 NAI
-output:  &{NodeID:NodeID-3CEtvCmZBYKwGnewYkAst7KopGk25j1Kv StakeStartBlock:66 StakeEndBlock:216 StakedAmount:100000000000 DelegationFeeRate:50 RewardAddress:0213bab583ef405d7c12e3d0b0e0794a29a9d8c13f4b4aad2d7c382b4312fbe373}
+output:  &{NodeID:NodeID-Ak5rbpMogUSVT5EAoHRJBxoFW8CstfSEm StakeStartBlock:173 StakeEndBlock:473 StakedAmount:100000000000 DelegationFeeRate:50 RewardAddress:02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754}
 ```
 
 ### Manual run
@@ -85,7 +86,7 @@ First, let's import the key manually:
 Which should output:
 
 ```bash
-imported address: 02a16c8234d8879fc20efc2376af4f522df5f5d264c374b66a8c14c2b75c38d79d
+imported address: 02622d52de28b306fd25d4899cbfbfd496554a5de37f59a0c42e9dd6ebe52ea183
 ```
 
 Let's make sure we have enough balance to send
@@ -97,7 +98,7 @@ Let's make sure we have enough balance to send
 Which outputs:
 
 ```bash
-address: 02a16c8234d8879fc20efc2376af4f522df5f5d264c374b66a8c14c2b75c38d79d balance: 200.000000000 NAI
+address: 02622d52de28b306fd25d4899cbfbfd496554a5de37f59a0c42e9dd6ebe52ea183 balance: 200.000000000 NAI
 ```
 
 To register our validator for staking manually, we can do:
@@ -109,21 +110,19 @@ To register our validator for staking manually, we can do:
 If successful, you should see something like:
 
 ```bash
-address: 02a16c8234d8879fc20efc2376af4f522df5f5d264c374b66a8c14c2b75c38d79d
-chainID: 2pTmekN9DVmVzzzALW4oEwQiLxA4oyu7oE8oCfyEKXpRbK4Ezn
-Validator Signer Address: 02a16c8234d8879fc20efc2376af4f522df5f5d264c374b66a8c14c2b75c38d79d
-Validator NodeID: NodeID-AG21LM5ZuKNLpqgHr3b6VjDuZetZLCeXv
+Validator Signer Address: 02622d52de28b306fd25d4899cbfbfd496554a5de37f59a0c42e9dd6ebe52ea183
+Validator NodeID: NodeID-HmCZrj6qRQattGzZf4t1PH6vQ6Lii3qeD
 balance: 200.000000000 NAI
-Staked amount: 100
-Staking Start Block(must be after 263): 300
-Staking End Block(must be after 300): 100000
+✔ Staked amount: 100█
+✔ Staking Start Block(must be after 614): 700█
+✔ Staking End Block(must be after 700): 1000█
 Delegation Fee Rate(must be over 2): 90
-Reward Address: 02a16c8234d8879fc20efc2376af4f522df5f5d264c374b66a8c14c2b75c38d79d
+Reward Address: 02622d52de28b306fd25d4899cbfbfd496554a5de37f59a0c42e9dd6ebe52ea183
 continue (y/n): y
-Register Validator Stake Info - stakeStartBlock: 300 stakeEndBlock: 100000 delegationFeeRate: 90 rewardAddress: 02a16c8234d8879fc20efc2376✔ continue (y/n): y█
-✅ txID: ZW5uuPsm6bg1DcqV6pccMdCT9k8LZXh1sZt7cvxtnVJ6RNmtw
+Register Validator Stake Info - stakeStartBlock: 700 stakeEndBlock: 1000 delegationFeeRate: 90 rewardAddress: 02622d52de28b306fd25d4899cbfbfd496554a5de37f59a0c42e9dd6ebe52ea183
+✅ txID: 26int5SNG713mjzGGF6FK7VSeYbfgiCTYj4FJG9kzianqvzSJD
 fee consumed: 0.000058800 NAI
-output:  &{NodeID:NodeID-AG21LM5ZuKNLpqgHr3b6VjDuZetZLCeXv StakeStartBlock:300 StakeEndBlock:100000 StakedAmount:100000000000 DelegationFeeRate:90 RewardAddress:02a16c8234d8879fc20efc2376af4f522df5f5d264c374b66a8c14c2b75c38d79d}
+output:  &{NodeID:NodeID-HmCZrj6qRQattGzZf4t1PH6vQ6Lii3qeD StakeStartBlock:700 StakeEndBlock:1000 StakedAmount:100000000000 DelegationFeeRate:90 RewardAddress:02622d52de28b306fd25d4899cbfbfd496554a5de37f59a0c42e9dd6ebe52ea183}
 ```
 
 ## Get Validator stake info
@@ -140,10 +139,10 @@ If successful, the output should be something like:
 
 ```bash
 validators: 1
-0: NodeID=NodeID-3CEtvCmZBYKwGnewYkAst7KopGk25j1Kv
+0: NodeID=NodeID-Ak5rbpMogUSVT5EAoHRJBxoFW8CstfSEm
 validator to get staking info for: 0 [auto-selected]
 validator stake:
-StakeStartBlock=66 StakeEndBlock=216 StakedAmount=100000000000 DelegationFeeRate=50 RewardAddress=0213bab583ef405d7c12e3d0b0e0794a29a9d8c13f4b4aad2d7c382b4312fbe373 OwnerAddress=0213bab583ef405d7c12e3d0b0e0794a29a9d8c13f4b4aad2d7c382b4312fbe373
+StakeStartBlock=173 StakeEndBlock=473 StakedAmount=100000000000 DelegationFeeRate=50 RewardAddress=02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754 OwnerAddress=02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754
 ```
 
 You can also retrieve other useful info from Emission Balancer by doing
@@ -155,8 +154,7 @@ You can also retrieve other useful info from Emission Balancer by doing
 If successful, the output should be something like:
 
 ```bash
-chainID: 2vhqHF49srJytVGZm8uKbLZshNqoqWxBBrPYpkqoSPTZbjtEEi
-validator 0: NodeID=NodeID-3CEtvCmZBYKwGnewYkAst7KopGk25j1Kv PublicKey=sVzz3/tJL/x04uwwTrlB39LN1iuV44e45Fi55Jwk8LN6FX6WWQ/zEhAbSuzD9uHC Active=true StakedAmount=100000000000 AccumulatedStakedReward=268934 DelegationFeeRate=0.500000 DelegatedAmount=50000000000 AccumulatedDelegatedReward=178360
+validator 0: NodeID=NodeID-Ak5rbpMogUSVT5EAoHRJBxoFW8CstfSEm PublicKey=g5qscI5lmMiu3KyO9brJiizJcdXJ6d0BXEFsg16qsdIF/Qkgy3hO2qXbGhRmSk2y Active=true StakedAmount=100000000000 AccumulatedStakedReward=201492 DelegationFeeRate=0.500000 DelegatedAmount=0 AccumulatedDelegatedReward=0
 ```
 
 ## Delegate stake to a validator
@@ -177,14 +175,17 @@ If successful, the output should be something like:
 
 ```bash
 validators: 1
-0: NodeID=NodeID-3CEtvCmZBYKwGnewYkAst7KopGk25j1Kv
+0: NodeID=NodeID-Ak5rbpMogUSVT5EAoHRJBxoFW8CstfSEm
 validator to delegate to: 0 [auto-selected]
-balance: 199.999941200 NAI
+balance: 199.999882400 NAI
 ✔ Staked amount: 50█
-continue (y/n): y
-✅ txID: 8PST8UKxbKWUo8RPtGxswnomGkNyqNaYaZ1RPCrAVQWRC9PVH
+Staking Start Block(must be after 261): 300
+[0m: 300█
+Staking End Block(must be after 300): 1000
+✔ continue (y/n): y█
+✅ txID: BabSBcRUp2g59uEMTrFa8Aw4GSS1WnJj3aZ7teZ5zjei2Frsk
 fee consumed: 0.000043000 NAI
-output:  &{StakedAmount:50000000000 BalanceBeforeStake:199999898200 BalanceAfterStake:149999898200}
+output:  &{StakedAmount:50000000000 BalanceBeforeStake:199999839400 BalanceAfterStake:149999839400}
 ```
 
 ## Get Delegated User stake info
@@ -199,10 +200,10 @@ If successful, the output should be something like:
 
 ```bash
 validators: 1
-0: NodeID=NodeID-3CEtvCmZBYKwGnewYkAst7KopGk25j1Kv
+0: NodeID=NodeID-Ak5rbpMogUSVT5EAoHRJBxoFW8CstfSEm
 validator to get staking info for: 0 [auto-selected]
 user stake:
-StakeStartBlock=84 StakeEndBlock=216 StakedAmount=50000000000 RewardAddress=0213bab583ef405d7c12e3d0b0e0794a29a9d8c13f4b4aad2d7c382b4312fbe373 OwnerAddress=0213bab583ef405d7c12e3d0b0e0794a29a9d8c13f4b4aad2d7c382b4312fbe373
+StakeStartBlock=300 StakeEndBlock=473 StakedAmount=50000000000 RewardAddress=02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754 OwnerAddress=02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754
 ```
 
 ## Get Emission Info
@@ -217,7 +218,7 @@ If successful, the output should be something like:
 
 ```bash
 emission info:
-CurrentBlockHeight=228 TotalSupply=1706000000001022626 MaxSupply=10000000000000000000 TotalStaked=0 RewardsPerEpoch=0 NumBlocksInEpoch=10 EmissionAddress=00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 EmissionAccumulatedReward=66950
+CurrentBlockHeight=288 TotalSupply=1706000000000523204 MaxSupply=10000000000000000000 TotalStaked=100000000000 RewardsPerEpoch=23782 NumBlocksInEpoch=10 EmissionAddress=00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 EmissionAccumulatedReward=112400
 ```
 
 ## Get Validators
@@ -231,7 +232,7 @@ We can check the validators that have been staked
 If successful, the output should be something like:
 
 ```bash
-validator 0: NodeID=NodeID-3CEtvCmZBYKwGnewYkAst7KopGk25j1Kv PublicKey=sVzz3/tJL/x04uwwTrlB39LN1iuV44e45Fi55Jwk8LN6FX6WWQ/zEhAbSuzD9uHC Active=false StakedAmount=100000000000 AccumulatedStakedReward=322445 DelegationFeeRate=0.500000 DelegatedAmount=0 AccumulatedDelegatedReward=231868
+validator 0: NodeID=NodeID-Ak5rbpMogUSVT5EAoHRJBxoFW8CstfSEm PublicKey=g5qscI5lmMiu3KyO9brJiizJcdXJ6d0BXEFsg16qsdIF/Qkgy3hO2qXbGhRmSk2y Active=true StakedAmount=100000000000 AccumulatedStakedReward=387184 DelegationFeeRate=0.500000 DelegatedAmount=0 AccumulatedDelegatedReward=0
 ```
 
 We can also retrieve all the validators(both staked and unstaked):
@@ -243,8 +244,7 @@ We can also retrieve all the validators(both staked and unstaked):
 If successful, the output should be something like:
 
 ```bash
-validator 0: NodeID=NodeID-3CEtvCmZBYKwGnewYkAst7KopGk25j1Kv PublicKey=sVzz3/tJL/x04uwwTrlB39LN1iuV44e45Fi55Jwk8LN6FX6WWQ/zEhAbSuzD9uHC StakedAmount=100000000000 AccumulatedStakedReward=322445 DelegationFeeRate=0.500000 DelegatedAmount=0 AccumulatedDelegatedReward=231868
-validator 1: NodeID=NodeID-P5fcvSzDLZXYFJKARgjXsrSrWk17EfsQy PublicKey=pjA5ku2ABxcwuA5M0Ka9WpqZmS0NhfozpOnm+H7di9+qJXABlV6BHmfghscMTym+ StakedAmount=0 AccumulatedStakedReward=0 DelegationFeeRate=0.000000 DelegatedAmount=0 AccumulatedDelegatedReward=0
+validator 0: NodeID=NodeID-Ak5rbpMogUSVT5EAoHRJBxoFW8CstfSEm PublicKey=g5qscI5lmMiu3KyO9brJiizJcdXJ6d0BXEFsg16qsdIF/Qkgy3hO2qXbGhRmSk2y StakedAmount=100000000000 AccumulatedStakedReward=405021 DelegationFeeRate=0.500000 DelegatedAmount=50000000000 AccumulatedDelegatedReward=17836
 ```
 
 ## Claim delegator staking reward
@@ -253,31 +253,7 @@ On NuklaiVM, you are able to claim your staking rewards at any point in time wit
 
 First, we need to make sure that we're on our account we used for delegating our stake.
 
-Let's first check the balance on our account:
-
-```bash
-./build/nuklai-cli key balance
-```
-
-Which should produce a result like:
-
-```bash
-address: 0213bab583ef405d7c12e3d0b0e0794a29a9d8c13f4b4aad2d7c382b4312fbe373 balance: 149.999898200 NAI
-```
-
-Next, let's check out how many NAI delegator rewards have been accumulated with our validator we staked to:
-
-```bash
-./build/nuklai-cli emission staked-validators
-```
-
-Which gives an output:
-
-```bash
-validator 0: NodeID=NodeID-3CEtvCmZBYKwGnewYkAst7KopGk25j1Kv PublicKey=sVzz3/tJL/x04uwwTrlB39LN1iuV44e45Fi55Jwk8LN6FX6WWQ/zEhAbSuzD9uHC Active=false StakedAmount=100000000000 AccumulatedStakedReward=322445 DelegationFeeRate=0.500000 DelegatedAmount=0 AccumulatedDelegatedReward=231868
-```
-
-Now, when we wanna claim our accumulated rewards, we do:
+When we wanna claim our accumulated rewards, we do:
 
 ```bash
 ./build/nuklai-cli action claim-user-stake-reward
@@ -287,24 +263,12 @@ Which should produce a result like:
 
 ```bash
 validators: 1
-0: NodeID=NodeID-3CEtvCmZBYKwGnewYkAst7KopGk25j1Kv
+0: NodeID=NodeID-Ak5rbpMogUSVT5EAoHRJBxoFW8CstfSEm
 validator to claim staking rewards from: 0 [auto-selected]
 continue (y/n): y
-✅ txID: 2XZq5pqUBUzGakuCWTQ15zUv3YXRQbFbX8DZtmhRGpErF2Ty1K
+✅ txID: ADyqY8bfDmXFELjXAo249hTmteGk9t2ij5Vp6GcdakazG78hB
 fee consumed: 0.000033100 NAI
-output:  &{StakeStartBlock:84 StakeEndBlock:216 StakedAmount:50000000000 BalanceBeforeClaim:149999865100 BalanceAfterClaim:150000096968 DistributedTo:0213bab583ef405d7c12e3d0b0e0794a29a9d8c13f4b4aad2d7c382b4312fbe373}
-```
-
-Let's check out balance again:
-
-```bash
-./build/nuklai-cli key balance
-```
-
-Which should produce a result like:
-
-```bash
-address: 0213bab583ef405d7c12e3d0b0e0794a29a9d8c13f4b4aad2d7c382b4312fbe373 balance: 150.000096968 NAI
+output:  &{StakeStartBlock:300 StakeEndBlock:473 StakedAmount:50000000000 BalanceBeforeClaim:149999806300 BalanceAfterClaim:149999841972 DistributedTo:02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754}
 ```
 
 NOTE: The longer you stake, the more rewards you will get for delegating. Also, note that as soon as you claim your reward, this timestamp is recorded and your staking duration will be reset. This incentivizes users from not claiming their rewards for as long as they want to and they get rewarded for it.
@@ -322,63 +286,23 @@ Let's undelegate our stake from the validator we staked to from before:
 
 If successful, the output should be something like:
 
-```
-validators: 2
-0: NodeID=NodeID-JV548bkici8bBx1SzvSCUKZdgP3RY3iXs
-1: NodeID=NodeID-9aaVYT33M2GPAws7eSjHor5c3zLhkngy9
-✔ validator to unstake from: 1█
-continue (y/n): y
-✅ txID: bTFRsFwyMJT4sESishFHeAihL9SnBFvirrSExp95eJTFVLyLz
-```
-
-Now, if we check the balance again, we should have our 1000000 NAI back to our account:
-
 ```bash
-./build/nuklai-cli key balance
+validators: 1
+0: NodeID=NodeID-Ak5rbpMogUSVT5EAoHRJBxoFW8CstfSEm
+validator to unstake from: 0 [auto-selected]
+✔ continue (y/n): y█
+✅ txID: 255GRo16jVCjXN4jJ176is25WC2ykr1rULM8ixPzHQRp29iMFg
+fee consumed: 0.000033100 NAI
+output:  &{StakeStartBlock:300 StakeEndBlock:473 UnstakedAmount:50000000000 DelegationFeeRate:0 RewardAmount:285376 BalanceBeforeUnstake:150000489797 BalanceAfterUnstake:200000775173 DistributedTo:02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754}
 ```
 
-Which should produce a result like:
-
-```
-assetID (use NAI for native token): NAI
-✔ assetID (use NAI for native token): NAI█
-balance: 1000000.143995668 NAI
-```
-
-Note that the delegator staking rewards were automatically claimed along with the original staked amount.
+Note that if you check your balance, you will find that the delegator staking rewards were automatically claimed along with the original staked amount.
 
 ## Claim validator staking reward
 
 On NuklaiVM, you are able to claim your validator staking rewards at any point in time without withdrawing your stake.
 
 First, we need to make sure that we're on our account we used for registrating our validator stake.
-
-Let's first check the balance on our account:
-
-```bash
-./build/nuklai-cli key balance
-```
-
-Which should produce a result like:
-
-```
-✔ assetID (use NAI for native token): NAI█
-uri: http://127.0.0.1:43321/ext/bc/sFv8uJFL9XnLBDbn3xJ2pusQHxC3yfNJ9iPV7xN4WeZGQ9HTa
-balance: 0.999946300 NAI
-```
-
-Next, let's check out how many NAI validator rewards have been accumulated with our validator:
-
-```bash
-./build/nuklai-cli emission staked-validators
-```
-
-Which gives an output:
-
-```
-validator 0: NodeID=NodeID-9aaVYT33M2GPAws7eSjHor5c3zLhkngy9 PublicKey=h3QqCh/LwqpFbuRRtsB5/kQ2dT+EmZC+q7DdaYY/rRNoHpdSBbOQR/+Tl85lyPaW Active=true StakedAmount=999000000000 UnclaimedStakedReward=157810345 DelegationFeeRate=0.500000 DelegatedAmount=0 UnclaimedDelegatedReward=12020234
-validator 1: NodeID=NodeID-JV548bkici8bBx1SzvSCUKZdgP3RY3iXs PublicKey=mDSuRu8Z7sYQDASICxvvKoAz5NcnOq4z+dYRzUMld5JqLoL9R0OKrXDOIdDDmxiU Active=true StakedAmount=999000000000 UnclaimedStakedReward=4521749 DelegationFeeRate=0.900000 DelegatedAmount=0 UnclaimedDelegatedReward=0
-```
 
 Now, when we wanna claim our accumulated rewards, we do:
 
@@ -388,27 +312,14 @@ Now, when we wanna claim our accumulated rewards, we do:
 
 Which should produce a result like:
 
-```
-validators: 2
-0: NodeID=NodeID-9aaVYT33M2GPAws7eSjHor5c3zLhkngy9
-1: NodeID=NodeID-JV548bkici8bBx1SzvSCUKZdgP3RY3iXs
-validator to claim staking rewards for: 0
-continue (y/n): y
-✅ txID: 28AcHZ5RUTDZxdmtYDRB1Lw3GeyugUKcWhMrsF8NWstqae2kin
-```
-
-Let's check out balance again:
-
 ```bash
-./build/nuklai-cli key balance
-```
-
-Which should produce a result like:
-
-```
-assetID (use NAI for native token): NAI
-✔ assetID (use NAI for native token): NAI█
-balance: 1.169750479 NAI
+validators: 1
+0: NodeID=NodeID-Ak5rbpMogUSVT5EAoHRJBxoFW8CstfSEm
+validator to claim staking rewards for: 0 [auto-selected]
+continue (y/n): y
+✅ txID: 2pv4ajsNX4CPC3PDU7TjZGuirdyqBGtv66xdFKXBas2VYPtv28
+fee consumed: 0.000035100 NAI
+output:  &{StakeStartBlock:173 StakeEndBlock:473 StakedAmount:100000000000 DelegationFeeRate:50 BalanceBeforeClaim:149999738672 BalanceAfterClaim:150000522897 DistributedTo:02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754}
 ```
 
 ## Withdraw validator stake
@@ -427,14 +338,14 @@ Let's withdraw our validator stake:
 
 If successful, the output should be something like:
 
-```
-validators: 2
-0: NodeID=NodeID-9aaVYT33M2GPAws7eSjHor5c3zLhkngy9
-1: NodeID=NodeID-JV548bkici8bBx1SzvSCUKZdgP3RY3iXs
-✔ validator to withdraw from staking: 0█
+```bash
+validators: 1
+0: NodeID=NodeID-Ak5rbpMogUSVT5EAoHRJBxoFW8CstfSEm
+validator to withdraw from staking: 0 [auto-selected]
 continue (y/n): y
-✅ txID: W3MKCnLxJeEf27xTQdSMwaZLujaMvtqxgE7BZJsA8rhkroBDP
-
+✅ txID: 3zxMhsdYhGK3wdbvafd8b8C1uvLZuT9jHpMy8Sqk4GUrk1757
+fee consumed: 0.000035100 NAI
+output:  &{StakeStartBlock:173 StakeEndBlock:473 UnstakedAmount:100000000000 DelegationFeeRate:50 RewardAmount:0 BalanceBeforeUnstake:0 BalanceAfterUnstake:100000000000 DistributedTo:02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754}
 ```
 
 Now, if we check the balance again, we should have our 1000000 NAI back to our account:
@@ -445,10 +356,8 @@ Now, if we check the balance again, we should have our 1000000 NAI back to our a
 
 Which should produce a result like:
 
-```
-✔ assetID (use NAI for native token): NAI█
-uri: http://127.0.0.1:43321/ext/bc/sFv8uJFL9XnLBDbn3xJ2pusQHxC3yfNJ9iPV7xN4WeZGQ9HTa
-balance: 1000.172072743 NAI
+```bash
+address: 02da6ac369af5431778f509dc71e52318eb91cb7824d60167202f4f772e3dd1754 balance: 300.000740073 NAI
 ```
 
 We got back our original staked amount and the validator staking rewards.

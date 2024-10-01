@@ -226,7 +226,7 @@ func (r *CompleteContributeDatasetResult) Marshal(p *codec.Packer) {
 
 func UnmarshalCompleteContributeDatasetResult(p *codec.Packer) (codec.Typed, error) {
 	var result CompleteContributeDatasetResult
-	p.UnpackID(true, &result.CollateralAssetID)
+	p.UnpackID(false, &result.CollateralAssetID)
 	result.CollateralAmountRefunded = p.UnpackUint64(true)
 	p.UnpackID(true, &result.DatasetID)
 	p.UnpackID(true, &result.DatasetChildNftID)

@@ -15,16 +15,14 @@ To do so, we do:
 When you are done, the output should look something like this:
 
 ```bash
-address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-✔ name: Dataset1█
+name: dataset1
 description: desc1
 isCommunityDataset (y/n): y
-metadata: metadata1
+metadata: test1
 ✔ continue (y/n): y█
-✅ txID: NaMdrZvz7XPQdFpJy1o9kr7msMgSzMPm9RL8KQ6UYns1KU8PS
-fee consumed: 0.000191500 NAI
-output:  &{DatasetID:b6WpafBLooTTUmnDnLrt1Y8AoMtw5YCyUbsH7FKEBFib65bmd DatasetParentNftID:2QB3s5royrTxuFehm577MtFrBniTBvjvE52PczzmPFfk4Ff46e}
+✅ txID: Z2UMDbY5U9g7CsFBcKcC2VTSL7Tqycb6H6ZeGJ58kH8AR6rVG
+fee consumed: 0.000191100 NAI
+output:  &{DatasetID:WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx DatasetParentNftID:2YkmGsJSiysEEa7PyXGZTknB3UQrygtginpDWs5MSeqWgt7iKt}
 ```
 
 Note that creating a dataset will automatically create an asset of type "dataset" and also mint the parent NFT for the dataset as this type of asset is a fractionalized asset and always has a parent NFT and corresponding child NFTs.
@@ -40,17 +38,15 @@ First, let's create our asset.
 When you are done, the output should look something like this:
 
 ```bash
-address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
 assetType(0 for fungible, 1 for non-fungible and 2 for dataset): 2
-✔ name: Dataset0█
-symbol: DS0
+✔ name: dataset2█
+symbol: ds2
 decimals: 0
-metadata: test0
-continue (y/n): y
-✅ txID: JRxtYf9v5NQS7MyZM6MQjK7psghistzR89Av3E5AZoCabiZMJ
+metadata: test2
+✔ continue (y/n): y█
+✅ txID: 2Q6mm4LCxR8dBxMRvrtsjTegEBvLWfCGZPA3TCH68RF2bGiakV
 fee consumed: 0.000082200 NAI
-output:  &{AssetID:np331YT7K3XdGKFriWNzwf9ieWeSMga6SZhZSaRCB9FU3QZq2 AssetBalance:1 DatasetParentNftID:res9ukBitVz9pkiy2nmZNQcYM8BYr1uTUvZCAbrjACHyPVCP2}
+output:  &{AssetID:2jZ1ajDTMKy6FNsA6GqQRJfRn9jr9YUx8bnpUJcqR1W1QYN4D3 AssetBalance:1 DatasetParentNftID:2Rdto817HWG4ii38WJvVWj67WqrUCQZkmyXyxMiiFiFvVxem7P}
 ```
 
 Now, let's create our dataset using this asset.
@@ -62,17 +58,15 @@ Now, let's create our dataset using this asset.
 When you are done, the output should look something like this:
 
 ```bash
-address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-assetID: np331YT7K3XdGKFriWNzwf9ieWeSMga6SZhZSaRCB9FU3QZq2
-name: Dataset0
-✔ description: desc2█
-isCommunityDataset (y/n): y
-✔ metadata: test2█
+assetID: 2jZ1ajDTMKy6FNsA6GqQRJfRn9jr9YUx8bnpUJcqR1W1QYN4D3
+name: datset2
+description: desc2
+✔ isCommunityDataset (y/n): y█
+metadata: test2
 ✔ continue (y/n): y█
-✅ txID: 2cPYJjnECbnrdxMRV6d7SVd6x4tzUu4qtw5pQ9kaUkxqDhrksJ
-fee consumed: 0.000191100 NAI
-output:  &{DatasetID:np331YT7K3XdGKFriWNzwf9ieWeSMga6SZhZSaRCB9FU3QZq2 ParentNftID:res9ukBitVz9pkiy2nmZNQcYM8BYr1uTUvZCAbrjACHyPVCP2}
+✅ txID: 3dCN894iZoc1BJXPo4D9XPS3mWXmmPexT5rjWMQjxbyycGNN1
+fee consumed: 0.000190900 NAI
+output:  &{DatasetID:2jZ1ajDTMKy6FNsA6GqQRJfRn9jr9YUx8bnpUJcqR1W1QYN4D3 DatasetParentNftID:2Rdto817HWG4ii38WJvVWj67WqrUCQZkmyXyxMiiFiFvVxem7P}
 ```
 
 ## View Dataset Info
@@ -88,18 +82,13 @@ Now, let's retrieve the info about our dataset.
 When you are done, the output should look something like this:
 
 ```bash
-address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-datasetID: np331YT7K3XdGKFriWNzwf9ieWeSMga6SZhZSaRCB9FU3QZq2
-
-Retrieving dataset info for datasetID: np331YT7K3XdGKFriWNzwf9ieWeSMga6SZhZSaRCB9FU3QZq2
+Retrieving dataset info for datasetID: WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx█
 dataset info:
-Name=Dataset0 Description=desc2 Categories=Dataset0 LicenseName=MIT LicenseSymbol=MIT LicenseURL=https://opensource.org/licenses/MIT Metadata=test2 IsCommunityDataset=true SaleID=11111111111111111111111111111111LpoYY BaseAsset=11111111111111111111111111111111LpoYY BasePrice=0 RevenueModelDataShare=100 RevenueModelMetadataShare=0 RevenueModelDataOwnerCut=10 RevenueModelMetadataOwnerCut=0 Owner=00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+Name=dataset1 Description=desc1 Categories=dataset1 LicenseName=MIT LicenseSymbol=MIT LicenseURL=https://opensource.org/licenses/MIT Metadata=test1 IsCommunityDataset=true SaleID=11111111111111111111111111111111LpoYY BaseAsset=11111111111111111111111111111111LpoYY BasePrice=0 RevenueModelDataShare=100 RevenueModelMetadataShare=0 RevenueModelDataOwnerCut=10 RevenueModelMetadataOwnerCut=0 Owner=00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
 
-Retrieving asset info for assetID: np331YT7K3XdGKFriWNzwf9ieWeSMga6SZhZSaRCB9FU3QZq2
-assetType:  Dataset Token name: Dataset0 symbol: DS0 decimals: 0 metadata: test0 uri: https://nukl.ai totalSupply: 1 maxSupply: 0 owner: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 mintAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 pauseUnpauseAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 freezeUnfreezeAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 enableDisableKYCAccountAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
-balance: 1 DS0
+Retrieving asset info for assetID: WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx
+assetType:  Dataset Token name: dataset1 symbol: dataset1 decimals: 0 metadata: desc1 uri: desc1 totalSupply: 1 maxSupply: 0 owner: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 mintAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 pauseUnpauseAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 freezeUnfreezeAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 enableDisableKYCAccountAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+balance: 1 dataset1
 ```
 
 ### View balance of the assets
@@ -115,12 +104,9 @@ Since the dataset is also a fractionalized asset, we can check its balance doing
 When you are done, the output should look something like this:
 
 ```bash
-address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-assetID: np331YT7K3XdGKFriWNzwf9ieWeSMga6SZhZSaRCB9FU3QZq2
-uri: http://127.0.0.1:9650/ext/bc/nuklaivm
-assetType:  Dataset Token name: Dataset0 symbol: DS0 decimals: 0 metadata: test0 uri: https://nukl.ai totalSupply: 1 maxSupply: 0 owner: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 mintAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 pauseUnpauseAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 freezeUnfreezeAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 enableDisableKYCAccountAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
-balance: 1 DS0
+✔ assetID: WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx█
+assetType:  Dataset Token name: dataset1 symbol: dataset1 decimals: 0 metadata: desc1 uri: desc1 totalSupply: 1 maxSupply: 0 owner: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 mintAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 pauseUnpauseAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 freezeUnfreezeAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 enableDisableKYCAccountAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+balance: 1 dataset1
 ```
 
 We can also check info about the parent NFT that was minted when creating the dataset.
@@ -132,14 +118,10 @@ We can also check info about the parent NFT that was minted when creating the da
 The output should be something like:
 
 ```bash
-address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-✔ assetID: res9ukBitVz9pkiy2nmZNQcYM8BYr1uTUvZCAbrjACHyPVCP2█
-uri: http://127.0.0.1:9650/ext/bc/nuklaivm
-collectionID: np331YT7K3XdGKFriWNzwf9ieWeSMga6SZhZSaRCB9FU3QZq2
+collectionID: WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx
 uniqueID: 0
-uri: https://nukl.ai
-metadata: test0
+uri: desc1
+metadata: desc1
 ownerAddress: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
 You own this NFT
 ```
@@ -159,21 +141,18 @@ Let's switch to a different account and start the inititation process.
 Output:
 
 ```bash
-chainID: WPfnFTkhMN7iR2B5AfSjSa1ntFBT3RkkjwougcrH6Ck1kjLMU
 stored keys: 2
-0) address (ed25519): nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx balance: 852999949.999773979 NAI
-1) address (ed25519): nuklai1qrnqpl6p2nx8gtuw9e9esgr7suufp7qdjk9h96rc3k9yqwla4tfc5lrcqmp balance: 0.000000000 NAI
-✗ set default key:
+0) address: 00095ea19193bd18b48ea58137a6ec9bc0fbdedb7fd7c5b078df99d881f8d407c4 balance: 0 NAI
+1) address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 balance: 852999999.999503732 NAI
+set default key: 1
 ```
 
 You need to submit some amount of NAI(this is set in the VM config) as collateral when starting the contribution process so let's send some NAI to this new account first.
 
 ```bash
-chainID: WPfnFTkhMN7iR2B5AfSjSa1ntFBT3RkkjwougcrH6Ck1kjLMU
-stored keys: 2
-0) address (ed25519): nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx balance: 852999939.999741912 NAI
-1) address (ed25519): nuklai1qrnqpl6p2nx8gtuw9e9esgr7suufp7qdjk9h96rc3k9yqwla4tfc5lrcqmp balance: 10.000000000 NAI
-set default key: 1
+0) address: 00095ea19193bd18b48ea58137a6ec9bc0fbdedb7fd7c5b078df99d881f8d407c4 balance: 50.000000000 NAI
+1) address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 balance: 852999949.999776721 NAI
+set default key: 0
 ```
 
 Now, let's start the contribution process.
@@ -185,21 +164,18 @@ Now, let's start the contribution process.
 When you are done, the output should look something like this:
 
 ```bash
-address: nuklai1qrnqpl6p2nx8gtuw9e9esgr7suufp7qdjk9h96rc3k9yqwla4tfc5lrcqmp
-chainID: WPfnFTkhMN7iR2B5AfSjSa1ntFBT3RkkjwougcrH6Ck1kjLMU
-✔ datasetID: 2vfdfyQwZ8X5xCUMsxJi8Ve9SE4AL2eDRmXmDUfJDYGKmaZqRH█
-dataIdentifier: idrow1
-continue (y/n): y
-✅ txID: 2AD8PjZx8ZYdU2ENN8q5Nnn7bnG6tUQTEvSEF2FEdWxydmWDPo
+datasetID: WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx
+dataIdentifier: id1
+✔ continue (y/n): y█
+✅ txID: 2ReNPSR3GW9rWVaVg7joJ31rW7q5qkYwoUJPh4zTnJJYLCdPFc
+fee consumed: 0.000132800 NAI
+output:  &{CollateralAssetID:11111111111111111111111111111111LpoYY CollateralAmountTaken:1000000000}
 ```
 
 Note that your balance may have decreased a bit. You will get it refunded once the dataset owner completes the contribution process.
 
 ```bash
-chainID: WPfnFTkhMN7iR2B5AfSjSa1ntFBT3RkkjwougcrH6Ck1kjLMU
-stored keys: 2
-0) address (ed25519): nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx balance: 852999939.999741912 NAI
-1) address (ed25519): nuklai1qrnqpl6p2nx8gtuw9e9esgr7suufp7qdjk9h96rc3k9yqwla4tfc5lrcqmp balance: 8.999867900 NAI
+address: 00095ea19193bd18b48ea58137a6ec9bc0fbdedb7fd7c5b078df99d881f8d407c4 balance: 48.999867200 NAI
 ```
 
 ### Step 2: View contribution info
@@ -207,27 +183,15 @@ stored keys: 2
 We can now check more details about this pending contribution.
 
 ```bash
-./build/nuklai-cli dataset info
+./build/nuklai-cli dataset contribute-info
 ```
 
 Output:
 
 ```bash
-address: nuklai1qrnqpl6p2nx8gtuw9e9esgr7suufp7qdjk9h96rc3k9yqwla4tfc5lrcqmp
-chainID: WPfnFTkhMN7iR2B5AfSjSa1ntFBT3RkkjwougcrH6Ck1kjLMU
-chainID: WPfnFTkhMN7iR2B5AfSjSa1ntFBT3RkkjwougcrH6Ck1kjLMU
-datasetID: 2vfdfyQwZ8X5xCUMsxJi8Ve9SE4AL2eDRmXmDUfJDYGKmaZqRH
-Retrieving dataset info for datasetID: 2vfdfyQwZ8X5xCUMsxJi8Ve9SE4AL2eDRmXmDUfJDYGKmaZqRH
-dataset info:
-Name=dataset1 Description=desc for dataset1 Categories=dataset1 LicenseName=MIT LicenseSymbol=MIT LicenseURL=https://opensource.org/licenses/MIT Metadata=metadata for dataset1 IsCommunityDataset=true SaleID=11111111111111111111111111111111LpoYY BaseAsset=11111111111111111111111111111111LpoYY BasePrice=0 RevenueModelDataShare=100 RevenueModelMetadataShare=0 RevenueModelDataOwnerCut=10 RevenueModelMetadataOwnerCut=0 Owner=nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-Retrieving asset info for assetID: 2vfdfyQwZ8X5xCUMsxJi8Ve9SE4AL2eDRmXmDUfJDYGKmaZqRH
-assetType:  Dataset Token name: dataset1 symbol: dataset1 decimals: 0 metadata: desc for dataset1 uri: desc for dataset1 totalSupply: 1 maxSupply: 0 admin: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx mintActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx pauseUnpauseActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx freezeUnfreezeActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx enableDisableKYCAccountActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-assetID: 2vfdfyQwZ8X5xCUMsxJi8Ve9SE4AL2eDRmXmDUfJDYGKmaZqRH
-name: dataset1
-symbol: dataset1
-balance: 0
-please send funds to nuklai1qrnqpl6p2nx8gtuw9e9esgr7suufp7qdjk9h96rc3k9yqwla4tfc5lrcqmp
-exiting...
+datasetID: WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx
+Retrieving pending data contributions info for datasetID: WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx
+Contribution 0: Contributor=00095ea19193bd18b48ea58137a6ec9bc0fbdedb7fd7c5b078df99d881f8d407c4 DataLocation=default DataIdentifier=id1
 ```
 
 ### Step 3: Complete Contribute
@@ -241,14 +205,13 @@ Now, let's switch to the dataset owner account and complete this 2-step process.
 Output:
 
 ```bash
-address: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-chainID: WPfnFTkhMN7iR2B5AfSjSa1ntFBT3RkkjwougcrH6Ck1kjLMU
-datasetID: 2vfdfyQwZ8X5xCUMsxJi8Ve9SE4AL2eDRmXmDUfJDYGKmaZqRH
-contributor: nuklai1qrnqpl6p2nx8gtuw9e9esgr7suufp7qdjk9h96rc3k9yqwla4tfc5lrcqmp
-unique nft #: 1
-✔ continue (y/n): y█
-✅ txID: 2UMmEhyp1oV2f6nFBab9LRNaBXFsj7HLseWb32bMtnsqbYvp2U
-nftID: A4tQnLCsyafbQPqLQdL8c7sQUfB4Wj36ZX6Nh3HdyUfSs4ABR
+✔ datasetID: WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx█
+contributor: 00095ea19193bd18b48ea58137a6ec9bc0fbdedb7fd7c5b078df99d881f8d407c4
+✔ unique nft #: 1█
+continue (y/n): y
+✅ txID: 2hpemTb16BqsNEh5iHGf25seGqJpmxRLZUnocRRCvthaQwczn
+fee consumed: 0.000180600 NAI
+output:  &{CollateralAssetID:11111111111111111111111111111111LpoYY CollateralAmountRefunded:1000000000 DatasetID:WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx DatasetChildNftID:2qdrhZS8WYiHtwZ8jw5kYS3YmL7PUmVv7kz3hYdHamupSQmoPv To:00095ea19193bd18b48ea58137a6ec9bc0fbdedb7fd7c5b078df99d881f8d407c4 DataLocation:[100 101 102 97 117 108 116] DataIdentifier:[105 100 49]}
 ```
 
 We should now have our collateral refunded back to us.
@@ -260,11 +223,9 @@ We should now have our collateral refunded back to us.
 Output:
 
 ```bash
-chainID: WPfnFTkhMN7iR2B5AfSjSa1ntFBT3RkkjwougcrH6Ck1kjLMU
-stored keys: 2
-0) address (ed25519): nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx balance: 852999939.999561310 NAI
-1) address (ed25519): nuklai1qrnqpl6p2nx8gtuw9e9esgr7suufp7qdjk9h96rc3k9yqwla4tfc5lrcqmp balance: 9.999867900 NAI
-set default key: 1
+0) address: 00095ea19193bd18b48ea58137a6ec9bc0fbdedb7fd7c5b078df99d881f8d407c4 balance: 49.999867200 NAI
+1) address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 balance: 852999949.999596119 NAI
+set default key: 0
 ```
 
 This should also issue an NFT to the contributor so let's switch back to our contributor account and check the dataset info.
@@ -276,34 +237,28 @@ This should also issue an NFT to the contributor so let's switch back to our con
 Output:
 
 ```bash
-address: nuklai1qrnqpl6p2nx8gtuw9e9esgr7suufp7qdjk9h96rc3k9yqwla4tfc5lrcqmp
-chainID: WPfnFTkhMN7iR2B5AfSjSa1ntFBT3RkkjwougcrH6Ck1kjLMU
-chainID: WPfnFTkhMN7iR2B5AfSjSa1ntFBT3RkkjwougcrH6Ck1kjLMU
-datasetID: 2vfdfyQwZ8X5xCUMsxJi8Ve9SE4AL2eDRmXmDUfJDYGKmaZqRH
-✔ datasetID: 2vfdfyQwZ8X5xCUMsxJi8Ve9SE4AL2eDRmXmDUfJDYGKmaZqRH█
+Retrieving dataset info for datasetID: WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx
 dataset info:
-Name=dataset1 Description=desc for dataset1 Categories=dataset1 LicenseName=MIT LicenseSymbol=MIT LicenseURL=https://opensource.org/licenses/MIT Metadata=metadata for dataset1 IsCommunityDataset=true SaleID=11111111111111111111111111111111LpoYY BaseAsset=11111111111111111111111111111111LpoYY BasePrice=0 RevenueModelDataShare=100 RevenueModelMetadataShare=0 RevenueModelDataOwnerCut=10 RevenueModelMetadataOwnerCut=0 Owner=nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
-Retrieving asset info for assetID: 2vfdfyQwZ8X5xCUMsxJi8Ve9SE4AL2eDRmXmDUfJDYGKmaZqRH
-assetType:  Dataset Token name: dataset1 symbol: dataset1 decimals: 0 metadata: desc for dataset1 uri: desc for dataset1 totalSupply: 2 maxSupply: 0 admin: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx mintActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx pauseUnpauseActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx freezeUnfreezeActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx enableDisableKYCAccountActor: nuklai1qrzvk4zlwj9zsacqgtufx7zvapd3quufqpxk5rsdd4633m4wz2fdjss0gwx
+Name=dataset1 Description=desc1 Categories=dataset1 LicenseName=MIT LicenseSymbol=MIT LicenseURL=https://opensource.org/licenses/MIT Metadata=test1 IsCommunityDataset=true SaleID=11111111111111111111111111111111LpoYY BaseAsset=11111111111111111111111111111111LpoYY BasePrice=0 RevenueModelDataShare=100 RevenueModelMetadataShare=0 RevenueModelDataOwnerCut=10 RevenueModelMetadataOwnerCut=0 Owner=00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+
+Retrieving asset info for assetID: WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx
+assetType:  Dataset Token name: dataset1 symbol: dataset1 decimals: 0 metadata: desc1 uri: desc1 totalSupply: 2 maxSupply: 0 owner: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 mintAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 pauseUnpauseAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 freezeUnfreezeAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 enableDisableKYCAccountAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
 balance: 1 dataset1
 ```
 
 We can also check that we have been issued an NFT:
 
 ```bash
-./build/nuklai-cli key balanceNFT
+./build/nuklai-cli key balance-nft
 ```
 
 Output:
 
 ```bash
-address: nuklai1qrnqpl6p2nx8gtuw9e9esgr7suufp7qdjk9h96rc3k9yqwla4tfc5lrcqmp
-chainID: WPfnFTkhMN7iR2B5AfSjSa1ntFBT3RkkjwougcrH6Ck1kjLMU
-nftID: A4tQnLCsyafbQPqLQdL8c7sQUfB4Wj36ZX6Nh3HdyUfSs4ABR
-collectionID: 2vfdfyQwZ8X5xCUMsxJi8Ve9SE4AL2eDRmXmDUfJDYGKmaZqRH
+collectionID: WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx
 uniqueID: 1
-uri: desc for dataset1
-metadata: {"dataLocation":"default","dataIdentifier":"idrow1"}
-ownerAddress: nuklai1qrnqpl6p2nx8gtuw9e9esgr7suufp7qdjk9h96rc3k9yqwla4tfc5lrcqmp
+uri: desc1
+metadata: {"dataIdentifier":"id1","dataLocation":"default"}
+ownerAddress: 00095ea19193bd18b48ea58137a6ec9bc0fbdedb7fd7c5b078df99d881f8d407c4
 You own this NFT
 ```

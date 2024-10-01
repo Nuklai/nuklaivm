@@ -28,15 +28,22 @@ audited.
 ### Actions
 
 - ☑ Transfer both the native asset `NAI` and any other token created by users
-- ☑ Create a token
-- ☑ Mint a token
-- ☑ Burn a token
+- ☑ Create a token(fungible, non-fungible, dataset)
+- ☑ Mint a token(fungible, non-fungible)
+- ☑ Burn a token(fungible, non-fungible)
 - ☑ Register validator for staking
-- ☑ Unregister validator from staking
+- ☑ Withdraw validator from staking
 - ☑ Delegate NAI to any currently staked validator
 - ☑ Undelegate NAI from a staked validator
 - ☑ Claim Validator staking rewards
 - ☑ Claim User delegation rewards
+- ☑ Create dataset
+- ☑ Create dataset using an existing token of type dataset
+- ☑ Initiate contribution to the dataset
+- ☑ Complete contribution to the dataset
+- ☑ Publish the dataset to Nuklai marketplace
+- ☑ Subscribe to the dataset in the Nuklai marketplace
+- ☑ Claim accumulated subscription payment from the Nuklai marketplace
 
 ### Emission Balancer
 
@@ -404,6 +411,8 @@ height:3003 txs:1 root:uNXBoJRGNo8JCJ8XDEioqVnJjwrVSSKBMgbaTd9AWFiUke2vE size:0.
 ✅ X3VcRchV8E8CoK38qEWYG9mNFLTwxm5V1mhZzsF4KCdkuwfPB actor: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 summary (*actions.Transfer): [assetID: 11111111111111111111111111111111LpoYY amount: 100000000000 -> 01b27c7ce992cdb7ff039294d7901851902394bb85fa4f3dc4cbb960b07284b7f9
 ]
 ```
+
+## Demos
 
 ### Emission Balancer Demo
 
