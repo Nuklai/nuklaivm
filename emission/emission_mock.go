@@ -83,7 +83,6 @@ func (m *MockEmission) GetStakedValidator(nodeID ids.NodeID) []*Validator {
 
 func (m *MockEmission) GetAllValidators(ctx context.Context) []*Validator {
 	return []*Validator{m.Validator}
-
 }
 
 func (m *MockEmission) GetDelegatorsForValidator(nodeID ids.NodeID) ([]*Delegator, error) {
