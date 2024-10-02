@@ -1,3 +1,6 @@
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 package actions
 
 import (
@@ -14,7 +17,7 @@ import (
 	"github.com/ava-labs/hypersdk/state"
 )
 
-func TestClaimDelegationStakeRewardsActionFailure(t *testing.T) {
+func TestClaimValidatorStakeRewardsActionFailure(t *testing.T) {
 	_, err := emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 10, StakeRewards: 20})
 	require.NoError(t, err)
 
@@ -25,7 +28,7 @@ func TestClaimDelegationStakeRewardsActionFailure(t *testing.T) {
 		{
 			Name:  "StakeMissing",
 			Actor: addr,
-			Action: &ClaimDelegationStakeRewards{
+			Action: &ClaimValidatorStakeRewards{
 				NodeID: nodeID, // Non-existent stake
 			},
 			State:       chaintest.NewInMemoryStore(),
@@ -34,13 +37,13 @@ func TestClaimDelegationStakeRewardsActionFailure(t *testing.T) {
 		{
 			Name:  "StakeNotStarted",
 			Actor: addr,
-			Action: &ClaimDelegationStakeRewards{
+			Action: &ClaimValidatorStakeRewards{
 				NodeID: nodeID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				// Set stake with end block greater than the current block height
-				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
+				// Set validator stake with end block greater than the current block height
+				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, 5000, 10, addr, addr))
 				return store
 			}(),
 			ExpectedErr: ErrStakeNotStarted,
@@ -52,7 +55,7 @@ func TestClaimDelegationStakeRewardsActionFailure(t *testing.T) {
 	}
 }
 
-func TestClaimDelegationStakeRewardsActionSuccess(t *testing.T) {
+func TestClaimValidatorStakeRewardsActionSuccess(t *testing.T) {
 	_, err := emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 51, StakeRewards: 20})
 	require.NoError(t, err)
 
@@ -64,13 +67,15 @@ func TestClaimDelegationStakeRewardsActionSuccess(t *testing.T) {
 			Name:     "ValidClaim",
 			ActionID: ids.GenerateTestID(),
 			Actor:    addr,
-			Action: &ClaimDelegationStakeRewards{
+			Action: &ClaimValidatorStakeRewards{
 				NodeID: nodeID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				// Set stake with end block less than the current block height
-				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
+				// Set validator stake with end block less than the current block height
+				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, emission.GetStakingConfig().MinValidatorStake, 10, addr, addr))
+				// Set the balance for the validator
+				require.NoError(t, storage.SetBalance(context.Background(), store, addr, ids.Empty, 0))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
@@ -79,15 +84,16 @@ func TestClaimDelegationStakeRewardsActionSuccess(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, uint64(20), balance)
 
-				// Check if the stake was claimed correctly
-				exists, _, _, _, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, store, addr, nodeID)
+				// Check if the stake still exists after claiming rewards
+				exists, _, _, _, _, rewardAddress, _, _ := storage.GetRegisterValidatorStake(ctx, store, nodeID)
 				require.True(t, exists)
 				require.Equal(t, addr, rewardAddress)
 			},
-			ExpectedOutputs: &ClaimDelegationStakeRewardsResult{
+			ExpectedOutputs: &ClaimValidatorStakeRewardsResult{
 				StakeStartBlock:    25,
 				StakeEndBlock:      50,
-				StakedAmount:       1000,
+				StakedAmount:       emission.GetStakingConfig().MinValidatorStake,
+				DelegationFeeRate:  10,
 				BalanceBeforeClaim: 0,
 				BalanceAfterClaim:  20,
 				DistributedTo:      addr,
@@ -100,8 +106,7 @@ func TestClaimDelegationStakeRewardsActionSuccess(t *testing.T) {
 	}
 }
 
-// BenchmarkClaimDelegationStakeRewards remains unchanged.
-func BenchmarkClaimDelegationStakeRewards(b *testing.B) {
+func BenchmarkClaimValidatorStakeRewards(b *testing.B) {
 	require := require.New(b)
 	actor := codectest.NewRandomAddress()
 	nodeID := ids.GenerateTestNodeID()
@@ -109,26 +114,28 @@ func BenchmarkClaimDelegationStakeRewards(b *testing.B) {
 	_, err := emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 51, StakeRewards: 20})
 	require.NoError(err)
 
-	claimStakeRewardsBenchmark := &chaintest.ActionBenchmark{
-		Name:  "ClaimStakeRewardsBenchmark",
+	claimValidatorStakeRewardsBenchmark := &chaintest.ActionBenchmark{
+		Name:  "ClaimValidatorStakeRewardsBenchmark",
 		Actor: actor,
-		Action: &ClaimDelegationStakeRewards{
+		Action: &ClaimValidatorStakeRewards{
 			NodeID: nodeID,
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
-			// Set stake with end block less than the current block height
-			require.NoError(storage.SetDelegateUserStake(context.Background(), store, actor, nodeID, 25, 50, 1000, actor))
+			// Set validator stake with end block less than the current block height
+			require.NoError(storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, emission.GetStakingConfig().MinValidatorStake, 10, actor, actor))
+			// Set the balance for the validator
+			require.NoError(storage.SetBalance(context.Background(), store, actor, ids.Empty, 0))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
-			// Check if balance is correctly updated
+			// Check if balance is correctly updated after claiming rewards
 			balance, err := storage.GetBalance(ctx, store, actor, ids.Empty)
 			require.NoError(err)
-			require.Equal(b, uint64(20), balance)
+			require.Equal(b, uint64(20), balance) // Reward amount set by emission instance
 		},
 	}
 
 	ctx := context.Background()
-	claimStakeRewardsBenchmark.Run(ctx, b)
+	claimValidatorStakeRewardsBenchmark.Run(ctx, b)
 }

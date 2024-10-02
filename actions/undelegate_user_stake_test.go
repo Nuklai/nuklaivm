@@ -1,3 +1,6 @@
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 package actions
 
 import (
@@ -14,8 +17,8 @@ import (
 	"github.com/ava-labs/hypersdk/state"
 )
 
-func TestClaimDelegationStakeRewardsActionFailure(t *testing.T) {
-	_, err := emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 10, StakeRewards: 20})
+func TestUndelegateUserStakeActionFailure(t *testing.T) {
+	_, err := emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 25, StakeRewards: 20})
 	require.NoError(t, err)
 
 	addr := codectest.NewRandomAddress()
@@ -25,16 +28,16 @@ func TestClaimDelegationStakeRewardsActionFailure(t *testing.T) {
 		{
 			Name:  "StakeMissing",
 			Actor: addr,
-			Action: &ClaimDelegationStakeRewards{
+			Action: &UndelegateUserStake{
 				NodeID: nodeID, // Non-existent stake
 			},
 			State:       chaintest.NewInMemoryStore(),
 			ExpectedErr: ErrStakeMissing,
 		},
 		{
-			Name:  "StakeNotStarted",
+			Name:  "StakeNotEnded",
 			Actor: addr,
-			Action: &ClaimDelegationStakeRewards{
+			Action: &UndelegateUserStake{
 				NodeID: nodeID,
 			},
 			State: func() state.Mutable {
@@ -43,7 +46,7 @@ func TestClaimDelegationStakeRewardsActionFailure(t *testing.T) {
 				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
 				return store
 			}(),
-			ExpectedErr: ErrStakeNotStarted,
+			ExpectedErr: ErrStakeNotEnded,
 		},
 	}
 
@@ -52,7 +55,7 @@ func TestClaimDelegationStakeRewardsActionFailure(t *testing.T) {
 	}
 }
 
-func TestClaimDelegationStakeRewardsActionSuccess(t *testing.T) {
+func TestUndelegateUserStakeActionSuccess(t *testing.T) {
 	_, err := emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 51, StakeRewards: 20})
 	require.NoError(t, err)
 
@@ -61,36 +64,37 @@ func TestClaimDelegationStakeRewardsActionSuccess(t *testing.T) {
 
 	tests := []chaintest.ActionTest{
 		{
-			Name:     "ValidClaim",
-			ActionID: ids.GenerateTestID(),
-			Actor:    addr,
-			Action: &ClaimDelegationStakeRewards{
+			Name:  "ValidUnstake",
+			Actor: addr,
+			Action: &UndelegateUserStake{
 				NodeID: nodeID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set stake with end block less than the current block height
 				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
+				// Set user balance before unstaking
+				require.NoError(t, storage.SetBalance(context.Background(), store, addr, ids.Empty, 0))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
-				// Check if balance is correctly updated
+				// Check if balance is correctly updated after unstaking
 				balance, err := storage.GetBalance(ctx, store, addr, ids.Empty)
 				require.NoError(t, err)
-				require.Equal(t, uint64(20), balance)
+				require.Equal(t, uint64(1020), balance)
 
-				// Check if the stake was claimed correctly
-				exists, _, _, _, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, store, addr, nodeID)
-				require.True(t, exists)
-				require.Equal(t, addr, rewardAddress)
+				// Check if the stake was deleted
+				exists, _, _, _, _, _, _ := storage.GetDelegateUserStake(ctx, store, addr, nodeID)
+				require.False(t, exists)
 			},
-			ExpectedOutputs: &ClaimDelegationStakeRewardsResult{
-				StakeStartBlock:    25,
-				StakeEndBlock:      50,
-				StakedAmount:       1000,
-				BalanceBeforeClaim: 0,
-				BalanceAfterClaim:  20,
-				DistributedTo:      addr,
+			ExpectedOutputs: &UndelegateUserStakeResult{
+				StakeStartBlock:      25,
+				StakeEndBlock:        50,
+				UnstakedAmount:       1000,
+				RewardAmount:         20,
+				BalanceBeforeUnstake: 0,
+				BalanceAfterUnstake:  1020,
+				DistributedTo:        addr,
 			},
 		},
 	}
@@ -100,8 +104,7 @@ func TestClaimDelegationStakeRewardsActionSuccess(t *testing.T) {
 	}
 }
 
-// BenchmarkClaimDelegationStakeRewards remains unchanged.
-func BenchmarkClaimDelegationStakeRewards(b *testing.B) {
+func BenchmarkUndelegateUserStake(b *testing.B) {
 	require := require.New(b)
 	actor := codectest.NewRandomAddress()
 	nodeID := ids.GenerateTestNodeID()
@@ -109,10 +112,10 @@ func BenchmarkClaimDelegationStakeRewards(b *testing.B) {
 	_, err := emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 51, StakeRewards: 20})
 	require.NoError(err)
 
-	claimStakeRewardsBenchmark := &chaintest.ActionBenchmark{
-		Name:  "ClaimStakeRewardsBenchmark",
+	undelegateUserStakeBenchmark := &chaintest.ActionBenchmark{
+		Name:  "UndelegateUserStakeBenchmark",
 		Actor: actor,
-		Action: &ClaimDelegationStakeRewards{
+		Action: &UndelegateUserStake{
 			NodeID: nodeID,
 		},
 		CreateState: func() state.Mutable {
@@ -122,13 +125,17 @@ func BenchmarkClaimDelegationStakeRewards(b *testing.B) {
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
-			// Check if balance is correctly updated
+			// Check if balance is correctly updated after unstaking
 			balance, err := storage.GetBalance(ctx, store, actor, ids.Empty)
 			require.NoError(err)
-			require.Equal(b, uint64(20), balance)
+			require.Equal(b, uint64(1020), balance)
+
+			// Check if the stake was deleted
+			exists, _, _, _, _, _, _ := storage.GetDelegateUserStake(ctx, store, actor, nodeID)
+			require.False(exists)
 		},
 	}
 
 	ctx := context.Background()
-	claimStakeRewardsBenchmark.Run(ctx, b)
+	undelegateUserStakeBenchmark.Run(ctx, b)
 }

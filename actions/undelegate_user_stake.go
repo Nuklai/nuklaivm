@@ -84,7 +84,7 @@ func (u *UndelegateUserStake) Execute(
 		return nil, err
 	}
 
-	return &WithdrawValidatorStakeResult{
+	return &UndelegateUserStakeResult{
 		StakeStartBlock:      stakeStartBlock,
 		StakeEndBlock:        stakeEndBlock,
 		UnstakedAmount:       stakedAmount,

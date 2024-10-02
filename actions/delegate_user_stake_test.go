@@ -19,10 +19,9 @@ import (
 
 func TestDelegateUserStakeAction(t *testing.T) {
 	// Mock emission instance with a starting block height
-	_, err := emission.MockNewEmission(&emission.MockEmission{
-		LastAcceptedBlockHeight: 50, // Mock block height
-	})
+	_, err := emission.MockNewEmission(&emission.MockEmission{})
 	require.NoError(t, err)
+	mockEmission := emission.GetMockEmission()
 
 	addr := codectest.NewRandomAddress()
 	nodeID := ids.GenerateTestNodeID()
@@ -33,8 +32,8 @@ func TestDelegateUserStakeAction(t *testing.T) {
 			Actor: addr,
 			Action: &DelegateUserStake{
 				NodeID:          nodeID, // Non-existent validator node ID
-				StakeStartBlock: 55,
-				StakeEndBlock:   100,
+				StakeStartBlock: 25,
+				StakeEndBlock:   50,
 				StakedAmount:    1000,
 			},
 			State:       chaintest.NewInMemoryStore(),
@@ -45,16 +44,19 @@ func TestDelegateUserStakeAction(t *testing.T) {
 			Actor: addr,
 			Action: &DelegateUserStake{
 				NodeID:          nodeID,
-				StakeStartBlock: 55,
-				StakeEndBlock:   100,
+				StakeStartBlock: 25,
+				StakeEndBlock:   50,
 				StakedAmount:    1000,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Register the validator
-				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 50, 150, 5000, 100, addr, addr))
+				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, 5000, 10, addr, addr))
 				// Set the user stake
-				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 55, 100, 1000, addr))
+				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
+				// Set the height and rewards
+				mockEmission.SetLastAcceptedBlockHeight(10)
+				mockEmission.SetStakeRewards(20)
 				return store
 			}(),
 			ExpectedErr: ErrUserAlreadyStaked,
@@ -64,34 +66,39 @@ func TestDelegateUserStakeAction(t *testing.T) {
 			Actor: addr,
 			Action: &DelegateUserStake{
 				NodeID:          nodeID,
-				StakeStartBlock: 55,
-				StakeEndBlock:   100,
-				StakedAmount:    50, // Invalid staked amount, less than min stake
+				StakeStartBlock: 25,
+				StakeEndBlock:   50,
+				StakedAmount:    100, // Invalid staked amount, less than min stake
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Register the validator
-				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 50, 150, 5000, 100, addr, addr))
+				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, 5000, 10, addr, addr))
+				// Set the height and rewards
+				mockEmission.SetLastAcceptedBlockHeight(10)
+				mockEmission.SetStakeRewards(20)
 				return store
 			}(),
 			ExpectedErr: ErrDelegateStakedAmountInvalid,
 		},
 		{
-			Name:     "ValidStake",
-			ActionID: ids.GenerateTestID(),
-			Actor:    addr,
+			Name:  "ValidStake",
+			Actor: addr,
 			Action: &DelegateUserStake{
 				NodeID:          nodeID,
-				StakeStartBlock: 55,
-				StakeEndBlock:   100,
+				StakeStartBlock: 25,
+				StakeEndBlock:   50,
 				StakedAmount:    emission.GetStakingConfig().MinDelegatorStake, // Valid staked amount
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Register the validator
-				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 50, 150, emission.GetStakingConfig().MinValidatorStake, 100, addr, addr))
+				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, emission.GetStakingConfig().MinValidatorStake, 10, addr, addr))
 				// Set the balance for the user
 				require.NoError(t, storage.SetBalance(context.Background(), store, addr, ids.Empty, emission.GetStakingConfig().MinDelegatorStake*2))
+				// Set the height and rewards
+				mockEmission.SetLastAcceptedBlockHeight(10)
+				mockEmission.SetStakeRewards(20)
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
@@ -103,8 +110,8 @@ func TestDelegateUserStakeAction(t *testing.T) {
 				// Check if the stake was created correctly
 				exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, store, addr, nodeID)
 				require.True(t, exists)
-				require.Equal(t, uint64(55), stakeStartBlock)
-				require.Equal(t, uint64(100), stakeEndBlock)
+				require.Equal(t, uint64(25), stakeStartBlock)
+				require.Equal(t, uint64(50), stakeEndBlock)
 				require.Equal(t, emission.GetStakingConfig().MinDelegatorStake, stakedAmount)
 				require.Equal(t, addr, rewardAddress)
 			},
@@ -127,26 +134,28 @@ func BenchmarkDelegateUserStake(b *testing.B) {
 	nodeID := ids.GenerateTestNodeID()
 
 	// Mock emission instance with a starting block height
-	_, err := emission.MockNewEmission(&emission.MockEmission{
-		LastAcceptedBlockHeight: 50,
-	})
+	_, err := emission.MockNewEmission(&emission.MockEmission{})
 	require.NoError(err)
+	mockEmission := emission.GetMockEmission()
 
 	delegateUserStakeBenchmark := &chaintest.ActionBenchmark{
 		Name:  "DelegateUserStakeBenchmark",
 		Actor: actor,
 		Action: &DelegateUserStake{
 			NodeID:          nodeID,
-			StakeStartBlock: 55,
-			StakeEndBlock:   100,
+			StakeStartBlock: 25,
+			StakeEndBlock:   50,
 			StakedAmount:    emission.GetStakingConfig().MinDelegatorStake,
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Register the validator
-			require.NoError(storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 50, 150, emission.GetStakingConfig().MinValidatorStake, 100, actor, actor))
+			require.NoError(storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, emission.GetStakingConfig().MinValidatorStake, 10, actor, actor))
 			// Set the balance for the user
 			require.NoError(storage.SetBalance(context.Background(), store, actor, ids.Empty, emission.GetStakingConfig().MinDelegatorStake*2))
+			// Set the height and rewards
+			mockEmission.SetLastAcceptedBlockHeight(10)
+			mockEmission.SetStakeRewards(20)
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
@@ -158,8 +167,8 @@ func BenchmarkDelegateUserStake(b *testing.B) {
 			// Check if the stake was created correctly
 			exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, store, actor, nodeID)
 			require.True(exists)
-			require.Equal(b, uint64(55), stakeStartBlock)
-			require.Equal(b, uint64(100), stakeEndBlock)
+			require.Equal(b, uint64(25), stakeStartBlock)
+			require.Equal(b, uint64(50), stakeEndBlock)
 			require.Equal(b, emission.GetStakingConfig().MinDelegatorStake, stakedAmount)
 			require.Equal(b, actor, rewardAddress)
 		},
