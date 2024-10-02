@@ -18,8 +18,7 @@ import (
 )
 
 func TestClaimDelegationStakeRewardsActionFailure(t *testing.T) {
-	_, err := emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 10, StakeRewards: 20})
-	require.NoError(t, err)
+	emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 10, StakeRewards: 20})
 
 	addr := codectest.NewRandomAddress()
 	nodeID := ids.GenerateTestNodeID()
@@ -56,8 +55,7 @@ func TestClaimDelegationStakeRewardsActionFailure(t *testing.T) {
 }
 
 func TestClaimDelegationStakeRewardsActionSuccess(t *testing.T) {
-	_, err := emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 51, StakeRewards: 20})
-	require.NoError(t, err)
+	emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 51, StakeRewards: 20})
 
 	addr := codectest.NewRandomAddress()
 	nodeID := ids.GenerateTestNodeID()
@@ -109,8 +107,7 @@ func BenchmarkClaimDelegationStakeRewards(b *testing.B) {
 	actor := codectest.NewRandomAddress()
 	nodeID := ids.GenerateTestNodeID()
 
-	_, err := emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 51, StakeRewards: 20})
-	require.NoError(err)
+	emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 51, StakeRewards: 20})
 
 	claimStakeRewardsBenchmark := &chaintest.ActionBenchmark{
 		Name:  "ClaimStakeRewardsBenchmark",

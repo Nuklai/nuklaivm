@@ -18,10 +18,7 @@ import (
 )
 
 func TestDelegateUserStakeAction(t *testing.T) {
-	// Mock emission instance with a starting block height
-	_, err := emission.MockNewEmission(&emission.MockEmission{})
-	require.NoError(t, err)
-	mockEmission := emission.GetMockEmission()
+	emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 10, StakeRewards: 20})
 
 	addr := codectest.NewRandomAddress()
 	nodeID := ids.GenerateTestNodeID()
@@ -54,9 +51,6 @@ func TestDelegateUserStakeAction(t *testing.T) {
 				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, 5000, 10, addr, addr))
 				// Set the user stake
 				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
-				// Set the height and rewards
-				mockEmission.SetLastAcceptedBlockHeight(10)
-				mockEmission.SetStakeRewards(20)
 				return store
 			}(),
 			ExpectedErr: ErrUserAlreadyStaked,
@@ -74,9 +68,6 @@ func TestDelegateUserStakeAction(t *testing.T) {
 				store := chaintest.NewInMemoryStore()
 				// Register the validator
 				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, 5000, 10, addr, addr))
-				// Set the height and rewards
-				mockEmission.SetLastAcceptedBlockHeight(10)
-				mockEmission.SetStakeRewards(20)
 				return store
 			}(),
 			ExpectedErr: ErrDelegateStakedAmountInvalid,
@@ -96,9 +87,6 @@ func TestDelegateUserStakeAction(t *testing.T) {
 				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, emission.GetStakingConfig().MinValidatorStake, 10, addr, addr))
 				// Set the balance for the user
 				require.NoError(t, storage.SetBalance(context.Background(), store, addr, ids.Empty, emission.GetStakingConfig().MinDelegatorStake*2))
-				// Set the height and rewards
-				mockEmission.SetLastAcceptedBlockHeight(10)
-				mockEmission.SetStakeRewards(20)
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
@@ -133,10 +121,7 @@ func BenchmarkDelegateUserStake(b *testing.B) {
 	actor := codectest.NewRandomAddress()
 	nodeID := ids.GenerateTestNodeID()
 
-	// Mock emission instance with a starting block height
-	_, err := emission.MockNewEmission(&emission.MockEmission{})
-	require.NoError(err)
-	mockEmission := emission.GetMockEmission()
+	emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 10, StakeRewards: 20})
 
 	delegateUserStakeBenchmark := &chaintest.ActionBenchmark{
 		Name:  "DelegateUserStakeBenchmark",
@@ -153,9 +138,6 @@ func BenchmarkDelegateUserStake(b *testing.B) {
 			require.NoError(storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, emission.GetStakingConfig().MinValidatorStake, 10, actor, actor))
 			// Set the balance for the user
 			require.NoError(storage.SetBalance(context.Background(), store, actor, ids.Empty, emission.GetStakingConfig().MinDelegatorStake*2))
-			// Set the height and rewards
-			mockEmission.SetLastAcceptedBlockHeight(10)
-			mockEmission.SetStakeRewards(20)
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {

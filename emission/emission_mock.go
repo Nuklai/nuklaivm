@@ -22,11 +22,12 @@ type MockEmission struct {
 	NumDelegators           int
 	StakeRewards            uint64
 	LastAcceptedBlockHeight uint64
+	Validator               *Validator
 }
 
-func MockNewEmission(mockEmission *MockEmission) (*MockEmission, error) {
+func MockNewEmission(mockEmission *MockEmission) *MockEmission {
 	emission = mockEmission
-	return mockEmission, nil
+	return mockEmission
 }
 
 func (m *MockEmission) AddToTotalSupply(amount uint64) uint64 {
@@ -81,7 +82,8 @@ func (m *MockEmission) GetStakedValidator(nodeID ids.NodeID) []*Validator {
 }
 
 func (m *MockEmission) GetAllValidators(ctx context.Context) []*Validator {
-	return nil
+	return []*Validator{m.Validator}
+
 }
 
 func (m *MockEmission) GetDelegatorsForValidator(nodeID ids.NodeID) ([]*Delegator, error) {
@@ -102,17 +104,4 @@ func (m *MockEmission) GetEmissionValidators() map[ids.NodeID]*Validator {
 
 func (m *MockEmission) GetInfo() (emissionAccount EmissionAccount, totalSupply uint64, maxSupply uint64, totalStaked uint64, epochTracker EpochTracker) {
 	return EmissionAccount{}, 0, 0, 0, EpochTracker{}
-}
-
-// Helper functions for testing
-func (m *MockEmission) SetStakeRewards(rewards uint64) {
-	m.StakeRewards = rewards
-}
-
-func (m *MockEmission) SetLastAcceptedBlockHeight(height uint64) {
-	m.LastAcceptedBlockHeight = height
-}
-
-func GetMockEmission() *MockEmission {
-	return emission.(*MockEmission)
 }

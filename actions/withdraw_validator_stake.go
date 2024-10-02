@@ -82,13 +82,11 @@ func (u *WithdrawValidatorStake) Execute(
 		return nil, err
 	}
 
-	if _, err := storage.AddBalance(ctx, mu, actor, ids.Empty, rewardAmount, true); err != nil {
-		return nil, err
-	}
 	if err := storage.DeleteRegisterValidatorStake(ctx, mu, u.NodeID); err != nil {
 		return nil, err
 	}
-	if _, err := storage.AddBalance(ctx, mu, actor, ids.Empty, stakedAmount, true); err != nil {
+	balance, err := storage.AddBalance(ctx, mu, actor, ids.Empty, rewardAmount+stakedAmount, true)
+	if err != nil {
 		return nil, err
 	}
 
@@ -98,8 +96,8 @@ func (u *WithdrawValidatorStake) Execute(
 		UnstakedAmount:       stakedAmount,
 		DelegationFeeRate:    delegationFeeRate,
 		RewardAmount:         rewardAmount,
-		BalanceBeforeUnstake: stakedAmount - rewardAmount - stakedAmount,
-		BalanceAfterUnstake:  stakedAmount,
+		BalanceBeforeUnstake: balance - rewardAmount - stakedAmount,
+		BalanceAfterUnstake:  balance,
 		DistributedTo:        actor,
 	}, nil
 }

@@ -23,11 +23,7 @@ import (
 )
 
 func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
-	// Mock emission balancer instance
-	emissionInstance, err := emission.MockNewEmission(&emission.MockEmission{
-		LastAcceptedBlockHeight: 1,
-	})
-	require.NoError(t, err)
+	mockEmission := emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 1})
 
 	addr := codectest.NewRandomAddress()
 	datasetID := ids.GenerateTestID()
@@ -152,7 +148,7 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, "1000", metadataMap["paymentRemaining"])
 				require.Equal(t, "1", metadataMap["subscriptions"])
-				require.Equal(t, fmt.Sprint(emissionInstance.GetLastAcceptedBlockHeight()), metadataMap["lastClaimedBlock"])
+				require.Equal(t, fmt.Sprint(mockEmission.GetLastAcceptedBlockHeight()), metadataMap["lastClaimedBlock"])
 				require.Equal(t, addr.String(), metadataMap["publisher"])
 			},
 			ExpectedOutputs: &SubscribeDatasetMarketplaceResult{
@@ -163,8 +159,8 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 				DatasetPricePerBlock:             100,
 				TotalCost:                        1000,
 				NumBlocksToSubscribe:             10,
-				IssuanceBlock:                    emissionInstance.GetLastAcceptedBlockHeight(),
-				ExpirationBlock:                  emissionInstance.GetLastAcceptedBlockHeight() + 10,
+				IssuanceBlock:                    mockEmission.GetLastAcceptedBlockHeight(),
+				ExpirationBlock:                  mockEmission.GetLastAcceptedBlockHeight() + 10,
 			},
 		},
 	}
@@ -181,11 +177,9 @@ func BenchmarkSubscribeDatasetMarketplace(b *testing.B) {
 	marketplaceAssetID := ids.GenerateTestID()
 	baseAssetID := ids.GenerateTestID()
 
-	// Mock emission balancer instance
-	emissionInstance, err := emission.MockNewEmission(&emission.MockEmission{
+	mockEmission := emission.MockNewEmission(&emission.MockEmission{
 		LastAcceptedBlockHeight: 1,
 	})
-	require.NoError(err)
 
 	subscribeDatasetMarketplaceBenchmark := &chaintest.ActionBenchmark{
 		Name:  "SubscribeDatasetMarketplaceBenchmark",
@@ -240,7 +234,7 @@ func BenchmarkSubscribeDatasetMarketplace(b *testing.B) {
 			require.NoError(err)
 			require.Equal(b, "1000", metadataMap["paymentRemaining"])
 			require.Equal(b, "1", metadataMap["subscriptions"])
-			require.Equal(fmt.Sprint(emissionInstance.GetLastAcceptedBlockHeight()), metadataMap["lastClaimedBlock"])
+			require.Equal(fmt.Sprint(mockEmission.GetLastAcceptedBlockHeight()), metadataMap["lastClaimedBlock"])
 			require.Equal(b, actor.String(), metadataMap["publisher"])
 		},
 	}
