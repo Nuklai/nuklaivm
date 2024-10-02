@@ -13,9 +13,7 @@ import (
 	"github.com/ava-labs/hypersdk/crypto/bls"
 )
 
-var (
-	_ Tracker = (*MockEmission)(nil)
-)
+var _ Tracker = (*MockEmission)(nil)
 
 type MockEmission struct {
 	TotalSupplyVal          uint64
