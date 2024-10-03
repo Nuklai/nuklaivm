@@ -15,11 +15,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/gorilla/mux"
+	"github.com/nuklai/nuklaivm/actions"
+	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/vm"
 	"github.com/rs/cors"
 	"golang.org/x/time/rate"
 
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/api/jsonrpc"
 	"github.com/ava-labs/hypersdk/api/ws"
 	"github.com/ava-labs/hypersdk/auth"
@@ -28,9 +31,6 @@ import (
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
 	"github.com/ava-labs/hypersdk/pubsub"
 	"github.com/ava-labs/hypersdk/utils"
-	"github.com/nuklai/nuklaivm/actions"
-	"github.com/nuklai/nuklaivm/consts"
-	"github.com/nuklai/nuklaivm/vm"
 )
 
 const (
@@ -186,7 +186,8 @@ func main() {
 		log.Fatal(err)
 	}
 }
-func handleAPIDocumentation(w http.ResponseWriter, r *http.Request) {
+
+func handleAPIDocumentation(w http.ResponseWriter, _ *http.Request) {
 	apiDoc := `Faucet API Guide
 
 1. "/" - You're here! This page provides API documentation.
@@ -203,12 +204,12 @@ func performInitialTransfer() {
 	if err != nil {
 		log.Fatalf("Failed to generate random bytes: %v", err)
 	}
-	randomId, err := ids.ToID(randomBytes)
+	randomID, err := ids.ToID(randomBytes)
 	if err != nil {
 		log.Fatalf("Failed to generate random ID: %v", err)
 	}
 
-	randomAddressHex := codec.CreateAddress(auth.ED25519ID, randomId)
+	randomAddressHex := codec.CreateAddress(auth.ED25519ID, randomID)
 	log.Printf("Performing initial transfer to ready check address: %s\n", randomAddressHex.String())
 
 	for i := 0; i < 10; i++ {
@@ -238,7 +239,7 @@ func getReadyStatus() bool {
 	return isReady
 }
 
-func handleReadyCheck(w http.ResponseWriter, r *http.Request) {
+func handleReadyCheck(w http.ResponseWriter, _ *http.Request) {
 	if getReadyStatus() {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "Faucet is healthy")
