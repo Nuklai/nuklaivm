@@ -6,29 +6,6 @@
 
 We can create our own dataset on nuklaichain.
 
-To do so, we do:
-
-```bash
-./build/nuklai-cli dataset create
-```
-
-When you are done, the output should look something like this:
-
-```bash
-name: dataset1
-description: desc1
-isCommunityDataset (y/n): y
-metadata: test1
-✔ continue (y/n): y█
-✅ txID: Z2UMDbY5U9g7CsFBcKcC2VTSL7Tqycb6H6ZeGJ58kH8AR6rVG
-fee consumed: 0.000191100 NAI
-output:  &{DatasetID:WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx DatasetParentNftID:2YkmGsJSiysEEa7PyXGZTknB3UQrygtginpDWs5MSeqWgt7iKt}
-```
-
-Note that creating a dataset will automatically create an asset of type "dataset" and also mint the parent NFT for the dataset as this type of asset is a fractionalized asset and always has a parent NFT and corresponding child NFTs.
-
-### Create Dataset with existing asset
-
 First, let's create our asset.
 
 ```bash
@@ -39,35 +16,38 @@ When you are done, the output should look something like this:
 
 ```bash
 assetType(0 for fungible, 1 for non-fungible and 2 for dataset): 2
-✔ name: dataset2█
-symbol: ds2
+✔ name: dataset1
+symbol: ds1
 decimals: 0
-metadata: test2
+metadata: test
 ✔ continue (y/n): y█
-✅ txID: 2Q6mm4LCxR8dBxMRvrtsjTegEBvLWfCGZPA3TCH68RF2bGiakV
-fee consumed: 0.000082200 NAI
-output:  &{AssetID:2jZ1ajDTMKy6FNsA6GqQRJfRn9jr9YUx8bnpUJcqR1W1QYN4D3 AssetBalance:1 DatasetParentNftID:2Rdto817HWG4ii38WJvVWj67WqrUCQZkmyXyxMiiFiFvVxem7P}
+✅ txID: 2jguHxmfowHxhwoZUyF1deoN12aHvcbDeBZTfgDAWVabksHRYQ
+fee consumed: 0.000085300 NAI
+output:  &{AssetID:2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE AssetBalance:1 DatasetParentNftID:242a2eZpoSBKLcj4waVyueCBQFXrf5aCpEqt3YvrfbLLAFpNEi}
 ```
 
 Now, let's create our dataset using this asset.
 
 ```bash
-./build/nuklai-cli dataset create-from-asset
+./build/nuklai-cli dataset create
 ```
 
 When you are done, the output should look something like this:
 
 ```bash
-assetID: 2jZ1ajDTMKy6FNsA6GqQRJfRn9jr9YUx8bnpUJcqR1W1QYN4D3
-name: datset2
-description: desc2
+assetID: 2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE
+name: dataset1
+✔ description: desc1█
 ✔ isCommunityDataset (y/n): y█
-metadata: test2
-✔ continue (y/n): y█
-✅ txID: 3dCN894iZoc1BJXPo4D9XPS3mWXmmPexT5rjWMQjxbyycGNN1
-fee consumed: 0.000190900 NAI
-output:  &{DatasetID:2jZ1ajDTMKy6FNsA6GqQRJfRn9jr9YUx8bnpUJcqR1W1QYN4D3 DatasetParentNftID:2Rdto817HWG4ii38WJvVWj67WqrUCQZkmyXyxMiiFiFvVxem7P}
+✔ metadata: test1█
+continue (y/n): y
+): y█
+✅ txID: 41cK1RXoAe2F72NnoyHujvBAxvthGs8t86CLMuNRpFJrn1PJD
+fee consumed: 0.000173100 NAI
+output:  &{DatasetID:2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE DatasetParentNftID:242a2eZpoSBKLcj4waVyueCBQFXrf5aCpEqt3YvrfbLLAFpNEi}
 ```
+
+Note that creating a dataset will automatically create an asset of type "dataset" and also mint the parent NFT for the dataset as this type of asset is a fractionalized asset and always has a parent NFT and corresponding child NFTs.
 
 ## View Dataset Info
 
@@ -82,13 +62,13 @@ Now, let's retrieve the info about our dataset.
 When you are done, the output should look something like this:
 
 ```bash
-Retrieving dataset info for datasetID: WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx█
+Retrieving dataset info for datasetID: 2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE
 dataset info:
 Name=dataset1 Description=desc1 Categories=dataset1 LicenseName=MIT LicenseSymbol=MIT LicenseURL=https://opensource.org/licenses/MIT Metadata=test1 IsCommunityDataset=true SaleID=11111111111111111111111111111111LpoYY BaseAsset=11111111111111111111111111111111LpoYY BasePrice=0 RevenueModelDataShare=100 RevenueModelMetadataShare=0 RevenueModelDataOwnerCut=10 RevenueModelMetadataOwnerCut=0 Owner=00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
 
-Retrieving asset info for assetID: WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx
-assetType:  Dataset Token name: dataset1 symbol: dataset1 decimals: 0 metadata: desc1 uri: desc1 totalSupply: 1 maxSupply: 0 owner: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 mintAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 pauseUnpauseAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 freezeUnfreezeAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 enableDisableKYCAccountAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
-balance: 1 dataset1
+Retrieving asset info for assetID: 2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE
+assetType:  Dataset Token name: dataset1 symbol: ds1 decimals: 0 metadata: test uri: https://nukl.ai totalSupply: 1 maxSupply: 0 owner: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 mintAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 pauseUnpauseAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 freezeUnfreezeAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 enableDisableKYCAccountAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+balance: 1 ds1
 ```
 
 ### View balance of the assets
@@ -104,9 +84,9 @@ Since the dataset is also a fractionalized asset, we can check its balance doing
 When you are done, the output should look something like this:
 
 ```bash
-✔ assetID: WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx█
-assetType:  Dataset Token name: dataset1 symbol: dataset1 decimals: 0 metadata: desc1 uri: desc1 totalSupply: 1 maxSupply: 0 owner: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 mintAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 pauseUnpauseAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 freezeUnfreezeAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 enableDisableKYCAccountAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
-balance: 1 dataset1
+✔ assetID: 2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE█
+assetType:  Dataset Token name: dataset1 symbol: ds1 decimals: 0 metadata: test uri: https://nukl.ai totalSupply: 1 maxSupply: 0 owner: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 mintAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 pauseUnpauseAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 freezeUnfreezeAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 enableDisableKYCAccountAdmin: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+balance: 1 ds1
 ```
 
 We can also check info about the parent NFT that was minted when creating the dataset.
@@ -118,10 +98,12 @@ We can also check info about the parent NFT that was minted when creating the da
 The output should be something like:
 
 ```bash
-collectionID: WRTzP6mQECmCwtLX7Gd72rkokWEcStRL9M89GJ4YHo1ZoLhFx
+✔ assetID: 242a2eZpoSBKLcj4waVyueCBQFXrf5aCpEqt3YvrfbLLAFpNEi█
+uri: http://127.0.0.1:9650/ext/bc/nuklaivm
+collectionID: 2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE
 uniqueID: 0
-uri: desc1
-metadata: desc1
+uri: https://nukl.ai
+metadata: test
 ownerAddress: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
 You own this NFT
 ```

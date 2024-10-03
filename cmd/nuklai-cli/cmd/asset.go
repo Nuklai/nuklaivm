@@ -6,8 +6,8 @@ package cmd
 import (
 	"context"
 
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/actions"
+	nutils "github.com/nuklai/nuklaivm/utils"
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/hypersdk/chain"
@@ -78,8 +78,12 @@ var createAssetCmd = &cobra.Command{
 		}
 
 		// Generate transaction
+		assetID, err := nutils.GenerateRandomID()
+		if err != nil {
+			return err
+		}
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.CreateAsset{
-			AssetID:                      ids.GenerateTestID(),
+			AssetID:                      assetID,
 			AssetType:                    uint8(assetType),
 			Name:                         []byte(name),
 			Symbol:                       []byte(symbol),

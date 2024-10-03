@@ -10,6 +10,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/actions"
+	nutils "github.com/nuklai/nuklaivm/utils"
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/hypersdk/chain"
@@ -66,8 +67,12 @@ var publishDatasetMarketplaceCmd = &cobra.Command{
 		}
 
 		// Generate transaction
+		assetID, err := nutils.GenerateRandomID()
+		if err != nil {
+			return err
+		}
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.PublishDatasetMarketplace{
-			MarketplaceAssetID: ids.GenerateTestID(),
+			MarketplaceAssetID: assetID,
 			DatasetID:          datasetID,
 			BaseAssetID:        assetForPayment,
 			BasePrice:          priceAmountPerBlock,

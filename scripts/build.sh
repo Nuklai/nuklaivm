@@ -9,7 +9,6 @@ set -o pipefail
 # Get the directory of the script, even if sourced from another directory
 SCRIPT_DIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)
 
-echo "$SCRIPT_DIR"/hypersdk/common/build.sh
 source "$SCRIPT_DIR"/hypersdk/common/build.sh
 source "$SCRIPT_DIR"/hypersdk/constants.sh
 

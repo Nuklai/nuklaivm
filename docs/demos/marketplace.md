@@ -6,15 +6,27 @@
 
 We can create our own dataset on nuklaichain.
 
-We are going to use address #2 for this exercise:
+First, let's create our asset.
 
 ```bash
-0) address: 0027e7ca083ae74508d9fc9a858f874663f235e5d4010052dbca9d23e86a3c2232 balance: 12.000000000 NAI
-1) address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 balance: 852999887.999903798 NAI
-2) address: 00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a balance: 100.000000000 NAI
+./build/nuklai-cli asset create
 ```
 
-To do so, we do:
+When you are done, the output should look something like this:
+
+```bash
+assetType(0 for fungible, 1 for non-fungible and 2 for dataset): 2
+✔ name: dataset1
+symbol: ds1
+decimals: 0
+metadata: test
+✔ continue (y/n): y█
+✅ txID: 2jguHxmfowHxhwoZUyF1deoN12aHvcbDeBZTfgDAWVabksHRYQ
+fee consumed: 0.000085300 NAI
+output:  &{AssetID:2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE AssetBalance:1 DatasetParentNftID:242a2eZpoSBKLcj4waVyueCBQFXrf5aCpEqt3YvrfbLLAFpNEi}
+```
+
+Now, let's create our dataset using this asset.
 
 ```bash
 ./build/nuklai-cli dataset create
@@ -23,18 +35,16 @@ To do so, we do:
 When you are done, the output should look something like this:
 
 ```bash
-address: 00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-✔ name: dataset1█
-description: desc1
-isCommunityDataset (y/n): y
+assetID: 2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE
+name: dataset1
+✔ description: desc1█
+✔ isCommunityDataset (y/n): y█
 ✔ metadata: test1█
-✔ metadata: test1█
-
-✔ continue (y/n): y█
-✅ txID: 2bfvP2xhhn6pnSFH5eEU89drjNusQ8ff5EZHJBMvxzi23B3bZs
-fee consumed: 0.000191100 NAI
-output:  &{DatasetID:2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN DatasetParentNftID:NFBhsTjGBFbQL3pcK91cEVkwPBbsmXWGXQVfggy8dBrSt3kV9}
+continue (y/n): y
+): y█
+✅ txID: 41cK1RXoAe2F72NnoyHujvBAxvthGs8t86CLMuNRpFJrn1PJD
+fee consumed: 0.000173100 NAI
+output:  &{DatasetID:2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE DatasetParentNftID:242a2eZpoSBKLcj4waVyueCBQFXrf5aCpEqt3YvrfbLLAFpNEi}
 ```
 
 Note that creating a dataset will automatically create an asset of type "dataset" and also mint the parent NFT for the dataset as this type of asset is a fractionalized asset and always has a parent NFT and corresponding child NFTs.
@@ -52,18 +62,17 @@ You can set the asset that subscribers must use for payment and you can also dic
 Output:
 
 ```bash
-address: 00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-datasetID: 2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN
+datasetID: 2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE
 assetForPayment (use NAI for native token): NAI
-balance: 99.999808900 NAI
-✔ continue (y/n): y█
-✅ txID: SwEPkKVUor6hnmyeSy5uxCBershPJe9LrbrkkfNYewdTb5LGp
-fee consumed: 0.000173000 NAI
-output:  &{MarketplaceAssetID:oYmC6Ep2w9NQaNzXN4oLNPMVB3CVr1NmsRsHaV34Z14T7BLT1 AssetForPayment:11111111111111111111111111111111LpoYY DatasetPricePerBlock:1000000000 Publisher:00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a}
+balance: 852999899.999471903 NAI
+priceAmountPerBlock: 1
+continue (y/n): y
+✅ txID: 2uN1xEPbDvsS8NaW4tfX7JkVFwxEQTYTphqMRppvGb66kjUp6R
+fee consumed: 0.000176200 NAI
+output:  &{MarketplaceAssetID:Up1AiTUQP8bMbffodMu5qK3ryXWneiPeoBboREeAtVFdUAcsQ AssetForPayment:11111111111111111111111111111111LpoYY DatasetPricePerBlock:1000000000 Publisher:00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9}
 ```
 
-Upon successful transaction, it also creates a unique marketplace NFT collection with assetID `oYmC6Ep2w9NQaNzXN4oLNPMVB3CVr1NmsRsHaV34Z14T7BLT1`.
+Upon successful transaction, it also creates a unique marketplace NFT collection with assetID `Up1AiTUQP8bMbffodMu5qK3ryXWneiPeoBboREeAtVFdUAcsQ`.
 This asset has no owner and cannot be updated by anyone. Subsequent NFTs are automatically generated anytime a user subscribes to your dataset. Holding this NFT proves that the user is subscribed to your dataset and can access the dataset at anytime. This is different from the dataset NFTs that the dataset contributors own which are used for claiming the payment from all the subscriptions.
 
 ## View dataset info from the marketplace
@@ -77,19 +86,15 @@ We can also look up more info about the dataset that is in the marketplace.
 Output:
 
 ```bash
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-datasetID: 2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN
-Retrieving dataset info from the marketplace: 2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN
-
-dataset info from marketplace:
-DatasetName=dataset1 DatasetDescription=desc1 IsCommunityDataset=true MarketplaceAssetID=oYmC6Ep2w9NQaNzXN4oLNPMVB3CVr1NmsRsHaV34Z14T7BLT1 AssetForPayment=11111111111111111111111111111111LpoYY PricePerBlock=1000000000 DatasetOwner=00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a
+Retrieving dataset info from the marketplace: 2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE
+DatasetName=dataset1 DatasetDescription=desc1 IsCommunityDataset=true MarketplaceAssetID=Up1AiTUQP8bMbffodMu5qK3ryXWneiPeoBboREeAtVFdUAcsQ AssetForPayment=11111111111111111111111111111111LpoYY PricePerBlock=1000000000 DatasetOwner=00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
 
 marketplace asset info:
-AssetType=Marketplace Token AssetName=Dataset-Marketplace-dataset1 AssetSymbol=DM-datas AssetURI=2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN TotalSupply=0 MaxSupply=0 Owner=000000000000000000000000000000000000000000000000000000000000000000
-AssetMetadata=map[string]string{"assetForPayment":"11111111111111111111111111111111LpoYY", "datasetID":"2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN", "datasetPricePerBlock":"1000000000", "lastClaimedBlock":"0", "marketplaceAssetID":"oYmC6Ep2w9NQaNzXN4oLNPMVB3CVr1NmsRsHaV34Z14T7BLT1", "paymentClaimed":"0", "paymentRemaining":"0", "publisher":"00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a", "subscriptions":"0"}
+AssetType=Marketplace Token AssetName=Dataset-Marketplace-dataset1 AssetSymbol=DM-ds1 AssetURI=2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE TotalSupply=0 MaxSupply=0 Owner=000000000000000000000000000000000000000000000000000000000000000000
+AssetMetadata=map[string]string{"assetForPayment":"11111111111111111111111111111111LpoYY", "datasetID":"2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE", "datasetPricePerBlock":"1000000000", "lastClaimedBlock":"0", "marketplaceAssetID":"Up1AiTUQP8bMbffodMu5qK3ryXWneiPeoBboREeAtVFdUAcsQ", "paymentClaimed":"0", "paymentRemaining":"0", "publisher":"00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9", "subscriptions":"0"}
 ```
 
-This displays summary of the dataset that includes the saleID in the marketplace along with the asset used for payment and price to access dataset per block. It also shows the unique metadata for this marketplace NFT collection with asset ID `oYmC6Ep2w9NQaNzXN4oLNPMVB3CVr1NmsRsHaV34Z14T7BLT1`
+This displays summary of the dataset that includes the saleID in the marketplace along with the asset used for payment and price to access dataset per block. It also shows the unique metadata for this marketplace NFT collection with asset ID `Up1AiTUQP8bMbffodMu5qK3ryXWneiPeoBboREeAtVFdUAcsQ`
 
 ## Subscribe to the dataset in the marketplace
 
@@ -102,12 +107,9 @@ Let's switch to another account and subscribe to this dataset.
 Output:
 
 ```bash
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-stored keys: 3
-0) address: 0027e7ca083ae74508d9fc9a858f874663f235e5d4010052dbca9d23e86a3c2232 balance: 12.000000000 NAI
-1) address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 balance: 852999887.999903798 NAI
-2) address: 00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a balance: 99.999635900 NAI
-✔ set default key: 0█
+0) address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 balance: 852999899.999295712 NAI
+1) address: 00cc39cb91242b1ff0968b6e6184f349c903c37f1462b90809c5a536dc1720ef0e balance: 100.000000000 NAI
+set default key: 1
 ```
 
 We are going to use our address #0 for this exercise.
@@ -121,31 +123,27 @@ Now, let's subscribe to this dataset for 5 blocks:
 Output:
 
 ```bash
-Name=dataset1 Description=desc1 Categories=dataset1 LicenseName=MIT LicenseSymbol=MIT LicenseURL=https://opensource.org/licenses/MIT Metadata=test1 IsCommunityDataset=true SaleID=oYmC6Ep2w9NQaNzXN4oLNPMVB3CVr1NmsRsHaV34Z14T7BLT1 BaseAsset=11111111111111111111111111111111LpoYY BasePrice=1000000000 RevenueModelDataShare=100 RevenueModelMetadataShare=0 RevenueModelDataOwnerCut=10 RevenueModelMetadataOwnerCut=0 Owner=00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a
-✔ assetForPayment (use NAI for native token): NAI█
-numBlocksToSubscribe: 5
-balance: 12.000000000 NAI
-continue (y/n): y
-✅ txID: 2BuWFzhtXs5sJj8jQqE4F1QLTR73GpaJF2Cg3wt6BHexCHSMoA
+✔ datasetID: 2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE█
+dataset info:
+Name=dataset1 Description=desc1 Categories=dataset1 LicenseName=MIT LicenseSymbol=MIT LicenseURL=https://opensource.org/licenses/MIT Metadata=test1 IsCommunityDataset=true SaleID=Up1AiTUQP8bMbffodMu5qK3ryXWneiPeoBboREeAtVFdUAcsQ BaseAsset=11111111111111111111111111111111LpoYY BasePrice=1000000000 RevenueModelDataShare=100 RevenueModelMetadataShare=0 RevenueModelDataOwnerCut=10 RevenueModelMetadataOwnerCut=0 Own✔ assetForPayment (use NAI for native token): NAI█
+numBlocksToSubscribe: 10
+balance: 100.000000000 NAI
+✔ continue (y/n): y█
+✅ txID: 2nZccHHanyu2QLJtnhF46NmfHvh5sSK2H6jyr19zkupj83AuxF
 fee consumed: 0.000179200 NAI
-output:  &{MarketplaceAssetID:oYmC6Ep2w9NQaNzXN4oLNPMVB3CVr1NmsRsHaV34Z14T7BLT1 MarketplaceAssetNumSubscriptions:1 SubscriptionNftID:12zPr21woaw1pLPNJatW7jNj4rF1k5NCoWAiaxsZk8Z9hpZZm AssetForPayment:11111111111111111111111111111111LpoYY DatasetPricePerBlock:1000000000 TotalCost:5000000000 NumBlocksToSubscribe:5 IssuanceBlock:337 ExpirationBlock:342}
+output:  &{MarketplaceAssetID:Up1AiTUQP8bMbffodMu5qK3ryXWneiPeoBboREeAtVFdUAcsQ MarketplaceAssetNumSubscriptions:1 SubscriptionNftID:2aU4VENsDqD3jvfPz1vHBVF3siZmxAQXtg9w7XCvzzpkBjxh36 AssetForPayment:11111111111111111111111111111111LpoYY DatasetPricePerBlock:1000000000 TotalCost:10000000000 NumBlocksToSubscribe:10 IssuanceBlock:890 ExpirationBlock:900}
 ```
 
 Let's check the balance as it should automatically take 5 \* pricePerBlock from our account:
 
 ```bash
-./build/nuklai-cli key set
+./build/nuklai-cli key balance
 ```
 
 Output:
 
 ```bash
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-stored keys: 3
-0) address: 0027e7ca083ae74508d9fc9a858f874663f235e5d4010052dbca9d23e86a3c2232 balance: 6.999820800 NAI
-1) address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 balance: 852999887.999903798 NAI
-2) address: 00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a balance: 99.999635900 NAI
-set default key: 0
+address: 00cc39cb91242b1ff0968b6e6184f349c903c37f1462b90809c5a536dc1720ef0e balance: 89.999820800 NAI
 ```
 
 In addition, we also got issued an NFT for the above mentioned marketplace token which is unique to this dataset. This NFT is used to prove that the user is subscribed to the dataset in the marketplace.
@@ -157,15 +155,11 @@ In addition, we also got issued an NFT for the above mentioned marketplace token
 Output:
 
 ```bash
-address: 0027e7ca083ae74508d9fc9a858f874663f235e5d4010052dbca9d23e86a3c2232
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-assetID: 12zPr21woaw1pLPNJatW7jNj4rF1k5NCoWAiaxsZk8Z9hpZZm
-uri: http://127.0.0.1:9650/ext/bc/nuklaivm
-collectionID: oYmC6Ep2w9NQaNzXN4oLNPMVB3CVr1NmsRsHaV34Z14T7BLT1
+collectionID: Up1AiTUQP8bMbffodMu5qK3ryXWneiPeoBboREeAtVFdUAcsQ
 uniqueID: 1
-uri: 2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN
-metadata: {"assetForPayment":"11111111111111111111111111111111LpoYY","datasetID":"2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN","datasetPricePerBlock":"1000000000","expirationBlock":"342","issuanceBlock":"337","marketplaceAssetID":"oYmC6Ep2w9NQaNzXN4oLNPMVB3CVr1NmsRsHaV34Z14T7BLT1","numBlocksToSubscribe":"5","totalCost":"5000000000"}
-ownerAddress: 0027e7ca083ae74508d9fc9a858f874663f235e5d4010052dbca9d23e86a3c2232
+uri: 2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE
+metadata: {"assetForPayment":"11111111111111111111111111111111LpoYY","datasetID":"2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE","datasetPricePerBlock":"1000000000","expirationBlock":"900","issuanceBlock":"890","marketplaceAssetID":"Up1AiTUQP8bMbffodMu5qK3ryXWneiPeoBboREeAtVFdUAcsQ","numBlocksToSubscribe":"10","totalCost":"10000000000"}
+ownerAddress: 00cc39cb91242b1ff0968b6e6184f349c903c37f1462b90809c5a536dc1720ef0e
 You own this NFT
 ```
 
@@ -180,16 +174,13 @@ Now, let's check the info about the dataset from the marketplace again. The meta
 Output:
 
 ```bash
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-✔ datasetID: 2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN█
-Retrieving dataset info from the marketplace: 2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN
-
+Retrieving dataset info from the marketplace: 2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE
 dataset info from marketplace:
-DatasetName=dataset1 DatasetDescription=desc1 IsCommunityDataset=true MarketplaceAssetID=oYmC6Ep2w9NQaNzXN4oLNPMVB3CVr1NmsRsHaV34Z14T7BLT1 AssetForPayment=11111111111111111111111111111111LpoYY PricePerBlock=1000000000 DatasetOwner=00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a
+DatasetName=dataset1 DatasetDescription=desc1 IsCommunityDataset=true MarketplaceAssetID=Up1AiTUQP8bMbffodMu5qK3ryXWneiPeoBboREeAtVFdUAcsQ AssetForPayment=11111111111111111111111111111111LpoYY PricePerBlock=1000000000 DatasetOwner=00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
 
 marketplace asset info:
-AssetType=Marketplace Token AssetName=Dataset-Marketplace-dataset1 AssetSymbol=DM-datas AssetURI=2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN TotalSupply=1 MaxSupply=0 Owner=000000000000000000000000000000000000000000000000000000000000000000
-AssetMetadata=map[string]string{"assetForPayment":"11111111111111111111111111111111LpoYY", "datasetID":"2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN", "datasetPricePerBlock":"1000000000", "lastClaimedBlock":"337", "marketplaceAssetID":"oYmC6Ep2w9NQaNzXN4oLNPMVB3CVr1NmsRsHaV34Z14T7BLT1", "paymentClaimed":"0", "paymentRemaining":"5000000000", "publisher":"00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a", "subscriptions":"1"}
+AssetType=Marketplace Token AssetName=Dataset-Marketplace-dataset1 AssetSymbol=DM-ds1 AssetURI=2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE TotalSupply=1 MaxSupply=0 Owner=000000000000000000000000000000000000000000000000000000000000000000
+AssetMetadata=map[string]string{"assetForPayment":"11111111111111111111111111111111LpoYY", "datasetID":"2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE", "datasetPricePerBlock":"1000000000", "lastClaimedBlock":"890", "marketplaceAssetID":"Up1AiTUQP8bMbffodMu5qK3ryXWneiPeoBboREeAtVFdUAcsQ", "paymentClaimed":"0", "paymentRemaining":"10000000000", "publisher":"00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9", "subscriptions":"1"}
 ```
 
 Now, it shows the number of subscriptions is 1 instead of 0 and various other details have also been updated.
@@ -207,12 +198,9 @@ Let's check our balance before claiming the payment
 Output:
 
 ```bash
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-stored keys: 3
-0) address: 0027e7ca083ae74508d9fc9a858f874663f235e5d4010052dbca9d23e86a3c2232 balance: 6.999820800 NAI
-1) address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 balance: 852999887.999903798 NAI
-2) address: 00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a balance: 99.999635900 NAI
-set default key: 2
+0) address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 balance: 852999899.999295712 NAI
+1) address: 00cc39cb91242b1ff0968b6e6184f349c903c37f1462b90809c5a536dc1720ef0e balance: 89.999820800 NAI
+set default key: 0
 ```
 
 ```bash
@@ -222,36 +210,29 @@ set default key: 2
 Output:
 
 ```bash
-address: 00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-datasetID: 2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN
-Retrieving dataset info from the marketplace: 2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN
+Retrieving dataset info from the marketplace: 2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE
 dataset info from marketplace:
-DatasetName=dataset1 DatasetDescription=desc1 IsCommunityDataset=true MarketplaceAssetID=oYmC6Ep2w9NQaNzXN4oLNPMVB3CVr1NmsRsHaV34Z14T7BLT1 AssetForPayment=11111111111111111111111111111111LpoYY PricePerBlock=1000000000 DatasetOwner=00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a
+DatasetName=dataset1 DatasetDescription=desc1 IsCommunityDataset=true MarketplaceAssetID=Up1AiTUQP8bMbffodMu5qK3ryXWneiPeoBboREeAtVFdUAcsQ AssetForPayment=11111111111111111111111111111111LpoYY PricePerBlock=1000000000 DatasetOwner=00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
+
 marketplace asset info:
-AssetType=Marketplace Token AssetName=Dataset-Marketplace-dataset1 AssetSymbol=DM-datas AssetURI=2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN TotalSupply=1 MaxSupply=0 Owner=000000000000000000000000000000000000000000000000000000000000000000
-AssetMetadata=map[string]string{"assetForPayment":"11111111111111111111111111111111LpoYY", "datasetID":"2bovg98jMSdt9XGb2CedUr8uHZ56cVZaMLPxdn1HtQ8usgaJHN", "datasetPricePerBlock":"1000000000", "lastClaimedBlock":"337", "marketplaceAssetID":"oYmC6Ep2w9NQaNzXN4oLNPMVB3CVr1NmsRsHaV34Z14T7BLT1", "paymentClaimed":"0", "paymentRemaining":"5000000000", "publisher":"00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a", "subscriptions":"1"}
+AssetType=Marketplace Token AssetName=Dataset-Marketplace-dataset1 AssetSymbol=DM-ds1 AssetURI=2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE TotalSupply=1 MaxSupply=0 Owner=000000000000000000000000000000000000000000000000000000000000000000
+AssetMetadata=map[string]string{"assetForPayment":"11111111111111111111111111111111LpoYY", "datasetID":"2TpSHwR82k4tqAhgaFMpVLryKrLdpUHdwGaibycPe13HqmYoPE", "datasetPricePerBlock":"1000000000", "lastClaimedBlock":"890", "marketplaceAssetID":"Up1AiTUQP8bMbffodMu5qK3ryXWneiPeoBboREeAtVFdUAcsQ", "paymentClaimed":"0", "paymentRemaining":"10000000000", "publisher":"00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9", "subscriptions":"1"}
 ✔ continue (y/n): y█
-✅ txID: 25rKXbBvLjC61YPkffneh9rDeVgK6mRuyEM3XgKMcRbBj3hYnF
+✅ txID: 7hY1HUarjFqxvaAF3a3dZPsHUQBykz6Ht6z5WtCPEfamCxmKw
 fee consumed: 0.000175400 NAI
-output:  &{LastClaimedBlock:482 PaymentClaimed:5000000000 PaymentRemaining:0 DistributedReward:5000000000 DistributedTo:00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a}
+output:  &{LastClaimedBlock:1092 PaymentClaimed:10000000000 PaymentRemaining:0 DistributedReward:10000000000 DistributedTo:00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9}
 ```
 
 Let's ensure that we are rewarded with the payment:
 
 ```bash
-./build/nuklai-cli key set
+./build/nuklai-cli key balance
 ```
 
 Output:
 
 ```bash
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-stored keys: 3
-0) address: 0027e7ca083ae74508d9fc9a858f874663f235e5d4010052dbca9d23e86a3c2232 balance: 6.999820800 NAI
-1) address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 balance: 852999887.999903798 NAI
-2) address: 00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a balance: 104.999460500 NAI
-set default key: 2
+address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 balance: 852999909.999120235 NAI
 ```
 
-Looks like we got 5 NAI as expected. Previously, our balance was `99.999635900 NAI` and now, our new balance is `104.999460500 NAI`
+Looks like we got 10 NAI as expected. Previously, our balance was `852999899.999295712 NAI` and now, our new balance is `852999909.999120235 NAI`
