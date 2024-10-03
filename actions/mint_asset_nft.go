@@ -76,7 +76,7 @@ func (m *MintAssetNFT) Execute(
 		return nil, ErrOutputURIInvalid
 	}
 	if len(m.Metadata) < 3 || len(m.Metadata) > MaxMetadataSize {
-		return nil, ErrOutputMetadataInvalid
+		return nil, ErrMetadataInvalid
 	}
 
 	// Check if the nftID already exists

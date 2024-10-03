@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/nuklai/nuklaivm/chain"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/hypersdk/chain/chaintest"
@@ -22,7 +22,7 @@ import (
 func TestTransferAction(t *testing.T) {
 	addr := codectest.NewRandomAddress()
 	assetID := ids.GenerateTestID()
-	nftID := chain.GenerateIDWithIndex(assetID, 0)
+	nftID := utils.GenerateIDWithIndex(assetID, 0)
 
 	tests := []chaintest.ActionTest{
 		{

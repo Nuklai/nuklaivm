@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/nuklai/nuklaivm/chain"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/hypersdk/chain/chaintest"
@@ -23,13 +23,14 @@ import (
 func TestCreateAssetAction(t *testing.T) {
 	addr := codectest.NewRandomAddress()
 	assetID := ids.GenerateTestID()
-	nftID := chain.GenerateIDWithIndex(assetID, 0)
+	nftID := utils.GenerateIDWithIndex(assetID, 0)
 
 	tests := []chaintest.ActionTest{
 		{
 			Name:  "InvalidAssetType",
 			Actor: addr,
 			Action: &CreateAsset{
+				AssetID:   assetID,
 				AssetType: 255, // Invalid type
 				Name:      []byte("My Asset"),
 				Symbol:    []byte("MYA"),
@@ -44,6 +45,7 @@ func TestCreateAssetAction(t *testing.T) {
 			Name:  "InvalidName",
 			Actor: addr,
 			Action: &CreateAsset{
+				AssetID:   assetID,
 				AssetType: nconsts.AssetFungibleTokenID,
 				Name:      []byte("As"), // Invalid name, too short
 				Symbol:    []byte("MYA"),
@@ -52,12 +54,13 @@ func TestCreateAssetAction(t *testing.T) {
 				URI:       []byte("uri"),
 				MaxSupply: 1000,
 			},
-			ExpectedErr: ErrOutputNameInvalid,
+			ExpectedErr: ErrNameInvalid,
 		},
 		{
 			Name:  "InvalidSymbol",
 			Actor: addr,
 			Action: &CreateAsset{
+				AssetID:   assetID,
 				AssetType: nconsts.AssetFungibleTokenID,
 				Name:      []byte("My Asset"),
 				Symbol:    []byte("SY"), // Invalid symbol, too short
@@ -72,6 +75,7 @@ func TestCreateAssetAction(t *testing.T) {
 			Name:  "InvalidDecimalsForFungible",
 			Actor: addr,
 			Action: &CreateAsset{
+				AssetID:   assetID,
 				AssetType: nconsts.AssetFungibleTokenID,
 				Name:      []byte("My Asset"),
 				Symbol:    []byte("MYA"),
@@ -86,6 +90,7 @@ func TestCreateAssetAction(t *testing.T) {
 			Name:  "InvalidDecimalsForNonFungible",
 			Actor: addr,
 			Action: &CreateAsset{
+				AssetID:   assetID,
 				AssetType: nconsts.AssetNonFungibleTokenID,
 				Name:      []byte("My NFT"),
 				Symbol:    []byte("NFT"),
@@ -100,6 +105,7 @@ func TestCreateAssetAction(t *testing.T) {
 			Name:  "InvalidMetadata",
 			Actor: addr,
 			Action: &CreateAsset{
+				AssetID:   assetID,
 				AssetType: nconsts.AssetFungibleTokenID,
 				Name:      []byte("My Asset"),
 				Symbol:    []byte("MYA"),
@@ -108,12 +114,13 @@ func TestCreateAssetAction(t *testing.T) {
 				URI:       []byte("uri"),
 				MaxSupply: 1000,
 			},
-			ExpectedErr: ErrOutputMetadataInvalid,
+			ExpectedErr: ErrMetadataInvalid,
 		},
 		{
 			Name:  "InvalidURI",
 			Actor: addr,
 			Action: &CreateAsset{
+				AssetID:   assetID,
 				AssetType: nconsts.AssetFungibleTokenID,
 				Name:      []byte("My Asset"),
 				Symbol:    []byte("MYA"),
@@ -129,6 +136,7 @@ func TestCreateAssetAction(t *testing.T) {
 			Actor:    addr,
 			ActionID: assetID,
 			Action: &CreateAsset{
+				AssetID:   assetID,
 				AssetType: nconsts.AssetFungibleTokenID,
 				Name:      []byte("My Token"),
 				Symbol:    []byte("MYT"),
@@ -168,6 +176,7 @@ func TestCreateAssetAction(t *testing.T) {
 			Actor:    addr,
 			ActionID: assetID,
 			Action: &CreateAsset{
+				AssetID:   assetID,
 				AssetType: nconsts.AssetNonFungibleTokenID,
 				Name:      []byte("My NFT"),
 				Symbol:    []byte("NFT"),
@@ -207,6 +216,7 @@ func TestCreateAssetAction(t *testing.T) {
 			Actor:    addr,
 			ActionID: assetID,
 			Action: &CreateAsset{
+				AssetID:   assetID,
 				AssetType: nconsts.AssetDatasetTokenID,
 				Name:      []byte("Dataset Asset"),
 				Symbol:    []byte("DAT"),
@@ -269,6 +279,7 @@ func BenchmarkCreateAsset(b *testing.B) {
 		Name:  "CreateAssetBenchmark",
 		Actor: actor,
 		Action: &CreateAsset{
+			AssetID:   assetID,
 			AssetType: nconsts.AssetFungibleTokenID,
 			Name:      []byte("Benchmark Asset"),
 			Symbol:    []byte("BMA"),

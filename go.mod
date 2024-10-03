@@ -6,6 +6,7 @@ require (
 	github.com/ava-labs/avalanchego v1.11.12-rc.2
 	github.com/ava-labs/hypersdk v0.0.18-0.20241002025558-abf0ce962501
 	github.com/fatih/color v1.13.0
+	github.com/manifoldco/promptui v0.9.0
 	github.com/near/borsh-go v0.3.1
 	github.com/onsi/ginkgo/v2 v2.13.1
 	github.com/spf13/cobra v1.7.0
@@ -82,7 +83,6 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
-	github.com/manifoldco/promptui v0.9.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect

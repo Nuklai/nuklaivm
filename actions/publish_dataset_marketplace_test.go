@@ -31,9 +31,10 @@ func TestPublishDatasetMarketplaceAction(t *testing.T) {
 			Name:  "DatasetNotFound",
 			Actor: addr,
 			Action: &PublishDatasetMarketplace{
-				DatasetID:   datasetID, // Non-existent dataset ID
-				BaseAssetID: baseAssetID,
-				BasePrice:   100,
+				MarketplaceAssetID: marketplaceAssetID,
+				DatasetID:          datasetID, // Non-existent dataset ID
+				BaseAssetID:        baseAssetID,
+				BasePrice:          100,
 			},
 			State:       chaintest.NewInMemoryStore(),
 			ExpectedErr: ErrDatasetNotFound,
@@ -42,9 +43,10 @@ func TestPublishDatasetMarketplaceAction(t *testing.T) {
 			Name:  "WrongOwner",
 			Actor: codectest.NewRandomAddress(), // Not the owner of the dataset
 			Action: &PublishDatasetMarketplace{
-				DatasetID:   datasetID,
-				BaseAssetID: baseAssetID,
-				BasePrice:   100,
+				MarketplaceAssetID: marketplaceAssetID,
+				DatasetID:          datasetID,
+				BaseAssetID:        baseAssetID,
+				BasePrice:          100,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -58,9 +60,10 @@ func TestPublishDatasetMarketplaceAction(t *testing.T) {
 			Name:  "AssetNotFound",
 			Actor: addr,
 			Action: &PublishDatasetMarketplace{
-				DatasetID:   datasetID,
-				BaseAssetID: baseAssetID, // Non-existent base asset ID
-				BasePrice:   100,
+				MarketplaceAssetID: marketplaceAssetID,
+				DatasetID:          datasetID,
+				BaseAssetID:        baseAssetID, // Non-existent base asset ID
+				BasePrice:          100,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -68,16 +71,17 @@ func TestPublishDatasetMarketplaceAction(t *testing.T) {
 				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
 				return store
 			}(),
-			ExpectedErr: ErrOutputAssetNotFound,
+			ExpectedErr: ErrAssetNotFound,
 		},
 		{
 			Name:     "ValidPublishDataset",
 			ActionID: marketplaceAssetID,
 			Actor:    addr,
 			Action: &PublishDatasetMarketplace{
-				DatasetID:   datasetID,
-				BaseAssetID: baseAssetID,
-				BasePrice:   100,
+				MarketplaceAssetID: marketplaceAssetID,
+				DatasetID:          datasetID,
+				BaseAssetID:        baseAssetID,
+				BasePrice:          100,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -139,9 +143,10 @@ func BenchmarkPublishDatasetMarketplace(b *testing.B) {
 		Name:  "PublishDatasetMarketplaceBenchmark",
 		Actor: actor,
 		Action: &PublishDatasetMarketplace{
-			DatasetID:   datasetID,
-			BaseAssetID: baseAssetID,
-			BasePrice:   100,
+			MarketplaceAssetID: marketplaceAssetID,
+			DatasetID:          datasetID,
+			BaseAssetID:        baseAssetID,
+			BasePrice:          100,
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()

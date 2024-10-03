@@ -91,7 +91,7 @@ func (d *CompleteContributeDataset) Execute(
 		return nil, err
 	}
 	if !exists {
-		return nil, ErrOutputAssetNotFound
+		return nil, ErrAssetNotFound
 	}
 	if actor != mintActor {
 		return nil, ErrOutputWrongMintAdmin

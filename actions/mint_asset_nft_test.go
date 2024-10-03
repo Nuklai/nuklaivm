@@ -48,7 +48,7 @@ func TestMintAssetNFTAction(t *testing.T) {
 				Metadata: []byte("m"), // Invalid metadata (too short)
 				To:       addr,
 			},
-			ExpectedErr: ErrOutputMetadataInvalid,
+			ExpectedErr: ErrMetadataInvalid,
 		},
 		{
 			Name:  "NFTAlreadyExists",

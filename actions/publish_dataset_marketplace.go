@@ -26,6 +26,9 @@ const (
 var _ chain.Action = (*PublishDatasetMarketplace)(nil)
 
 type PublishDatasetMarketplace struct {
+	// TODO: Remove after hypersdk adds pseudorandom actionID generation
+	MarketplaceAssetID ids.ID `serialize:"true" json:"marketplace_asset_id"`
+
 	// DatasetID ID
 	DatasetID ids.ID `serialize:"true" json:"dataset_id"`
 
@@ -45,9 +48,10 @@ func (*PublishDatasetMarketplace) GetTypeID() uint8 {
 
 func (d *PublishDatasetMarketplace) StateKeys(_ codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.DatasetKey(d.DatasetID)): state.Read | state.Write,
-		string(storage.AssetKey(d.DatasetID)):   state.Read,
-		string(storage.AssetKey(actionID)):      state.Allocate | state.Write,
+		string(storage.AssetKey(d.MarketplaceAssetID)): state.All,
+		string(storage.DatasetKey(d.DatasetID)):        state.Read | state.Write,
+		string(storage.AssetKey(d.DatasetID)):          state.Read,
+		string(storage.AssetKey(d.MarketplaceAssetID)): state.Allocate | state.Write,
 	}
 }
 
@@ -57,7 +61,7 @@ func (d *PublishDatasetMarketplace) Execute(
 	mu state.Mutable,
 	_ int64,
 	actor codec.Address,
-	actionID ids.ID,
+	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the dataset exists
 	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, _, _, _, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := storage.GetDataset(ctx, mu, d.DatasetID)
@@ -74,7 +78,7 @@ func (d *PublishDatasetMarketplace) Execute(
 	}
 
 	// Update the dataset
-	if err := storage.SetDataset(ctx, mu, d.DatasetID, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, actionID, d.BaseAssetID, d.BasePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
+	if err := storage.SetDataset(ctx, mu, d.DatasetID, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, d.MarketplaceAssetID, d.BaseAssetID, d.BasePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
 		return nil, err
 	}
 
@@ -84,7 +88,7 @@ func (d *PublishDatasetMarketplace) Execute(
 		return nil, err
 	}
 	if !exists {
-		return nil, ErrOutputAssetNotFound
+		return nil, ErrAssetNotFound
 	}
 	name = utils.CombineWithPrefix([]byte("Dataset-Marketplace-"), name, MaxMetadataSize)
 	symbol = utils.CombineWithPrefix([]byte("DM-"), symbol, MaxTextSize)
@@ -93,7 +97,7 @@ func (d *PublishDatasetMarketplace) Execute(
 	// This is a special type of token that cannot be manually created/minted
 	metadataMap := make(map[string]string, 0)
 	metadataMap["datasetID"] = d.DatasetID.String()
-	metadataMap["marketplaceAssetID"] = actionID.String()
+	metadataMap["marketplaceAssetID"] = d.MarketplaceAssetID.String()
 	metadataMap["datasetPricePerBlock"] = fmt.Sprint(d.BasePrice)
 	metadataMap["assetForPayment"] = d.BaseAssetID.String()
 	metadataMap["publisher"] = actor.String()
@@ -106,12 +110,19 @@ func (d *PublishDatasetMarketplace) Execute(
 	if err != nil {
 		return nil, err
 	}
-	if err := storage.SetAsset(ctx, mu, actionID, nconsts.AssetMarketplaceTokenID, name, symbol, 0, metadata, []byte(d.DatasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
+
+	// TODO: Remove after hypersdk adds pseudorandom actionID generation
+	exists, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = storage.GetAsset(ctx, mu, d.MarketplaceAssetID)
+	if exists {
+		return nil, ErrAssetAlreadyExists
+	}
+
+	if err := storage.SetAsset(ctx, mu, d.MarketplaceAssetID, nconsts.AssetMarketplaceTokenID, name, symbol, 0, metadata, []byte(d.DatasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}
 
 	return &PublishDatasetMarketplaceResult{
-		MarketplaceAssetID:   actionID,
+		MarketplaceAssetID:   d.MarketplaceAssetID,
 		AssetForPayment:      d.BaseAssetID,
 		DatasetPricePerBlock: d.BasePrice,
 		Publisher:            actor,
@@ -130,10 +141,11 @@ func (*PublishDatasetMarketplace) ValidRange(chain.Rules) (int64, int64) {
 var _ chain.Marshaler = (*PublishDatasetMarketplace)(nil)
 
 func (*PublishDatasetMarketplace) Size() int {
-	return ids.IDLen*2 + consts.Uint64Len
+	return ids.IDLen*3 + consts.Uint64Len
 }
 
 func (d *PublishDatasetMarketplace) Marshal(p *codec.Packer) {
+	p.PackID(d.MarketplaceAssetID)
 	p.PackID(d.DatasetID)
 	p.PackID(d.BaseAssetID)
 	p.PackUint64(d.BasePrice)
@@ -141,6 +153,7 @@ func (d *PublishDatasetMarketplace) Marshal(p *codec.Packer) {
 
 func UnmarshalPublishDatasetMarketplace(p *codec.Packer) (chain.Action, error) {
 	var publish PublishDatasetMarketplace
+	p.UnpackID(true, &publish.MarketplaceAssetID)
 	p.UnpackID(true, &publish.DatasetID)
 	p.UnpackID(false, &publish.BaseAssetID)
 	publish.BasePrice = p.UnpackUint64(false)

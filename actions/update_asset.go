@@ -24,7 +24,7 @@ const (
 )
 
 var (
-	ErrOutputAssetNotFound                                    = errors.New("asset not found")
+	ErrAssetNotFound                                          = errors.New("asset not found")
 	ErrOutputMustUpdateAtLeastOneField                        = errors.New("must update at least one field")
 	ErrOutputMaxSupplyInvalid                                 = errors.New("max supply must be greater than or equal to total supply")
 	ErrOutputOwnerInvalid                                     = errors.New("owner is invalid")
@@ -94,7 +94,7 @@ func (u *UpdateAsset) Execute(
 		return nil, err
 	}
 	if !exists {
-		return nil, ErrOutputAssetNotFound
+		return nil, ErrAssetNotFound
 	}
 
 	// Check if the actor is the owner of the asset
@@ -124,7 +124,7 @@ func (u *UpdateAsset) Execute(
 	// otherwise, keep the existing name
 	if len(u.Name) > 0 {
 		if len(u.Name) < 3 || len(u.Name) > MaxMetadataSize {
-			return nil, ErrOutputNameInvalid
+			return nil, ErrNameInvalid
 		}
 		name = u.Name
 		updateAssetResult.Name = u.Name
@@ -140,7 +140,7 @@ func (u *UpdateAsset) Execute(
 
 	if len(u.Metadata) > 0 {
 		if len(u.Metadata) < 3 || len(u.Metadata) > MaxMetadataSize {
-			return nil, ErrOutputMetadataInvalid
+			return nil, ErrMetadataInvalid
 		}
 		metadata = u.Metadata
 		updateAssetResult.Metadata = u.Metadata

@@ -93,7 +93,7 @@ func (u *UpdateDataset) Execute(
 	// otherwise, keep the existing name
 	if len(u.Name) > 0 {
 		if len(u.Name) < 3 || len(u.Name) > MaxMetadataSize {
-			return nil, ErrOutputNameInvalid
+			return nil, ErrNameInvalid
 		}
 		name = u.Name
 		updateDatasetResult.Name = name
@@ -101,7 +101,7 @@ func (u *UpdateDataset) Execute(
 
 	if len(u.Description) > 0 {
 		if len(u.Description) < 3 || len(u.Description) > MaxMetadataSize {
-			return nil, ErrOutputDescriptionInvalid
+			return nil, ErrDescriptionInvalid
 		}
 		description = u.Description
 		updateDatasetResult.Description = description
@@ -109,7 +109,7 @@ func (u *UpdateDataset) Execute(
 
 	if len(u.Categories) > 0 {
 		if len(u.Categories) < 3 || len(u.Categories) > MaxMetadataSize {
-			return nil, ErrOutputCategoriesInvalid
+			return nil, ErrCategoriesInvalid
 		}
 		categories = u.Categories
 		updateDatasetResult.Categories = categories
@@ -117,7 +117,7 @@ func (u *UpdateDataset) Execute(
 
 	if len(u.LicenseName) > 0 {
 		if len(u.LicenseName) < 3 || len(u.LicenseName) > MaxMetadataSize {
-			return nil, ErrOutputLicenseNameInvalid
+			return nil, ErrLicenseNameInvalid
 		}
 		licenseName = u.LicenseName
 		updateDatasetResult.LicenseName = licenseName
@@ -125,7 +125,7 @@ func (u *UpdateDataset) Execute(
 
 	if len(u.LicenseSymbol) > 0 {
 		if len(u.LicenseSymbol) < 3 || len(u.LicenseSymbol) > MaxTextSize {
-			return nil, ErrOutputLicenseSymbolInvalid
+			return nil, ErrLicenseSymbolInvalid
 		}
 		licenseSymbol = u.LicenseSymbol
 		updateDatasetResult.LicenseSymbol = licenseSymbol
@@ -133,7 +133,7 @@ func (u *UpdateDataset) Execute(
 
 	if len(u.LicenseURL) > 0 {
 		if len(u.LicenseURL) < 3 || len(u.LicenseURL) > MaxMetadataSize {
-			return nil, ErrOutputLicenseURLInvalid
+			return nil, ErrLicenseURLInvalid
 		}
 		licenseURL = u.LicenseURL
 		updateDatasetResult.LicenseURL = licenseURL

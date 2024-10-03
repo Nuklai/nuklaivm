@@ -128,7 +128,7 @@ func (c *ClaimMarketplacePayment) Execute(
 			return nil, err
 		}
 		if !exists {
-			return nil, ErrOutputAssetNotFound
+			return nil, ErrAssetNotFound
 		}
 		decimalsToUse = decimals
 	}

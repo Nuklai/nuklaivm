@@ -24,12 +24,12 @@ const (
 )
 
 var (
-	ErrOutputDescriptionInvalid                = errors.New("description is invalid")
-	ErrOutputCategoriesInvalid                 = errors.New("categories is invalid")
-	ErrOutputLicenseNameInvalid                = errors.New("license name is invalid")
-	ErrOutputLicenseSymbolInvalid              = errors.New("license symbol is invalid")
-	ErrOutputLicenseURLInvalid                 = errors.New("license url is invalid")
-	_                             chain.Action = (*CreateDataset)(nil)
+	ErrDescriptionInvalid                = errors.New("description is invalid")
+	ErrCategoriesInvalid                 = errors.New("categories is invalid")
+	ErrLicenseNameInvalid                = errors.New("license name is invalid")
+	ErrLicenseSymbolInvalid              = errors.New("license symbol is invalid")
+	ErrLicenseURLInvalid                 = errors.New("license url is invalid")
+	_                       chain.Action = (*CreateDataset)(nil)
 )
 
 type CreateDataset struct {
@@ -67,19 +67,16 @@ func (c *CreateDataset) StateKeys(actor codec.Address) state.Keys {
 	   		assetID = c.AssetID
 	   	}
 	   	nftID := utils.GenerateIDWithIndex(actionID, 0) */
+	// TODO: Remove after hypersdk adds pseudorandom actionID generation
 	assetID := c.AssetID
-	nftID := utils.GenerateIDWithIndex(assetID, 0)
 	return state.Keys{
-		string(storage.AssetKey(assetID)):          state.Allocate | state.Write,
-		string(storage.DatasetKey(assetID)):        state.Allocate | state.Write,
-		string(storage.AssetNFTKey(nftID)):         state.Allocate | state.Write,
+		// string(storage.AssetKey(assetID)):          state.Allocate | state.Write,
+		string(storage.AssetKey(assetID)):   state.All,
+		string(storage.DatasetKey(assetID)): state.Allocate | state.Write,
+		//string(storage.AssetNFTKey(nftID)):         state.Allocate | state.Write,
 		string(storage.BalanceKey(actor, assetID)): state.Allocate | state.Write,
-		string(storage.BalanceKey(actor, nftID)):   state.Allocate | state.Write,
+		// string(storage.BalanceKey(actor, nftID)):   state.Allocate | state.Write,
 	}
-}
-
-func (*CreateDataset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.DatasetChunks, storage.AssetNFTChunks, storage.BalanceChunks, storage.BalanceChunks}
 }
 
 func (c *CreateDataset) Execute(
@@ -88,72 +85,89 @@ func (c *CreateDataset) Execute(
 	mu state.Mutable,
 	_ int64,
 	actor codec.Address,
-	actionID ids.ID,
+	_ ids.ID,
 ) (codec.Typed, error) {
 	if len(c.Name) < 3 || len(c.Name) > MaxMetadataSize {
-		return nil, ErrOutputNameInvalid
+		return nil, ErrNameInvalid
 	}
 	if len(c.Description) < 3 || len(c.Description) > MaxMetadataSize {
-		return nil, ErrOutputDescriptionInvalid
+		return nil, ErrDescriptionInvalid
 	}
 	if len(c.Categories) < 3 || len(c.Categories) > MaxMetadataSize {
-		return nil, ErrOutputCategoriesInvalid
+		return nil, ErrCategoriesInvalid
 	}
 	if len(c.LicenseName) < 3 || len(c.LicenseName) > MaxMetadataSize {
-		return nil, ErrOutputLicenseNameInvalid
+		return nil, ErrLicenseNameInvalid
 	}
 	if len(c.LicenseSymbol) < 3 || len(c.LicenseSymbol) > MaxTextSize {
-		return nil, ErrOutputLicenseSymbolInvalid
+		return nil, ErrLicenseSymbolInvalid
 	}
 	if len(c.LicenseURL) < 3 || len(c.LicenseURL) > MaxMetadataSize {
-		return nil, ErrOutputLicenseURLInvalid
+		return nil, ErrLicenseURLInvalid
 	}
 	if len(c.Metadata) < 3 || len(c.Metadata) > MaxDatasetMetadataSize {
-		return nil, ErrOutputMetadataInvalid
+		return nil, ErrMetadataInvalid
 	}
 
-	var assetID ids.ID
-	if c.AssetID != ids.Empty {
-		assetID = c.AssetID
-		// Check if the asset exists
-		exists, assetType, _, _, _, _, _, _, _, _, mintActor, _, _, _, err := storage.GetAsset(ctx, mu, assetID)
-		if err != nil {
-			return nil, err
-		}
-		if !exists {
-			return nil, ErrOutputAssetMissing
-		}
-		if assetType != nconsts.AssetDatasetTokenID {
-			return nil, ErrOutputWrongAssetType
-		}
-		if mintActor != actor {
-			return nil, ErrOutputWrongMintAdmin
-		}
-	} else {
-		assetID = actionID
-
-		// Mint the parent NFT for the dataset(fractionalized asset)
-		nftID := utils.GenerateIDWithIndex(assetID, 0)
-		if err := storage.SetAssetNFT(ctx, mu, assetID, 0, nftID, c.Description, c.Description, actor); err != nil {
-			return nil, err
-		}
-
-		// Create a new asset for the dataset
-		symbol := utils.CombineWithPrefix([]byte(""), c.Name, MaxTextSize)
-		if err := storage.SetAsset(ctx, mu, assetID, nconsts.AssetDatasetTokenID, c.Name, symbol, 0, c.Description, c.Description, 1, 0, actor, actor, actor, actor, actor); err != nil {
-			return nil, err
-		}
-
-		// Add the balance to NFT collection
-		if _, err := storage.AddBalance(ctx, mu, actor, assetID, 1, true); err != nil {
-			return nil, err
-		}
-
-		// Add the balance to individual NFT
-		if _, err := storage.AddBalance(ctx, mu, actor, nftID, 1, true); err != nil {
-			return nil, err
-		}
+	assetID := c.AssetID
+	// TODO: Remove after hypersdk adds pseudorandom actionID generation
+	// Check if the asset exists
+	exists, assetType, _, _, _, _, _, _, _, _, mintActor, _, _, _, err := storage.GetAsset(ctx, mu, assetID)
+	if err != nil {
+		return nil, err
 	}
+	if !exists {
+		return nil, ErrOutputAssetMissing
+	}
+	if assetType != nconsts.AssetDatasetTokenID {
+		return nil, ErrOutputWrongAssetType
+	}
+	if mintActor != actor {
+		return nil, ErrOutputWrongMintAdmin
+	}
+	/*
+		var assetID ids.ID
+		if c.AssetID != ids.Empty {
+			assetID = c.AssetID
+			// Check if the asset exists
+			exists, assetType, _, _, _, _, _, _, _, _, mintActor, _, _, _, err := storage.GetAsset(ctx, mu, assetID)
+			if err != nil {
+				return nil, err
+			}
+			if !exists {
+				return nil, ErrOutputAssetMissing
+			}
+			if assetType != nconsts.AssetDatasetTokenID {
+				return nil, ErrOutputWrongAssetType
+			}
+			if mintActor != actor {
+				return nil, ErrOutputWrongMintAdmin
+			}
+		} 	else {
+			assetID = actionID
+
+			// Mint the parent NFT for the dataset(fractionalized asset)
+			nftID := utils.GenerateIDWithIndex(assetID, 0)
+			if err := storage.SetAssetNFT(ctx, mu, assetID, 0, nftID, c.Description, c.Description, actor); err != nil {
+				return nil, err
+			}
+
+			// Create a new asset for the dataset
+			symbol := utils.CombineWithPrefix([]byte(""), c.Name, MaxTextSize)
+			if err := storage.SetAsset(ctx, mu, assetID, nconsts.AssetDatasetTokenID, c.Name, symbol, 0, c.Description, c.Description, 1, 0, actor, actor, actor, actor, actor); err != nil {
+				return nil, err
+			}
+
+			// Add the balance to NFT collection
+			if _, err := storage.AddBalance(ctx, mu, actor, assetID, 1, true); err != nil {
+				return nil, err
+			}
+
+			// Add the balance to individual NFT
+			if _, err := storage.AddBalance(ctx, mu, actor, nftID, 1, true); err != nil {
+				return nil, err
+			}
+		} */
 
 	revenueModelDataShare, revenueModelDataOwnerCut := 100, 100
 	if c.IsCommunityDataset {

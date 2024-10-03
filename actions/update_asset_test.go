@@ -67,7 +67,7 @@ func TestUpdateAssetAction(t *testing.T) {
 				require.NoError(t, storage.SetAsset(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("My Token"), []byte("MYT"), 9, []byte("Metadata"), []byte("uri"), 0, 1000, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
-			ExpectedErr: ErrOutputNameInvalid,
+			ExpectedErr: ErrNameInvalid,
 		},
 		{
 			Name:  "UpdateNameAndSymbol",
