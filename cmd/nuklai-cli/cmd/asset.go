@@ -7,13 +7,14 @@ import (
 	"context"
 
 	"github.com/nuklai/nuklaivm/actions"
-	nutils "github.com/nuklai/nuklaivm/utils"
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/cli/prompt"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/utils"
+
+	nutils "github.com/nuklai/nuklaivm/utils"
 )
 
 var assetCmd = &cobra.Command{

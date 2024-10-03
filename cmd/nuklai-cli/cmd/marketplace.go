@@ -10,7 +10,6 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/actions"
-	nutils "github.com/nuklai/nuklaivm/utils"
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/hypersdk/chain"
@@ -19,6 +18,7 @@ import (
 
 	hutils "github.com/ava-labs/hypersdk/utils"
 	nconsts "github.com/nuklai/nuklaivm/consts"
+	nutils "github.com/nuklai/nuklaivm/utils"
 )
 
 var marketplaceCmd = &cobra.Command{
