@@ -6,10 +6,10 @@ package cmd
 import (
 	"context"
 
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/spf13/cobra"
 
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/cli/prompt"
 	"github.com/ava-labs/hypersdk/consts"
