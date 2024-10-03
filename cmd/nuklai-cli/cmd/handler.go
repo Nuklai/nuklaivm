@@ -10,7 +10,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
-	nutils "github.com/nuklai/nuklaivm/utils"
 	"github.com/nuklai/nuklaivm/vm"
 
 	"github.com/ava-labs/hypersdk/api/jsonrpc"
@@ -25,6 +24,8 @@ import (
 	"github.com/ava-labs/hypersdk/crypto/secp256r1"
 	"github.com/ava-labs/hypersdk/pubsub"
 	"github.com/ava-labs/hypersdk/utils"
+
+	nutils "github.com/nuklai/nuklaivm/utils"
 )
 
 type Handler struct {

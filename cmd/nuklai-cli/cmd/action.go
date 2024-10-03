@@ -16,7 +16,6 @@ import (
 	"github.com/near/borsh-go"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
-	nutils "github.com/nuklai/nuklaivm/utils"
 	"github.com/spf13/cobra"
 	"github.com/status-im/keycard-go/hexutils"
 
@@ -29,6 +28,7 @@ import (
 
 	hcli "github.com/ava-labs/hypersdk/cli"
 	hconsts "github.com/ava-labs/hypersdk/consts"
+	nutils "github.com/nuklai/nuklaivm/utils"
 )
 
 var actionCmd = &cobra.Command{

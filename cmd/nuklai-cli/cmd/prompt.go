@@ -6,9 +6,10 @@ package cmd
 import (
 	"strings"
 
-	"github.com/ava-labs/hypersdk/cli/prompt"
 	"github.com/manifoldco/promptui"
 	"github.com/nuklai/nuklaivm/utils"
+
+	"github.com/ava-labs/hypersdk/cli/prompt"
 )
 
 func parseAmount(

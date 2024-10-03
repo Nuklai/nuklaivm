@@ -13,7 +13,6 @@ import (
 	"sync"
 
 	"github.com/ava-labs/avalanchego/ids"
-	nutils "github.com/nuklai/nuklaivm/utils"
 	"github.com/nuklai/nuklaivm/vm"
 	"github.com/spf13/cobra"
 
@@ -25,6 +24,8 @@ import (
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
 	"github.com/ava-labs/hypersdk/crypto/secp256r1"
 	"github.com/ava-labs/hypersdk/utils"
+
+	nutils "github.com/nuklai/nuklaivm/utils"
 )
 
 const (
