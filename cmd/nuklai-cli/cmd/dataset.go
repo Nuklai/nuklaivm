@@ -25,6 +25,7 @@ var datasetCmd = &cobra.Command{
 	},
 }
 
+/*
 var createDatasetCmd = &cobra.Command{
 	Use: "create",
 	RunE: func(*cobra.Command, []string) error {
@@ -81,10 +82,10 @@ var createDatasetCmd = &cobra.Command{
 		}
 		return processResult(result)
 	},
-}
+} */
 
 var createDatasetFromExistingAssetCmd = &cobra.Command{
-	Use: "create-from-asset",
+	Use: "create",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
 		_, _, factory, cli, ncli, ws, err := handler.DefaultActor()

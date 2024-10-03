@@ -183,7 +183,7 @@ func init() {
 
 	// dataset
 	datasetCmd.AddCommand(
-		createDatasetCmd,
+		// createDatasetCmd,
 		createDatasetFromExistingAssetCmd,
 		updateDatasetCmd,
 		getDatasetCmd,

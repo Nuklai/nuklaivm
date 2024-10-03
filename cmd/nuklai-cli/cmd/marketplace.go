@@ -54,7 +54,7 @@ var publishDatasetMarketplaceCmd = &cobra.Command{
 		}
 
 		// Get priceAmountPerBlock
-		priceAmountPerBlock, err := parseAmount("priceAmountPerBlock", decimals, balance, nil)
+		priceAmountPerBlock, err := parseAmount("priceAmountPerBlock", decimals, balance)
 		if err != nil {
 			return err
 		}
@@ -67,9 +67,10 @@ var publishDatasetMarketplaceCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.PublishDatasetMarketplace{
-			DatasetID:   datasetID,
-			BaseAssetID: assetForPayment,
-			BasePrice:   priceAmountPerBlock,
+			MarketplaceAssetID: ids.GenerateTestID(),
+			DatasetID:          datasetID,
+			BaseAssetID:        assetForPayment,
+			BasePrice:          priceAmountPerBlock,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err

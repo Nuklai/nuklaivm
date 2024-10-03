@@ -73,7 +73,7 @@ func (c *CreateDataset) StateKeys(actor codec.Address) state.Keys {
 		// string(storage.AssetKey(assetID)):          state.Allocate | state.Write,
 		string(storage.AssetKey(assetID)):   state.All,
 		string(storage.DatasetKey(assetID)): state.Allocate | state.Write,
-		//string(storage.AssetNFTKey(nftID)):         state.Allocate | state.Write,
+		// string(storage.AssetNFTKey(nftID)):         state.Allocate | state.Write,
 		string(storage.BalanceKey(actor, assetID)): state.Allocate | state.Write,
 		// string(storage.BalanceKey(actor, nftID)):   state.Allocate | state.Write,
 	}

@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanchego/ids"
-	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/storage"
 	"github.com/nuklai/nuklaivm/utils"
 	"github.com/stretchr/testify/require"
@@ -16,6 +15,8 @@ import (
 	"github.com/ava-labs/hypersdk/chain/chaintest"
 	"github.com/ava-labs/hypersdk/codec/codectest"
 	"github.com/ava-labs/hypersdk/state"
+
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 func TestCreateDatasetAction(t *testing.T) {

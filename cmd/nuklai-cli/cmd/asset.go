@@ -9,6 +9,7 @@ import (
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/spf13/cobra"
 
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/cli/prompt"
 	"github.com/ava-labs/hypersdk/consts"
@@ -78,6 +79,7 @@ var createAssetCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.CreateAsset{
+			AssetID:                      ids.GenerateTestID(),
 			AssetType:                    uint8(assetType),
 			Name:                         []byte(name),
 			Symbol:                       []byte(symbol),
@@ -195,7 +197,7 @@ var mintAssetFTCmd = &cobra.Command{
 		}
 
 		// Select amount
-		amount, err := parseAmount("amount", decimals, consts.MaxUint64, nil)
+		amount, err := parseAmount("amount", decimals, consts.MaxUint64)
 		if err != nil {
 			return err
 		}
@@ -347,7 +349,7 @@ var burnAssetFTCmd = &cobra.Command{
 		)
 
 		// Select amount
-		amount, err := parseAmount("amount", decimals, consts.MaxUint64, nil)
+		amount, err := parseAmount("amount", decimals, consts.MaxUint64)
 		if err != nil {
 			return err
 		}

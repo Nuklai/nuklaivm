@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/ava-labs/avalanchego/ids"
-	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/storage"
 	"github.com/nuklai/nuklaivm/utils"
@@ -18,6 +17,8 @@ import (
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/codec/codectest"
 	"github.com/ava-labs/hypersdk/state"
+
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 func TestClaimMarketplacePaymentAction(t *testing.T) {

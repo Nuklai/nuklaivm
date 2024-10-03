@@ -16,7 +16,6 @@ func parseAmount(
 	label string,
 	decimals uint8,
 	balance uint64,
-	f func(input uint64) error,
 ) (uint64, error) {
 	promptText := promptui.Prompt{
 		Label: label,
@@ -30,9 +29,6 @@ func parseAmount(
 			}
 			if amount > balance {
 				return prompt.ErrInsufficientBalance
-			}
-			if f != nil {
-				return f(amount)
 			}
 			return nil
 		},

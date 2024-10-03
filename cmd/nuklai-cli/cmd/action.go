@@ -66,7 +66,7 @@ var transferCmd = &cobra.Command{
 		}
 
 		// Select amount
-		amount, err := parseAmount("amount", decimals, balance, nil)
+		amount, err := parseAmount("amount", decimals, balance)
 		if err != nil {
 			return err
 		}
@@ -152,7 +152,7 @@ var callCmd = &cobra.Command{
 		}
 
 		// Select amount
-		amount, err := parseAmount("amount", consts.Decimals, balance, nil)
+		amount, err := parseAmount("amount", consts.Decimals, balance)
 		if err != nil {
 			return err
 		}
@@ -368,7 +368,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 		}
 
 		// Select staked amount
-		stakedAmount, err := parseAmount("Staked amount", consts.Decimals, balance, nil)
+		stakedAmount, err := parseAmount("Staked amount", consts.Decimals, balance)
 		if err != nil {
 			return err
 		}
@@ -697,7 +697,7 @@ var delegateUserStakeCmd = &cobra.Command{
 		}
 
 		// Select staked amount
-		stakedAmount, err := parseAmount("Staked amount", consts.Decimals, balance, nil)
+		stakedAmount, err := parseAmount("Staked amount", consts.Decimals, balance)
 		if err != nil {
 			return err
 		}
