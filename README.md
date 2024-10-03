@@ -429,3 +429,11 @@ Refer to [Datasets Demo](./docs/demos/datasets.md) to learn how to create a data
 ### Nuklai Marketplace Demo
 
 Refer to [Marketplace Demo](./docs/demos/marketplace.md) to learn how to create a publish your dataset up for sale on the Nuklai Marketplace and how to subscribe to a dataset.
+
+## Faucet
+
+You can run the faucet by doing:
+
+```bash
+FAUCET_PRIVATE_KEY_HEX="323b1d8f4eed5f0da9da93071b034f2dce9d2d22692c172f3cb252a64ddfafd01b057de320297c29ad0c1f589ea216869cf1938d88c9fbd70d6748323dbf2fa7" RPC_ENDPOINT="http://127.0.0.1:9650" go run ./cmd/faucet
+```
