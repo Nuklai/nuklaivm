@@ -36,17 +36,13 @@ func (*BurnAssetNFT) GetTypeID() uint8 {
 	return nconsts.BurnAssetNFTID
 }
 
-func (b *BurnAssetNFT) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (b *BurnAssetNFT) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.AssetKey(b.AssetID)):          state.Read | state.Write,
 		string(storage.AssetNFTKey(b.NftID)):         state.Read | state.Write,
 		string(storage.BalanceKey(actor, b.AssetID)): state.Read | state.Write,
 		string(storage.BalanceKey(actor, b.NftID)):   state.Read | state.Write,
 	}
-}
-
-func (*BurnAssetNFT) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks, storage.BalanceChunks}
 }
 
 func (b *BurnAssetNFT) Execute(

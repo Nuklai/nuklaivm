@@ -9,13 +9,13 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -49,7 +49,7 @@ func (*Transfer) GetTypeID() uint8 {
 	return nconsts.TransferID
 }
 
-func (t *Transfer) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (t *Transfer) StateKeys(actor codec.Address) state.Keys {
 	// Initialize the base stateKeys map
 	stateKeys := state.Keys{
 		string(storage.BalanceKey(actor, t.AssetID)): state.Read | state.Write,
@@ -64,17 +64,6 @@ func (t *Transfer) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
 
 	// Return the modified stateKeys
 	return stateKeys
-}
-
-func (t *Transfer) StateKeysMaxChunks() []uint16 {
-	stateKeysChunks := make([]uint16, 0)
-	stateKeysChunks = append(stateKeysChunks, storage.BalanceChunks)
-	stateKeysChunks = append(stateKeysChunks, storage.BalanceChunks)
-	if t.AssetID != ids.Empty {
-		stateKeysChunks = append(stateKeysChunks, storage.AssetChunks)
-		stateKeysChunks = append(stateKeysChunks, storage.AssetNFTChunks)
-	}
-	return stateKeysChunks
 }
 
 func (t *Transfer) Execute(
@@ -105,7 +94,7 @@ func (t *Transfer) Execute(
 				return nil, err
 			}
 			// Update the NFT Info
-			nftID := nchain.GenerateIDWithIndex(collectionID, uniqueID)
+			nftID := utils.GenerateIDWithIndex(collectionID, uniqueID)
 			if err := storage.SetAssetNFT(ctx, mu, collectionID, uniqueID, nftID, uri, metadata, t.To); err != nil {
 				return nil, err
 			}

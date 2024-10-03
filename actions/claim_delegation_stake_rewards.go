@@ -33,15 +33,11 @@ func (*ClaimDelegationStakeRewards) GetTypeID() uint8 {
 	return nconsts.ClaimDelegationStakeRewardsID
 }
 
-func (c *ClaimDelegationStakeRewards) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (c *ClaimDelegationStakeRewards) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.BalanceKey(actor, ids.Empty)):          state.All,
 		string(storage.DelegateUserStakeKey(actor, c.NodeID)): state.Read,
 	}
-}
-
-func (*ClaimDelegationStakeRewards) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.DelegateUserStakeChunks}
 }
 
 func (*ClaimDelegationStakeRewards) OutputsWarpMessage() bool {

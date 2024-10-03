@@ -10,13 +10,13 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/marketplace"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/hypersdk/chain/chaintest"
 	"github.com/ava-labs/hypersdk/codec/codectest"
 	"github.com/ava-labs/hypersdk/state"
 
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -92,7 +92,7 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 				// Set valid dataset
 				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
 				// Create existing NFT
-				nftID := nchain.GenerateIDWithIndex(datasetID, uniqueNFTID)
+				nftID := utils.GenerateIDWithIndex(datasetID, uniqueNFTID)
 				require.NoError(t, storage.SetAssetNFT(context.Background(), store, datasetID, uniqueNFTID, nftID, []byte("Dataset NFT"), []byte("Metadata"), addr))
 				return store
 			}(),
@@ -119,7 +119,7 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				config := marketplace.GetDatasetConfig()
-				nftID := nchain.GenerateIDWithIndex(datasetID, uniqueNFTID)
+				nftID := utils.GenerateIDWithIndex(datasetID, uniqueNFTID)
 
 				// Check if the balance is correctly updated
 				balance, err := storage.GetBalance(ctx, store, addr, config.CollateralAssetIDForDataContribution)
@@ -141,7 +141,7 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 				CollateralAssetID:        marketplace.GetDatasetConfig().CollateralAssetIDForDataContribution,
 				CollateralAmountRefunded: marketplace.GetDatasetConfig().CollateralAmountForDataContribution,
 				DatasetID:                datasetID,
-				DatasetChildNftID:        nchain.GenerateIDWithIndex(datasetID, uniqueNFTID),
+				DatasetChildNftID:        utils.GenerateIDWithIndex(datasetID, uniqueNFTID),
 				To:                       addr,
 				DataLocation:             dataLocation,
 				DataIdentifier:           dataIdentifier,

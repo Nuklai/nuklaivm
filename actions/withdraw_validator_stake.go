@@ -38,15 +38,11 @@ func (*WithdrawValidatorStake) GetTypeID() uint8 {
 	return nconsts.WithdrawValidatorStakeID
 }
 
-func (u *WithdrawValidatorStake) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (u *WithdrawValidatorStake) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.BalanceKey(actor, ids.Empty)):        state.Read | state.Write,
 		string(storage.RegisterValidatorStakeKey(u.NodeID)): state.Read | state.Write,
 	}
-}
-
-func (*WithdrawValidatorStake) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.RegisterValidatorStakeChunks}
 }
 
 func (u *WithdrawValidatorStake) Execute(

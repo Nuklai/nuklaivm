@@ -9,13 +9,13 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -61,12 +61,14 @@ func (*CreateDataset) GetTypeID() uint8 {
 	return nconsts.CreateDatasetID
 }
 
-func (c *CreateDataset) StateKeys(actor codec.Address, actionID ids.ID) state.Keys {
-	assetID := actionID
-	if c.AssetID != ids.Empty {
-		assetID = c.AssetID
-	}
-	nftID := nchain.GenerateIDWithIndex(actionID, 0)
+func (c *CreateDataset) StateKeys(actor codec.Address) state.Keys {
+	/* 	assetID := actionID
+	   	if c.AssetID != ids.Empty {
+	   		assetID = c.AssetID
+	   	}
+	   	nftID := utils.GenerateIDWithIndex(actionID, 0) */
+	assetID := c.AssetID
+	nftID := utils.GenerateIDWithIndex(assetID, 0)
 	return state.Keys{
 		string(storage.AssetKey(assetID)):          state.Allocate | state.Write,
 		string(storage.DatasetKey(assetID)):        state.Allocate | state.Write,
@@ -131,13 +133,13 @@ func (c *CreateDataset) Execute(
 		assetID = actionID
 
 		// Mint the parent NFT for the dataset(fractionalized asset)
-		nftID := nchain.GenerateIDWithIndex(assetID, 0)
+		nftID := utils.GenerateIDWithIndex(assetID, 0)
 		if err := storage.SetAssetNFT(ctx, mu, assetID, 0, nftID, c.Description, c.Description, actor); err != nil {
 			return nil, err
 		}
 
 		// Create a new asset for the dataset
-		symbol := nchain.CombineWithPrefix([]byte(""), c.Name, MaxTextSize)
+		symbol := utils.CombineWithPrefix([]byte(""), c.Name, MaxTextSize)
 		if err := storage.SetAsset(ctx, mu, assetID, nconsts.AssetDatasetTokenID, c.Name, symbol, 0, c.Description, c.Description, 1, 0, actor, actor, actor, actor, actor); err != nil {
 			return nil, err
 		}
@@ -171,7 +173,7 @@ func (c *CreateDataset) Execute(
 
 	return &CreateDatasetResult{
 		DatasetID:          assetID,
-		DatasetParentNftID: nchain.GenerateIDWithIndex(assetID, 0),
+		DatasetParentNftID: utils.GenerateIDWithIndex(assetID, 0),
 	}, nil
 }
 

@@ -45,15 +45,11 @@ func (*InitiateContributeDataset) GetTypeID() uint8 {
 	return nconsts.InitiateContributeDatasetID
 }
 
-func (d *InitiateContributeDataset) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (d *InitiateContributeDataset) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.DatasetKey(d.DatasetID)):      state.Read,
 		string(storage.BalanceKey(actor, ids.Empty)): state.Read | state.Write,
 	}
-}
-
-func (*InitiateContributeDataset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.DatasetChunks, storage.BalanceChunks}
 }
 
 func (d *InitiateContributeDataset) Execute(

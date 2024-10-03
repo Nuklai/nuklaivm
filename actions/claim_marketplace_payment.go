@@ -13,14 +13,13 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
-	hutils "github.com/ava-labs/hypersdk/utils"
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -48,17 +47,13 @@ func (*ClaimMarketplacePayment) GetTypeID() uint8 {
 	return nconsts.ClaimMarketplacePaymentID
 }
 
-func (c *ClaimMarketplacePayment) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (c *ClaimMarketplacePayment) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.DatasetKey(c.DatasetID)):              state.Read,
 		string(storage.AssetKey(c.MarketplaceAssetID)):       state.Read | state.Write,
 		string(storage.AssetKey(c.AssetForPayment)):          state.Read,
 		string(storage.BalanceKey(actor, c.AssetForPayment)): state.Allocate | state.Write,
 	}
-}
-
-func (*ClaimMarketplacePayment) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.DatasetChunks, storage.AssetChunks, storage.AssetChunks, storage.BalanceChunks}
 }
 
 func (c *ClaimMarketplacePayment) Execute(
@@ -102,7 +97,7 @@ func (c *ClaimMarketplacePayment) Execute(
 	}
 
 	// Unmarshal the metadata JSON into a map
-	metadataMap, err := nchain.BytesToMap(metadata)
+	metadataMap, err := utils.BytesToMap(metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +132,7 @@ func (c *ClaimMarketplacePayment) Execute(
 		}
 		decimalsToUse = decimals
 	}
-	baseValueOfOneUnit, _ := hutils.ParseBalance("1", decimalsToUse)
+	baseValueOfOneUnit, _ := utils.ParseBalance("1", decimalsToUse)
 	// Get the current block height
 	currentBlockHeight := emission.GetEmission().GetLastAcceptedBlockHeight()
 	// Calculate the number of blocks the subscription has been active

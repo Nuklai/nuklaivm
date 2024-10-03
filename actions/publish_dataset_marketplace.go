@@ -9,13 +9,13 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -43,16 +43,12 @@ func (*PublishDatasetMarketplace) GetTypeID() uint8 {
 	return nconsts.PublishDatasetMarketplaceID
 }
 
-func (d *PublishDatasetMarketplace) StateKeys(_ codec.Address, actionID ids.ID) state.Keys {
+func (d *PublishDatasetMarketplace) StateKeys(_ codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.DatasetKey(d.DatasetID)): state.Read | state.Write,
 		string(storage.AssetKey(d.DatasetID)):   state.Read,
 		string(storage.AssetKey(actionID)):      state.Allocate | state.Write,
 	}
-}
-
-func (*PublishDatasetMarketplace) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.DatasetChunks, storage.AssetChunks, storage.AssetChunks}
 }
 
 func (d *PublishDatasetMarketplace) Execute(
@@ -90,8 +86,8 @@ func (d *PublishDatasetMarketplace) Execute(
 	if !exists {
 		return nil, ErrOutputAssetNotFound
 	}
-	name = nchain.CombineWithPrefix([]byte("Dataset-Marketplace-"), name, MaxMetadataSize)
-	symbol = nchain.CombineWithPrefix([]byte("DM-"), symbol, MaxTextSize)
+	name = utils.CombineWithPrefix([]byte("Dataset-Marketplace-"), name, MaxMetadataSize)
+	symbol = utils.CombineWithPrefix([]byte("DM-"), symbol, MaxTextSize)
 
 	// Create an asset that represents that this dataset is published to the marketplace
 	// This is a special type of token that cannot be manually created/minted
@@ -106,7 +102,7 @@ func (d *PublishDatasetMarketplace) Execute(
 	metadataMap["paymentRemaining"] = "0"
 	metadataMap["paymentClaimed"] = "0"
 	// Convert the map to a JSON string
-	metadata, err = nchain.MapToBytes(metadataMap)
+	metadata, err = utils.MapToBytes(metadataMap)
 	if err != nil {
 		return nil, err
 	}

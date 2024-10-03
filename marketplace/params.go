@@ -7,7 +7,6 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 
 	hutils "github.com/ava-labs/hypersdk/utils"
-	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 type DatasetConfig struct {
@@ -22,7 +21,7 @@ type DatasetConfig struct {
 }
 
 func GetDatasetConfig() DatasetConfig {
-	collateralAmountForDataContribution, _ := hutils.ParseBalance("1", nconsts.Decimals) // 1 NAI
+	collateralAmountForDataContribution, _ := hutils.ParseBalance("1") // 1 NAI
 
 	return DatasetConfig{
 		CollateralAssetIDForDataContribution: ids.Empty, // Using NAI as collateral

@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/hypersdk/chain/chaintest"
@@ -18,7 +19,6 @@ import (
 	"github.com/ava-labs/hypersdk/codec/codectest"
 	"github.com/ava-labs/hypersdk/state"
 
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -122,7 +122,7 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 				metadataMap["subscriptions"] = "0"
 				metadataMap["paymentRemaining"] = "0"
 				metadataMap["paymentClaimed"] = "0"
-				metadata, err := nchain.MapToBytes(metadataMap)
+				metadata, err := utils.MapToBytes(metadataMap)
 				require.NoError(t, err)
 				require.NoError(t, storage.SetAsset(context.Background(), store, marketplaceAssetID, nconsts.AssetMarketplaceTokenID, []byte("Marketplace Token"), []byte("MKT"), 0, metadata, []byte(datasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
@@ -134,7 +134,7 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 				require.Equal(t, uint64(4000), balance) // 5000 - 1000 = 4000
 
 				// Check if the subscription NFT was created correctly
-				nftID := nchain.GenerateIDWithAddress(marketplaceAssetID, addr)
+				nftID := utils.GenerateIDWithAddress(marketplaceAssetID, addr)
 				nftExists, _, _, _, _, owner, _ := storage.GetAssetNFT(ctx, store, nftID)
 				require.True(t, nftExists)
 				require.Equal(t, addr, owner)
@@ -144,7 +144,7 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 				require.NoError(t, err)
 				require.True(t, exists)
 
-				metadataMap, err := nchain.BytesToMap(metadata)
+				metadataMap, err := utils.BytesToMap(metadata)
 				require.NoError(t, err)
 				require.Equal(t, "1000", metadataMap["paymentRemaining"])
 				require.Equal(t, "1", metadataMap["subscriptions"])
@@ -154,7 +154,7 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 			ExpectedOutputs: &SubscribeDatasetMarketplaceResult{
 				MarketplaceAssetID:               marketplaceAssetID,
 				MarketplaceAssetNumSubscriptions: 1,
-				SubscriptionNftID:                nchain.GenerateIDWithAddress(marketplaceAssetID, addr),
+				SubscriptionNftID:                utils.GenerateIDWithAddress(marketplaceAssetID, addr),
 				AssetForPayment:                  baseAssetID,
 				DatasetPricePerBlock:             100,
 				TotalCost:                        1000,
@@ -208,7 +208,7 @@ func BenchmarkSubscribeDatasetMarketplace(b *testing.B) {
 			metadataMap["subscriptions"] = "0"
 			metadataMap["paymentRemaining"] = "0"
 			metadataMap["paymentClaimed"] = "0"
-			metadata, err := nchain.MapToBytes(metadataMap)
+			metadata, err := utils.MapToBytes(metadataMap)
 			require.NoError(err)
 			require.NoError(storage.SetAsset(context.Background(), store, marketplaceAssetID, nconsts.AssetMarketplaceTokenID, []byte("Marketplace Token"), []byte("MKT"), 0, metadata, []byte(datasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 			return store
@@ -220,7 +220,7 @@ func BenchmarkSubscribeDatasetMarketplace(b *testing.B) {
 			require.Equal(b, uint64(4000), balance) // 5000 - 1000 = 4000
 
 			// Check if the subscription NFT was created correctly
-			nftID := nchain.GenerateIDWithAddress(marketplaceAssetID, actor)
+			nftID := utils.GenerateIDWithAddress(marketplaceAssetID, actor)
 			nftExists, _, _, _, _, owner, _ := storage.GetAssetNFT(ctx, store, nftID)
 			require.True(nftExists)
 			require.Equal(b, actor, owner)
@@ -230,7 +230,7 @@ func BenchmarkSubscribeDatasetMarketplace(b *testing.B) {
 			require.NoError(err)
 			require.True(exists)
 
-			metadataMap, err := nchain.BytesToMap(metadata)
+			metadataMap, err := utils.BytesToMap(metadata)
 			require.NoError(err)
 			require.Equal(b, "1000", metadataMap["paymentRemaining"])
 			require.Equal(b, "1", metadataMap["subscriptions"])

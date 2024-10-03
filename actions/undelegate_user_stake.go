@@ -32,19 +32,11 @@ func (*UndelegateUserStake) GetTypeID() uint8 {
 	return nconsts.UndelegateUserStakeID
 }
 
-func (u *UndelegateUserStake) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (u *UndelegateUserStake) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.BalanceKey(actor, ids.Empty)):          state.Read | state.Write,
 		string(storage.DelegateUserStakeKey(actor, u.NodeID)): state.Read | state.Write,
 	}
-}
-
-func (*UndelegateUserStake) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.DelegateUserStakeChunks}
-}
-
-func (*UndelegateUserStake) OutputsWarpMessage() bool {
-	return false
 }
 
 func (u *UndelegateUserStake) Execute(

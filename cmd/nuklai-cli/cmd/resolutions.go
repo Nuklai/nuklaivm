@@ -11,14 +11,13 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
+	nutils "github.com/nuklai/nuklaivm/utils"
 	"github.com/nuklai/nuklaivm/vm"
 
 	"github.com/ava-labs/hypersdk/api/jsonrpc"
 	"github.com/ava-labs/hypersdk/api/ws"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/utils"
-
-	nchain "github.com/nuklai/nuklaivm/chain"
 )
 
 // sendAndWait may not be used concurrently
@@ -71,7 +70,7 @@ func handleTx(tx *chain.Transaction, result *chain.Result) {
 			actor,
 			result.Error,
 			float64(result.Fee)/float64(tx.Base.MaxFee)*100,
-			utils.FormatBalance(result.Fee, consts.Decimals),
+			utils.FormatBalance(result.Fee),
 			consts.Symbol,
 			result.Units,
 		)
@@ -100,7 +99,7 @@ func handleTx(tx *chain.Transaction, result *chain.Result) {
 		case *actions.MintAssetFT:
 			summaryStr = fmt.Sprintf("assetID: %s assetType: amount: %d -> %s\n", act.AssetID, act.Value, act.To)
 		case *actions.MintAssetNFT:
-			nftID := nchain.GenerateIDWithIndex(act.AssetID, act.UniqueID)
+			nftID := nutils.GenerateIDWithIndex(act.AssetID, act.UniqueID)
 			summaryStr = fmt.Sprintf("assetID: %s nftID: %s uri: %s metadata: %s -> %s\n", act.AssetID, nftID, act.URI, act.Metadata, act.To)
 		case *actions.BurnAssetFT:
 			summaryStr = fmt.Sprintf("assetID: %s %d -> 🔥\n", act.AssetID, act.Value)
@@ -123,7 +122,7 @@ func handleTx(tx *chain.Transaction, result *chain.Result) {
 			if act.AssetID != ids.Empty {
 				datasetID = act.AssetID
 			}
-			summaryStr = fmt.Sprintf("datasetID: %s ParentNFTID: %s name: %s description: %s\n", datasetID, nchain.GenerateIDWithIndex(datasetID, 0), act.Name, act.Description)
+			summaryStr = fmt.Sprintf("datasetID: %s ParentNFTID: %s name: %s description: %s\n", datasetID, nutils.GenerateIDWithIndex(datasetID, 0), act.Name, act.Description)
 		case *actions.UpdateDataset:
 			summaryStr = fmt.Sprintf("datasetID: %s updated\n", act.DatasetID)
 		case *actions.InitiateContributeDataset:
@@ -145,7 +144,7 @@ func handleTx(tx *chain.Transaction, result *chain.Result) {
 			reflect.TypeOf(action),
 			summaryStr,
 			float64(result.Fee)/float64(tx.Base.MaxFee)*100,
-			utils.FormatBalance(result.Fee, consts.Decimals),
+			utils.FormatBalance(result.Fee),
 			consts.Symbol,
 			result.Units,
 		)

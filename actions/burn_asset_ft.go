@@ -36,15 +36,11 @@ func (*BurnAssetFT) GetTypeID() uint8 {
 	return nconsts.BurnAssetFTID
 }
 
-func (b *BurnAssetFT) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (b *BurnAssetFT) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.AssetKey(b.AssetID)):          state.Read | state.Write,
 		string(storage.BalanceKey(actor, b.AssetID)): state.Read | state.Write,
 	}
-}
-
-func (*BurnAssetFT) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.BalanceChunks}
 }
 
 func (b *BurnAssetFT) Execute(

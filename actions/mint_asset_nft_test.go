@@ -9,6 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/hypersdk/chain/chaintest"
@@ -16,14 +17,13 @@ import (
 	"github.com/ava-labs/hypersdk/codec/codectest"
 	"github.com/ava-labs/hypersdk/state"
 
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 func TestMintAssetNFTAction(t *testing.T) {
 	addr := codectest.NewRandomAddress()
 	assetID := ids.GenerateTestID()
-	nftID := nchain.GenerateIDWithIndex(assetID, 0)
+	nftID := utils.GenerateIDWithIndex(assetID, 0)
 
 	tests := []chaintest.ActionTest{
 		{
@@ -188,7 +188,7 @@ func BenchmarkMintAssetNFT(b *testing.B) {
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check if the NFT was created correctly
-			nftID := nchain.GenerateIDWithIndex(assetID, 0)
+			nftID := utils.GenerateIDWithIndex(assetID, 0)
 			exists, _, _, nftURI, nftMetadata, owner, _ := storage.GetAssetNFT(ctx, store, nftID)
 			require.True(exists)
 			require.Equal(b, "nft-uri", string(nftURI))

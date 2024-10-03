@@ -195,7 +195,7 @@ var mintAssetFTCmd = &cobra.Command{
 		}
 
 		// Select amount
-		amount, err := prompt.Amount("amount", decimals, consts.MaxUint64, nil)
+		amount, err := parseAmount("amount", decimals, consts.MaxUint64, nil)
 		if err != nil {
 			return err
 		}
@@ -347,7 +347,7 @@ var burnAssetFTCmd = &cobra.Command{
 		)
 
 		// Select amount
-		amount, err := prompt.Amount("amount", decimals, consts.MaxUint64, nil)
+		amount, err := parseAmount("amount", decimals, consts.MaxUint64, nil)
 		if err != nil {
 			return err
 		}

@@ -52,18 +52,10 @@ func (*ContractCall) GetTypeID() uint8 {
 	return mconsts.ContractCallID
 }
 
-func (t *ContractCall) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
+func (t *ContractCall) StateKeys(_ codec.Address) state.Keys {
 	result := state.Keys{}
 	for _, stateKeyPermission := range t.SpecifiedStateKeys {
 		result.Add(stateKeyPermission.Key, stateKeyPermission.Permission)
-	}
-	return result
-}
-
-func (t *ContractCall) StateKeysMaxChunks() []uint16 {
-	result := make([]uint16, 0, len(t.SpecifiedStateKeys))
-	for range t.SpecifiedStateKeys {
-		result = append(result, 1)
 	}
 	return result
 }

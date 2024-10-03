@@ -9,6 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/hypersdk/chain/chaintest"
@@ -16,14 +17,13 @@ import (
 	"github.com/ava-labs/hypersdk/codec/codectest"
 	"github.com/ava-labs/hypersdk/state"
 
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 func TestBurnAssetNFTAction(t *testing.T) {
 	addr := codectest.NewRandomAddress()
 	assetID := ids.GenerateTestID()
-	nftID := nchain.GenerateIDWithIndex(assetID, 0)
+	nftID := utils.GenerateIDWithIndex(assetID, 0)
 
 	tests := []chaintest.ActionTest{
 		{
@@ -121,7 +121,7 @@ func BenchmarkBurnAssetNFT(b *testing.B) {
 	require := require.New(b)
 	actor := codec.CreateAddress(0, ids.GenerateTestID())
 	assetID := ids.GenerateTestID()
-	nftID := nchain.GenerateIDWithIndex(assetID, 0)
+	nftID := utils.GenerateIDWithIndex(assetID, 0)
 
 	burnAssetNFTActionBenchmark := &chaintest.ActionBenchmark{
 		Name:  "BurnAssetNFTBenchmark",

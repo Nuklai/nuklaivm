@@ -41,16 +41,12 @@ func (*DelegateUserStake) GetTypeID() uint8 {
 	return nconsts.DelegateUserStakeID
 }
 
-func (s *DelegateUserStake) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (s *DelegateUserStake) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.BalanceKey(actor, ids.Empty)):          state.Read | state.Write,
 		string(storage.DelegateUserStakeKey(actor, s.NodeID)): state.Allocate | state.Write,
 		string(storage.RegisterValidatorStakeKey(s.NodeID)):   state.Read,
 	}
-}
-
-func (*DelegateUserStake) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.DelegateUserStakeChunks, storage.RegisterValidatorStakeChunks}
 }
 
 func (s *DelegateUserStake) Execute(

@@ -9,6 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
@@ -16,7 +17,6 @@ import (
 	"github.com/ava-labs/hypersdk/state"
 
 	smath "github.com/ava-labs/avalanchego/utils/math"
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -51,18 +51,14 @@ func (*MintAssetNFT) GetTypeID() uint8 {
 	return nconsts.MintAssetNFTID
 }
 
-func (m *MintAssetNFT) StateKeys(codec.Address, ids.ID) state.Keys {
-	nftID := nchain.GenerateIDWithIndex(m.AssetID, m.UniqueID)
+func (m *MintAssetNFT) StateKeys(codec.Address) state.Keys {
+	nftID := utils.GenerateIDWithIndex(m.AssetID, m.UniqueID)
 	return state.Keys{
 		string(storage.AssetKey(m.AssetID)):         state.Read | state.Write,
 		string(storage.AssetNFTKey(nftID)):          state.Allocate | state.Write,
 		string(storage.BalanceKey(m.To, m.AssetID)): state.Allocate | state.Write,
 		string(storage.BalanceKey(m.To, nftID)):     state.Allocate | state.Write,
 	}
-}
-
-func (*MintAssetNFT) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks, storage.BalanceChunks}
 }
 
 func (m *MintAssetNFT) Execute(
@@ -84,7 +80,7 @@ func (m *MintAssetNFT) Execute(
 	}
 
 	// Check if the nftID already exists
-	nftID := nchain.GenerateIDWithIndex(m.AssetID, m.UniqueID)
+	nftID := utils.GenerateIDWithIndex(m.AssetID, m.UniqueID)
 	exists, _, _, _, _, _, _ := storage.GetAssetNFT(ctx, mu, nftID)
 	if exists {
 		return nil, ErrOutputNFTAlreadyExists

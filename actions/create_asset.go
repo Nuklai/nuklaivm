@@ -9,13 +9,13 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -72,7 +72,7 @@ func (*CreateAsset) GetTypeID() uint8 {
 	return nconsts.CreateAssetID
 }
 
-func (c *CreateAsset) StateKeys(actor codec.Address, actionID ids.ID) state.Keys {
+func (c *CreateAsset) StateKeys(actor codec.Address) state.Keys {
 	// Initialize the base stateKeys map
 	stateKeys := state.Keys{
 		string(storage.BalanceKey(actor, actionID)): state.Allocate | state.Write,
@@ -82,22 +82,11 @@ func (c *CreateAsset) StateKeys(actor codec.Address, actionID ids.ID) state.Keys
 	// Check if c.AssetType is a non-fungible type or dataset type so we
 	// can create the NFT ID
 	if c.AssetType == nconsts.AssetNonFungibleTokenID || c.AssetType == nconsts.AssetDatasetTokenID {
-		nftID := nchain.GenerateIDWithIndex(actionID, 0)
+		nftID := utils.GenerateIDWithIndex(actionID, 0)
 		stateKeys[string(storage.BalanceKey(actor, nftID))] = state.Allocate | state.Write
 		stateKeys[string(storage.AssetNFTKey(nftID))] = state.Allocate | state.Write
 	}
 	return stateKeys
-}
-
-func (c *CreateAsset) StateKeysMaxChunks() []uint16 {
-	stateKeysChunks := make([]uint16, 0)
-	stateKeysChunks = append(stateKeysChunks, storage.BalanceChunks)
-	stateKeysChunks = append(stateKeysChunks, storage.AssetChunks)
-	if c.AssetType == nconsts.AssetNonFungibleTokenID || c.AssetType == nconsts.AssetDatasetTokenID {
-		stateKeysChunks = append(stateKeysChunks, storage.BalanceChunks)
-		stateKeysChunks = append(stateKeysChunks, storage.AssetNFTChunks)
-	}
-	return stateKeysChunks
 }
 
 func (c *CreateAsset) Execute(
@@ -150,7 +139,7 @@ func (c *CreateAsset) Execute(
 	totalSupply := uint64(0)
 	if c.AssetType == nconsts.AssetDatasetTokenID {
 		// Mint the parent NFT for the dataset(fractionalized asset)
-		nftID := nchain.GenerateIDWithIndex(actionID, 0)
+		nftID := utils.GenerateIDWithIndex(actionID, 0)
 		output.DatasetParentNftID = nftID
 		if err := storage.SetAssetNFT(ctx, mu, actionID, 0, nftID, c.URI, c.Metadata, actor); err != nil {
 			return nil, err

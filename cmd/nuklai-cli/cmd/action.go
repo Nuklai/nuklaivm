@@ -16,6 +16,7 @@ import (
 	"github.com/near/borsh-go"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
+	nutils "github.com/nuklai/nuklaivm/utils"
 	"github.com/spf13/cobra"
 	"github.com/status-im/keycard-go/hexutils"
 
@@ -65,7 +66,7 @@ var transferCmd = &cobra.Command{
 		}
 
 		// Select amount
-		amount, err := prompt.Amount("amount", decimals, balance, nil)
+		amount, err := parseAmount("amount", decimals, balance, nil)
 		if err != nil {
 			return err
 		}
@@ -121,7 +122,7 @@ var publishFileCmd = &cobra.Command{
 		}}, cli, bcli, ws, factory)
 
 		if result != nil && result.Success {
-			utils.Outf("{{green}}fee consumed:{{/}} %s\n", utils.FormatBalance(result.Fee, consts.Decimals))
+			utils.Outf("{{green}}fee consumed:{{/}} %s\n", nutils.FormatBalance(result.Fee, consts.Decimals))
 
 			utils.Outf(hexutils.BytesToHex(result.Outputs[0]) + "\n")
 		}
@@ -151,7 +152,7 @@ var callCmd = &cobra.Command{
 		}
 
 		// Select amount
-		amount, err := prompt.Amount("amount", consts.Decimals, balance, nil)
+		amount, err := parseAmount("amount", consts.Decimals, balance, nil)
 		if err != nil {
 			return err
 		}
@@ -188,7 +189,7 @@ var callCmd = &cobra.Command{
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{action}, cli, bcli, ws, factory)
 		if result != nil && result.Success {
-			utils.Outf("{{green}}fee consumed:{{/}} %s\n", utils.FormatBalance(result.Fee, consts.Decimals))
+			utils.Outf("{{green}}fee consumed:{{/}} %s\n", nutils.FormatBalance(result.Fee, consts.Decimals))
 
 			utils.Outf(hexutils.BytesToHex(result.Outputs[0]) + "\n")
 			switch function {
@@ -199,7 +200,7 @@ var callCmd = &cobra.Command{
 					if err != nil {
 						return err
 					}
-					utils.Outf("%s\n", utils.FormatBalance(intValue, consts.Decimals))
+					utils.Outf("%s\n", nutils.FormatBalance(intValue, consts.Decimals))
 				}
 			case "get_value":
 				{
@@ -302,7 +303,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			utils.Outf("{{blue}}Balance of validator signer:{{/}} %s\n", utils.FormatBalance(balance, consts.Decimals))
+			utils.Outf("{{blue}}Balance of validator signer:{{/}} %s\n", nutils.FormatBalance(balance, consts.Decimals))
 			if balance < uint64(100*math.Pow10(int(consts.Decimals))) {
 				utils.Outf("{{blue}} You need a minimum of 100 NAI to register a validator{{/}}\n")
 				return nil
@@ -367,7 +368,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 		}
 
 		// Select staked amount
-		stakedAmount, err := prompt.Amount("Staked amount", consts.Decimals, balance, nil)
+		stakedAmount, err := parseAmount("Staked amount", consts.Decimals, balance, nil)
 		if err != nil {
 			return err
 		}
@@ -696,7 +697,7 @@ var delegateUserStakeCmd = &cobra.Command{
 		}
 
 		// Select staked amount
-		stakedAmount, err := prompt.Amount("Staked amount", consts.Decimals, balance, nil)
+		stakedAmount, err := parseAmount("Staked amount", consts.Decimals, balance, nil)
 		if err != nil {
 			return err
 		}

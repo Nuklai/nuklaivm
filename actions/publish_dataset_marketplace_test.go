@@ -9,6 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/hypersdk/chain/chaintest"
@@ -16,7 +17,6 @@ import (
 	"github.com/ava-labs/hypersdk/codec/codectest"
 	"github.com/ava-labs/hypersdk/state"
 
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -106,7 +106,7 @@ func TestPublishDatasetMarketplaceAction(t *testing.T) {
 				require.Equal(t, codec.EmptyAddress, owner)
 
 				// Check metadata
-				metadataMap, err := nchain.BytesToMap(metadata)
+				metadataMap, err := utils.BytesToMap(metadata)
 				require.NoError(t, err)
 				require.Equal(t, datasetID.String(), metadataMap["datasetID"])
 				require.Equal(t, marketplaceAssetID.String(), metadataMap["marketplaceAssetID"])
@@ -170,7 +170,7 @@ func BenchmarkPublishDatasetMarketplace(b *testing.B) {
 			require.Equal(b, codec.EmptyAddress, owner)
 
 			// Check metadata
-			metadataMap, err := nchain.BytesToMap(metadata)
+			metadataMap, err := utils.BytesToMap(metadata)
 			require.NoError(err)
 			require.Equal(b, datasetID.String(), metadataMap["datasetID"])
 			require.Equal(b, marketplaceAssetID.String(), metadataMap["marketplaceAssetID"])

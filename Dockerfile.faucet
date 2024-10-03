@@ -1,0 +1,28 @@
+#####
+# Build the faucet
+#####
+
+FROM golang:1.22-bookworm AS faucet-builder
+
+WORKDIR /build
+COPY ./go.mod ./go.sum ./
+
+COPY ./ ./
+
+ENV GOMODCACHE /go/pkg/mod
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -o build/faucet ./cmd/faucet
+
+#####
+# Final layer with faucet, VM and avalanchego
+#####
+FROM debian:bookworm-slim
+
+RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y curl && apt clean && rm -rf /var/lib/apt/lists/*
+
+COPY --from=faucet-builder /build/build/faucet /faucet
+
+
+
+ENTRYPOINT ["/faucet"]

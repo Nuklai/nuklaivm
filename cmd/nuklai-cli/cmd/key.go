@@ -13,7 +13,7 @@ import (
 	"sync"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/nuklai/nuklaivm/chain"
+	nutils "github.com/nuklai/nuklaivm/utils"
 	"github.com/nuklai/nuklaivm/vm"
 	"github.com/spf13/cobra"
 
@@ -391,7 +391,7 @@ func generateVanityAddress(prefix string) (codec.Address, error) {
 				// Generate a batch of random IDs
 				for j := 0; j < batchSize; j++ {
 					// Generate a random ID instead of sequentially
-					randomID, err := chain.GenerateRandomID()
+					randomID, err := nutils.GenerateRandomID()
 					if err != nil {
 						errChan <- err
 						return

@@ -54,7 +54,7 @@ var publishDatasetMarketplaceCmd = &cobra.Command{
 		}
 
 		// Get priceAmountPerBlock
-		priceAmountPerBlock, err := prompt.Amount("priceAmountPerBlock", decimals, balance, nil)
+		priceAmountPerBlock, err := parseAmount("priceAmountPerBlock", decimals, balance, nil)
 		if err != nil {
 			return err
 		}

@@ -49,15 +49,11 @@ func (*RegisterValidatorStake) GetTypeID() uint8 {
 	return nconsts.RegisterValidatorStakeID
 }
 
-func (r *RegisterValidatorStake) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (r *RegisterValidatorStake) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.BalanceKey(actor, ids.Empty)):        state.Read | state.Write,
 		string(storage.RegisterValidatorStakeKey(r.NodeID)): state.Allocate | state.Write,
 	}
-}
-
-func (*RegisterValidatorStake) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.RegisterValidatorStakeChunks}
 }
 
 func (r *RegisterValidatorStake) Execute(

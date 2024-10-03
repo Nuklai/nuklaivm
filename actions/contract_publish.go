@@ -13,7 +13,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/keys"
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/ava-labs/hypersdk/x/contracts/runtime"
@@ -34,7 +33,7 @@ func (*ContractPublish) GetTypeID() uint8 {
 	return mconsts.ContractPublishID
 }
 
-func (t *ContractPublish) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
+func (t *ContractPublish) StateKeys(_ codec.Address) state.Keys {
 	if t.id == nil {
 		hashedID := sha256.Sum256(t.ContractBytes)
 		t.id, _ = keys.Encode(storage.ContractsKey(hashedID[:]), len(t.ContractBytes))
@@ -42,13 +41,6 @@ func (t *ContractPublish) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
 	return state.Keys{
 		string(t.id): state.Write | state.Allocate,
 	}
-}
-
-func (t *ContractPublish) StateKeysMaxChunks() []uint16 {
-	if chunks, ok := keys.NumChunks(t.ContractBytes); ok {
-		return []uint16{chunks}
-	}
-	return []uint16{consts.MaxUint16}
 }
 
 func (t *ContractPublish) Execute(

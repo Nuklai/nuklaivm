@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
+	nutils "github.com/nuklai/nuklaivm/utils"
 	"github.com/nuklai/nuklaivm/vm"
 
 	"github.com/ava-labs/hypersdk/api/jsonrpc"
@@ -24,8 +25,6 @@ import (
 	"github.com/ava-labs/hypersdk/crypto/secp256r1"
 	"github.com/ava-labs/hypersdk/pubsub"
 	"github.com/ava-labs/hypersdk/utils"
-
-	nchain "github.com/nuklai/nuklaivm/chain"
 )
 
 type Handler struct {
@@ -190,7 +189,7 @@ func (*Handler) GetBalance(
 	}
 	utils.Outf(
 		"{{yellow}}balance:{{/}} %s %s\n",
-		utils.FormatBalance(balance, consts.Decimals),
+		nutils.FormatBalance(balance, consts.Decimals),
 		consts.Symbol,
 	)
 	return balance, nil
@@ -247,7 +246,7 @@ func (*Handler) GetAssetInfo(
 	} else {
 		utils.Outf(
 			"{{blue}}balance:{{/}} %s %s\n",
-			utils.FormatBalance(balance, decimals),
+			nutils.FormatBalance(balance, decimals),
 			symbol,
 		)
 	}
@@ -508,7 +507,7 @@ func (*Handler) GetDatasetInfoFromMarketplace(
 		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
 	}
 
-	metadataMap, err := nchain.BytesToMap([]byte(metadata))
+	metadataMap, err := nutils.BytesToMap([]byte(metadata))
 	if err != nil {
 		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
 	}

@@ -32,15 +32,11 @@ func (*ClaimValidatorStakeRewards) GetTypeID() uint8 {
 	return nconsts.ClaimValidatorStakeRewardsID
 }
 
-func (c *ClaimValidatorStakeRewards) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (c *ClaimValidatorStakeRewards) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.BalanceKey(actor, ids.Empty)):        state.All,
 		string(storage.RegisterValidatorStakeKey(c.NodeID)): state.Read,
 	}
-}
-
-func (*ClaimValidatorStakeRewards) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.RegisterValidatorStakeChunks}
 }
 
 func (c *ClaimValidatorStakeRewards) Execute(

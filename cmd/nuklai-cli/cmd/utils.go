@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/vm"
 	"gopkg.in/yaml.v2"
 
@@ -67,7 +66,7 @@ func ReadCLIFile(cliPath string) (ids.ID, map[string]string, error) {
 // Helper function to process the transaction result
 func processResult(result *chain.Result) error {
 	if result != nil && result.Success {
-		utils.Outf("{{green}}fee consumed:{{/}} %s NAI\n", utils.FormatBalance(result.Fee, consts.Decimals))
+		utils.Outf("{{green}}fee consumed:{{/}} %s NAI\n", utils.FormatBalance(result.Fee))
 
 		// Use NewReader to create a Packer from the result output
 		packer := codec.NewReader(result.Outputs[0], len(result.Outputs[0]))

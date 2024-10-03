@@ -74,14 +74,10 @@ func (*UpdateAsset) GetTypeID() uint8 {
 	return nconsts.UpdateAssetID
 }
 
-func (u *UpdateAsset) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
+func (u *UpdateAsset) StateKeys(_ codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.AssetKey(u.AssetID)): state.Read | state.Write,
 	}
-}
-
-func (*UpdateAsset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks}
 }
 
 func (u *UpdateAsset) Execute(

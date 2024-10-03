@@ -54,14 +54,10 @@ func (*UpdateDataset) GetTypeID() uint8 {
 	return nconsts.UpdateDatasetID
 }
 
-func (u *UpdateDataset) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
+func (u *UpdateDataset) StateKeys(_ codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.DatasetKey(u.DatasetID)): state.Allocate | state.Write,
 	}
-}
-
-func (*UpdateDataset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.DatasetChunks}
 }
 
 func (u *UpdateDataset) Execute(

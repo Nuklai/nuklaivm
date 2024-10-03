@@ -47,15 +47,11 @@ func (*MintAssetFT) GetTypeID() uint8 {
 	return nconsts.MintAssetFTID
 }
 
-func (m *MintAssetFT) StateKeys(codec.Address, ids.ID) state.Keys {
+func (m *MintAssetFT) StateKeys(codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.AssetKey(m.AssetID)):         state.Read | state.Write,
 		string(storage.BalanceKey(m.To, m.AssetID)): state.All,
 	}
-}
-
-func (*MintAssetFT) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.BalanceChunks}
 }
 
 func (m *MintAssetFT) Execute(

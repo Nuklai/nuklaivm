@@ -9,13 +9,12 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/hypersdk/chain/chaintest"
 	"github.com/ava-labs/hypersdk/codec/codectest"
 	"github.com/ava-labs/hypersdk/state"
-
-	nchain "github.com/nuklai/nuklaivm/chain"
 )
 
 func TestCreateDatasetAction(t *testing.T) {
@@ -124,7 +123,7 @@ func TestCreateDatasetAction(t *testing.T) {
 			State: chaintest.NewInMemoryStore(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if the dataset was created correctly
-				nftID := nchain.GenerateIDWithIndex(datasetID, 0)
+				nftID := utils.GenerateIDWithIndex(datasetID, 0)
 				exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, _, _, _, _, _, owner, err := storage.GetDataset(ctx, store, datasetID)
 				require.NoError(t, err)
 				require.True(t, exists)
@@ -152,7 +151,7 @@ func TestCreateDatasetAction(t *testing.T) {
 			},
 			ExpectedOutputs: &CreateDatasetResult{
 				DatasetID:          datasetID,
-				DatasetParentNftID: nchain.GenerateIDWithIndex(datasetID, 0),
+				DatasetParentNftID: utils.GenerateIDWithIndex(datasetID, 0),
 			},
 		},
 	}
@@ -186,7 +185,7 @@ func BenchmarkCreateDataset(b *testing.B) {
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check if the dataset was created correctly
-			nftID := nchain.GenerateIDWithIndex(assetID, 0)
+			nftID := utils.GenerateIDWithIndex(assetID, 0)
 			exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, _, _, _, _, _, owner, err := storage.GetDataset(ctx, store, assetID)
 			require.NoError(err)
 			require.True(exists)

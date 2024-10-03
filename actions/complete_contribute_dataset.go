@@ -9,6 +9,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/marketplace"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
@@ -16,7 +17,6 @@ import (
 	"github.com/ava-labs/hypersdk/state"
 
 	smath "github.com/ava-labs/avalanchego/utils/math"
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -41,8 +41,8 @@ func (*CompleteContributeDataset) GetTypeID() uint8 {
 	return nconsts.CompleteContributeDatasetID
 }
 
-func (d *CompleteContributeDataset) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
-	nftID := nchain.GenerateIDWithIndex(d.DatasetID, d.UniqueNFTIDForContributor)
+func (d *CompleteContributeDataset) StateKeys(_ codec.Address) state.Keys {
+	nftID := utils.GenerateIDWithIndex(d.DatasetID, d.UniqueNFTIDForContributor)
 	return state.Keys{
 		string(storage.AssetKey(d.DatasetID)):                  state.Read | state.Write,
 		string(storage.AssetNFTKey(nftID)):                     state.Allocate | state.Write,
@@ -51,10 +51,6 @@ func (d *CompleteContributeDataset) StateKeys(_ codec.Address, _ ids.ID) state.K
 		string(storage.BalanceKey(d.Contributor, d.DatasetID)): state.Allocate | state.Write,
 		string(storage.BalanceKey(d.Contributor, nftID)):       state.Allocate | state.Write,
 	}
-}
-
-func (*CompleteContributeDataset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.DatasetChunks, storage.BalanceChunks, storage.BalanceChunks, storage.BalanceChunks}
 }
 
 func (d *CompleteContributeDataset) Execute(
@@ -83,7 +79,7 @@ func (d *CompleteContributeDataset) Execute(
 	}
 
 	// Check if the nftID already exists
-	nftID := nchain.GenerateIDWithIndex(d.DatasetID, d.UniqueNFTIDForContributor)
+	nftID := utils.GenerateIDWithIndex(d.DatasetID, d.UniqueNFTIDForContributor)
 	exists, _, _, _, _, _, _ = storage.GetAssetNFT(ctx, mu, nftID)
 	if exists {
 		return nil, ErrOutputNFTAlreadyExists
@@ -123,7 +119,7 @@ func (d *CompleteContributeDataset) Execute(
 	metadataNFTMap := make(map[string]string, 0)
 	metadataNFTMap["dataLocation"] = string(dataContribution.DataLocation)
 	metadataNFTMap["dataIdentifier"] = string(dataContribution.DataIdentifier)
-	metadataNFT, err := nchain.MapToBytes(metadataNFTMap)
+	metadataNFT, err := utils.MapToBytes(metadataNFTMap)
 	if err != nil {
 		return nil, err
 	}

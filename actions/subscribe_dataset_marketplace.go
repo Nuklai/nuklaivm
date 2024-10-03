@@ -13,6 +13,7 @@ import (
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/marketplace"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
@@ -20,7 +21,6 @@ import (
 	"github.com/ava-labs/hypersdk/state"
 
 	smath "github.com/ava-labs/avalanchego/utils/math"
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -54,8 +54,8 @@ func (*SubscribeDatasetMarketplace) GetTypeID() uint8 {
 	return nconsts.SubscribeDatasetMarketplaceID
 }
 
-func (d *SubscribeDatasetMarketplace) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
-	nftID := nchain.GenerateIDWithAddress(d.MarketplaceAssetID, actor)
+func (d *SubscribeDatasetMarketplace) StateKeys(actor codec.Address) state.Keys {
+	nftID := utils.GenerateIDWithAddress(d.MarketplaceAssetID, actor)
 	return state.Keys{
 		string(storage.DatasetKey(d.DatasetID)):                 state.Read,
 		string(storage.AssetKey(d.MarketplaceAssetID)):          state.Read | state.Write,
@@ -64,10 +64,6 @@ func (d *SubscribeDatasetMarketplace) StateKeys(actor codec.Address, _ ids.ID) s
 		string(storage.BalanceKey(actor, d.MarketplaceAssetID)): state.Allocate | state.Write,
 		string(storage.BalanceKey(actor, nftID)):                state.Allocate | state.Write,
 	}
-}
-
-func (*SubscribeDatasetMarketplace) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.DatasetChunks, storage.AssetChunks, storage.AssetNFTChunks, storage.BalanceChunks, storage.BalanceChunks, storage.BalanceChunks}
 }
 
 func (d *SubscribeDatasetMarketplace) Execute(
@@ -79,7 +75,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the nftID already exists(This means the user is already subscribed)
-	nftID := nchain.GenerateIDWithAddress(d.MarketplaceAssetID, actor)
+	nftID := utils.GenerateIDWithAddress(d.MarketplaceAssetID, actor)
 	exists, _, _, _, _, _, _ := storage.GetAssetNFT(ctx, mu, nftID)
 	if exists {
 		return nil, ErrOutputNFTAlreadyExists
@@ -163,7 +159,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	metadataNFTMap["numBlocksToSubscribe"] = fmt.Sprint(d.NumBlocksToSubscribe)
 	metadataNFTMap["expirationBlock"] = fmt.Sprint(currentBlock + d.NumBlocksToSubscribe)
 	// Convert the map to a JSON string
-	metadataNFT, err := nchain.MapToBytes(metadataNFTMap)
+	metadataNFT, err := utils.MapToBytes(metadataNFTMap)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +169,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	}
 
 	// Unmarshal the metadata JSON into a map
-	metadataMap, err := nchain.BytesToMap(metadata)
+	metadataMap, err := utils.BytesToMap(metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +192,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 		metadataMap["lastClaimedBlock"] = fmt.Sprint(currentBlock)
 	}
 	// Marshal the map back to a JSON byte slice
-	metadata, err = nchain.MapToBytes(metadataMap)
+	metadata, err = utils.MapToBytes(metadataMap)
 	if err != nil {
 		return nil, err
 	}
