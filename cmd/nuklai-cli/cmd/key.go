@@ -135,9 +135,26 @@ var setKeyCmd = &cobra.Command{
 }
 
 var balanceKeyCmd = &cobra.Command{
-	Use: "balance",
-	RunE: func(*cobra.Command, []string) error {
-		return handler.Root().Balance(checkAllChains)
+	Use: "balance [address]",
+	RunE: func(_ *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return handler.Root().Balance(checkAllChains)
+		}
+		addr, err := codec.StringToAddress(args[0])
+		if err != nil {
+			return err
+		}
+		utils.Outf("{{yellow}}address:{{/}} %s\n", addr)
+		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
+		if err != nil {
+			return err
+		}
+		for _, ncli := range nclients {
+			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, ids.Empty, true); err != nil {
+				return err
+			}
+		}
+		return nil
 	},
 }
 
