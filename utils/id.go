@@ -9,13 +9,13 @@ import (
 	"fmt"
 	"strings"
 
-	nconsts "github.com/nuklai/nuklaivm/consts"
-
 	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/utils"
+
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 // generateRandomID creates a random [ids.ID] for use in generating random addresses.
