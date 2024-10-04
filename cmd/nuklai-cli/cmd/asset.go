@@ -84,13 +84,13 @@ var createAssetCmd = &cobra.Command{
 			return err
 		}
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.CreateAsset{
-			AssetID:                      assetID,
+			AssetID:                      assetID.String(),
 			AssetType:                    uint8(assetType),
-			Name:                         []byte(name),
-			Symbol:                       []byte(symbol),
+			Name:                         name,
+			Symbol:                       symbol,
 			Decimals:                     uint8(decimals), // already constrain above to prevent overflow
-			Metadata:                     []byte(metadata),
-			URI:                          []byte("https://nukl.ai"),
+			Metadata:                     metadata,
+			URI:                          "https://nukl.ai",
 			MaxSupply:                    uint64(0),
 			MintAdmin:                    owner,
 			PauseUnpauseAdmin:            owner,

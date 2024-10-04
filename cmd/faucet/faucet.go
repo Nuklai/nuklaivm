@@ -112,7 +112,7 @@ func transferCoins(to string) (string, error) {
 		parser,
 		[]chain.Action{&actions.Transfer{
 			To:      toAddr,
-			AssetID: []byte(consts.Symbol),
+			AssetID: consts.Symbol,
 			Value:   amt,
 		}},
 		factory,

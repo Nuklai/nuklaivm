@@ -6,9 +6,11 @@ package actions
 import (
 	"context"
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/storage"
 	"github.com/nuklai/nuklaivm/utils"
 	"github.com/stretchr/testify/require"
@@ -21,7 +23,6 @@ import (
 
 func TestTransferAction(t *testing.T) {
 	addr := codectest.NewRandomAddress()
-	naiID := []byte("NAI")
 	assetID := ids.GenerateTestID()
 	nftID := utils.GenerateIDWithIndex(assetID, 0)
 
@@ -30,9 +31,8 @@ func TestTransferAction(t *testing.T) {
 			Name:  "ZeroTransfer",
 			Actor: codec.EmptyAddress,
 			Action: &Transfer{
-				To:      codec.EmptyAddress,
-				AssetID: naiID,
-				Value:   0,
+				To:    codec.EmptyAddress,
+				Value: 0,
 			},
 			ExpectedErr: ErrOutputValueZero,
 		},
@@ -40,9 +40,8 @@ func TestTransferAction(t *testing.T) {
 			Name:  "InvalidAddress",
 			Actor: codec.EmptyAddress,
 			Action: &Transfer{
-				To:      codec.EmptyAddress,
-				AssetID: naiID,
-				Value:   1,
+				To:    codec.EmptyAddress,
+				Value: 1,
 			},
 			State:       chaintest.NewInMemoryStore(),
 			ExpectedErr: storage.ErrInvalidAddress,
@@ -51,9 +50,8 @@ func TestTransferAction(t *testing.T) {
 			Name:  "NotEnoughBalance",
 			Actor: codec.EmptyAddress,
 			Action: &Transfer{
-				To:      codec.EmptyAddress,
-				AssetID: naiID,
-				Value:   1,
+				To:    codec.EmptyAddress,
+				Value: 1,
 			},
 			State: func() state.Mutable {
 				s := chaintest.NewInMemoryStore()
@@ -74,9 +72,8 @@ func TestTransferAction(t *testing.T) {
 			Name:  "OverflowBalance",
 			Actor: codec.EmptyAddress,
 			Action: &Transfer{
-				To:      codec.EmptyAddress,
-				AssetID: naiID,
-				Value:   math.MaxUint64,
+				To:    codec.EmptyAddress,
+				Value: math.MaxUint64,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -89,10 +86,9 @@ func TestTransferAction(t *testing.T) {
 			Name:  "MemoSizeExceeded",
 			Actor: codec.EmptyAddress,
 			Action: &Transfer{
-				To:      addr,
-				AssetID: naiID,
-				Value:   1,
-				Memo:    make([]byte, MaxMemoSize+1),
+				To:    addr,
+				Value: 1,
+				Memo:  strings.Repeat("a", MaxMemoSize+1),
 			},
 			State:       chaintest.NewInMemoryStore(),
 			ExpectedErr: ErrOutputMemoTooLarge,
@@ -101,9 +97,8 @@ func TestTransferAction(t *testing.T) {
 			Name:  "SelfTransfer",
 			Actor: codec.EmptyAddress,
 			Action: &Transfer{
-				To:      codec.EmptyAddress,
-				AssetID: naiID,
-				Value:   1,
+				To:    codec.EmptyAddress,
+				Value: 1,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -124,9 +119,8 @@ func TestTransferAction(t *testing.T) {
 			Name:  "SimpleTransfer",
 			Actor: codec.EmptyAddress,
 			Action: &Transfer{
-				To:      addr,
-				AssetID: naiID,
-				Value:   1,
+				To:    addr,
+				Value: 1,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -147,12 +141,12 @@ func TestTransferAction(t *testing.T) {
 			},
 		},
 		{
-			Name:  "EmptyAssetIDTransfer",
+			Name:  "NativeAssetTransfer",
 			Actor: codec.EmptyAddress,
 			Action: &Transfer{
 				To:      addr,
 				Value:   10,
-				AssetID: naiID,
+				AssetID: consts.Symbol,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -175,7 +169,7 @@ func TestTransferAction(t *testing.T) {
 			Action: &Transfer{
 				To:      addr,
 				Value:   1,
-				AssetID: []byte(assetID.String()),
+				AssetID: assetID.String(),
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -199,7 +193,7 @@ func TestTransferAction(t *testing.T) {
 			Action: &Transfer{
 				To:      addr,
 				Value:   1,
-				AssetID: []byte(nftID.String()),
+				AssetID: nftID.String(),
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -235,7 +229,7 @@ func TestTransferAction(t *testing.T) {
 			Action: &Transfer{
 				To:      codec.EmptyAddress,
 				Value:   1,
-				AssetID: []byte(nftID.String()),
+				AssetID: nftID.String(),
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -263,7 +257,7 @@ func BenchmarkSimpleTransfer(b *testing.B) {
 		Actor: from,
 		Action: &Transfer{
 			To:      to,
-			AssetID: []byte(ids.Empty.String()),
+			AssetID: consts.Symbol,
 			Value:   1,
 		},
 		CreateState: func() state.Mutable {

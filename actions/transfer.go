@@ -36,13 +36,13 @@ type Transfer struct {
 	To codec.Address `serialize:"true" json:"to"`
 
 	// AssetID to transfer.
-	AssetID []byte `serialize:"true" json:"asset_id"`
+	AssetID string `serialize:"true" json:"asset_id"`
 
 	// Amount are transferred to [To].
 	Value uint64 `serialize:"true" json:"value"`
 
 	// Optional message to accompany transaction.
-	Memo []byte `serialize:"true" json:"memo"`
+	Memo string `serialize:"true" json:"memo"`
 }
 
 func (*Transfer) GetTypeID() uint8 {
@@ -50,7 +50,7 @@ func (*Transfer) GetTypeID() uint8 {
 }
 
 func (t *Transfer) StateKeys(actor codec.Address) state.Keys {
-	assetID, _ := utils.GetAssetIDBySymbol(string(t.AssetID))
+	assetID, _ := utils.GetAssetIDBySymbol(t.AssetID)
 	// Initialize the base stateKeys map
 	stateKeys := state.Keys{
 		string(storage.BalanceKey(actor, assetID)): state.Read | state.Write,
@@ -75,7 +75,7 @@ func (t *Transfer) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-	assetID, err := utils.GetAssetIDBySymbol(string(t.AssetID))
+	assetID, err := utils.GetAssetIDBySymbol(t.AssetID)
 	if err != nil {
 		return nil, err
 	}
@@ -137,26 +137,12 @@ func (*Transfer) ValidRange(chain.Rules) (int64, int64) {
 	return -1, -1
 }
 
-// Implementing chain.Marshaler is optional but can be used to optimize performance when hitting TPS limits
-var _ chain.Marshaler = (*Transfer)(nil)
-
-func (t *Transfer) Size() int {
-	return codec.AddressLen + codec.BytesLen(t.AssetID) + consts.Uint64Len + codec.BytesLen(t.Memo)
-}
-
-func (t *Transfer) Marshal(p *codec.Packer) {
-	p.PackAddress(t.To)
-	p.PackBytes(t.AssetID)
-	p.PackLong(t.Value)
-	p.PackBytes(t.Memo)
-}
-
 func UnmarshalTransfer(p *codec.Packer) (chain.Action, error) {
 	var transfer Transfer
 	p.UnpackAddress(&transfer.To)
-	p.UnpackBytes(ids.IDLen, false, &transfer.AssetID)
+	transfer.AssetID = p.UnpackString(false)
 	transfer.Value = p.UnpackUint64(true)
-	p.UnpackBytes(MaxMemoSize, false, &transfer.Memo)
+	transfer.Memo = p.UnpackString(false)
 	return &transfer, p.Err()
 }
 

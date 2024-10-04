@@ -79,7 +79,7 @@ var transferCmd = &cobra.Command{
 
 		// Generate transaction
 		result, txID, err := sendAndWait(ctx, []chain.Action{&actions.Transfer{
-			AssetID: []byte(assetID.String()),
+			AssetID: assetID.String(),
 			To:      recipient,
 			Value:   amount,
 		}}, cli, ncli, ws, factory)

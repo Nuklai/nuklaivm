@@ -84,7 +84,7 @@ func (*SpamHelper) GetTransfer(address codec.Address, amount uint64, memo []byte
 	return []chain.Action{&actions.Transfer{
 		To:    address,
 		Value: amount,
-		Memo:  memo,
+		Memo:  string(memo),
 	}}
 }
 

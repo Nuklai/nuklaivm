@@ -13,7 +13,7 @@ const ago = new TimeAgo('en-US')
 const getDefaultValue = (fieldType: string) => {
   if (fieldType === 'Address') return '00' + '00'.repeat(27) + '00deadc0de'
   if (fieldType === '[]uint8') return ''
-  if (fieldType === 'string') return 'Hello'
+  if (fieldType === 'string') return ''
   if (fieldType === 'uint64') return '1'
   if (fieldType.startsWith('int') || fieldType.startsWith('uint')) return '0'
   return ''
