@@ -12,9 +12,9 @@ const ago = new TimeAgo('en-US')
 
 const getDefaultValue = (fieldType: string) => {
   if (fieldType === 'Address') return '00' + '00'.repeat(27) + '00deadc0de'
-  if (fieldType === '[]uint8') return btoa('Luigi')
+  if (fieldType === '[]uint8') return ''
   if (fieldType === 'string') return 'Hello'
-  if (fieldType === 'uint64') return '123456789'
+  if (fieldType === 'uint64') return '1'
   if (fieldType.startsWith('int') || fieldType.startsWith('uint')) return '0'
   return ''
 }
@@ -32,18 +32,53 @@ function Action({
   const action = abi.actions.find((a) => a.name === actionName)
   const [actionLogs, setActionLogs] = useState<string[]>([])
   const [actionInputs, setActionInputs] = useState<Record<string, string>>({})
+  const [displayInputs, setDisplayInputs] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (actionType) {
       setActionInputs((prev) => {
+        // Check if actionInputs already have the values to prevent unnecessary updates
+        const newActionInputs = { ...prev }
+        let needsUpdate = false
+
         for (const field of actionType.fields) {
-          if (!(field.name in prev)) {
-            prev[field.name] = getDefaultValue(field.type)
+          if (!(field.name in newActionInputs)) {
+            const defaultValue = getDefaultValue(field.type)
+            newActionInputs[field.name] =
+              field.type === '[]uint8' ? btoa(defaultValue) : defaultValue
+            needsUpdate = true
           }
         }
-        return prev
+
+        // Only update if necessary to avoid infinite loops
+        if (needsUpdate) {
+          return newActionInputs
+        } else {
+          return prev
+        }
+      })
+
+      setDisplayInputs((prev) => {
+        // Check if displayInputs already have the values to prevent unnecessary updates
+        const newDisplayInputs = { ...prev }
+        let needsUpdate = false
+
+        for (const field of actionType.fields) {
+          if (!(field.name in newDisplayInputs)) {
+            newDisplayInputs[field.name] = getDefaultValue(field.type)
+            needsUpdate = true
+          }
+        }
+
+        // Only update if necessary to avoid infinite loops
+        if (needsUpdate) {
+          return newDisplayInputs
+        } else {
+          return prev
+        }
       })
     }
+    // Remove `displayInputs` and `actionInputs` from the dependency array to avoid infinite loops
   }, [actionName, actionType])
 
   const executeAction = async (actionName: string, isReadOnly: boolean) => {
@@ -54,18 +89,27 @@ function Action({
       second: '2-digit'
     })
     setActionLogs((prev) => [...prev, `${now} - Executing...`])
+
+    // Use displayInputs for logging purposes
+    const logInputs = Object.keys(actionInputs).reduce((acc, key) => {
+      acc[key] =
+        actionInputs[key] === btoa(displayInputs[key])
+          ? displayInputs[key]
+          : actionInputs[key]
+      return acc
+    }, {} as Record<string, string>)
+
     try {
       setActionLogs((prev) => [
         ...prev,
-        `Action data for ${actionName}: ${JSON.stringify(
-          actionInputs,
-          null,
-          2
-        )}`
+        `Action data for ${actionName}: ${JSON.stringify(logInputs, null, 2)}`
       ])
+
+      // Use the original actionInputs when making the call
       const result = isReadOnly
         ? await vmClient.simulateAction({ actionName, data: actionInputs })
         : await vmClient.sendTransaction([{ actionName, data: actionInputs }])
+
       const endTime = new Date().toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
@@ -75,6 +119,7 @@ function Action({
         ...prev,
         `${endTime} - Success: ${stringify(result, null, 2)}`
       ])
+
       if (!isReadOnly) {
         fetchBalance(true)
       }
@@ -89,10 +134,19 @@ function Action({
     }
   }
 
-  const handleInputChange = (fieldName: string, value: string) => {
+  const handleInputChange = (
+    fieldName: string,
+    fieldType: string,
+    value: string
+  ) => {
+    setDisplayInputs((prev) => ({
+      ...prev,
+      [fieldName]: value // Update the displayInputs with the new value
+    }))
+
     setActionInputs((prev) => ({
       ...prev,
-      [fieldName]: value
+      [fieldName]: fieldType === '[]uint8' ? btoa(value) : value // Store transformed value in actionInputs
     }))
   }
 
@@ -122,8 +176,10 @@ function Action({
               <input
                 type='text'
                 className='mt-1 block w-full rounded-md border border-gray-200 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2'
-                value={actionInputs[field.name] ?? ''}
-                onChange={(e) => handleInputChange(field.name, e.target.value)}
+                value={displayInputs[field.name] ?? ''}
+                onChange={(e) =>
+                  handleInputChange(field.name, field.type, e.target.value)
+                }
               />
             </div>
           )

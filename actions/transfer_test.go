@@ -21,6 +21,7 @@ import (
 
 func TestTransferAction(t *testing.T) {
 	addr := codectest.NewRandomAddress()
+	naiID := []byte("NAI")
 	assetID := ids.GenerateTestID()
 	nftID := utils.GenerateIDWithIndex(assetID, 0)
 
@@ -29,8 +30,9 @@ func TestTransferAction(t *testing.T) {
 			Name:  "ZeroTransfer",
 			Actor: codec.EmptyAddress,
 			Action: &Transfer{
-				To:    codec.EmptyAddress,
-				Value: 0,
+				To:      codec.EmptyAddress,
+				AssetID: naiID,
+				Value:   0,
 			},
 			ExpectedErr: ErrOutputValueZero,
 		},
@@ -38,8 +40,9 @@ func TestTransferAction(t *testing.T) {
 			Name:  "InvalidAddress",
 			Actor: codec.EmptyAddress,
 			Action: &Transfer{
-				To:    codec.EmptyAddress,
-				Value: 1,
+				To:      codec.EmptyAddress,
+				AssetID: naiID,
+				Value:   1,
 			},
 			State:       chaintest.NewInMemoryStore(),
 			ExpectedErr: storage.ErrInvalidAddress,
@@ -48,8 +51,9 @@ func TestTransferAction(t *testing.T) {
 			Name:  "NotEnoughBalance",
 			Actor: codec.EmptyAddress,
 			Action: &Transfer{
-				To:    codec.EmptyAddress,
-				Value: 1,
+				To:      codec.EmptyAddress,
+				AssetID: naiID,
+				Value:   1,
 			},
 			State: func() state.Mutable {
 				s := chaintest.NewInMemoryStore()
@@ -70,8 +74,9 @@ func TestTransferAction(t *testing.T) {
 			Name:  "OverflowBalance",
 			Actor: codec.EmptyAddress,
 			Action: &Transfer{
-				To:    codec.EmptyAddress,
-				Value: math.MaxUint64,
+				To:      codec.EmptyAddress,
+				AssetID: naiID,
+				Value:   math.MaxUint64,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -84,9 +89,10 @@ func TestTransferAction(t *testing.T) {
 			Name:  "MemoSizeExceeded",
 			Actor: codec.EmptyAddress,
 			Action: &Transfer{
-				To:    addr,
-				Value: 1,
-				Memo:  make([]byte, MaxMemoSize+1),
+				To:      addr,
+				AssetID: naiID,
+				Value:   1,
+				Memo:    make([]byte, MaxMemoSize+1),
 			},
 			State:       chaintest.NewInMemoryStore(),
 			ExpectedErr: ErrOutputMemoTooLarge,
@@ -95,8 +101,9 @@ func TestTransferAction(t *testing.T) {
 			Name:  "SelfTransfer",
 			Actor: codec.EmptyAddress,
 			Action: &Transfer{
-				To:    codec.EmptyAddress,
-				Value: 1,
+				To:      codec.EmptyAddress,
+				AssetID: naiID,
+				Value:   1,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -117,8 +124,9 @@ func TestTransferAction(t *testing.T) {
 			Name:  "SimpleTransfer",
 			Actor: codec.EmptyAddress,
 			Action: &Transfer{
-				To:    addr,
-				Value: 1,
+				To:      addr,
+				AssetID: naiID,
+				Value:   1,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -144,7 +152,7 @@ func TestTransferAction(t *testing.T) {
 			Action: &Transfer{
 				To:      addr,
 				Value:   10,
-				AssetID: ids.Empty, // Transferring native asset
+				AssetID: naiID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -167,7 +175,7 @@ func TestTransferAction(t *testing.T) {
 			Action: &Transfer{
 				To:      addr,
 				Value:   1,
-				AssetID: assetID,
+				AssetID: []byte(assetID.String()),
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -191,7 +199,7 @@ func TestTransferAction(t *testing.T) {
 			Action: &Transfer{
 				To:      addr,
 				Value:   1,
-				AssetID: nftID,
+				AssetID: []byte(nftID.String()),
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -227,7 +235,7 @@ func TestTransferAction(t *testing.T) {
 			Action: &Transfer{
 				To:      codec.EmptyAddress,
 				Value:   1,
-				AssetID: nftID, // Assume this is an NFT asset
+				AssetID: []byte(nftID.String()),
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -254,8 +262,9 @@ func BenchmarkSimpleTransfer(b *testing.B) {
 		Name:  "SimpleTransferBenchmark",
 		Actor: from,
 		Action: &Transfer{
-			To:    to,
-			Value: 1,
+			To:      to,
+			AssetID: []byte(ids.Empty.String()),
+			Value:   1,
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()

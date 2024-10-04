@@ -7,6 +7,9 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"strings"
+
+	nconsts "github.com/nuklai/nuklaivm/consts"
 
 	"github.com/ava-labs/avalanchego/ids"
 
@@ -39,4 +42,11 @@ func GenerateIDWithAddress(id ids.ID, addr codec.Address) ids.ID {
 	copy(actionBytes, id[:])
 	copy(actionBytes[ids.IDLen:], addr[:])
 	return utils.ToID(actionBytes)
+}
+
+func GetAssetIDBySymbol(symbol string) (ids.ID, error) {
+	if strings.TrimSpace(symbol) == "" || strings.EqualFold(symbol, nconsts.Symbol) {
+		return ids.Empty, nil
+	}
+	return ids.FromString(symbol)
 }

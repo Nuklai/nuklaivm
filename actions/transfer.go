@@ -36,7 +36,7 @@ type Transfer struct {
 	To codec.Address `serialize:"true" json:"to"`
 
 	// AssetID to transfer.
-	AssetID ids.ID `serialize:"true" json:"asset_id"`
+	AssetID []byte `serialize:"true" json:"asset_id"`
 
 	// Amount are transferred to [To].
 	Value uint64 `serialize:"true" json:"value"`
@@ -50,16 +50,17 @@ func (*Transfer) GetTypeID() uint8 {
 }
 
 func (t *Transfer) StateKeys(actor codec.Address) state.Keys {
+	assetID, _ := utils.GetAssetIDBySymbol(string(t.AssetID))
 	// Initialize the base stateKeys map
 	stateKeys := state.Keys{
-		string(storage.BalanceKey(actor, t.AssetID)): state.Read | state.Write,
-		string(storage.BalanceKey(t.To, t.AssetID)):  state.All,
+		string(storage.BalanceKey(actor, assetID)): state.Read | state.Write,
+		string(storage.BalanceKey(t.To, assetID)):  state.All,
 	}
 
 	// Check if t.Asset is not empty, then add to stateKeys
-	if t.AssetID != ids.Empty {
-		stateKeys[string(storage.AssetKey(t.AssetID))] = state.Read | state.Write
-		stateKeys[string(storage.AssetNFTKey(t.AssetID))] = state.Read | state.Write
+	if assetID != ids.Empty {
+		stateKeys[string(storage.AssetKey(assetID))] = state.Read | state.Write
+		stateKeys[string(storage.AssetNFTKey(assetID))] = state.Read | state.Write
 	}
 
 	// Return the modified stateKeys
@@ -74,9 +75,14 @@ func (t *Transfer) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
+	assetID, err := utils.GetAssetIDBySymbol(string(t.AssetID))
+	if err != nil {
+		return nil, err
+	}
+
 	// Handle NFT transfers
-	if t.AssetID != ids.Empty {
-		exists, collectionID, uniqueID, uri, metadata, owner, _ := storage.GetAssetNFT(ctx, mu, t.AssetID)
+	if assetID != ids.Empty {
+		exists, collectionID, uniqueID, uri, metadata, owner, _ := storage.GetAssetNFT(ctx, mu, assetID)
 		if exists {
 			// Check if the sender is the owner of the NFT
 			if owner != actor {
@@ -107,11 +113,11 @@ func (t *Transfer) Execute(
 	if len(t.Memo) > MaxMemoSize {
 		return nil, ErrOutputMemoTooLarge
 	}
-	senderBalance, err := storage.SubBalance(ctx, mu, actor, t.AssetID, t.Value)
+	senderBalance, err := storage.SubBalance(ctx, mu, actor, assetID, t.Value)
 	if err != nil {
 		return nil, err
 	}
-	receiverBalance, err := storage.AddBalance(ctx, mu, t.To, t.AssetID, t.Value, true)
+	receiverBalance, err := storage.AddBalance(ctx, mu, t.To, assetID, t.Value, true)
 	if err != nil {
 		return nil, err
 	}
@@ -135,12 +141,12 @@ func (*Transfer) ValidRange(chain.Rules) (int64, int64) {
 var _ chain.Marshaler = (*Transfer)(nil)
 
 func (t *Transfer) Size() int {
-	return codec.AddressLen + ids.IDLen + consts.Uint64Len + codec.BytesLen(t.Memo)
+	return codec.AddressLen + codec.BytesLen(t.AssetID) + consts.Uint64Len + codec.BytesLen(t.Memo)
 }
 
 func (t *Transfer) Marshal(p *codec.Packer) {
 	p.PackAddress(t.To)
-	p.PackID(t.AssetID)
+	p.PackBytes(t.AssetID)
 	p.PackLong(t.Value)
 	p.PackBytes(t.Memo)
 }
@@ -148,7 +154,7 @@ func (t *Transfer) Marshal(p *codec.Packer) {
 func UnmarshalTransfer(p *codec.Packer) (chain.Action, error) {
 	var transfer Transfer
 	p.UnpackAddress(&transfer.To)
-	p.UnpackID(false, &transfer.AssetID) // empty ID is the native asset
+	p.UnpackBytes(ids.IDLen, false, &transfer.AssetID)
 	transfer.Value = p.UnpackUint64(true)
 	p.UnpackBytes(MaxMemoSize, false, &transfer.Memo)
 	return &transfer, p.Err()

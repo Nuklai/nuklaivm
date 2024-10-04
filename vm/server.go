@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/hex"
 	"net/http"
-	"strings"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/actions"
@@ -15,6 +14,7 @@ import (
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/api"
 	"github.com/ava-labs/hypersdk/codec"
@@ -70,7 +70,7 @@ func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *Bal
 	if err != nil {
 		return err
 	}
-	assetID, err := getAssetIDBySymbol(args.Asset)
+	assetID, err := utils.GetAssetIDBySymbol(args.Asset)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 	ctx, span := j.vm.Tracer().Start(req.Context(), "Server.Asset")
 	defer span.End()
 
-	assetID, err := getAssetIDBySymbol(args.Asset)
+	assetID, err := utils.GetAssetIDBySymbol(args.Asset)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (j *JSONRPCServer) AssetNFT(req *http.Request, args *AssetArgs, reply *Asse
 	ctx, span := j.vm.Tracer().Start(req.Context(), "Server.AssetNFT")
 	defer span.End()
 
-	nftID, err := getAssetIDBySymbol(args.Asset)
+	nftID, err := utils.GetAssetIDBySymbol(args.Asset)
 	if err != nil {
 		return err
 	}
@@ -202,7 +202,7 @@ func (j *JSONRPCServer) Dataset(req *http.Request, args *DatasetArgs, reply *Dat
 	ctx, span := j.vm.Tracer().Start(req.Context(), "Server.Dataset")
 	defer span.End()
 
-	datasetID, err := getAssetIDBySymbol(args.Dataset)
+	datasetID, err := utils.GetAssetIDBySymbol(args.Dataset)
 	if err != nil {
 		return err
 	}
@@ -246,7 +246,7 @@ func (j *JSONRPCServer) DataContributionPending(req *http.Request, args *Dataset
 	_, span := j.vm.Tracer().Start(req.Context(), "Server.DataContributionPending")
 	defer span.End()
 
-	datasetID, err := getAssetIDBySymbol(args.Dataset)
+	datasetID, err := utils.GetAssetIDBySymbol(args.Dataset)
 	if err != nil {
 		return err
 	}
@@ -398,13 +398,6 @@ func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply 
 	reply.RewardAddress = rewardAddress.String()
 	reply.OwnerAddress = ownerAddress.String()
 	return nil
-}
-
-func getAssetIDBySymbol(symbol string) (ids.ID, error) {
-	if strings.TrimSpace(symbol) == "" || strings.EqualFold(symbol, consts.Symbol) {
-		return ids.Empty, nil
-	}
-	return ids.FromString(symbol)
 }
 
 type SimulateCallTxArgs struct {
