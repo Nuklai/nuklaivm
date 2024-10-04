@@ -5,6 +5,7 @@ package actions
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -110,7 +111,7 @@ func TestCreateAssetAction(t *testing.T) {
 				Name:      "My Asset",
 				Symbol:    "MYA",
 				Decimals:  0,
-				Metadata:  "Me", // Invalid metadata, too short
+				Metadata:  strings.Repeat("a", MaxMetadataSize+1), // Invalid metadata, too long
 				URI:       "uri",
 				MaxSupply: 1000,
 			},
@@ -126,7 +127,7 @@ func TestCreateAssetAction(t *testing.T) {
 				Symbol:    "MYA",
 				Decimals:  0,
 				Metadata:  "Metadata",
-				URI:       "ur", // Invalid URI, too short
+				URI:       strings.Repeat("a", MaxMetadataSize+1), // Invalid URI, too long
 				MaxSupply: 1000,
 			},
 			ExpectedErr: ErrOutputURIInvalid,

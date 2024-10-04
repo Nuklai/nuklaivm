@@ -120,10 +120,10 @@ func (c *CreateAsset) Execute(
 	if c.AssetType != nconsts.AssetFungibleTokenID && c.Decimals != 0 {
 		return nil, ErrOutputDecimalsInvalid
 	}
-	if len(c.Metadata) < 3 || len(c.Metadata) > MaxMetadataSize {
+	if len(c.Metadata) > MaxMetadataSize {
 		return nil, ErrMetadataInvalid
 	}
-	if len(c.URI) < 3 || len(c.URI) > MaxMetadataSize {
+	if len(c.URI) > MaxMetadataSize {
 		return nil, ErrOutputURIInvalid
 	}
 	mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin := codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress
