@@ -44,9 +44,9 @@ func (*CompleteContributeDataset) GetTypeID() uint8 {
 func (d *CompleteContributeDataset) StateKeys(_ codec.Address) state.Keys {
 	nftID := utils.GenerateIDWithIndex(d.DatasetID, d.UniqueNFTIDForContributor)
 	return state.Keys{
-		string(storage.AssetKey(d.DatasetID)):                  state.Read | state.Write,
+		string(storage.AssetInfoKey(d.DatasetID)):              state.Read | state.Write,
 		string(storage.AssetNFTKey(nftID)):                     state.Allocate | state.Write,
-		string(storage.DatasetKey(d.DatasetID)):                state.Read,
+		string(storage.DatasetInfoKey(d.DatasetID)):            state.Read,
 		string(storage.BalanceKey(d.Contributor, ids.Empty)):   state.Read | state.Write,
 		string(storage.BalanceKey(d.Contributor, d.DatasetID)): state.Allocate | state.Write,
 		string(storage.BalanceKey(d.Contributor, nftID)):       state.Allocate | state.Write,
@@ -62,7 +62,7 @@ func (d *CompleteContributeDataset) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the dataset exists
-	exists, _, description, _, _, _, _, _, _, saleID, _, _, _, _, _, _, owner, err := storage.GetDataset(ctx, mu, d.DatasetID)
+	exists, _, description, _, _, _, _, _, _, saleID, _, _, _, _, _, _, owner, err := storage.GetDatasetInfoNoController(ctx, mu, d.DatasetID)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (d *CompleteContributeDataset) Execute(
 		return nil, ErrDatasetNotFound
 	}
 	if actor != owner {
-		return nil, ErrOutputWrongOwner
+		return nil, ErrWrongOwner
 	}
 
 	// Check if the dataset is already on sale
@@ -86,7 +86,7 @@ func (d *CompleteContributeDataset) Execute(
 	}
 
 	// Retrieve the asset info
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAsset(ctx, mu, d.DatasetID)
+	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAssetInfoNoController(ctx, mu, d.DatasetID)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func (d *CompleteContributeDataset) Execute(
 	}
 
 	// Update asset with new total supply
-	if err := storage.SetAsset(ctx, mu, d.DatasetID, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, d.DatasetID, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
 		return nil, err
 	}
 

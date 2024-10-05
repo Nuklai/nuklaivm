@@ -34,10 +34,10 @@ func TestUpdateAssetAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set asset with `addr` as the owner
-				require.NoError(t, storage.SetAsset(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("My Token"), []byte("MYT"), 9, []byte("Metadata"), []byte("uri"), 0, 1000, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("My Token"), []byte("MYT"), 9, []byte("Metadata"), []byte("uri"), 0, 1000, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
-			ExpectedErr: ErrOutputWrongOwner,
+			ExpectedErr: ErrWrongOwner,
 		},
 		{
 			Name:  "NoFieldUpdated",
@@ -49,7 +49,7 @@ func TestUpdateAssetAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set asset with `addr` as the owner
-				require.NoError(t, storage.SetAsset(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("My Token"), []byte("MYT"), 9, []byte("Metadata"), []byte("uri"), 0, 1000, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("My Token"), []byte("MYT"), 9, []byte("Metadata"), []byte("uri"), 0, 1000, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			ExpectedErr: ErrOutputMustUpdateAtLeastOneField,
@@ -64,7 +64,7 @@ func TestUpdateAssetAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set asset with `addr` as the owner
-				require.NoError(t, storage.SetAsset(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("My Token"), []byte("MYT"), 9, []byte("Metadata"), []byte("uri"), 0, 1000, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("My Token"), []byte("MYT"), 9, []byte("Metadata"), []byte("uri"), 0, 1000, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			ExpectedErr: ErrNameInvalid,
@@ -80,12 +80,12 @@ func TestUpdateAssetAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set asset with `addr` as the owner
-				require.NoError(t, storage.SetAsset(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("My Token"), []byte("MYT"), 9, []byte("Metadata"), []byte("uri"), 0, 1000, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("My Token"), []byte("MYT"), 9, []byte("Metadata"), []byte("uri"), 0, 1000, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if the asset was updated correctly
-				exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAsset(ctx, store, assetID)
+				exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, assetID)
 				require.True(t, exists)
 				require.NoError(t, err)
 				require.Equal(t, nconsts.AssetFungibleTokenID, assetType)
@@ -130,12 +130,12 @@ func BenchmarkUpdateAsset(b *testing.B) {
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
-			require.NoError(storage.SetAsset(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("My Token"), []byte("MYT"), 9, []byte("Metadata"), []byte("uri"), 0, 1000, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+			require.NoError(storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("My Token"), []byte("MYT"), 9, []byte("Metadata"), []byte("uri"), 0, 1000, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check if the asset was updated correctly
-			exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAsset(ctx, store, assetID)
+			exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, assetID)
 			require.True(exists)
 			require.NoError(err)
 			require.Equal(nconsts.AssetFungibleTokenID, assetType)

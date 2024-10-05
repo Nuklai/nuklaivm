@@ -47,7 +47,7 @@ func (*InitiateContributeDataset) GetTypeID() uint8 {
 
 func (d *InitiateContributeDataset) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.DatasetKey(d.DatasetID)):      state.Read,
+		string(storage.DatasetInfoKey(d.DatasetID)):  state.Read,
 		string(storage.BalanceKey(actor, ids.Empty)): state.Read | state.Write,
 	}
 }
@@ -61,7 +61,7 @@ func (d *InitiateContributeDataset) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the dataset exists
-	exists, _, _, _, _, _, _, _, isCommunityDataset, saleID, _, _, _, _, _, _, _, err := storage.GetDataset(ctx, mu, d.DatasetID)
+	exists, _, _, _, _, _, _, _, isCommunityDataset, saleID, _, _, _, _, _, _, _, err := storage.GetDatasetInfoNoController(ctx, mu, d.DatasetID)
 	if err != nil {
 		return nil, err
 	}

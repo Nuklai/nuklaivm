@@ -51,8 +51,8 @@ func (*RegisterValidatorStake) GetTypeID() uint8 {
 
 func (r *RegisterValidatorStake) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.BalanceKey(actor, ids.Empty)):        state.Read | state.Write,
-		string(storage.RegisterValidatorStakeKey(r.NodeID)): state.Allocate | state.Write,
+		string(storage.BalanceKey(actor, ids.Empty)): state.Read | state.Write,
+		string(storage.ValidatorStakeKey(r.NodeID)):  state.Allocate | state.Write,
 	}
 }
 
@@ -114,7 +114,7 @@ func (r *RegisterValidatorStake) Execute(
 	}
 
 	// Check if the validator was already registered
-	exists, _, _, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, stakeInfo.NodeID)
+	exists, _, _, _, _, _, _, _ := storage.GetValidatorStakeNoController(ctx, mu, stakeInfo.NodeID)
 	if exists {
 		return nil, ErrValidatorAlreadyRegistered
 	}
@@ -158,7 +158,7 @@ func (r *RegisterValidatorStake) Execute(
 	if _, err := storage.SubBalance(ctx, mu, actor, ids.Empty, stakeInfo.StakedAmount); err != nil {
 		return nil, err
 	}
-	if err := storage.SetRegisterValidatorStake(ctx, mu, stakeInfo.NodeID, stakeInfo.StakeStartBlock, stakeInfo.StakeEndBlock, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate, stakeInfo.RewardAddress, actor); err != nil {
+	if err := storage.SetValidatorStake(ctx, mu, stakeInfo.NodeID, stakeInfo.StakeStartBlock, stakeInfo.StakeEndBlock, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate, stakeInfo.RewardAddress, actor); err != nil {
 		return nil, err
 	}
 	return &RegisterValidatorStakeResult{

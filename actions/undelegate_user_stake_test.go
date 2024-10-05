@@ -42,7 +42,7 @@ func TestUndelegateUserStakeActionFailure(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set stake with end block greater than the current block height
-				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
+				require.NoError(t, storage.SetDelegatorStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
 				return store
 			}(),
 			ExpectedErr: ErrStakeNotEnded,
@@ -70,7 +70,7 @@ func TestUndelegateUserStakeActionSuccess(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set stake with end block less than the current block height
-				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
+				require.NoError(t, storage.SetDelegatorStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
 				// Set user balance before unstaking
 				require.NoError(t, storage.SetBalance(context.Background(), store, addr, ids.Empty, 0))
 				return store
@@ -82,7 +82,7 @@ func TestUndelegateUserStakeActionSuccess(t *testing.T) {
 				require.Equal(t, uint64(1020), balance)
 
 				// Check if the stake was deleted
-				exists, _, _, _, _, _, _ := storage.GetDelegateUserStake(ctx, store, addr, nodeID)
+				exists, _, _, _, _, _, _ := storage.GetDelegatorStakeNoController(ctx, store, addr, nodeID)
 				require.False(t, exists)
 			},
 			ExpectedOutputs: &UndelegateUserStakeResult{
@@ -118,7 +118,7 @@ func BenchmarkUndelegateUserStake(b *testing.B) {
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set stake with end block less than the current block height
-			require.NoError(storage.SetDelegateUserStake(context.Background(), store, actor, nodeID, 25, 50, 1000, actor))
+			require.NoError(storage.SetDelegatorStake(context.Background(), store, actor, nodeID, 25, 50, 1000, actor))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
@@ -128,7 +128,7 @@ func BenchmarkUndelegateUserStake(b *testing.B) {
 			require.Equal(b, uint64(1020), balance)
 
 			// Check if the stake was deleted
-			exists, _, _, _, _, _, _ := storage.GetDelegateUserStake(ctx, store, actor, nodeID)
+			exists, _, _, _, _, _, _ := storage.GetDelegatorStakeNoController(ctx, store, actor, nodeID)
 			require.False(exists)
 		},
 	}

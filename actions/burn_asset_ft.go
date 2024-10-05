@@ -38,7 +38,7 @@ func (*BurnAssetFT) GetTypeID() uint8 {
 
 func (b *BurnAssetFT) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.AssetKey(b.AssetID)):          state.Read | state.Write,
+		string(storage.AssetInfoKey(b.AssetID)):      state.Read | state.Write,
 		string(storage.BalanceKey(actor, b.AssetID)): state.Read | state.Write,
 	}
 }
@@ -52,10 +52,10 @@ func (b *BurnAssetFT) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	if b.Value == 0 {
-		return nil, ErrOutputValueZero
+		return nil, ErrValueZero
 	}
 
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAsset(ctx, mu, b.AssetID)
+	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAssetInfoNoController(ctx, mu, b.AssetID)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (b *BurnAssetFT) Execute(
 	if err != nil {
 		return nil, err
 	}
-	if err := storage.SetAsset(ctx, mu, b.AssetID, assetType, name, symbol, decimals, metadata, uri, newSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, b.AssetID, assetType, name, symbol, decimals, metadata, uri, newSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
 		return nil, err
 	}
 

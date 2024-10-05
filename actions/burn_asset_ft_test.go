@@ -30,7 +30,7 @@ func TestBurnAssetFTAction(t *testing.T) {
 				AssetID: assetID,
 				Value:   0, // Invalid zero value
 			},
-			ExpectedErr: ErrOutputValueZero,
+			ExpectedErr: ErrValueZero,
 		},
 		{
 			Name:  "AssetMissing",
@@ -52,7 +52,7 @@ func TestBurnAssetFTAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Setting asset type as non-fungible (invalid for FT burning)
-				require.NoError(t, storage.SetAsset(context.Background(), store, assetID, nconsts.AssetNonFungibleTokenID, []byte("NFT"), []byte("NFT"), 0, []byte("metadata"), []byte("uri"), 0, 1, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetNonFungibleTokenID, []byte("NFT"), []byte("NFT"), 0, []byte("metadata"), []byte("uri"), 0, 1, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			ExpectedErr: ErrOutputWrongAssetType,
@@ -67,7 +67,7 @@ func TestBurnAssetFTAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Setting asset with balance of 500
-				require.NoError(t, storage.SetAsset(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("Token"), []byte("TKN"), 9, []byte("metadata"), []byte("uri"), 5000, 1000000, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("Token"), []byte("TKN"), 9, []byte("metadata"), []byte("uri"), 5000, 1000000, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				require.NoError(t, storage.SetBalance(context.Background(), store, addr, assetID, 500))
 				return store
 			}(),
@@ -83,13 +83,13 @@ func TestBurnAssetFTAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Setting asset with balance of 1000
-				require.NoError(t, storage.SetAsset(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("Token"), []byte("TKN"), 9, []byte("metadata"), []byte("uri"), 5000, 1000000, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("Token"), []byte("TKN"), 9, []byte("metadata"), []byte("uri"), 5000, 1000000, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				require.NoError(t, storage.SetBalance(context.Background(), store, addr, assetID, 1000))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check new asset supply and balance
-				exists, _, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAsset(ctx, store, assetID)
+				exists, _, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, store, assetID)
 				require.NoError(t, err)
 				require.True(t, exists)
 				require.Equal(t, uint64(4500), totalSupply)
@@ -127,13 +127,13 @@ func BenchmarkBurnAssetFT(b *testing.B) {
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
-			require.NoError(storage.SetAsset(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("Benchmark Token"), []byte("BMT"), 9, []byte("benchmark metadata"), []byte("benchmark-uri"), 5000, 1000000, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+			require.NoError(storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("Benchmark Token"), []byte("BMT"), 9, []byte("benchmark metadata"), []byte("benchmark-uri"), 5000, 1000000, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 			require.NoError(storage.SetBalance(context.Background(), store, actor, assetID, 1000))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check new asset supply and balance
-			exists, _, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAsset(ctx, store, assetID)
+			exists, _, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, store, assetID)
 			require.NoError(err)
 			require.True(exists)
 			require.Equal(b, uint64(4500), totalSupply)

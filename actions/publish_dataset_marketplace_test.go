@@ -51,10 +51,10 @@ func TestPublishDatasetMarketplaceAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set the dataset with a different owner
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
 				return store
 			}(),
-			ExpectedErr: ErrOutputWrongOwner,
+			ExpectedErr: ErrWrongOwner,
 		},
 		{
 			Name:  "AssetNotFound",
@@ -68,7 +68,7 @@ func TestPublishDatasetMarketplaceAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set the dataset with the correct owner
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
 				return store
 			}(),
 			ExpectedErr: ErrAssetNotFound,
@@ -86,14 +86,14 @@ func TestPublishDatasetMarketplaceAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set the base asset with the required details
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
 				// Set the dataset with the correct owner
-				require.NoError(t, storage.SetAsset(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Asset"), []byte("BA"), 0, []byte("Metadata"), []byte("uri"), 1, 0, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Asset"), []byte("BA"), 0, []byte("Metadata"), []byte("uri"), 1, 0, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if the dataset was updated correctly
-				exists, _, _, _, _, _, _, _, _, saleID, baseAsset, basePrice, _, _, _, _, _, err := storage.GetDataset(ctx, store, datasetID)
+				exists, _, _, _, _, _, _, _, _, saleID, baseAsset, basePrice, _, _, _, _, _, err := storage.GetDatasetInfoNoController(ctx, store, datasetID)
 				require.NoError(t, err)
 				require.True(t, exists)
 				require.Equal(t, marketplaceAssetID, saleID)
@@ -101,7 +101,7 @@ func TestPublishDatasetMarketplaceAction(t *testing.T) {
 				require.Equal(t, uint64(100), basePrice)
 
 				// Check if the marketplace asset was created correctly
-				exists, assetType, name, symbol, _, metadata, _, _, _, owner, _, _, _, _, err := storage.GetAsset(ctx, store, marketplaceAssetID)
+				exists, assetType, name, symbol, _, metadata, _, _, _, owner, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, store, marketplaceAssetID)
 				require.NoError(t, err)
 				require.True(t, exists)
 				require.Equal(t, nconsts.AssetMarketplaceTokenID, assetType)
@@ -151,14 +151,14 @@ func BenchmarkPublishDatasetMarketplace(b *testing.B) {
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set the base asset with the required details
-			require.NoError(storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, actor))
+			require.NoError(storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, actor))
 			// Set the dataset with the correct owner
-			require.NoError(storage.SetAsset(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Asset"), []byte("BA"), 0, []byte("Metadata"), []byte("uri"), 1, 0, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+			require.NoError(storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Asset"), []byte("BA"), 0, []byte("Metadata"), []byte("uri"), 1, 0, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check if the dataset was updated correctly
-			exists, _, _, _, _, _, _, _, _, saleID, baseAsset, basePrice, _, _, _, _, _, err := storage.GetDataset(ctx, store, datasetID)
+			exists, _, _, _, _, _, _, _, _, saleID, baseAsset, basePrice, _, _, _, _, _, err := storage.GetDatasetInfoNoController(ctx, store, datasetID)
 			require.NoError(err)
 			require.True(exists)
 			require.Equal(b, marketplaceAssetID, saleID)
@@ -166,7 +166,7 @@ func BenchmarkPublishDatasetMarketplace(b *testing.B) {
 			require.Equal(b, uint64(100), basePrice)
 
 			// Check if the marketplace asset was created correctly
-			exists, assetType, name, symbol, _, metadata, _, _, _, owner, _, _, _, _, err := storage.GetAsset(ctx, store, marketplaceAssetID)
+			exists, assetType, name, symbol, _, metadata, _, _, _, owner, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, store, marketplaceAssetID)
 			require.NoError(err)
 			require.True(exists)
 			require.Equal(b, nconsts.AssetMarketplaceTokenID, assetType)

@@ -149,7 +149,7 @@ func TestCreateAssetAction(t *testing.T) {
 			State: chaintest.NewInMemoryStore(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if the asset was created correctly
-				exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAsset(ctx, store, assetID)
+				exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, assetID)
 				require.True(t, exists)
 				require.NoError(t, err)
 				require.Equal(t, nconsts.AssetFungibleTokenID, assetType)
@@ -189,7 +189,7 @@ func TestCreateAssetAction(t *testing.T) {
 			State: chaintest.NewInMemoryStore(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if the asset was created correctly
-				exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAsset(ctx, store, assetID)
+				exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, assetID)
 				require.True(t, exists)
 				require.NoError(t, err)
 				require.Equal(t, nconsts.AssetNonFungibleTokenID, assetType)
@@ -229,7 +229,7 @@ func TestCreateAssetAction(t *testing.T) {
 			State: chaintest.NewInMemoryStore(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if the asset was created correctly
-				exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAsset(ctx, store, assetID)
+				exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, assetID)
 				require.True(t, exists)
 				require.NoError(t, err)
 				require.Equal(t, nconsts.AssetDatasetTokenID, assetType)
@@ -296,7 +296,7 @@ func BenchmarkCreateAsset(b *testing.B) {
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check if the asset was created correctly
-			exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAsset(ctx, store, assetID)
+			exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, assetID)
 			require.True(exists)
 			require.NoError(err)
 			require.Equal(nconsts.AssetFungibleTokenID, assetType)

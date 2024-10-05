@@ -69,23 +69,23 @@ func (g *Genesis) InitializeState(ctx context.Context, tracer trace.Tracer, mu s
 	}
 
 	// Set the asset info for NAI using storage.SetAsset
-	return storage.SetAsset(
+	return storage.SetAssetInfo(
 		ctx,
 		mu,
-		ids.Empty,                    // Asset ID
+		storage.NAIAddress,           // Asset Address
 		consts.AssetFungibleTokenID,  // Asset type ID
 		[]byte(consts.Name),          // Name
 		[]byte(consts.Symbol),        // Symbol
 		consts.Decimals,              // Decimals
-		[]byte(consts.Name),          // Alias (could be same as name)
-		[]byte(consts.Name),          // Description
+		[]byte(consts.Metadata),      // Metadata
+		[]byte(consts.Metadata),      // Description
 		totalSupply,                  // Initial supply
 		g.EmissionBalancer.MaxSupply, // Max supply
-		codec.EmptyAddress,           // Emission address (if applicable)
-		codec.EmptyAddress,           // Address for reserve
-		codec.EmptyAddress,           // Address for minting
-		codec.EmptyAddress,           // Address for burning
-		codec.EmptyAddress,           // Address for freezing
+		codec.EmptyAddress,           // Owner address
+		codec.EmptyAddress,           // MintAdmin address
+		codec.EmptyAddress,           // PauseUnpauseAdmin address
+		codec.EmptyAddress,           // FreezeUnfreezeAdmin address
+		codec.EmptyAddress,           // EnableDisableKYCAccountAdmin address
 	)
 }
 

@@ -54,7 +54,7 @@ func (*MintAssetNFT) GetTypeID() uint8 {
 func (m *MintAssetNFT) StateKeys(codec.Address) state.Keys {
 	nftID := utils.GenerateIDWithIndex(m.AssetID, m.UniqueID)
 	return state.Keys{
-		string(storage.AssetKey(m.AssetID)):         state.Read | state.Write,
+		string(storage.AssetInfoKey(m.AssetID)):     state.Read | state.Write,
 		string(storage.AssetNFTKey(nftID)):          state.Allocate | state.Write,
 		string(storage.BalanceKey(m.To, m.AssetID)): state.Allocate | state.Write,
 		string(storage.BalanceKey(m.To, nftID)):     state.Allocate | state.Write,
@@ -86,7 +86,7 @@ func (m *MintAssetNFT) Execute(
 		return nil, ErrOutputNFTAlreadyExists
 	}
 
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAsset(ctx, mu, m.AssetID)
+	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, mu, m.AssetID)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (m *MintAssetNFT) Execute(
 		return nil, err
 	}
 
-	if err := storage.SetAsset(ctx, mu, m.AssetID, assetType, name, symbol, decimals, metadata, uri, newSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, m.AssetID, assetType, name, symbol, decimals, metadata, uri, newSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin); err != nil {
 		return nil, err
 	}
 

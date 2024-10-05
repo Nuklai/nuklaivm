@@ -82,7 +82,7 @@ func handleTx(tx *chain.Transaction, result *chain.Result) {
 		var summaryStr string
 		switch act := action.(type) {
 		case *actions.Transfer:
-			summaryStr = fmt.Sprintf("assetID: %s amount: %d -> %s", act.AssetID, act.Value, act.To)
+			summaryStr = fmt.Sprintf("assetID: %s amount: %d -> %s", act.AssetAddress, act.Value, act.To)
 			if len(act.Memo) > 0 {
 				summaryStr += fmt.Sprintf(" memo: %s", act.Memo)
 			}

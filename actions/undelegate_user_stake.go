@@ -34,8 +34,8 @@ func (*UndelegateUserStake) GetTypeID() uint8 {
 
 func (u *UndelegateUserStake) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.BalanceKey(actor, ids.Empty)):          state.Read | state.Write,
-		string(storage.DelegateUserStakeKey(actor, u.NodeID)): state.Read | state.Write,
+		string(storage.BalanceKey(actor, ids.Empty)):       state.Read | state.Write,
+		string(storage.DelegatorStakeKey(actor, u.NodeID)): state.Read | state.Write,
 	}
 }
 
@@ -47,7 +47,7 @@ func (u *UndelegateUserStake) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-	exists, stakeStartBlock, stakeEndBlock, stakedAmount, _, ownerAddress, _ := storage.GetDelegateUserStake(ctx, mu, actor, u.NodeID)
+	exists, stakeStartBlock, stakeEndBlock, stakedAmount, _, ownerAddress, _ := storage.GetDelegatorStakeNoController(ctx, mu, actor, u.NodeID)
 	if !exists {
 		return nil, ErrStakeMissing
 	}
@@ -68,7 +68,7 @@ func (u *UndelegateUserStake) Execute(
 	if err != nil {
 		return nil, err
 	}
-	if err := storage.DeleteDelegateUserStake(ctx, mu, actor, u.NodeID); err != nil {
+	if err := storage.DeleteDelegatorStake(ctx, mu, actor, u.NodeID); err != nil {
 		return nil, err
 	}
 	balance, err := storage.AddBalance(ctx, mu, actor, ids.Empty, rewardAmount+stakedAmount, true)

@@ -9,7 +9,6 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
-	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
@@ -24,19 +23,20 @@ const (
 )
 
 var (
-	ErrOutputValueZero                      = errors.New("value is zero")
-	ErrOutputMemoTooLarge                   = errors.New("memo is too large")
-	ErrOutputWrongOwner                     = errors.New("wrong owner")
-	ErrOutputNFTValueMustBeOne              = errors.New("NFT value must be one")
-	_                          chain.Action = (*Transfer)(nil)
+	ErrAssetDoesNotExist                     = errors.New("asset does not exist")
+	ErrValueZero                             = errors.New("value is zero")
+	ErrNFTValueMustBeOne                     = errors.New("NFT value must be one")
+	ErrInsufficientTokenBalance              = errors.New("insufficient token balance")
+	ErrMemoTooLarge                          = errors.New("memo is too large")
+	_                           chain.Action = (*Transfer)(nil)
 )
 
 type Transfer struct {
 	// To is the recipient of the [Value].
 	To codec.Address `serialize:"true" json:"to"`
 
-	// AssetID to transfer.
-	AssetID string `serialize:"true" json:"asset_id"`
+	// AssetAddress to transfer.
+	AssetAddress codec.Address `serialize:"true" json:"asset_address"`
 
 	// Amount are transferred to [To].
 	Value uint64 `serialize:"true" json:"value"`
@@ -50,21 +50,11 @@ func (*Transfer) GetTypeID() uint8 {
 }
 
 func (t *Transfer) StateKeys(actor codec.Address) state.Keys {
-	assetID, _ := utils.GetAssetIDBySymbol(t.AssetID)
-	// Initialize the base stateKeys map
-	stateKeys := state.Keys{
-		string(storage.BalanceKey(actor, assetID)): state.Read | state.Write,
-		string(storage.BalanceKey(t.To, assetID)):  state.All,
+	return state.Keys{
+		string(storage.AssetInfoKey(t.AssetAddress)):                  state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(t.AssetAddress, actor)): state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(t.AssetAddress, t.To)):  state.All,
 	}
-
-	// Check if t.Asset is not empty, then add to stateKeys
-	if assetID != ids.Empty {
-		stateKeys[string(storage.AssetKey(assetID))] = state.Read | state.Write
-		stateKeys[string(storage.AssetNFTKey(assetID))] = state.Read | state.Write
-	}
-
-	// Return the modified stateKeys
-	return stateKeys
 }
 
 func (t *Transfer) Execute(
@@ -75,49 +65,32 @@ func (t *Transfer) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-	assetID, err := utils.GetAssetIDBySymbol(t.AssetID)
+	// Check that asset exists
+	assetType, _, _, _, _, _, _, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, t.AssetAddress)
 	if err != nil {
-		return nil, err
+		return nil, ErrAssetDoesNotExist
 	}
 
-	// Handle NFT transfers
-	if assetID != ids.Empty {
-		exists, collectionID, uniqueID, uri, metadata, owner, _ := storage.GetAssetNFT(ctx, mu, assetID)
-		if exists {
-			// Check if the sender is the owner of the NFT
-			if owner != actor {
-				return nil, ErrOutputWrongOwner
-			}
-			if t.Value != 1 {
-				return nil, ErrOutputNFTValueMustBeOne
-			}
-			// Subtract the balance from NFT collection for the original NFT owner
-			if _, err := storage.SubBalance(ctx, mu, actor, collectionID, t.Value); err != nil {
-				return nil, err
-			}
-			// Add the balance to NFT collection for the new NFT owner
-			if _, err := storage.AddBalance(ctx, mu, t.To, collectionID, t.Value, true); err != nil {
-				return nil, err
-			}
-			// Update the NFT Info
-			nftID := utils.GenerateIDWithIndex(collectionID, uniqueID)
-			if err := storage.SetAssetNFT(ctx, mu, collectionID, uniqueID, nftID, uri, metadata, t.To); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	if t.Value == 0 {
-		return nil, ErrOutputValueZero
+	// Check the invariants
+	if assetType == nconsts.AssetNonFungibleTokenID && t.Value != 1 {
+		return nil, ErrNFTValueMustBeOne
+	} else if t.Value == 0 {
+		return nil, ErrValueZero
 	}
 	if len(t.Memo) > MaxMemoSize {
-		return nil, ErrOutputMemoTooLarge
+		return nil, ErrMemoTooLarge
 	}
-	senderBalance, err := storage.SubBalance(ctx, mu, actor, assetID, t.Value)
+
+	// Check that balance is sufficient
+	balance, err := storage.GetAssetAccountBalanceNoController(ctx, mu, t.AssetAddress, actor)
 	if err != nil {
 		return nil, err
 	}
-	receiverBalance, err := storage.AddBalance(ctx, mu, t.To, assetID, t.Value, true)
+	if balance < t.Value {
+		return nil, ErrInsufficientTokenBalance
+	}
+
+	senderBalance, receiverBalance, err := storage.TransferAsset(ctx, mu, t.AssetAddress, actor, t.To, t.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +113,7 @@ func (*Transfer) ValidRange(chain.Rules) (int64, int64) {
 func UnmarshalTransfer(p *codec.Packer) (chain.Action, error) {
 	var transfer Transfer
 	p.UnpackAddress(&transfer.To)
-	transfer.AssetID = p.UnpackString(false)
+	p.UnpackAddress(&transfer.AssetAddress)
 	transfer.Value = p.UnpackUint64(true)
 	transfer.Memo = p.UnpackString(false)
 	return &transfer, p.Err()

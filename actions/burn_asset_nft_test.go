@@ -46,7 +46,7 @@ func TestBurnAssetNFTAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set asset type to fungible (invalid for NFTs)
-				require.NoError(t, storage.SetAsset(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("FT"), []byte("FT"), 0, []byte("metadata"), []byte("uri"), 1000, 1000000, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("FT"), []byte("FT"), 0, []byte("metadata"), []byte("uri"), 1000, 1000000, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			ExpectedErr: ErrOutputWrongAssetType,
@@ -61,7 +61,7 @@ func TestBurnAssetNFTAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set a valid NFT collection
-				require.NoError(t, storage.SetAsset(context.Background(), store, assetID, nconsts.AssetNonFungibleTokenID, []byte("NFT Collection"), []byte("NFT"), 0, []byte("metadata"), []byte("uri"), 10, 100, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetNonFungibleTokenID, []byte("NFT Collection"), []byte("NFT"), 0, []byte("metadata"), []byte("uri"), 10, 100, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			ExpectedErr: ErrOutputAssetMissing,
@@ -76,7 +76,7 @@ func TestBurnAssetNFTAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set a valid NFT collection
-				require.NoError(t, storage.SetAsset(context.Background(), store, assetID, nconsts.AssetNonFungibleTokenID, []byte("NFT Collection"), []byte("NFT"), 0, []byte("metadata"), []byte("uri"), 10, 100, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetNonFungibleTokenID, []byte("NFT Collection"), []byte("NFT"), 0, []byte("metadata"), []byte("uri"), 10, 100, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 
 				// Set the NFT
 				require.NoError(t, storage.SetAssetNFT(context.Background(), store, assetID, 0, nftID, []byte("nft-uri"), []byte("NFT Metadata"), addr))
@@ -98,7 +98,7 @@ func TestBurnAssetNFTAction(t *testing.T) {
 				require.Equal(t, uint64(0), balance)
 
 				// Check if the total supply was reduced
-				exists, _, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAsset(ctx, store, assetID)
+				exists, _, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, store, assetID)
 				require.NoError(t, err)
 				require.True(t, exists)
 				require.Equal(t, uint64(9), totalSupply)
@@ -133,7 +133,7 @@ func BenchmarkBurnAssetNFT(b *testing.B) {
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set a valid NFT collection and NFT
-			require.NoError(storage.SetAsset(context.Background(), store, assetID, nconsts.AssetNonFungibleTokenID, []byte("Benchmark NFT Collection"), []byte("BNFT"), 0, []byte("benchmark metadata"), []byte("benchmark-uri"), 1, 10, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+			require.NoError(storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetNonFungibleTokenID, []byte("Benchmark NFT Collection"), []byte("BNFT"), 0, []byte("benchmark metadata"), []byte("benchmark-uri"), 1, 10, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 
 			require.NoError(storage.SetAssetNFT(context.Background(), store, assetID, 0, nftID, []byte("nft-uri"), []byte("NFT Metadata"), actor))
 
@@ -154,7 +154,7 @@ func BenchmarkBurnAssetNFT(b *testing.B) {
 			require.Equal(b, uint64(0), balance)
 
 			// Check if total supply was reduced
-			exists, _, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAsset(ctx, store, assetID)
+			exists, _, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, store, assetID)
 			require.NoError(err)
 			require.True(exists)
 			require.Equal(b, uint64(9), totalSupply)

@@ -64,7 +64,7 @@ func TestRegisterValidatorStakeAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Register the validator
-				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 50, 150, 10000, 10, addr, addr))
+				require.NoError(t, storage.SetValidatorStake(context.Background(), store, nodeID, 50, 150, 10000, 10, addr, addr))
 				return store
 			}(),
 			ExpectedErr: ErrValidatorAlreadyRegistered,
@@ -102,7 +102,7 @@ func TestRegisterValidatorStakeAction(t *testing.T) {
 				require.Equal(t, emission.GetStakingConfig().MinValidatorStake, balance)
 
 				// Check if the stake was created correctly
-				exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, _ := storage.GetRegisterValidatorStake(ctx, store, nodeID)
+				exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, _ := storage.GetValidatorStakeNoController(ctx, store, nodeID)
 				require.True(t, exists)
 				require.Equal(t, uint64(60), stakeStartBlock)
 				require.Equal(t, uint64(200), stakeEndBlock)
@@ -168,7 +168,7 @@ func BenchmarkRegisterValidatorStake(b *testing.B) {
 			require.Equal(b, emission.GetStakingConfig().MinValidatorStake, balance)
 
 			// Check if the stake was created correctly
-			exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, _ := storage.GetRegisterValidatorStake(ctx, store, nodeID)
+			exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, _ := storage.GetValidatorStakeNoController(ctx, store, nodeID)
 			require.True(exists)
 			require.Equal(b, uint64(60), stakeStartBlock)
 			require.Equal(b, uint64(200), stakeEndBlock)

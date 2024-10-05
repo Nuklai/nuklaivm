@@ -58,10 +58,10 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set dataset with a different owner
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
 				return store
 			}(),
-			ExpectedErr: ErrOutputWrongOwner,
+			ExpectedErr: ErrWrongOwner,
 		},
 		{
 			Name:  "DatasetAlreadyOnSale",
@@ -74,7 +74,7 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set dataset that is already on sale
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.GenerateTestID(), ids.Empty, 0, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.GenerateTestID(), ids.Empty, 0, 100, 0, 100, 100, addr))
 				return store
 			}(),
 			ExpectedErr: ErrDatasetAlreadyOnSale,
@@ -90,7 +90,7 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set valid dataset
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
 				// Create existing NFT
 				nftID := utils.GenerateIDWithIndex(datasetID, uniqueNFTID)
 				require.NoError(t, storage.SetAssetNFT(context.Background(), store, datasetID, uniqueNFTID, nftID, []byte("Dataset NFT"), []byte("Metadata"), addr))
@@ -110,8 +110,8 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set valid dataset
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
-				require.NoError(t, storage.SetAsset(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, addr, addr, addr, addr, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, addr, addr, addr, addr, addr))
 				// Set balance to 0
 				config := marketplace.GetDatasetConfig()
 				require.NoError(t, storage.SetBalance(context.Background(), store, addr, config.CollateralAssetIDForDataContribution, 0))
@@ -181,8 +181,8 @@ func BenchmarkCompleteContributeDataset(b *testing.B) {
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set valid dataset
-			require.NoError(storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, actor))
-			require.NoError(storage.SetAsset(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, actor, actor, actor, actor, actor))
+			require.NoError(storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, actor))
+			require.NoError(storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, actor, actor, actor, actor, actor))
 			// Set balance to 0
 			config := marketplace.GetDatasetConfig()
 			require.NoError(storage.SetBalance(context.Background(), store, actor, config.CollateralAssetIDForDataContribution, 0))

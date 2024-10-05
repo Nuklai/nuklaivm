@@ -133,13 +133,13 @@ func TestCreateDatasetAction(t *testing.T) {
 				store := chaintest.NewInMemoryStore()
 				// Create the asset first
 				// TODO: Remove after hypersdk adds pseudorandom actionID generation
-				require.NoError(t, storage.SetAsset(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Asset"), []byte("BA"), 0, []byte("Metadata"), []byte("uri"), 1, 0, addr, addr, addr, addr, addr))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Asset"), []byte("BA"), 0, []byte("Metadata"), []byte("uri"), 1, 0, addr, addr, addr, addr, addr))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if the dataset was created correctly
 				// nftID := utils.GenerateIDWithIndex(datasetID, 0)
-				exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, _, _, _, _, _, owner, err := storage.GetDataset(ctx, store, datasetID)
+				exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, _, _, _, _, _, owner, err := storage.GetDatasetInfoNoController(ctx, store, datasetID)
 				require.NoError(t, err)
 				require.True(t, exists)
 				require.Equal(t, "Dataset Name", string(name))
@@ -200,13 +200,13 @@ func BenchmarkCreateDataset(b *testing.B) {
 			store := chaintest.NewInMemoryStore()
 			// Create the asset first
 			// TODO: Remove after hypersdk adds pseudorandom actionID generation
-			require.NoError(storage.SetAsset(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Asset"), []byte("BA"), 0, []byte("Metadata"), []byte("uri"), 1, 0, actor, actor, actor, actor, actor))
+			require.NoError(storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Asset"), []byte("BA"), 0, []byte("Metadata"), []byte("uri"), 1, 0, actor, actor, actor, actor, actor))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check if the dataset was created correctly
 			// nftID := utils.GenerateIDWithIndex(datasetID, 0)
-			exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, _, _, _, _, _, owner, err := storage.GetDataset(ctx, store, datasetID)
+			exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, _, _, _, _, _, owner, err := storage.GetDatasetInfoNoController(ctx, store, datasetID)
 			require.NoError(err)
 			require.True(exists)
 			require.Equal(b, "Benchmark Dataset", string(name))

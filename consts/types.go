@@ -5,35 +5,38 @@ package consts
 
 const (
 	// Action TypeIDs
-	TransferID                    uint8 = 0
-	ContractCallID                uint8 = 1
-	ContractDeployID              uint8 = 2
-	ContractPublishID             uint8 = 3
-	CreateAssetID                 uint8 = 4
-	UpdateAssetID                 uint8 = 5
-	MintAssetFTID                 uint8 = 6
-	MintAssetNFTID                uint8 = 7
-	BurnAssetFTID                 uint8 = 8
-	BurnAssetNFTID                uint8 = 9
-	RegisterValidatorStakeID      uint8 = 10
-	WithdrawValidatorStakeID      uint8 = 11
-	ClaimValidatorStakeRewardsID  uint8 = 12
-	DelegateUserStakeID           uint8 = 13
-	UndelegateUserStakeID         uint8 = 14
-	ClaimDelegationStakeRewardsID uint8 = 15
-	CreateDatasetID               uint8 = 16
-	UpdateDatasetID               uint8 = 17
-	InitiateContributeDatasetID   uint8 = 18
-	CompleteContributeDatasetID   uint8 = 19
-	PublishDatasetMarketplaceID   uint8 = 20
-	SubscribeDatasetMarketplaceID uint8 = 21
-	ClaimMarketplacePaymentID     uint8 = 22
+	TransferID                    uint8 = iota // 0
+	ContractCallID                             // 1
+	ContractDeployID                           // 2
+	ContractPublishID                          // 3
+	CreateAssetID                              // 4
+	UpdateAssetID                              // 5
+	MintAssetFTID                              // 6
+	MintAssetNFTID                             // 7
+	BurnAssetFTID                              // 8
+	BurnAssetNFTID                             // 9
+	RegisterValidatorStakeID                   // 10
+	WithdrawValidatorStakeID                   // 11
+	ClaimValidatorStakeRewardsID               // 12
+	DelegateUserStakeID                        // 13
+	UndelegateUserStakeID                      // 14
+	ClaimDelegationStakeRewardsID              // 15
+	CreateDatasetID                            // 16
+	UpdateDatasetID                            // 17
+	InitiateContributeDatasetID                // 18
+	CompleteContributeDatasetID                // 19
+	PublishDatasetMarketplaceID                // 20
+	SubscribeDatasetMarketplaceID              // 21
+	ClaimMarketplacePaymentID                  // 22
+)
 
+const (
 	// Asset TypeIDs
-	AssetFungibleTokenID    uint8 = 0
-	AssetNonFungibleTokenID uint8 = 1
-	AssetDatasetTokenID     uint8 = 2
-	AssetMarketplaceTokenID uint8 = 3
+	AssetFungibleTokenID    uint8 = iota // 0
+	AssetNonFungibleTokenID              // 1
+	AssetDatasetTokenID                  // 2
+	AssetMarketplaceTokenID              // 3
+
 	// Asset Names for TypeIDs
 	AssetFungibleTokenDesc    = "Fungible Token"     // #nosec
 	AssetNonFungibleTokenDesc = "Non-Fungible Token" // #nosec

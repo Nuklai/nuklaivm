@@ -55,7 +55,7 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set dataset without a sale ID
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
 				return store
 			}(),
 			ExpectedErr: ErrDatasetNotOnSale,
@@ -72,7 +72,7 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set dataset with a valid sale ID
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, addr))
 				return store
 			}(),
 			ExpectedErr: ErrMarketplaceAssetIDInvalid,
@@ -89,7 +89,7 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set dataset with a valid sale ID and base asset
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, addr))
 				return store
 			}(),
 			ExpectedErr: ErrBaseAssetNotSupported,
@@ -107,8 +107,8 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set dataset with a valid sale ID and base asset
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, addr))
-				require.NoError(t, storage.SetAsset(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, addr, addr, addr, addr, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, addr, addr, addr, addr, addr))
 				// Set base asset balance to sufficient amount
 				require.NoError(t, storage.SetBalance(context.Background(), store, addr, baseAssetID, 5000))
 				// Set the marketplace asset for the dataset
@@ -124,7 +124,7 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 				metadataMap["paymentClaimed"] = "0"
 				metadata, err := utils.MapToBytes(metadataMap)
 				require.NoError(t, err)
-				require.NoError(t, storage.SetAsset(context.Background(), store, marketplaceAssetID, nconsts.AssetMarketplaceTokenID, []byte("Marketplace Token"), []byte("MKT"), 0, metadata, []byte(datasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, marketplaceAssetID, nconsts.AssetMarketplaceTokenID, []byte("Marketplace Token"), []byte("MKT"), 0, metadata, []byte(datasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
@@ -140,7 +140,7 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 				require.Equal(t, addr, owner)
 
 				// Check if the marketplace asset metadata was updated correctly
-				exists, _, _, _, _, metadata, _, _, _, _, _, _, _, _, err := storage.GetAsset(ctx, store, marketplaceAssetID)
+				exists, _, _, _, _, metadata, _, _, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, store, marketplaceAssetID)
 				require.NoError(t, err)
 				require.True(t, exists)
 
@@ -193,8 +193,8 @@ func BenchmarkSubscribeDatasetMarketplace(b *testing.B) {
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set dataset with a valid sale ID and base asset
-			require.NoError(storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, actor))
-			require.NoError(storage.SetAsset(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, actor, actor, actor, actor, actor))
+			require.NoError(storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, actor))
+			require.NoError(storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, actor, actor, actor, actor, actor))
 			// Set base asset balance to sufficient amount
 			require.NoError(storage.SetBalance(context.Background(), store, actor, baseAssetID, 5000))
 			// Set the marketplace asset for the dataset
@@ -210,7 +210,7 @@ func BenchmarkSubscribeDatasetMarketplace(b *testing.B) {
 			metadataMap["paymentClaimed"] = "0"
 			metadata, err := utils.MapToBytes(metadataMap)
 			require.NoError(err)
-			require.NoError(storage.SetAsset(context.Background(), store, marketplaceAssetID, nconsts.AssetMarketplaceTokenID, []byte("Marketplace Token"), []byte("MKT"), 0, metadata, []byte(datasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+			require.NoError(storage.SetAssetInfo(context.Background(), store, marketplaceAssetID, nconsts.AssetMarketplaceTokenID, []byte("Marketplace Token"), []byte("MKT"), 0, metadata, []byte(datasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
@@ -226,7 +226,7 @@ func BenchmarkSubscribeDatasetMarketplace(b *testing.B) {
 			require.Equal(b, actor, owner)
 
 			// Check if the marketplace asset metadata was updated correctly
-			exists, _, _, _, _, metadata, _, _, _, _, _, _, _, _, err := storage.GetAsset(ctx, store, marketplaceAssetID)
+			exists, _, _, _, _, metadata, _, _, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, store, marketplaceAssetID)
 			require.NoError(err)
 			require.True(exists)
 

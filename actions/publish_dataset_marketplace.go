@@ -48,10 +48,10 @@ func (*PublishDatasetMarketplace) GetTypeID() uint8 {
 
 func (d *PublishDatasetMarketplace) StateKeys(_ codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.AssetKey(d.MarketplaceAssetID)): state.All,
-		string(storage.DatasetKey(d.DatasetID)):        state.Read | state.Write,
-		string(storage.AssetKey(d.DatasetID)):          state.Read,
-		string(storage.AssetKey(d.MarketplaceAssetID)): state.Allocate | state.Write,
+		string(storage.AssetInfoKey(d.MarketplaceAssetID)): state.All,
+		string(storage.DatasetInfoKey(d.DatasetID)):        state.Read | state.Write,
+		string(storage.AssetInfoKey(d.DatasetID)):          state.Read,
+		string(storage.AssetInfoKey(d.MarketplaceAssetID)): state.Allocate | state.Write,
 	}
 }
 
@@ -64,7 +64,7 @@ func (d *PublishDatasetMarketplace) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the dataset exists
-	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, _, _, _, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := storage.GetDataset(ctx, mu, d.DatasetID)
+	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, _, _, _, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := storage.GetDatasetInfoNoController(ctx, mu, d.DatasetID)
 	if err != nil {
 		return nil, err
 	}
@@ -74,16 +74,16 @@ func (d *PublishDatasetMarketplace) Execute(
 
 	// Check if the actor is the owner of the dataset
 	if owner != actor {
-		return nil, ErrOutputWrongOwner
+		return nil, ErrWrongOwner
 	}
 
 	// Update the dataset
-	if err := storage.SetDataset(ctx, mu, d.DatasetID, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, d.MarketplaceAssetID, d.BaseAssetID, d.BasePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
+	if err := storage.SetDatasetInfo(ctx, mu, d.DatasetID, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, d.MarketplaceAssetID, d.BaseAssetID, d.BasePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
 		return nil, err
 	}
 
 	// Retrieve the asset info
-	exists, _, name, symbol, _, _, _, _, _, _, _, _, _, _, err := storage.GetAsset(ctx, mu, d.DatasetID)
+	exists, _, name, symbol, _, _, _, _, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, d.DatasetID)
 	if err != nil {
 		return nil, err
 	}
@@ -112,12 +112,12 @@ func (d *PublishDatasetMarketplace) Execute(
 	}
 
 	// TODO: Remove after hypersdk adds pseudorandom actionID generation
-	exists, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = storage.GetAsset(ctx, mu, d.MarketplaceAssetID)
+	exists, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = storage.GetAssetInfoNoController(ctx, mu, d.MarketplaceAssetID)
 	if exists {
 		return nil, ErrAssetAlreadyExists
 	}
 
-	if err := storage.SetAsset(ctx, mu, d.MarketplaceAssetID, nconsts.AssetMarketplaceTokenID, name, symbol, 0, metadata, []byte(d.DatasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, d.MarketplaceAssetID, nconsts.AssetMarketplaceTokenID, name, symbol, 0, metadata, []byte(d.DatasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}
 

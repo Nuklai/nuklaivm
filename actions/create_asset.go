@@ -35,9 +35,6 @@ var (
 )
 
 type CreateAsset struct {
-	// TODO: Remove after hypersdk adds pseudorandom actionID generation
-	AssetID string `serialize:"true" json:"asset_id"`
-
 	// Asset type
 	AssetType uint8 `serialize:"true" json:"asset_type"`
 
@@ -77,20 +74,17 @@ func (*CreateAsset) GetTypeID() uint8 {
 }
 
 func (c *CreateAsset) StateKeys(actor codec.Address) state.Keys {
-	assetID := utils.GenerateIDWithString(c.AssetID)
-	// Initialize the base stateKeys map
+	assetAddress := storage.AssetAddress(c.AssetType, []byte(c.Name), []byte(c.Symbol), c.Decimals, []byte(c.Metadata), []byte(c.URI), actor)
 	stateKeys := state.Keys{
-		string(storage.BalanceKey(actor, assetID)): state.Allocate | state.Write,
-		// string(storage.AssetKey(c.AssetID)):          state.Allocate | state.Write,
-		string(storage.AssetKey(assetID)): state.All,
+		string(storage.AssetInfoKey(assetAddress)):                  state.All,
+		string(storage.AssetAccountBalanceKey(assetAddress, actor)): state.Allocate | state.Write,
 	}
 
-	// Check if c.AssetType is a non-fungible type or dataset type so we
+	// Check if c.AssetType is a dataset type so we
 	// can create the NFT ID
-	if c.AssetType == nconsts.AssetNonFungibleTokenID || c.AssetType == nconsts.AssetDatasetTokenID {
-		nftID := utils.GenerateIDWithIndex(assetID, 0)
-		stateKeys[string(storage.BalanceKey(actor, nftID))] = state.Allocate | state.Write
-		stateKeys[string(storage.AssetNFTKey(nftID))] = state.Allocate | state.Write
+	if c.AssetType == nconsts.AssetDatasetTokenID {
+		nftAddress := storage.AssetNFTAddress(assetAddress, 0)
+		stateKeys[string(storage.AssetAccountBalanceKey(nftAddress, actor))] = state.Allocate | state.Write
 	}
 	return stateKeys
 }
@@ -103,7 +97,7 @@ func (c *CreateAsset) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-	assetID := utils.GenerateIDWithString(c.AssetID)
+	assetAddress := storage.AssetAddress(c.AssetType, []byte(c.Name), []byte(c.Symbol), c.Decimals, []byte(c.Metadata), []byte(c.URI), actor)
 
 	if c.AssetType != nconsts.AssetFungibleTokenID && c.AssetType != nconsts.AssetNonFungibleTokenID && c.AssetType != nconsts.AssetDatasetTokenID {
 		return nil, ErrOutputAssetTypeInvalid
@@ -140,28 +134,28 @@ func (c *CreateAsset) Execute(
 		enableDisableKYCAccountAdmin = c.EnableDisableKYCAccountAdmin
 	}
 
-	exists, _, _, _, _, _, _, _, _, _, _, _, _, _, _ := storage.GetAsset(ctx, mu, assetID)
+	exists, _, _, _, _, _, _, _, _, _, _, _, _, _, _ := storage.GetAssetInfoNoController(ctx, mu, assetAddress)
 	if exists {
 		return nil, ErrAssetAlreadyExists
 	}
 
 	output := CreateAssetResult{
-		AssetID:      assetID,
+		AssetID:      assetAddress,
 		AssetBalance: uint64(0),
 	}
 	totalSupply := uint64(0)
 	if c.AssetType == nconsts.AssetDatasetTokenID {
 		// Mint the parent NFT for the dataset(fractionalized asset)
-		nftID := utils.GenerateIDWithIndex(assetID, 0)
+		nftID := utils.GenerateIDWithIndex(assetAddress, 0)
 		output.DatasetParentNftID = nftID
-		if err := storage.SetAssetNFT(ctx, mu, assetID, 0, nftID, []byte(c.URI), []byte(c.Metadata), actor); err != nil {
+		if err := storage.SetAssetNFT(ctx, mu, assetAddress, 0, nftID, []byte(c.URI), []byte(c.Metadata), actor); err != nil {
 			return nil, err
 		}
 		amountOfToken := uint64(1)
 		totalSupply += amountOfToken
 		output.AssetBalance = amountOfToken
 		// Add the balance to NFT collection
-		if _, err := storage.AddBalance(ctx, mu, actor, assetID, amountOfToken, true); err != nil {
+		if _, err := storage.AddBalance(ctx, mu, actor, assetAddress, amountOfToken, true); err != nil {
 			return nil, err
 		}
 
@@ -171,7 +165,7 @@ func (c *CreateAsset) Execute(
 		}
 	}
 
-	if err := storage.SetAsset(ctx, mu, assetID, c.AssetType, []byte(c.Name), []byte(c.Symbol), c.Decimals, []byte(c.Metadata), []byte(c.URI), totalSupply, c.MaxSupply, actor, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, assetAddress, c.AssetType, []byte(c.Name), []byte(c.Symbol), c.Decimals, []byte(c.Metadata), []byte(c.URI), totalSupply, c.MaxSupply, actor, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin); err != nil {
 		return nil, err
 	}
 

@@ -42,7 +42,7 @@ func TestClaimValidatorStakeRewardsActionFailure(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set validator stake with end block greater than the current block height
-				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, 5000, 10, addr, addr))
+				require.NoError(t, storage.SetValidatorStake(context.Background(), store, nodeID, 25, 50, 5000, 10, addr, addr))
 				return store
 			}(),
 			ExpectedErr: ErrStakeNotStarted,
@@ -71,7 +71,7 @@ func TestClaimValidatorStakeRewardsActionSuccess(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set validator stake with end block less than the current block height
-				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, emission.GetStakingConfig().MinValidatorStake, 10, addr, addr))
+				require.NoError(t, storage.SetValidatorStake(context.Background(), store, nodeID, 25, 50, emission.GetStakingConfig().MinValidatorStake, 10, addr, addr))
 				// Set the balance for the validator
 				require.NoError(t, storage.SetBalance(context.Background(), store, addr, ids.Empty, 0))
 				return store
@@ -83,7 +83,7 @@ func TestClaimValidatorStakeRewardsActionSuccess(t *testing.T) {
 				require.Equal(t, uint64(20), balance)
 
 				// Check if the stake still exists after claiming rewards
-				exists, _, _, _, _, rewardAddress, _, _ := storage.GetRegisterValidatorStake(ctx, store, nodeID)
+				exists, _, _, _, _, rewardAddress, _, _ := storage.GetValidatorStakeNoController(ctx, store, nodeID)
 				require.True(t, exists)
 				require.Equal(t, addr, rewardAddress)
 			},
@@ -120,7 +120,7 @@ func BenchmarkClaimValidatorStakeRewards(b *testing.B) {
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set validator stake with end block less than the current block height
-			require.NoError(storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, emission.GetStakingConfig().MinValidatorStake, 10, actor, actor))
+			require.NoError(storage.SetValidatorStake(context.Background(), store, nodeID, 25, 50, emission.GetStakingConfig().MinValidatorStake, 10, actor, actor))
 			// Set the balance for the validator
 			require.NoError(storage.SetBalance(context.Background(), store, actor, ids.Empty, 0))
 			return store

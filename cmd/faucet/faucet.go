@@ -111,9 +111,9 @@ func transferCoins(to string) (string, error) {
 		ctx,
 		parser,
 		[]chain.Action{&actions.Transfer{
-			To:      toAddr,
-			AssetID: consts.Symbol,
-			Value:   amt,
+			To:           toAddr,
+			AssetAddress: consts.Symbol,
+			Value:        amt,
 		}},
 		factory,
 	)

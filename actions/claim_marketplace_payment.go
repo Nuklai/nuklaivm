@@ -49,9 +49,9 @@ func (*ClaimMarketplacePayment) GetTypeID() uint8 {
 
 func (c *ClaimMarketplacePayment) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.DatasetKey(c.DatasetID)):              state.Read,
-		string(storage.AssetKey(c.MarketplaceAssetID)):       state.Read | state.Write,
-		string(storage.AssetKey(c.AssetForPayment)):          state.Read,
+		string(storage.DatasetInfoKey(c.DatasetID)):          state.Read,
+		string(storage.AssetInfoKey(c.MarketplaceAssetID)):   state.Read | state.Write,
+		string(storage.AssetInfoKey(c.AssetForPayment)):      state.Read,
 		string(storage.BalanceKey(actor, c.AssetForPayment)): state.Allocate | state.Write,
 	}
 }
@@ -65,7 +65,7 @@ func (c *ClaimMarketplacePayment) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the dataset exists
-	exists, _, _, _, _, _, _, _, _, _, baseAsset, _, _, _, _, _, owner, err := storage.GetDataset(ctx, mu, c.DatasetID)
+	exists, _, _, _, _, _, _, _, _, _, baseAsset, _, _, _, _, _, owner, err := storage.GetDatasetInfoNoController(ctx, mu, c.DatasetID)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (c *ClaimMarketplacePayment) Execute(
 	// Check if the user is the owner of the dataset
 	// Only the onwer can claim the payment
 	if owner != actor {
-		return nil, ErrOutputWrongOwner
+		return nil, ErrWrongOwner
 	}
 
 	// Ensure assetForPayment is supported
@@ -85,7 +85,7 @@ func (c *ClaimMarketplacePayment) Execute(
 	}
 
 	// Check if the marketplace asset exists
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAsset(ctx, mu, c.MarketplaceAssetID)
+	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAssetInfoNoController(ctx, mu, c.MarketplaceAssetID)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (c *ClaimMarketplacePayment) Execute(
 	// Parse the value of 1 in the base unit according to the number of decimals
 	decimalsToUse := uint8(nconsts.Decimals)
 	if c.AssetForPayment != ids.Empty {
-		exists, _, _, _, decimals, _, _, _, _, _, _, _, _, _, err = storage.GetAsset(ctx, mu, c.AssetForPayment)
+		exists, _, _, _, decimals, _, _, _, _, _, _, _, _, _, err = storage.GetAssetInfoNoController(ctx, mu, c.AssetForPayment)
 		if err != nil {
 			return nil, err
 		}
@@ -169,7 +169,7 @@ func (c *ClaimMarketplacePayment) Execute(
 	}
 
 	// Update the asset with the updated metadata
-	if err := storage.SetAsset(ctx, mu, c.MarketplaceAssetID, assetType, name, symbol, decimals, updatedMetadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, c.MarketplaceAssetID, assetType, name, symbol, decimals, updatedMetadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
 		return nil, err
 	}
 

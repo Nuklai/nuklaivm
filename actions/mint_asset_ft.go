@@ -49,7 +49,7 @@ func (*MintAssetFT) GetTypeID() uint8 {
 
 func (m *MintAssetFT) StateKeys(codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.AssetKey(m.AssetID)):         state.Read | state.Write,
+		string(storage.AssetInfoKey(m.AssetID)):     state.Read | state.Write,
 		string(storage.BalanceKey(m.To, m.AssetID)): state.All,
 	}
 }
@@ -66,9 +66,9 @@ func (m *MintAssetFT) Execute(
 		return nil, ErrOutputAssetIsNative
 	}
 	if m.Value == 0 {
-		return nil, ErrOutputValueZero
+		return nil, ErrValueZero
 	}
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAsset(ctx, mu, m.AssetID)
+	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, mu, m.AssetID)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (m *MintAssetFT) Execute(
 		return nil, ErrOutputMaxSupplyReached
 	}
 
-	if err := storage.SetAsset(ctx, mu, m.AssetID, assetType, name, symbol, decimals, metadata, uri, newSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, m.AssetID, assetType, name, symbol, decimals, metadata, uri, newSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin); err != nil {
 		return nil, err
 	}
 	newBalance, err := storage.AddBalance(ctx, mu, m.To, m.AssetID, m.Value, true)

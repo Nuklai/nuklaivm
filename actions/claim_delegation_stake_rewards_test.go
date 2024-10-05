@@ -42,7 +42,7 @@ func TestClaimDelegationStakeRewardsActionFailure(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set stake with end block greater than the current block height
-				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
+				require.NoError(t, storage.SetDelegatorStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
 				return store
 			}(),
 			ExpectedErr: ErrStakeNotStarted,
@@ -71,7 +71,7 @@ func TestClaimDelegationStakeRewardsActionSuccess(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set stake with end block less than the current block height
-				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
+				require.NoError(t, storage.SetDelegatorStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
@@ -81,7 +81,7 @@ func TestClaimDelegationStakeRewardsActionSuccess(t *testing.T) {
 				require.Equal(t, uint64(20), balance)
 
 				// Check if the stake was claimed correctly
-				exists, _, _, _, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, store, addr, nodeID)
+				exists, _, _, _, rewardAddress, _, _ := storage.GetDelegatorStakeNoController(ctx, store, addr, nodeID)
 				require.True(t, exists)
 				require.Equal(t, addr, rewardAddress)
 			},
@@ -118,7 +118,7 @@ func BenchmarkClaimDelegationStakeRewards(b *testing.B) {
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set stake with end block less than the current block height
-			require.NoError(storage.SetDelegateUserStake(context.Background(), store, actor, nodeID, 25, 50, 1000, actor))
+			require.NoError(storage.SetDelegatorStake(context.Background(), store, actor, nodeID, 25, 50, 1000, actor))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {

@@ -34,8 +34,8 @@ func (*ClaimValidatorStakeRewards) GetTypeID() uint8 {
 
 func (c *ClaimValidatorStakeRewards) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.BalanceKey(actor, ids.Empty)):        state.All,
-		string(storage.RegisterValidatorStakeKey(c.NodeID)): state.Read,
+		string(storage.BalanceKey(actor, ids.Empty)): state.All,
+		string(storage.ValidatorStakeKey(c.NodeID)):  state.Read,
 	}
 }
 
@@ -48,7 +48,7 @@ func (c *ClaimValidatorStakeRewards) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check whether a validator is trying to claim its reward
-	exists, stakeStartBlock, stakeEndBlock, stakeAmount, delegationFeeRate, rewardAddress, _, _ := storage.GetRegisterValidatorStake(ctx, mu, c.NodeID)
+	exists, stakeStartBlock, stakeEndBlock, stakeAmount, delegationFeeRate, rewardAddress, _, _ := storage.GetValidatorStakeNoController(ctx, mu, c.NodeID)
 	if !exists {
 		return nil, ErrStakeMissing
 	}

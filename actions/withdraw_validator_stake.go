@@ -40,8 +40,8 @@ func (*WithdrawValidatorStake) GetTypeID() uint8 {
 
 func (u *WithdrawValidatorStake) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.BalanceKey(actor, ids.Empty)):        state.Read | state.Write,
-		string(storage.RegisterValidatorStakeKey(u.NodeID)): state.Read | state.Write,
+		string(storage.BalanceKey(actor, ids.Empty)): state.Read | state.Write,
+		string(storage.ValidatorStakeKey(u.NodeID)):  state.Read | state.Write,
 	}
 }
 
@@ -54,7 +54,7 @@ func (u *WithdrawValidatorStake) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the validator was already registered
-	exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, _, ownerAddress, _ := storage.GetRegisterValidatorStake(ctx, mu, u.NodeID)
+	exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, _, ownerAddress, _ := storage.GetValidatorStakeNoController(ctx, mu, u.NodeID)
 	if !exists {
 		return nil, ErrNotValidator
 	}
@@ -78,7 +78,7 @@ func (u *WithdrawValidatorStake) Execute(
 		return nil, err
 	}
 
-	if err := storage.DeleteRegisterValidatorStake(ctx, mu, u.NodeID); err != nil {
+	if err := storage.DeleteValidatorStake(ctx, mu, u.NodeID); err != nil {
 		return nil, err
 	}
 	balance, err := storage.AddBalance(ctx, mu, actor, ids.Empty, rewardAmount+stakedAmount, true)

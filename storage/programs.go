@@ -63,15 +63,15 @@ type ContractStateManager struct {
 }
 
 func (p *ContractStateManager) GetBalance(ctx context.Context, address codec.Address) (uint64, error) {
-	_, balance, _, err := getBalance(ctx, p, address, ids.Empty)
+	balance, err := GetAssetAccountBalanceNoController(ctx, p, NAIAddress, address)
 	return balance, err
 }
 
 func (p *ContractStateManager) TransferBalance(ctx context.Context, from codec.Address, to codec.Address, amount uint64) error {
-	if _, err := SubBalance(ctx, p, from, ids.Empty, amount); err != nil {
+	if _, err := BurnAsset(ctx, p, NAIAddress, from, amount); err != nil {
 		return err
 	}
-	_, err := AddBalance(ctx, p, to, ids.Empty, amount, true)
+	_, err := MintAsset(ctx, p, NAIAddress, to, amount)
 	return err
 }
 

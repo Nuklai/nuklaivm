@@ -9,10 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/storage"
-	"github.com/nuklai/nuklaivm/utils"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/hypersdk/chain/chaintest"
@@ -22,46 +20,37 @@ import (
 )
 
 func TestTransferAction(t *testing.T) {
-	addr := codectest.NewRandomAddress()
-	assetID := ids.GenerateTestID()
-	nftID := utils.GenerateIDWithIndex(assetID, 0)
+	actor := codectest.NewRandomAddress()
+	assetAddress := codectest.NewRandomAddress()
+	nftAddress := codectest.NewRandomAddress()
 
 	tests := []chaintest.ActionTest{
 		{
 			Name:  "ZeroTransfer",
-			Actor: codec.EmptyAddress,
+			Actor: actor,
 			Action: &Transfer{
-				To:    codec.EmptyAddress,
-				Value: 0,
+				To:           codec.EmptyAddress,
+				AssetAddress: storage.NAIAddress,
+				Value:        0,
 			},
-			ExpectedErr: ErrOutputValueZero,
-		},
-		{
-			Name:  "InvalidAddress",
-			Actor: codec.EmptyAddress,
-			Action: &Transfer{
-				To:    codec.EmptyAddress,
-				Value: 1,
-			},
-			State:       chaintest.NewInMemoryStore(),
-			ExpectedErr: storage.ErrInvalidAddress,
+			ExpectedErr: ErrValueZero,
 		},
 		{
 			Name:  "NotEnoughBalance",
-			Actor: codec.EmptyAddress,
+			Actor: actor,
 			Action: &Transfer{
-				To:    codec.EmptyAddress,
-				Value: 1,
+				To:           codec.EmptyAddress,
+				AssetAddress: storage.NAIAddress,
+				Value:        1,
 			},
 			State: func() state.Mutable {
 				s := chaintest.NewInMemoryStore()
-				_, err := storage.AddBalance(
+				_, err := storage.MintAsset(
 					context.Background(),
 					s,
-					codec.EmptyAddress,
-					ids.Empty,
+					storage.NAIAddress,
+					actor,
 					0,
-					true,
 				)
 				require.NoError(t, err)
 				return s
@@ -70,43 +59,46 @@ func TestTransferAction(t *testing.T) {
 		},
 		{
 			Name:  "OverflowBalance",
-			Actor: codec.EmptyAddress,
+			Actor: actor,
 			Action: &Transfer{
-				To:    codec.EmptyAddress,
-				Value: math.MaxUint64,
+				To:           codec.EmptyAddress,
+				AssetAddress: storage.NAIAddress,
+				Value:        math.MaxUint64,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				require.NoError(t, storage.SetBalance(context.Background(), store, codec.EmptyAddress, ids.Empty, 1))
+				require.NoError(t, storage.SetAssetAccountBalance(context.Background(), store, storage.NAIAddress, actor, 1))
 				return store
 			}(),
 			ExpectedErr: storage.ErrInvalidBalance,
 		},
 		{
 			Name:  "MemoSizeExceeded",
-			Actor: codec.EmptyAddress,
+			Actor: actor,
 			Action: &Transfer{
-				To:    addr,
-				Value: 1,
-				Memo:  strings.Repeat("a", MaxMemoSize+1),
+				To:           codec.EmptyAddress,
+				AssetAddress: storage.NAIAddress,
+				Value:        1,
+				Memo:         strings.Repeat("a", MaxMemoSize+1),
 			},
 			State:       chaintest.NewInMemoryStore(),
-			ExpectedErr: ErrOutputMemoTooLarge,
+			ExpectedErr: ErrMemoTooLarge,
 		},
 		{
 			Name:  "SelfTransfer",
-			Actor: codec.EmptyAddress,
+			Actor: actor,
 			Action: &Transfer{
-				To:    codec.EmptyAddress,
-				Value: 1,
+				To:           actor,
+				AssetAddress: storage.NAIAddress,
+				Value:        1,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				require.NoError(t, storage.SetBalance(context.Background(), store, codec.EmptyAddress, ids.Empty, 1))
+				require.NoError(t, storage.SetAssetAccountBalance(context.Background(), store, storage.NAIAddress, actor, 1))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
-				balance, err := storage.GetBalance(ctx, store, codec.EmptyAddress, ids.Empty)
+				balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, storage.NAIAddress, actor)
 				require.NoError(t, err)
 				require.Equal(t, balance, uint64(1))
 			},
@@ -117,21 +109,22 @@ func TestTransferAction(t *testing.T) {
 		},
 		{
 			Name:  "SimpleTransfer",
-			Actor: codec.EmptyAddress,
+			Actor: actor,
 			Action: &Transfer{
-				To:    addr,
-				Value: 1,
+				To:           codec.EmptyAddress,
+				AssetAddress: storage.NAIAddress,
+				Value:        1,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				require.NoError(t, storage.SetBalance(context.Background(), store, codec.EmptyAddress, ids.Empty, 1))
+				require.NoError(t, storage.SetAssetAccountBalance(context.Background(), store, storage.NAIAddress, actor, 1))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
-				receiverBalance, err := storage.GetBalance(ctx, store, addr, ids.Empty)
+				receiverBalance, err := storage.GetAssetAccountBalanceNoController(ctx, store, storage.NAIAddress, codec.EmptyAddress)
 				require.NoError(t, err)
 				require.Equal(t, receiverBalance, uint64(1))
-				senderBalance, err := storage.GetBalance(ctx, store, codec.EmptyAddress, ids.Empty)
+				senderBalance, err := storage.GetAssetAccountBalanceNoController(ctx, store, storage.NAIAddress, actor)
 				require.NoError(t, err)
 				require.Equal(t, senderBalance, uint64(0))
 			},
@@ -141,46 +134,26 @@ func TestTransferAction(t *testing.T) {
 			},
 		},
 		{
-			Name:  "NativeAssetTransfer",
-			Actor: codec.EmptyAddress,
-			Action: &Transfer{
-				To:      addr,
-				Value:   10,
-				AssetID: consts.Symbol,
-			},
-			State: func() state.Mutable {
-				store := chaintest.NewInMemoryStore()
-				require.NoError(t, storage.SetBalance(context.Background(), store, codec.EmptyAddress, ids.Empty, 10))
-				return store
-			}(),
-			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
-				receiverBalance, err := storage.GetBalance(ctx, store, addr, ids.Empty)
-				require.NoError(t, err)
-				require.Equal(t, uint64(10), receiverBalance)
-			},
-			ExpectedOutputs: &TransferResult{
-				SenderBalance:   0,
-				ReceiverBalance: 10,
-			},
-		},
-		{
 			Name:  "ValidFTTransfer",
-			Actor: codec.EmptyAddress,
+			Actor: actor,
 			Action: &Transfer{
-				To:      addr,
-				Value:   1,
-				AssetID: assetID.String(),
+				To:           codec.EmptyAddress,
+				AssetAddress: assetAddress,
+				Value:        1,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				require.NoError(t, storage.SetBalance(context.Background(), store, codec.EmptyAddress, assetID, 1))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, consts.AssetFungibleTokenID, []byte("Asset1"), []byte("ASSET1"), 0, []byte("metadata"), []byte("uri"), 1, 0, actor, actor, actor, actor, actor))
+				require.NoError(t, storage.SetAssetAccountBalance(context.Background(), store, assetAddress, actor, 1))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
-				// Check asset balance for addr
-				balance, err := storage.GetBalance(ctx, store, addr, assetID)
+				receiverBalance, err := storage.GetAssetAccountBalanceNoController(ctx, store, assetAddress, codec.EmptyAddress)
 				require.NoError(t, err)
-				require.Equal(t, uint64(1), balance)
+				require.Equal(t, receiverBalance, uint64(1))
+				senderBalance, err := storage.GetAssetAccountBalanceNoController(ctx, store, assetAddress, actor)
+				require.NoError(t, err)
+				require.Equal(t, senderBalance, uint64(0))
 			},
 			ExpectedOutputs: &TransferResult{
 				SenderBalance:   0,
@@ -189,34 +162,25 @@ func TestTransferAction(t *testing.T) {
 		},
 		{
 			Name:  "ValidNFTTransfer",
-			Actor: codec.EmptyAddress,
+			Actor: actor,
 			Action: &Transfer{
-				To:      addr,
-				Value:   1,
-				AssetID: nftID.String(),
+				To:           codec.EmptyAddress,
+				AssetAddress: nftAddress,
+				Value:        1,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				// Set initial ownership of the NFT to the actor
-				collectionID, uniqueID, uri, metadata, owner := assetID, uint64(0), "uri", "metadata", codec.EmptyAddress
-				require.NoError(t, storage.SetAssetNFT(context.Background(), store, collectionID, uniqueID, nftID, []byte(uri), []byte(metadata), owner))
-				require.NoError(t, storage.SetBalance(context.Background(), store, owner, nftID, 1))
-				require.NoError(t, storage.SetBalance(context.Background(), store, owner, collectionID, 1))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, nftAddress, consts.AssetNonFungibleTokenID, []byte("Asset1"), []byte("ASSET1"), 0, []byte("metadata"), []byte("uri"), 1, 0, actor, actor, actor, actor, actor))
+				require.NoError(t, storage.SetAssetAccountBalance(context.Background(), store, nftAddress, actor, 1))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
-				// Check NFT balance for addr
-				balance, err := storage.GetBalance(ctx, store, addr, nftID)
+				receiverBalance, err := storage.GetAssetAccountBalanceNoController(ctx, store, nftAddress, codec.EmptyAddress)
 				require.NoError(t, err)
-				require.Equal(t, uint64(1), balance)
-				// Check collectionID balance for addr
-				balance, err = storage.GetBalance(ctx, store, addr, assetID)
+				require.Equal(t, receiverBalance, uint64(1))
+				senderBalance, err := storage.GetAssetAccountBalanceNoController(ctx, store, nftAddress, actor)
 				require.NoError(t, err)
-				require.Equal(t, uint64(1), balance)
-				// Check if the NFT has been transferred correctly
-				exists, _, _, _, _, owner, _ := storage.GetAssetNFT(ctx, store, nftID)
-				require.True(t, exists)
-				require.Equal(t, addr.String(), owner.String())
+				require.Equal(t, senderBalance, uint64(0))
 			},
 			ExpectedOutputs: &TransferResult{
 				SenderBalance:   0,
@@ -224,21 +188,20 @@ func TestTransferAction(t *testing.T) {
 			},
 		},
 		{
-			Name:  "InvalidOwnerForNFTTransfer",
-			Actor: addr, // Someone other than the actual owner
+			Name:  "InvalidInsufficientTokenBalance",
+			Actor: actor, // Someone other than the actual owner
 			Action: &Transfer{
-				To:      codec.EmptyAddress,
-				Value:   1,
-				AssetID: nftID.String(),
+				To:           codec.EmptyAddress,
+				AssetAddress: nftAddress,
+				Value:        1,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				// Set initial ownership of the NFT to another address
-				collectionID, uniqueID, uri, metadata, owner := assetID, uint64(0), "uri", "metadata", codec.EmptyAddress
-				require.NoError(t, storage.SetAssetNFT(context.Background(), store, collectionID, uniqueID, nftID, []byte(uri), []byte(metadata), owner))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, nftAddress, consts.AssetNonFungibleTokenID, []byte("Asset1"), []byte("ASSET1"), 0, []byte("metadata"), []byte("uri"), 1, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetAccountBalance(context.Background(), store, nftAddress, codec.EmptyAddress, 1))
 				return store
 			}(),
-			ExpectedErr: ErrOutputWrongOwner,
+			ExpectedErr: ErrInsufficientTokenBalance,
 		},
 	}
 
@@ -249,31 +212,30 @@ func TestTransferAction(t *testing.T) {
 
 func BenchmarkSimpleTransfer(b *testing.B) {
 	require := require.New(b)
-	to := codec.CreateAddress(0, ids.GenerateTestID())
-	from := codec.CreateAddress(0, ids.GenerateTestID())
+	to := codectest.NewRandomAddress()
+	actor := codectest.NewRandomAddress()
 
 	transferActionTest := &chaintest.ActionBenchmark{
 		Name:  "SimpleTransferBenchmark",
-		Actor: from,
+		Actor: actor,
 		Action: &Transfer{
-			To:      to,
-			AssetID: consts.Symbol,
-			Value:   1,
+			To:           to,
+			AssetAddress: storage.NAIAddress,
+			Value:        1,
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
-			err := storage.SetBalance(context.Background(), store, from, ids.Empty, 1)
-			require.NoError(err)
+			require.NoError(storage.SetAssetInfo(context.Background(), store, storage.NAIAddress, consts.AssetFungibleTokenID, []byte("Asset1"), []byte("ASSET1"), 0, []byte("metadata"), []byte("uri"), 1, 0, actor, actor, actor, actor, actor))
+			require.NoError(storage.SetAssetAccountBalance(context.Background(), store, storage.NAIAddress, actor, 1))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
-			toBalance, err := storage.GetBalance(ctx, store, to, ids.Empty)
+			receiverBalance, err := storage.GetAssetAccountBalanceNoController(ctx, store, storage.NAIAddress, codec.EmptyAddress)
 			require.NoError(err)
-			require.Equal(uint64(1), toBalance)
-
-			fromBalance, err := storage.GetBalance(ctx, store, from, ids.Empty)
+			require.Equal(receiverBalance, uint64(1))
+			senderBalance, err := storage.GetAssetAccountBalanceNoController(ctx, store, storage.NAIAddress, actor)
 			require.NoError(err)
-			require.Equal(uint64(0), fromBalance)
+			require.Equal(senderBalance, uint64(0))
 		},
 	}
 

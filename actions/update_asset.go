@@ -76,7 +76,7 @@ func (*UpdateAsset) GetTypeID() uint8 {
 
 func (u *UpdateAsset) StateKeys(_ codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.AssetKey(u.AssetID)): state.Read | state.Write,
+		string(storage.AssetInfoKey(u.AssetID)): state.Read | state.Write,
 	}
 }
 
@@ -89,7 +89,7 @@ func (u *UpdateAsset) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the asset exists
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAsset(ctx, mu, u.AssetID)
+	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, mu, u.AssetID)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (u *UpdateAsset) Execute(
 
 	// Check if the actor is the owner of the asset
 	if owner != actor {
-		return nil, ErrOutputWrongOwner
+		return nil, ErrWrongOwner
 	}
 
 	// Note that maxSupply can never be set to 0 on an update.
@@ -190,7 +190,7 @@ func (u *UpdateAsset) Execute(
 		updateAssetResult.EnableDisableKYCAccountAdmin = u.EnableDisableKYCAccountAdmin
 	}
 
-	if err := storage.SetAsset(ctx, mu, u.AssetID, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, u.AssetID, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin); err != nil {
 		return nil, err
 	}
 

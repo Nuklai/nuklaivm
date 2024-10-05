@@ -41,7 +41,7 @@ func TestUpdateDatasetAction(t *testing.T) {
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 0, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 0, addr))
 				return store
 			}(),
 			ExpectedErr: ErrOutputMustUpdateAtLeastOneField,
@@ -55,7 +55,7 @@ func TestUpdateDatasetAction(t *testing.T) {
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 0, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 0, addr))
 				return store
 			}(),
 			ExpectedErr: ErrNameInvalid,
@@ -70,12 +70,12 @@ func TestUpdateDatasetAction(t *testing.T) {
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 0, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 0, addr))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if the dataset was updated correctly
-				exists, name, description, _, _, _, _, _, _, _, _, _, _, _, _, _, owner, err := storage.GetDataset(ctx, store, datasetID)
+				exists, name, description, _, _, _, _, _, _, _, _, _, _, _, _, _, owner, err := storage.GetDatasetInfoNoController(ctx, store, datasetID)
 				require.NoError(t, err)
 				require.True(t, exists)
 				require.Equal(t, "Updated Name", string(name))
@@ -109,12 +109,12 @@ func BenchmarkUpdateDataset(b *testing.B) {
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
-			require.NoError(storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 0, actor))
+			require.NoError(storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 0, actor))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check if the dataset was updated correctly
-			exists, name, description, _, _, _, _, _, _, _, _, _, _, _, _, _, owner, err := storage.GetDataset(ctx, store, datasetID)
+			exists, name, description, _, _, _, _, _, _, _, _, _, _, _, _, _, owner, err := storage.GetDatasetInfoNoController(ctx, store, datasetID)
 			require.NoError(err)
 			require.True(exists)
 			require.Equal(b, "Benchmark Dataset Name", string(name))

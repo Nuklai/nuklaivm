@@ -52,10 +52,10 @@ func TestClaimMarketplacePaymentAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set the dataset with a different owner
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
 				return store
 			}(),
-			ExpectedErr: ErrOutputWrongOwner,
+			ExpectedErr: ErrWrongOwner,
 		},
 		{
 			Name:  "AssetNotSupported",
@@ -68,7 +68,7 @@ func TestClaimMarketplacePaymentAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set the dataset with the correct owner
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
 				return store
 			}(),
 			ExpectedErr: ErrBaseAssetNotSupported,
@@ -84,7 +84,7 @@ func TestClaimMarketplacePaymentAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set the dataset with the correct owner and metadata
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, addr))
 				// Set the marketplace asset with no payment remaining
 				metadataMap := map[string]string{
 					"paymentRemaining": "0",
@@ -93,7 +93,7 @@ func TestClaimMarketplacePaymentAction(t *testing.T) {
 				}
 				metadata, err := utils.MapToBytes(metadataMap)
 				require.NoError(t, err)
-				require.NoError(t, storage.SetAsset(context.Background(), store, marketplaceAssetID, nconsts.AssetMarketplaceTokenID, []byte("Marketplace Token"), []byte("MKT"), 0, metadata, []byte(datasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, marketplaceAssetID, nconsts.AssetMarketplaceTokenID, []byte("Marketplace Token"), []byte("MKT"), 0, metadata, []byte(datasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			ExpectedErr: ErrNoPaymentRemaining,
@@ -110,7 +110,7 @@ func TestClaimMarketplacePaymentAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set the dataset with the correct owner
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, addr))
 				// Set the marketplace asset with payment remaining
 				metadataMap := map[string]string{
 					"paymentRemaining": "100", // 100 units remaining
@@ -119,7 +119,7 @@ func TestClaimMarketplacePaymentAction(t *testing.T) {
 				}
 				metadata, err := utils.MapToBytes(metadataMap)
 				require.NoError(t, err)
-				require.NoError(t, storage.SetAsset(context.Background(), store, marketplaceAssetID, nconsts.AssetMarketplaceTokenID, []byte("Marketplace Token"), []byte("MKT"), 0, metadata, []byte(datasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, marketplaceAssetID, nconsts.AssetMarketplaceTokenID, []byte("Marketplace Token"), []byte("MKT"), 0, metadata, []byte(datasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
@@ -129,7 +129,7 @@ func TestClaimMarketplacePaymentAction(t *testing.T) {
 				require.Equal(t, uint64(100), balance) // 100 units claimed
 
 				// Check if metadata was updated correctly
-				exists, _, _, _, _, metadata, _, _, _, _, _, _, _, _, err := storage.GetAsset(ctx, store, marketplaceAssetID)
+				exists, _, _, _, _, metadata, _, _, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, store, marketplaceAssetID)
 				require.NoError(t, err)
 				require.True(t, exists)
 
@@ -174,7 +174,7 @@ func BenchmarkClaimMarketplacePayment(b *testing.B) {
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set the dataset with the correct owner
-			require.NoError(storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, actor))
+			require.NoError(storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, actor))
 			// Set the marketplace asset with payment remaining
 			metadataMap := map[string]string{
 				"paymentRemaining": "1000",
@@ -183,7 +183,7 @@ func BenchmarkClaimMarketplacePayment(b *testing.B) {
 			}
 			metadata, err := utils.MapToBytes(metadataMap)
 			require.NoError(err)
-			require.NoError(storage.SetAsset(context.Background(), store, marketplaceAssetID, nconsts.AssetMarketplaceTokenID, []byte("Marketplace Token"), []byte("MKT"), 0, metadata, []byte(datasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+			require.NoError(storage.SetAssetInfo(context.Background(), store, marketplaceAssetID, nconsts.AssetMarketplaceTokenID, []byte("Marketplace Token"), []byte("MKT"), 0, metadata, []byte(datasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {

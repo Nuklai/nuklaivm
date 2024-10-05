@@ -8,15 +8,12 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
-	"strings"
 
 	"github.com/ava-labs/avalanchego/ids"
 
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/utils"
-
-	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 // generateRandomID creates a random [ids.ID] for use in generating random addresses.
@@ -54,11 +51,4 @@ func GenerateIDWithString(str string) ids.ID {
 		assetID = utils.ToID(hash[:ids.IDLen])
 	}
 	return assetID
-}
-
-func GetAssetIDBySymbol(symbol string) (ids.ID, error) {
-	if strings.TrimSpace(symbol) == "" || strings.EqualFold(symbol, nconsts.Symbol) {
-		return ids.Empty, nil
-	}
-	return ids.FromString(symbol)
 }

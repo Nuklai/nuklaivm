@@ -56,7 +56,7 @@ func (*UpdateDataset) GetTypeID() uint8 {
 
 func (u *UpdateDataset) StateKeys(_ codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.DatasetKey(u.DatasetID)): state.Allocate | state.Write,
+		string(storage.DatasetInfoKey(u.DatasetID)): state.Allocate | state.Write,
 	}
 }
 
@@ -69,7 +69,7 @@ func (u *UpdateDataset) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the dataset exists
-	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := storage.GetDataset(ctx, mu, u.DatasetID)
+	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := storage.GetDatasetInfoNoController(ctx, mu, u.DatasetID)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (u *UpdateDataset) Execute(
 
 	// Check if the actor is the owner of the dataset
 	if owner != actor {
-		return nil, ErrOutputWrongOwner
+		return nil, ErrWrongOwner
 	}
 
 	// Ensure that at least one field is being updated
@@ -145,7 +145,7 @@ func (u *UpdateDataset) Execute(
 	}
 
 	// Update the dataset
-	if err := storage.SetDataset(ctx, mu, u.DatasetID, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, u.IsCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
+	if err := storage.SetDatasetInfo(ctx, mu, u.DatasetID, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, u.IsCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
 		return nil, err
 	}
 

@@ -6,8 +6,6 @@ package storage
 import (
 	"context"
 
-	"github.com/ava-labs/avalanchego/ids"
-
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/state"
@@ -17,31 +15,13 @@ var _ (chain.StateManager) = (*StateManager)(nil)
 
 type StateManager struct{}
 
-func (*StateManager) HeightKey() []byte {
-	return HeightKey()
-}
-
-func (*StateManager) TimestampKey() []byte {
-	return TimestampKey()
-}
-
-func (*StateManager) FeeKey() []byte {
-	return FeeKey()
-}
-
-func (*StateManager) SponsorStateKeys(addr codec.Address) state.Keys {
-	return state.Keys{
-		string(BalanceKey(addr, ids.Empty)): state.Read | state.Write,
-	}
-}
-
 func (*StateManager) CanDeduct(
 	ctx context.Context,
 	addr codec.Address,
 	im state.Immutable,
 	amount uint64,
 ) error {
-	bal, err := GetBalance(ctx, im, addr, ids.Empty)
+	bal, err := GetAssetAccountBalanceNoController(ctx, im, NAIAddress, addr)
 	if err != nil {
 		return err
 	}
@@ -57,7 +37,7 @@ func (*StateManager) Deduct(
 	mu state.Mutable,
 	amount uint64,
 ) error {
-	_, err := SubBalance(ctx, mu, addr, ids.Empty, amount)
+	_, err := BurnAsset(ctx, mu, NAIAddress, addr, amount)
 	return err
 }
 
@@ -68,6 +48,24 @@ func (*StateManager) AddBalance(
 	amount uint64,
 	createAccount bool,
 ) error {
-	_, err := AddBalance(ctx, mu, addr, ids.Empty, amount, createAccount)
+	_, err := MintAsset(ctx, mu, NAIAddress, addr, amount)
 	return err
+}
+
+func (*StateManager) SponsorStateKeys(addr codec.Address) state.Keys {
+	return state.Keys{
+		string(AssetAccountBalanceKey(NAIAddress, addr)): state.All,
+	}
+}
+
+func (*StateManager) HeightKey() []byte {
+	return []byte{heightPrefix}
+}
+
+func (*StateManager) TimestampKey() []byte {
+	return []byte{timestampPrefix}
+}
+
+func (*StateManager) FeeKey() []byte {
+	return []byte{feePrefix}
 }

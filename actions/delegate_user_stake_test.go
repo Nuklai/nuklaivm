@@ -48,9 +48,9 @@ func TestDelegateUserStakeAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Register the validator
-				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, 5000, 10, addr, addr))
+				require.NoError(t, storage.SetValidatorStake(context.Background(), store, nodeID, 25, 50, 5000, 10, addr, addr))
 				// Set the user stake
-				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
+				require.NoError(t, storage.SetDelegatorStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
 				return store
 			}(),
 			ExpectedErr: ErrUserAlreadyStaked,
@@ -67,7 +67,7 @@ func TestDelegateUserStakeAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Register the validator
-				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, 5000, 10, addr, addr))
+				require.NoError(t, storage.SetValidatorStake(context.Background(), store, nodeID, 25, 50, 5000, 10, addr, addr))
 				return store
 			}(),
 			ExpectedErr: ErrDelegateStakedAmountInvalid,
@@ -84,7 +84,7 @@ func TestDelegateUserStakeAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Register the validator
-				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, emission.GetStakingConfig().MinValidatorStake, 10, addr, addr))
+				require.NoError(t, storage.SetValidatorStake(context.Background(), store, nodeID, 25, 50, emission.GetStakingConfig().MinValidatorStake, 10, addr, addr))
 				// Set the balance for the user
 				require.NoError(t, storage.SetBalance(context.Background(), store, addr, ids.Empty, emission.GetStakingConfig().MinDelegatorStake*2))
 				return store
@@ -96,7 +96,7 @@ func TestDelegateUserStakeAction(t *testing.T) {
 				require.Equal(t, emission.GetStakingConfig().MinDelegatorStake, balance)
 
 				// Check if the stake was created correctly
-				exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, store, addr, nodeID)
+				exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, _, _ := storage.GetDelegatorStakeNoController(ctx, store, addr, nodeID)
 				require.True(t, exists)
 				require.Equal(t, uint64(25), stakeStartBlock)
 				require.Equal(t, uint64(50), stakeEndBlock)
@@ -135,7 +135,7 @@ func BenchmarkDelegateUserStake(b *testing.B) {
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Register the validator
-			require.NoError(storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 25, 50, emission.GetStakingConfig().MinValidatorStake, 10, actor, actor))
+			require.NoError(storage.SetValidatorStake(context.Background(), store, nodeID, 25, 50, emission.GetStakingConfig().MinValidatorStake, 10, actor, actor))
 			// Set the balance for the user
 			require.NoError(storage.SetBalance(context.Background(), store, actor, ids.Empty, emission.GetStakingConfig().MinDelegatorStake*2))
 			return store
@@ -147,7 +147,7 @@ func BenchmarkDelegateUserStake(b *testing.B) {
 			require.Equal(b, emission.GetStakingConfig().MinDelegatorStake, balance)
 
 			// Check if the stake was created correctly
-			exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, store, actor, nodeID)
+			exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, _, _ := storage.GetDelegatorStakeNoController(ctx, store, actor, nodeID)
 			require.True(exists)
 			require.Equal(b, uint64(25), stakeStartBlock)
 			require.Equal(b, uint64(50), stakeEndBlock)

@@ -71,8 +71,8 @@ func (c *CreateDataset) StateKeys(actor codec.Address) state.Keys {
 	assetID := c.AssetID
 	return state.Keys{
 		// string(storage.AssetKey(assetID)):          state.Allocate | state.Write,
-		string(storage.AssetKey(assetID)):   state.All,
-		string(storage.DatasetKey(assetID)): state.Allocate | state.Write,
+		string(storage.AssetInfoKey(assetID)):   state.All,
+		string(storage.DatasetInfoKey(assetID)): state.Allocate | state.Write,
 		// string(storage.AssetNFTKey(nftID)):         state.Allocate | state.Write,
 		string(storage.BalanceKey(actor, assetID)): state.Allocate | state.Write,
 		// string(storage.BalanceKey(actor, nftID)):   state.Allocate | state.Write,
@@ -112,7 +112,7 @@ func (c *CreateDataset) Execute(
 	assetID := c.AssetID
 	// TODO: Remove after hypersdk adds pseudorandom actionID generation
 	// Check if the asset exists
-	exists, assetType, _, _, _, _, _, _, _, _, mintActor, _, _, _, err := storage.GetAsset(ctx, mu, assetID)
+	exists, assetType, _, _, _, _, _, _, _, _, mintActor, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, assetID)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func (c *CreateDataset) Execute(
 	// revenueModelMetadataShare = 0
 	// revenueModelDataOwnerCut = 10 for community datasets, 100 for sole contributor datasets
 	// revenueModelMetadataOwnerCut = 0
-	if err := storage.SetDataset(ctx, mu, assetID, c.Name, c.Description, c.Categories, c.LicenseName, c.LicenseSymbol, c.LicenseURL, c.Metadata, c.IsCommunityDataset, ids.Empty, ids.Empty, 0, uint8(revenueModelDataShare), 0, uint8(revenueModelDataOwnerCut), 0, actor); err != nil {
+	if err := storage.SetDatasetInfo(ctx, mu, assetID, c.Name, c.Description, c.Categories, c.LicenseName, c.LicenseSymbol, c.LicenseURL, c.Metadata, c.IsCommunityDataset, ids.Empty, ids.Empty, 0, uint8(revenueModelDataShare), 0, uint8(revenueModelDataOwnerCut), 0, actor); err != nil {
 		return nil, err
 	}
 

@@ -35,8 +35,8 @@ func (*ClaimDelegationStakeRewards) GetTypeID() uint8 {
 
 func (c *ClaimDelegationStakeRewards) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.BalanceKey(actor, ids.Empty)):          state.All,
-		string(storage.DelegateUserStakeKey(actor, c.NodeID)): state.Read,
+		string(storage.BalanceKey(actor, ids.Empty)):       state.All,
+		string(storage.DelegatorStakeKey(actor, c.NodeID)): state.Read,
 	}
 }
 
@@ -52,7 +52,7 @@ func (c *ClaimDelegationStakeRewards) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-	exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, mu, actor, c.NodeID)
+	exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, _, _ := storage.GetDelegatorStakeNoController(ctx, mu, actor, c.NodeID)
 	if !exists {
 		return nil, ErrStakeMissing
 	}

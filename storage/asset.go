@@ -6,55 +6,170 @@ package storage
 import (
 	"context"
 	"encoding/binary"
-	"errors"
 
 	"github.com/ava-labs/avalanchego/database"
-	"github.com/ava-labs/avalanchego/ids"
+	smath "github.com/ava-labs/avalanchego/utils/math"
 
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
+	"github.com/ava-labs/hypersdk/utils"
+
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
-// [assetID]
-func AssetKey(asset ids.ID) (k []byte) {
-	k = make([]byte, 1+ids.IDLen+consts.Uint16Len)           // Length of prefix + assetID + AssetChunks
-	k[0] = assetPrefix                                       // assetPrefix is a constant representing the asset category
-	copy(k[1:], asset[:])                                    // Copy the assetID
-	binary.BigEndian.PutUint16(k[1+ids.IDLen:], AssetChunks) // Adding AssetChunks
+const (
+	AssetAccountBalanceChunks uint16 = 1
+	AssetInfoChunks           uint16 = 13
+)
+
+const (
+	MaxAssetNameSize     = 64
+	MaxAssetSymbolSize   = 8
+	MaxAssetMetadataSize = 256
+	MaxAssetURISize      = 256
+	MaxAssetDecimals     = 18
+)
+
+func AssetAddress(assetType uint8, name []byte, symbol []byte, decimals uint8, metadata []byte, uri []byte, owner codec.Address) codec.Address {
+	v := make([]byte, len(name)+len(symbol)+consts.Uint8Len+len(metadata)+len(uri)+codec.AddressLen)
+	offset := 0
+	copy(v[offset:], name)
+	offset += len(name)
+	copy(v[offset:], symbol)
+	offset += len(symbol)
+	v[offset] = decimals
+	offset += consts.Uint8Len
+	copy(v[offset:], metadata)
+	offset += len(metadata)
+	copy(v[offset:], uri)
+	offset += len(uri)
+	copy(v[offset:], owner[:])
+	id := utils.ToID(v)
+	return codec.CreateAddress(assetType, id)
+}
+
+func AssetNFTAddress(assetAddress codec.Address, uniqueID uint64) codec.Address {
+	actionBytes := make([]byte, codec.AddressLen+consts.Uint64Len)
+	copy(actionBytes, assetAddress[:])
+	binary.BigEndian.PutUint64(actionBytes[codec.AddressLen:], uniqueID)
+	id := utils.ToID(actionBytes)
+	return codec.CreateAddress(nconsts.AssetNonFungibleTokenID, id)
+}
+
+func AssetInfoKey(assetAddress codec.Address) (k []byte) {
+	k = make([]byte, 1+codec.AddressLen+consts.Uint16Len)               // Length of prefix + assetAddress + AssetInfoChunks
+	k[0] = assetInfoPrefix                                              // assetInfoPrefix is a constant representing the asset category
+	copy(k[1:1+codec.AddressLen], assetAddress[:])                      // Copy the assetAddress
+	binary.BigEndian.PutUint16(k[1+codec.AddressLen:], AssetInfoChunks) // Adding AssetInfoChunks
 	return
 }
 
+func AssetAccountBalanceKey(asset codec.Address, account codec.Address) []byte {
+	k := make([]byte, 1+codec.AddressLen+codec.AddressLen+consts.Uint16Len)
+	k[0] = assetAccountBalancePrefix
+	copy(k[1:], asset[:])
+	copy(k[1+codec.AddressLen:], account[:])
+	binary.BigEndian.PutUint16(k[1+codec.AddressLen+codec.AddressLen:], AssetAccountBalanceChunks)
+	return k
+}
+
+func SetAssetInfo(
+	ctx context.Context,
+	mu state.Mutable,
+	assetAddress codec.Address,
+	assetType uint8,
+	name []byte,
+	symbol []byte,
+	decimals uint8,
+	metadata []byte,
+	uri []byte,
+	totalSupply uint64,
+	maxSupply uint64,
+	owner codec.Address,
+	mintAdmin codec.Address,
+	pauseUnpauseAdmin codec.Address,
+	freezeUnfreezeAdmin codec.Address,
+	enableDisableKYCAccountAdmin codec.Address,
+) error {
+	// Setup
+	k := AssetInfoKey(assetAddress)
+	nameLen := len(name)
+	symbolLen := len(symbol)
+	metadataLen := len(metadata)
+	uriLen := len(uri)
+	assetInfoSize := consts.Uint8Len + consts.Uint16Len + nameLen + consts.Uint16Len + symbolLen + consts.Uint8Len + consts.Uint16Len + metadataLen + consts.Uint16Len + uriLen + consts.Uint64Len*2 + codec.AddressLen*5
+	v := make([]byte, assetInfoSize)
+
+	// Populate
+	offset := 0
+	v[offset] = assetType
+	offset += consts.Uint8Len
+	binary.BigEndian.PutUint16(v[offset:], uint16(nameLen))
+	offset += consts.Uint16Len
+	copy(v[offset:], name)
+	offset += nameLen
+	binary.BigEndian.PutUint16(v[offset:], uint16(symbolLen))
+	offset += consts.Uint16Len
+	copy(v[offset:], symbol)
+	offset += symbolLen
+	v[offset] = decimals
+	offset += consts.Uint8Len
+	binary.BigEndian.PutUint16(v[offset:], uint16(metadataLen))
+	offset += consts.Uint16Len
+	copy(v[offset:], metadata)
+	offset += metadataLen
+	binary.BigEndian.PutUint16(v[offset:], uint16(uriLen))
+	offset += consts.Uint16Len
+	copy(v[offset:], uri)
+	offset += uriLen
+	binary.BigEndian.PutUint64(v[offset:], totalSupply)
+	offset += consts.Uint64Len
+	binary.BigEndian.PutUint64(v[offset:], maxSupply)
+	offset += consts.Uint64Len
+	copy(v[offset:], owner[:])
+	offset += codec.AddressLen
+	copy(v[offset:], mintAdmin[:])
+	offset += codec.AddressLen
+	copy(v[offset:], pauseUnpauseAdmin[:])
+	offset += codec.AddressLen
+	copy(v[offset:], freezeUnfreezeAdmin[:])
+	offset += codec.AddressLen
+	copy(v[offset:], enableDisableKYCAccountAdmin[:])
+
+	return mu.Insert(ctx, k, v)
+}
+
 // Used to serve RPC queries
-func GetAssetFromState(
+func GetAssetInfoFromState(
 	ctx context.Context,
 	f ReadState,
-	asset ids.ID,
-) (bool, uint8, []byte, []byte, uint8, []byte, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
-	values, errs := f(ctx, [][]byte{AssetKey(asset)})
-	return innerGetAsset(values[0], errs[0])
+	asset codec.Address,
+) (uint8, []byte, []byte, uint8, []byte, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
+	values, errs := f(ctx, [][]byte{AssetInfoKey(asset)})
+	if errs[0] != nil {
+		return 0, nil, nil, 0, nil, nil, 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, errs[0]
+	}
+	return innerGetAssetInfo(values[0])
 }
 
-func GetAsset(
+func GetAssetInfoNoController(
 	ctx context.Context,
 	im state.Immutable,
-	asset ids.ID,
-) (bool, uint8, []byte, []byte, uint8, []byte, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
-	k := AssetKey(asset)
-	return innerGetAsset(im.GetValue(ctx, k))
+	asset codec.Address,
+) (uint8, []byte, []byte, uint8, []byte, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
+	k := AssetInfoKey(asset)
+	v, err := im.GetValue(ctx, k)
+	if err != nil {
+		return 0, nil, nil, 0, nil, nil, 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, err
+	}
+	return innerGetAssetInfo(v)
 }
 
-func innerGetAsset(
+func innerGetAssetInfo(
 	v []byte,
-	err error,
-) (bool, uint8, []byte, []byte, uint8, []byte, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
-	if errors.Is(err, database.ErrNotFound) {
-		return false, 0, nil, nil, 0, nil, nil, 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, nil
-	}
-	if err != nil {
-		return false, 0, nil, nil, 0, nil, nil, 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, err
-	}
-
+) (uint8, []byte, []byte, uint8, []byte, []byte, uint64, uint64, codec.Address, codec.Address, codec.Address, codec.Address, codec.Address, error) {
+	// Extract
 	offset := uint16(0)
 	assetType := v[offset]
 	offset += consts.Uint8Len
@@ -96,147 +211,174 @@ func innerGetAsset(
 	var enableDisableKYCAccountAdmin codec.Address
 	copy(enableDisableKYCAccountAdmin[:], v[offset:])
 
-	return true, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, nil
+	return assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, nil
 }
 
-func SetAsset(
+func MintAsset(ctx context.Context, mu state.Mutable, asset codec.Address, to codec.Address, mintAmount uint64) (uint64, error) {
+	// Get asset info + account
+	assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := GetAssetInfoNoController(ctx, mu, asset)
+	if err != nil {
+		return 0, err
+	}
+	balance, err := GetAssetAccountBalanceNoController(ctx, mu, asset, to)
+	if err != nil {
+		return 0, err
+	}
+	newTotalSupply, err := smath.Add(totalSupply, mintAmount)
+	if err != nil {
+		return 0, err
+	}
+	newBalance, err := smath.Add(balance, mintAmount)
+	if err != nil {
+		return 0, err
+	}
+	// Update asset info
+	if err := SetAssetInfo(ctx, mu, asset, assetType, name, symbol, decimals, metadata, uri, newTotalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin); err != nil {
+		return 0, err
+	}
+	// Update asset account
+	if err := SetAssetAccountBalance(ctx, mu, asset, to, newBalance); err != nil {
+		return 0, err
+	}
+	return newBalance, nil
+}
+
+func SetAssetAccountBalance(
 	ctx context.Context,
 	mu state.Mutable,
-	asset ids.ID,
-	assetType uint8,
-	name []byte,
-	symbol []byte,
-	decimals uint8,
-	metadata []byte,
-	uri []byte,
-	totalSupply uint64,
-	maxSupply uint64,
-	owner codec.Address,
-	mintAdmin codec.Address,
-	pauseUnpauseAdmin codec.Address,
-	freezeUnfreezeAdmin codec.Address,
-	enableDisableKYCAccountAdmin codec.Address,
+	assetAddress codec.Address,
+	account codec.Address,
+	balance uint64,
 ) error {
-	k := AssetKey(asset)
-	nameLen := len(name)
-	symbolLen := len(symbol)
-	metadataLen := len(metadata)
-	uriLen := len(uri)
-
-	v := make([]byte, consts.Uint8Len+consts.Uint16Len+nameLen+consts.Uint16Len+symbolLen+consts.Uint8Len+consts.Uint16Len+metadataLen+consts.Uint16Len+uriLen+consts.Uint64Len*2+codec.AddressLen*5)
-
-	offset := 0
-	v[offset] = assetType
-	offset += consts.Uint8Len
-	binary.BigEndian.PutUint16(v[offset:], uint16(nameLen))
-	offset += consts.Uint16Len
-	copy(v[offset:], name)
-	offset += nameLen
-	binary.BigEndian.PutUint16(v[offset:], uint16(symbolLen))
-	offset += consts.Uint16Len
-	copy(v[offset:], symbol)
-	offset += symbolLen
-	v[offset] = decimals
-	offset += consts.Uint8Len
-	binary.BigEndian.PutUint16(v[offset:], uint16(metadataLen))
-	offset += consts.Uint16Len
-	copy(v[offset:], metadata)
-	offset += metadataLen
-	binary.BigEndian.PutUint16(v[offset:], uint16(uriLen))
-	offset += consts.Uint16Len
-	copy(v[offset:], uri)
-	offset += uriLen
-	binary.BigEndian.PutUint64(v[offset:], totalSupply)
-	offset += consts.Uint64Len
-	binary.BigEndian.PutUint64(v[offset:], maxSupply)
-	offset += consts.Uint64Len
-	copy(v[offset:], owner[:])
-	offset += codec.AddressLen
-	copy(v[offset:], mintAdmin[:])
-	offset += codec.AddressLen
-	copy(v[offset:], pauseUnpauseAdmin[:])
-	offset += codec.AddressLen
-	copy(v[offset:], freezeUnfreezeAdmin[:])
-	offset += codec.AddressLen
-	copy(v[offset:], enableDisableKYCAccountAdmin[:])
-
+	k := AssetAccountBalanceKey(assetAddress, account)
+	v := make([]byte, consts.Uint64Len)
+	binary.BigEndian.PutUint64(v, balance)
 	return mu.Insert(ctx, k, v)
 }
 
-func DeleteAsset(ctx context.Context, mu state.Mutable, asset ids.ID) error {
-	k := AssetKey(asset)
-	return mu.Remove(ctx, k)
+func GetAssetAccountBalanceNoController(
+	ctx context.Context,
+	mu state.Immutable,
+	assetAddress codec.Address,
+	account codec.Address,
+) (uint64, error) {
+	k := AssetAccountBalanceKey(assetAddress, account)
+	v, err := mu.GetValue(ctx, k)
+	if err == database.ErrNotFound {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return binary.BigEndian.Uint64(v), nil
 }
 
-// [nftID]
-func AssetNFTKey(nftID ids.ID) (k []byte) {
-	k = make([]byte, 1+ids.IDLen+consts.Uint16Len)              // Length of prefix + nftID + AssetNFTChunks
-	k[0] = assetNFTPrefix                                       // assetNFTPrefix is a constant representing the assetNFT category
-	copy(k[1:], nftID[:])                                       // Copy the nftID
-	binary.BigEndian.PutUint16(k[1+ids.IDLen:], AssetNFTChunks) // Adding AssetNFTChunks
-	return
-}
-
-// Used to serve RPC queries
-func GetAssetNFTFromState(
+func GetAssetAccountBalanceFromState(
 	ctx context.Context,
 	f ReadState,
-	nftID ids.ID,
-) (bool, ids.ID, uint64, []byte, []byte, codec.Address, error) {
-	values, errs := f(ctx, [][]byte{AssetNFTKey(nftID)})
-	return innerGetAssetNFT(values[0], errs[0])
+	assetAddress codec.Address,
+	account codec.Address,
+) (uint64, error) {
+	k := AssetAccountBalanceKey(assetAddress, account)
+	values, errs := f(ctx, [][]byte{k})
+	if errs[0] == database.ErrNotFound {
+		return 0, nil
+	} else if errs[0] != nil {
+		return 0, errs[0]
+	}
+	return binary.BigEndian.Uint64(values[0]), nil
 }
 
-func GetAssetNFT(
+func BurnAsset(
 	ctx context.Context,
-	im state.Immutable,
-	nftID ids.ID,
-) (bool, ids.ID, uint64, []byte, []byte, codec.Address, error) {
-	k := AssetNFTKey(nftID)
-	return innerGetAssetNFT(im.GetValue(ctx, k))
-}
-
-func innerGetAssetNFT(v []byte, err error) (bool, ids.ID, uint64, []byte, []byte, codec.Address, error) {
-	if errors.Is(err, database.ErrNotFound) {
-		return false, ids.Empty, 0, nil, nil, codec.Address{}, nil
-	}
+	mu state.Mutable,
+	assetAddress codec.Address,
+	from codec.Address,
+	value uint64,
+) (uint64, error) {
+	balance, err := GetAssetAccountBalanceNoController(ctx, mu, assetAddress, from)
 	if err != nil {
-		return false, ids.Empty, 0, nil, nil, codec.Address{}, err
+		return 0, err
 	}
-
-	collectionID, err := ids.ToID(v[:ids.IDLen])
+	assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := GetAssetInfoNoController(ctx, mu, assetAddress)
 	if err != nil {
-		return false, ids.Empty, 0, nil, nil, codec.Address{}, err
+		return 0, err
 	}
-	uniqueID := binary.BigEndian.Uint64(v[ids.IDLen:])
-	uriLen := binary.BigEndian.Uint16(v[ids.IDLen+consts.Uint64Len:])
-	uri := v[ids.IDLen+consts.Uint64Len+consts.Uint16Len : ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen]
-	metadataLen := binary.BigEndian.Uint16(v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen:])
-	metadata := v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen+consts.Uint16Len : ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen+consts.Uint16Len+metadataLen]
-	var owner codec.Address
-	copy(owner[:], v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen+consts.Uint16Len+metadataLen:])
 
-	return true, collectionID, uniqueID, uri, metadata, owner, nil
+	newBalance, err := smath.Sub(balance, value)
+	if err != nil {
+		return 0, err
+	}
+	newTotalSupply, err := smath.Sub(totalSupply, value)
+	if err != nil {
+		return 0, err
+	}
+
+	if err = SetAssetAccountBalance(ctx, mu, assetAddress, from, newBalance); err != nil {
+		return 0, err
+	}
+	if err = SetAssetInfo(ctx, mu, assetAddress, assetType, name, symbol, decimals, metadata, uri, newTotalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin); err != nil {
+		return 0, err
+	}
+
+	return newBalance, nil
 }
 
-func SetAssetNFT(ctx context.Context, mu state.Mutable, collectionID ids.ID, uniqueID uint64, nftID ids.ID, uri []byte, metadata []byte, owner codec.Address) error {
-	k := AssetNFTKey(nftID)
-	uriLen := len(uri)
-	metadataLen := len(metadata)
-
-	v := make([]byte, ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen+consts.Uint16Len+metadataLen+codec.AddressLen)
-	copy(v, collectionID[:])
-	binary.BigEndian.PutUint64(v[ids.IDLen:], uniqueID)
-	binary.BigEndian.PutUint16(v[ids.IDLen+consts.Uint64Len:], uint16(uriLen))
-	copy(v[ids.IDLen+consts.Uint64Len+consts.Uint16Len:], uri)
-	binary.BigEndian.PutUint16(v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen:], uint16(metadataLen))
-	copy(v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen+consts.Uint16Len:], metadata)
-	copy(v[ids.IDLen+consts.Uint64Len+consts.Uint16Len+uriLen+consts.Uint16Len+metadataLen:], owner[:])
-
-	return mu.Insert(ctx, k, v)
+func TransferAsset(
+	ctx context.Context,
+	mu state.Mutable,
+	assetAddress codec.Address,
+	from codec.Address,
+	to codec.Address,
+	value uint64,
+) (uint64, uint64, error) {
+	fromBalance, err := GetAssetAccountBalanceNoController(ctx, mu, assetAddress, from)
+	if err != nil {
+		return 0, 0, err
+	}
+	toBalance, err := GetAssetAccountBalanceNoController(ctx, mu, assetAddress, to)
+	if err != nil {
+		return 0, 0, err
+	}
+	newFromBalance, err := smath.Sub(fromBalance, value)
+	if err != nil {
+		return 0, 0, err
+	}
+	newToBalance, err := smath.Add(toBalance, value)
+	if err != nil {
+		return 0, 0, err
+	}
+	if err = SetAssetAccountBalance(ctx, mu, assetAddress, from, newFromBalance); err != nil {
+		return 0, 0, err
+	}
+	if err = SetAssetAccountBalance(ctx, mu, assetAddress, to, newToBalance); err != nil {
+		return 0, 0, err
+	}
+	// Handle NFTs
+	assetType, _, _, _, _, nftCollectionAddressBytes, _, _, _, _, _, _, _, err := GetAssetInfoNoController(ctx, mu, assetAddress)
+	if err != nil {
+		return 0, 0, err
+	}
+	if assetType == nconsts.AssetNonFungibleTokenID {
+		nftCollectionAddress, err := codec.ToAddress(nftCollectionAddressBytes)
+		if err != nil {
+			return 0, 0, err
+		}
+		if err = SetAssetAccountBalance(ctx, mu, nftCollectionAddress, from, newFromBalance); err != nil {
+			return 0, 0, err
+		}
+		if err = SetAssetAccountBalance(ctx, mu, nftCollectionAddress, to, newToBalance); err != nil {
+			return 0, 0, err
+		}
+	}
+	return newFromBalance, newToBalance, nil
 }
 
-func DeleteAssetNFT(ctx context.Context, mu state.Mutable, nftID ids.ID) error {
-	k := AssetNFTKey(nftID)
-	return mu.Remove(ctx, k)
+func AssetExists(
+	ctx context.Context,
+	mu state.Immutable,
+	assetAddress codec.Address,
+) bool {
+	v, err := mu.GetValue(ctx, AssetInfoKey(assetAddress))
+	return v != nil && err == nil
 }

@@ -45,7 +45,7 @@ func TestWithdrawValidatorStakeAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set the validator with stake end block greater than the current block height
-				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 150, 300, 10000, 10, addr, addr))
+				require.NoError(t, storage.SetValidatorStake(context.Background(), store, nodeID, 150, 300, 10000, 10, addr, addr))
 				return store
 			}(),
 			ExpectedErr: ErrStakeNotStarted,
@@ -60,7 +60,7 @@ func TestWithdrawValidatorStakeAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set validator stake with end block less than the current block height
-				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 50, 150, 10000, 10, addr, addr))
+				require.NoError(t, storage.SetValidatorStake(context.Background(), store, nodeID, 50, 150, 10000, 10, addr, addr))
 				// Set the balance for the validator
 				require.NoError(t, storage.SetBalance(context.Background(), store, addr, ids.Empty, 0))
 				return store
@@ -72,7 +72,7 @@ func TestWithdrawValidatorStakeAction(t *testing.T) {
 				require.Equal(t, uint64(10100), balance) // Reward amount + staked amount
 
 				// Check if the stake was successfully withdrawn
-				exists, _, _, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, store, nodeID)
+				exists, _, _, _, _, _, _, _ := storage.GetValidatorStakeNoController(ctx, store, nodeID)
 				require.False(t, exists) // Stake should no longer exist
 			},
 			ExpectedOutputs: &WithdrawValidatorStakeResult{
@@ -112,7 +112,7 @@ func BenchmarkWithdrawValidatorStake(b *testing.B) {
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set validator stake with end block less than the current block height
-			require.NoError(storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 50, 150, 10000, 10, actor, actor))
+			require.NoError(storage.SetValidatorStake(context.Background(), store, nodeID, 50, 150, 10000, 10, actor, actor))
 			// Set the balance for the validator
 			require.NoError(storage.SetBalance(context.Background(), store, actor, ids.Empty, 0))
 			return store

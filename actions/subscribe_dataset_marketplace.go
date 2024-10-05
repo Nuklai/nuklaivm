@@ -57,8 +57,8 @@ func (*SubscribeDatasetMarketplace) GetTypeID() uint8 {
 func (d *SubscribeDatasetMarketplace) StateKeys(actor codec.Address) state.Keys {
 	nftID := utils.GenerateIDWithAddress(d.MarketplaceAssetID, actor)
 	return state.Keys{
-		string(storage.DatasetKey(d.DatasetID)):                 state.Read,
-		string(storage.AssetKey(d.MarketplaceAssetID)):          state.Read | state.Write,
+		string(storage.DatasetInfoKey(d.DatasetID)):             state.Read,
+		string(storage.AssetInfoKey(d.MarketplaceAssetID)):      state.Read | state.Write,
 		string(storage.AssetNFTKey(nftID)):                      state.All,
 		string(storage.BalanceKey(actor, d.AssetForPayment)):    state.Read | state.Write,
 		string(storage.BalanceKey(actor, d.MarketplaceAssetID)): state.Allocate | state.Write,
@@ -82,7 +82,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	}
 
 	// Check if the dataset exists
-	exists, _, _, _, _, _, _, _, _, saleID, baseAsset, basePrice, _, _, _, _, _, err := storage.GetDataset(ctx, mu, d.DatasetID)
+	exists, _, _, _, _, _, _, _, _, saleID, baseAsset, basePrice, _, _, _, _, _, err := storage.GetDatasetInfoNoController(ctx, mu, d.DatasetID)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	}
 
 	// Check for the asset
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAsset(ctx, mu, d.MarketplaceAssetID)
+	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAssetInfoNoController(ctx, mu, d.MarketplaceAssetID)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 		return nil, err
 	}
 	// Update the asset with the new total supply and updated metadata
-	if err := storage.SetAsset(ctx, mu, d.MarketplaceAssetID, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, d.MarketplaceAssetID, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
 		return nil, err
 	}
 
