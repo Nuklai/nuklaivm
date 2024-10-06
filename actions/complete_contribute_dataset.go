@@ -82,7 +82,7 @@ func (d *CompleteContributeDataset) Execute(
 	nftID := utils.GenerateIDWithIndex(d.DatasetID, d.UniqueNFTIDForContributor)
 	exists, _, _, _, _, _, _ = storage.GetAssetNFT(ctx, mu, nftID)
 	if exists {
-		return nil, ErrOutputNFTAlreadyExists
+		return nil, ErrNFTAlreadyExists
 	}
 
 	// Retrieve the asset info
@@ -94,7 +94,7 @@ func (d *CompleteContributeDataset) Execute(
 		return nil, ErrAssetNotFound
 	}
 	if actor != mintActor {
-		return nil, ErrOutputWrongMintAdmin
+		return nil, ErrWrongMintAdmin
 	}
 
 	// Ensure that total supply is less than max supply

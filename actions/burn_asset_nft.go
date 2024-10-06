@@ -14,7 +14,6 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
-	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -25,11 +24,11 @@ const (
 var _ chain.Action = (*BurnAssetNFT)(nil)
 
 type BurnAssetNFT struct {
-	// AssetID ID of the asset to burn(this is the nft collection ID)
-	AssetID ids.ID `serialize:"true" json:"asset_id"`
+	// AssetAddress of the asset to burn(this is the nft collection address)
+	AssetAddress codec.Address `serialize:"true" json:"asset_address"`
 
-	// NFT ID of the asset to burn
-	NftID ids.ID `serialize:"true" json:"nftID"`
+	// AssetNftAddress  of the asset to burn
+	AssetNftAddress codec.Address `serialize:"true" json:"asset_nft_address"`
 }
 
 func (*BurnAssetNFT) GetTypeID() uint8 {
@@ -38,10 +37,10 @@ func (*BurnAssetNFT) GetTypeID() uint8 {
 
 func (b *BurnAssetNFT) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.AssetInfoKey(b.AssetID)):      state.Read | state.Write,
-		string(storage.AssetNFTKey(b.NftID)):         state.Read | state.Write,
-		string(storage.BalanceKey(actor, b.AssetID)): state.Read | state.Write,
-		string(storage.BalanceKey(actor, b.NftID)):   state.Read | state.Write,
+		string(storage.AssetInfoKey(b.AssetAddress)):      state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(b.AssetAddress, actor)): state.Read | state.Write,
+		string(storage.AssetInfoKey(b.AssetNftAddress)):      state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(b.AssetNftAddress, actor)): state.Read | state.Write,
 	}
 }
 
@@ -53,54 +52,31 @@ func (b *BurnAssetNFT) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, mu, b.AssetID)
+	assetType, _, _, _, _, _, _, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, b.AssetAddress)
 	if err != nil {
 		return nil, err
 	}
-	if !exists {
-		return nil, ErrOutputAssetMissing
-	}
+	// Ensure that it's a non-fungible token
 	if assetType != nconsts.AssetNonFungibleTokenID {
-		return nil, ErrOutputWrongAssetType
+		return nil, ErrAssetTypeInvalid
+	}
+	// Ensure the asset exists
+	if !storage.AssetExists(ctx, mu, b.AssetNftAddress) {
+		return nil, ErrAssetNotFound
 	}
 
-	exists, _, _, _, _, _, err = storage.GetAssetNFT(ctx, mu, b.NftID)
+	// Burning logic for non-fungible tokens
+	newBalance, err := storage.BurnAsset(ctx, mu, b.AssetAddress, actor, 1)
 	if err != nil {
 		return nil, err
 	}
-	if !exists {
-		return nil, ErrOutputAssetMissing
-	}
-
-	amountOfToken := uint64(1)
-	newSupply, err := smath.Sub(totalSupply, amountOfToken)
-	if err != nil {
-		return nil, err
-	}
-	if err := storage.SetAssetInfo(ctx, mu, b.AssetID, assetType, name, symbol, decimals, metadata, uri, newSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin); err != nil {
-		return nil, err
-	}
-
-	// Sub balance from individual NFT
-	if _, err := storage.SubBalance(ctx, mu, actor, b.NftID, 1); err != nil {
-		return nil, err
-	}
-
-	// Sub balance from collection
-	newBalance, err := storage.SubBalance(ctx, mu, actor, b.AssetID, amountOfToken)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := storage.DeleteAssetNFT(ctx, mu, b.NftID); err != nil {
+	if err := storage.DeleteAsset(ctx, mu, b.AssetNftAddress); err != nil {
 		return nil, err
 	}
 
 	return &BurnAssetNFTResult{
-		From:             actor,
-		OldBalance:       newBalance + amountOfToken,
+		OldBalance:       newBalance + 1,
 		NewBalance:       newBalance,
-		AssetTotalSupply: newSupply,
 	}, nil
 }
 
@@ -113,21 +89,10 @@ func (*BurnAssetNFT) ValidRange(chain.Rules) (int64, int64) {
 	return -1, -1
 }
 
-var _ chain.Marshaler = (*BurnAssetNFT)(nil)
-
-func (*BurnAssetNFT) Size() int {
-	return ids.IDLen * 2
-}
-
-func (b *BurnAssetNFT) Marshal(p *codec.Packer) {
-	p.PackID(b.AssetID)
-	p.PackID(b.NftID)
-}
-
 func UnmarshalBurnAssetNFT(p *codec.Packer) (chain.Action, error) {
 	var burn BurnAssetNFT
-	p.UnpackID(false, &burn.AssetID)
-	p.UnpackID(false, &burn.NftID)
+	p.UnpackAddress(&burn.AssetAddress)
+	p.UnpackAddress(&burn.AssetNftAddress)
 	return &burn, p.Err()
 }
 
@@ -137,10 +102,8 @@ var (
 )
 
 type BurnAssetNFTResult struct {
-	From             codec.Address `serialize:"true" json:"from"`
 	OldBalance       uint64        `serialize:"true" json:"old_balance"`
 	NewBalance       uint64        `serialize:"true" json:"new_balance"`
-	AssetTotalSupply uint64        `serialize:"true" json:"asset_total_supply"`
 }
 
 func (*BurnAssetNFTResult) GetTypeID() uint8 {
@@ -148,21 +111,17 @@ func (*BurnAssetNFTResult) GetTypeID() uint8 {
 }
 
 func (*BurnAssetNFTResult) Size() int {
-	return codec.AddressLen + consts.Uint64Len*3
+	return consts.Uint64Len*2
 }
 
 func (r *BurnAssetNFTResult) Marshal(p *codec.Packer) {
-	p.PackAddress(r.From)
 	p.PackUint64(r.OldBalance)
 	p.PackUint64(r.NewBalance)
-	p.PackUint64(r.AssetTotalSupply)
 }
 
 func UnmarshalBurnAssetNFTResult(p *codec.Packer) (codec.Typed, error) {
 	var result BurnAssetNFTResult
-	p.UnpackAddress(&result.From)
-	result.OldBalance = p.UnpackUint64(false)
+	result.OldBalance = p.UnpackUint64(true)
 	result.NewBalance = p.UnpackUint64(false)
-	result.AssetTotalSupply = p.UnpackUint64(false)
 	return &result, p.Err()
 }

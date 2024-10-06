@@ -28,17 +28,17 @@ func TestMintAssetFTAction(t *testing.T) {
 			Name:  "NativeAssetMint",
 			Actor: addr,
 			Action: &MintAssetFT{
-				AssetID: ids.Empty, // Native asset, invalid for minting
+				AssetAddress: ids.Empty, // Native asset, invalid for minting
 				Value:   1000,
 				To:      addr,
 			},
-			ExpectedErr: ErrOutputAssetIsNative,
+			ExpectedErr: ErrAssetIsNative,
 		},
 		{
 			Name:  "ZeroValueMint",
 			Actor: addr,
 			Action: &MintAssetFT{
-				AssetID: assetID,
+				AssetAddress: assetID,
 				Value:   0, // Invalid zero value
 				To:      addr,
 			},
@@ -48,18 +48,18 @@ func TestMintAssetFTAction(t *testing.T) {
 			Name:  "AssetMissing",
 			Actor: addr,
 			Action: &MintAssetFT{
-				AssetID: assetID, // Asset does not exist
+				AssetAddress: assetID, // Asset does not exist
 				Value:   1000,
 				To:      addr,
 			},
 			State:       chaintest.NewInMemoryStore(),
-			ExpectedErr: ErrOutputAssetMissing,
+			ExpectedErr: ErrAssetMissing,
 		},
 		{
 			Name:  "WrongAssetType",
 			Actor: addr,
 			Action: &MintAssetFT{
-				AssetID: assetID,
+				AssetAddress: assetID,
 				Value:   1000,
 				To:      addr,
 			},
@@ -75,7 +75,7 @@ func TestMintAssetFTAction(t *testing.T) {
 			Name:  "WrongMintAdmin",
 			Actor: codec.CreateAddress(0, ids.GenerateTestID()), // Not the mint admin
 			Action: &MintAssetFT{
-				AssetID: assetID,
+				AssetAddress: assetID,
 				Value:   1000,
 				To:      addr,
 			},
@@ -85,13 +85,13 @@ func TestMintAssetFTAction(t *testing.T) {
 				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("Token"), []byte("TKN"), 9, []byte("metadata"), []byte("uri"), 0, 1000000, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
-			ExpectedErr: ErrOutputWrongMintAdmin,
+			ExpectedErr: ErrWrongMintAdmin,
 		},
 		{
 			Name:  "ExceedMaxSupply",
 			Actor: addr,
 			Action: &MintAssetFT{
-				AssetID: assetID,
+				AssetAddress: assetID,
 				Value:   1000001, // Exceeds max supply
 				To:      addr,
 			},
@@ -107,7 +107,7 @@ func TestMintAssetFTAction(t *testing.T) {
 			Name:  "ValidMint",
 			Actor: addr,
 			Action: &MintAssetFT{
-				AssetID: assetID,
+				AssetAddress: assetID,
 				Value:   1000,
 				To:      addr,
 			},
@@ -152,7 +152,7 @@ func BenchmarkMintAssetFT(b *testing.B) {
 		Name:  "MintAssetFTBenchmark",
 		Actor: actor,
 		Action: &MintAssetFT{
-			AssetID: assetID,
+			AssetAddress: assetID,
 			Value:   1000,
 			To:      actor,
 		},

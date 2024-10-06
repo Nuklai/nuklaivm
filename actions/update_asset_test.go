@@ -28,7 +28,7 @@ func TestUpdateAssetAction(t *testing.T) {
 			Name:  "WrongOwner",
 			Actor: codec.CreateAddress(0, ids.GenerateTestID()), // Not the actual owner
 			Action: &UpdateAsset{
-				AssetID: assetID,
+				AssetAddress: assetID,
 				Name:    []byte("New Name"),
 			},
 			State: func() state.Mutable {
@@ -43,7 +43,7 @@ func TestUpdateAssetAction(t *testing.T) {
 			Name:  "NoFieldUpdated",
 			Actor: addr,
 			Action: &UpdateAsset{
-				AssetID: assetID,
+				AssetAddress: assetID,
 				Name:    []byte("My Token"), // Same as current name
 			},
 			State: func() state.Mutable {
@@ -58,7 +58,7 @@ func TestUpdateAssetAction(t *testing.T) {
 			Name:  "InvalidName",
 			Actor: addr,
 			Action: &UpdateAsset{
-				AssetID: assetID,
+				AssetAddress: assetID,
 				Name:    []byte("Up"), // Invalid name (too short)
 			},
 			State: func() state.Mutable {
@@ -73,7 +73,7 @@ func TestUpdateAssetAction(t *testing.T) {
 			Name:  "UpdateNameAndSymbol",
 			Actor: addr,
 			Action: &UpdateAsset{
-				AssetID: assetID,
+				AssetAddress: assetID,
 				Name:    []byte("Updated Name"),
 				Symbol:  []byte("UPD"),
 			},
@@ -124,7 +124,7 @@ func BenchmarkUpdateAsset(b *testing.B) {
 		Name:  "UpdateAssetBenchmark",
 		Actor: actor,
 		Action: &UpdateAsset{
-			AssetID: assetID,
+			AssetAddress: assetID,
 			Name:    []byte("Benchmark Updated Asset"),
 			Symbol:  []byte("BUP"),
 		},

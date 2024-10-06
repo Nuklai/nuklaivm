@@ -90,7 +90,7 @@ func (c *ClaimMarketplacePayment) Execute(
 		return nil, err
 	}
 	if !exists {
-		return nil, ErrOutputAssetMissing
+		return nil, ErrAssetMissing
 	}
 	if assetType != nconsts.AssetMarketplaceTokenID {
 		return nil, ErrOutputWrongAssetType

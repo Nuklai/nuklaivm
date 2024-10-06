@@ -26,7 +26,7 @@ var (
 	ErrAssetDoesNotExist                     = errors.New("asset does not exist")
 	ErrValueZero                             = errors.New("value is zero")
 	ErrNFTValueMustBeOne                     = errors.New("NFT value must be one")
-	ErrInsufficientTokenBalance              = errors.New("insufficient token balance")
+	ErrInsufficientAssetBalance              = errors.New("insufficient token balance")
 	ErrMemoTooLarge                          = errors.New("memo is too large")
 	_                           chain.Action = (*Transfer)(nil)
 )
@@ -87,7 +87,7 @@ func (t *Transfer) Execute(
 		return nil, err
 	}
 	if balance < t.Value {
-		return nil, ErrInsufficientTokenBalance
+		return nil, ErrInsufficientAssetBalance
 	}
 
 	senderBalance, receiverBalance, err := storage.TransferAsset(ctx, mu, t.AssetAddress, actor, t.To, t.Value)

@@ -27,7 +27,7 @@ func TestBurnAssetFTAction(t *testing.T) {
 			Name:  "ZeroValueBurn",
 			Actor: addr,
 			Action: &BurnAssetFT{
-				AssetID: assetID,
+				AssetAddress: assetID,
 				Value:   0, // Invalid zero value
 			},
 			ExpectedErr: ErrValueZero,
@@ -36,17 +36,17 @@ func TestBurnAssetFTAction(t *testing.T) {
 			Name:  "AssetMissing",
 			Actor: addr,
 			Action: &BurnAssetFT{
-				AssetID: assetID, // Asset does not exist
+				AssetAddress: assetID, // Asset does not exist
 				Value:   1000,
 			},
 			State:       chaintest.NewInMemoryStore(),
-			ExpectedErr: ErrOutputAssetMissing,
+			ExpectedErr: ErrAssetMissing,
 		},
 		{
 			Name:  "WrongAssetType",
 			Actor: addr,
 			Action: &BurnAssetFT{
-				AssetID: assetID,
+				AssetAddress: assetID,
 				Value:   1000,
 			},
 			State: func() state.Mutable {
@@ -61,7 +61,7 @@ func TestBurnAssetFTAction(t *testing.T) {
 			Name:  "InsufficientBalanceBurn",
 			Actor: addr,
 			Action: &BurnAssetFT{
-				AssetID: assetID,
+				AssetAddress: assetID,
 				Value:   1000, // Trying to burn more than available balance
 			},
 			State: func() state.Mutable {
@@ -77,7 +77,7 @@ func TestBurnAssetFTAction(t *testing.T) {
 			Name:  "ValidBurn",
 			Actor: addr,
 			Action: &BurnAssetFT{
-				AssetID: assetID,
+				AssetAddress: assetID,
 				Value:   500,
 			},
 			State: func() state.Mutable {
@@ -122,7 +122,7 @@ func BenchmarkBurnAssetFT(b *testing.B) {
 		Name:  "BurnAssetFTBenchmark",
 		Actor: actor,
 		Action: &BurnAssetFT{
-			AssetID: assetID,
+			AssetAddress: assetID,
 			Value:   500,
 		},
 		CreateState: func() state.Mutable {

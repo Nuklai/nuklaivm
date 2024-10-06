@@ -105,7 +105,7 @@ func TestInitiateContributeDatasetAction(t *testing.T) {
 				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
 				return store
 			}(),
-			ExpectedErr: ErrOutputURIInvalid,
+			ExpectedErr: ErrURIInvalid,
 		},
 		{
 			Name:     "ValidContribution",

@@ -87,7 +87,7 @@ func (d *InitiateContributeDataset) Execute(
 	}
 	// Check if the data identifier is valid(MaxMetadataSize - MaxTextSize because the data location and data identifier are stored together as metadata in the NFT metadata)
 	if len(d.DataIdentifier) == 0 || len(d.DataIdentifier) > (MaxMetadataSize-MaxTextSize) {
-		return nil, ErrOutputURIInvalid
+		return nil, ErrURIInvalid
 	}
 
 	// Get the marketplace instance

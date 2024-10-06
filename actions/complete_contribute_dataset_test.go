@@ -96,7 +96,7 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 				require.NoError(t, storage.SetAssetNFT(context.Background(), store, datasetID, uniqueNFTID, nftID, []byte("Dataset NFT"), []byte("Metadata"), addr))
 				return store
 			}(),
-			ExpectedErr: ErrOutputNFTAlreadyExists,
+			ExpectedErr: ErrNFTAlreadyExists,
 		},
 		{
 			Name:     "ValidCompletion",

@@ -139,7 +139,7 @@ var updateAssetCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.UpdateAsset{
-			AssetID: assetID,
+			AssetAddress: assetID,
 			Name:    []byte(name),
 			Symbol:  []byte(symbol),
 		}}, cli, ncli, ws, factory)
@@ -215,7 +215,7 @@ var mintAssetFTCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.MintAssetFT{
-			AssetID: assetID,
+			AssetAddress: assetID,
 			To:      recipient,
 			Value:   amount,
 		}}, cli, ncli, ws, factory)
@@ -297,7 +297,7 @@ var mintAssetNFTCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.MintAssetNFT{
-			AssetID:  assetID,
+			AssetAddress:  assetID,
 			UniqueID: uint64(uniqueID),
 			To:       recipient,
 			URI:      []byte(metadataNFT),
@@ -367,7 +367,7 @@ var burnAssetFTCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.BurnAssetFT{
-			AssetID: assetID,
+			AssetAddress: assetID,
 			Value:   amount,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
@@ -410,8 +410,8 @@ var burnAssetNFTCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.BurnAssetNFT{
-			AssetID: assetID,
-			NftID:   nftID,
+			AssetAddress: assetID,
+			AssetNftAddress:   nftID,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err

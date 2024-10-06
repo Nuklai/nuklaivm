@@ -96,16 +96,16 @@ func handleTx(tx *chain.Transaction, result *chain.Result) {
 		case *actions.CreateAsset:
 			summaryStr = fmt.Sprintf("assetID: %s symbol: %s decimals: %d metadata: %s\n", tx.ID(), act.Symbol, act.Decimals, act.Metadata)
 		case *actions.UpdateAsset:
-			summaryStr = fmt.Sprintf("assetID: %s updated\n", act.AssetID)
+			summaryStr = fmt.Sprintf("assetID: %s updated\n", act.AssetAddress)
 		case *actions.MintAssetFT:
-			summaryStr = fmt.Sprintf("assetID: %s assetType: amount: %d -> %s\n", act.AssetID, act.Value, act.To)
+			summaryStr = fmt.Sprintf("assetID: %s assetType: amount: %d -> %s\n", act.AssetAddress, act.Value, act.To)
 		case *actions.MintAssetNFT:
-			nftID := nutils.GenerateIDWithIndex(act.AssetID, act.UniqueID)
-			summaryStr = fmt.Sprintf("assetID: %s nftID: %s uri: %s metadata: %s -> %s\n", act.AssetID, nftID, act.URI, act.Metadata, act.To)
+			nftID := nutils.GenerateIDWithIndex(act.AssetAddress, act.UniqueID)
+			summaryStr = fmt.Sprintf("assetID: %s nftID: %s uri: %s metadata: %s -> %s\n", act.AssetAddress, nftID, act.URI, act.Metadata, act.To)
 		case *actions.BurnAssetFT:
-			summaryStr = fmt.Sprintf("assetID: %s %d -> 🔥\n", act.AssetID, act.Value)
+			summaryStr = fmt.Sprintf("assetID: %s %d -> 🔥\n", act.AssetAddress, act.Value)
 		case *actions.BurnAssetNFT:
-			summaryStr = fmt.Sprintf("assetID: %s nftID: %s -> 🔥\n", act.AssetID, act.NftID)
+			summaryStr = fmt.Sprintf("assetID: %s nftID: %s -> 🔥\n", act.AssetAddress, act.AssetNftAddress)
 		case *actions.RegisterValidatorStake:
 			summaryStr = fmt.Sprintf("nodeID: %s\n", act.NodeID)
 		case *actions.WithdrawValidatorStake:
@@ -120,12 +120,12 @@ func handleTx(tx *chain.Transaction, result *chain.Result) {
 			summaryStr = fmt.Sprintf("nodeID: %s\n", act.NodeID)
 		case *actions.CreateDataset:
 			datasetID := tx.ID()
-			if act.AssetID != ids.Empty {
-				datasetID = act.AssetID
+			if act.AssetAddress != ids.Empty {
+				datasetID = act.AssetAddress
 			}
 			summaryStr = fmt.Sprintf("datasetID: %s ParentNFTID: %s name: %s description: %s\n", datasetID, nutils.GenerateIDWithIndex(datasetID, 0), act.Name, act.Description)
 		case *actions.UpdateDataset:
-			summaryStr = fmt.Sprintf("datasetID: %s updated\n", act.DatasetID)
+			summaryStr = fmt.Sprintf("datasetID: %s updated\n", act.DatasetAddress)
 		case *actions.InitiateContributeDataset:
 			summaryStr = fmt.Sprintf("datasetID: %s dataLocation: %s dataIdentifier: %s\n", act.DatasetID, act.DataLocation, act.DataIdentifier)
 		case *actions.CompleteContributeDataset:

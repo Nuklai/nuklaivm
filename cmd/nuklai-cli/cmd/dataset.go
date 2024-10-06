@@ -131,7 +131,7 @@ var createDatasetFromExistingAssetCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.CreateDataset{
-			AssetID:            assetID,
+			AssetAddress:            assetID,
 			Name:               []byte(name),
 			Description:        []byte(description),
 			Categories:         []byte(name),
@@ -183,7 +183,7 @@ var updateDatasetCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.UpdateDataset{
-			DatasetID:          datasetID,
+			DatasetAddress:          datasetID,
 			Name:               []byte(name),
 			IsCommunityDataset: isCommunityDataset,
 		}}, cli, ncli, ws, factory)

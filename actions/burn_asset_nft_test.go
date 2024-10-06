@@ -30,18 +30,18 @@ func TestBurnAssetNFTAction(t *testing.T) {
 			Name:  "AssetMissing",
 			Actor: addr,
 			Action: &BurnAssetNFT{
-				AssetID: assetID, // NFT collection does not exist
-				NftID:   nftID,
+				AssetAddress: assetID, // NFT collection does not exist
+				AssetNftAddress:   nftID,
 			},
 			State:       chaintest.NewInMemoryStore(),
-			ExpectedErr: ErrOutputAssetMissing,
+			ExpectedErr: ErrAssetMissing,
 		},
 		{
 			Name:  "WrongAssetType",
 			Actor: addr,
 			Action: &BurnAssetNFT{
-				AssetID: assetID,
-				NftID:   nftID,
+				AssetAddress: assetID,
+				AssetNftAddress:   nftID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -55,8 +55,8 @@ func TestBurnAssetNFTAction(t *testing.T) {
 			Name:  "NFTMissing",
 			Actor: addr,
 			Action: &BurnAssetNFT{
-				AssetID: assetID,
-				NftID:   nftID, // NFT does not exist
+				AssetAddress: assetID,
+				AssetNftAddress:   nftID, // NFT does not exist
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -64,14 +64,14 @@ func TestBurnAssetNFTAction(t *testing.T) {
 				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetNonFungibleTokenID, []byte("NFT Collection"), []byte("NFT"), 0, []byte("metadata"), []byte("uri"), 10, 100, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
-			ExpectedErr: ErrOutputAssetMissing,
+			ExpectedErr: ErrAssetMissing,
 		},
 		{
 			Name:  "ValidNFTBurn",
 			Actor: addr,
 			Action: &BurnAssetNFT{
-				AssetID: assetID,
-				NftID:   nftID,
+				AssetAddress: assetID,
+				AssetNftAddress:   nftID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -127,8 +127,8 @@ func BenchmarkBurnAssetNFT(b *testing.B) {
 		Name:  "BurnAssetNFTBenchmark",
 		Actor: actor,
 		Action: &BurnAssetNFT{
-			AssetID: assetID,
-			NftID:   nftID,
+			AssetAddress: assetID,
+			AssetNftAddress:   nftID,
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()

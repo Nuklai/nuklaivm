@@ -30,19 +30,19 @@ func TestMintAssetNFTAction(t *testing.T) {
 			Name:  "InvalidURI",
 			Actor: addr,
 			Action: &MintAssetNFT{
-				AssetID:  assetID,
+				AssetAddress:  assetID,
 				UniqueID: 0,
 				URI:      []byte("u"), // Invalid URI (too short)
 				Metadata: []byte("NFT Metadata"),
 				To:       addr,
 			},
-			ExpectedErr: ErrOutputURIInvalid,
+			ExpectedErr: ErrURIInvalid,
 		},
 		{
 			Name:  "InvalidMetadata",
 			Actor: addr,
 			Action: &MintAssetNFT{
-				AssetID:  assetID,
+				AssetAddress:  assetID,
 				UniqueID: 0,
 				URI:      []byte("nft-uri"),
 				Metadata: []byte("m"), // Invalid metadata (too short)
@@ -54,7 +54,7 @@ func TestMintAssetNFTAction(t *testing.T) {
 			Name:  "NFTAlreadyExists",
 			Actor: addr,
 			Action: &MintAssetNFT{
-				AssetID:  assetID,
+				AssetAddress:  assetID,
 				UniqueID: 0,
 				URI:      []byte("nft-uri"),
 				Metadata: []byte("NFT Metadata"),
@@ -66,13 +66,13 @@ func TestMintAssetNFTAction(t *testing.T) {
 				require.NoError(t, storage.SetAssetNFT(context.Background(), store, assetID, 0, nftID, []byte("nft-uri"), []byte("NFT Metadata"), addr))
 				return store
 			}(),
-			ExpectedErr: ErrOutputNFTAlreadyExists,
+			ExpectedErr: ErrNFTAlreadyExists,
 		},
 		{
 			Name:  "WrongAssetType",
 			Actor: addr,
 			Action: &MintAssetNFT{
-				AssetID:  assetID,
+				AssetAddress:  assetID,
 				UniqueID: 0,
 				URI:      []byte("nft-uri"),
 				Metadata: []byte("NFT Metadata"),
@@ -90,7 +90,7 @@ func TestMintAssetNFTAction(t *testing.T) {
 			Name:  "WrongMintAdmin",
 			Actor: codec.CreateAddress(0, ids.GenerateTestID()), // Not the mint admin
 			Action: &MintAssetNFT{
-				AssetID:  assetID,
+				AssetAddress:  assetID,
 				UniqueID: 0,
 				URI:      []byte("nft-uri"),
 				Metadata: []byte("NFT Metadata"),
@@ -102,13 +102,13 @@ func TestMintAssetNFTAction(t *testing.T) {
 				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetNonFungibleTokenID, []byte("NFT Collection"), []byte("NFT"), 0, []byte("metadata"), []byte("uri"), 0, 100, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
-			ExpectedErr: ErrOutputWrongMintAdmin,
+			ExpectedErr: ErrWrongMintAdmin,
 		},
 		{
 			Name:  "ExceedMaxSupply",
 			Actor: addr,
 			Action: &MintAssetNFT{
-				AssetID:  assetID,
+				AssetAddress:  assetID,
 				UniqueID: 100, // Exceeds max supply
 				URI:      []byte("nft-uri"),
 				Metadata: []byte("NFT Metadata"),
@@ -126,7 +126,7 @@ func TestMintAssetNFTAction(t *testing.T) {
 			Name:  "ValidNFTMint",
 			Actor: addr,
 			Action: &MintAssetNFT{
-				AssetID:  assetID,
+				AssetAddress:  assetID,
 				UniqueID: 0,
 				URI:      []byte("nft-uri"),
 				Metadata: []byte("NFT Metadata"),
@@ -152,7 +152,7 @@ func TestMintAssetNFTAction(t *testing.T) {
 				require.Equal(t, uint64(1), balance)
 			},
 			ExpectedOutputs: &MintAssetNFTResult{
-				NftID:            nftID,
+				AssetNftAddress:            nftID,
 				To:               addr,
 				OldBalance:       0,
 				NewBalance:       1,
@@ -175,7 +175,7 @@ func BenchmarkMintAssetNFT(b *testing.B) {
 		Name:  "MintAssetNFTBenchmark",
 		Actor: actor,
 		Action: &MintAssetNFT{
-			AssetID:  assetID,
+			AssetAddress:  assetID,
 			UniqueID: 0,
 			URI:      []byte("nft-uri"),
 			Metadata: []byte("NFT Metadata"),

@@ -16,7 +16,7 @@ import (
 	"github.com/ava-labs/hypersdk/utils"
 )
 
-// generateRandomID creates a random [ids.ID] for use in generating random addresses.
+// generateRandomID creates a random [ids.ID] for use in generating random ids.
 func GenerateRandomID() (ids.ID, error) {
 	// Create a byte slice with the length of ids.ID
 	randomBytes := make([]byte, ids.IDLen)

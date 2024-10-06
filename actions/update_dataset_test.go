@@ -26,7 +26,7 @@ func TestUpdateDatasetAction(t *testing.T) {
 			Name:  "DatasetNotFound",
 			Actor: addr,
 			Action: &UpdateDataset{
-				DatasetID: datasetID, // Dataset does not exist
+				DatasetAddress: datasetID, // Dataset does not exist
 				Name:      []byte("Updated Name"),
 			},
 			State:       chaintest.NewInMemoryStore(),
@@ -36,7 +36,7 @@ func TestUpdateDatasetAction(t *testing.T) {
 			Name:  "NoFieldsUpdated",
 			Actor: addr,
 			Action: &UpdateDataset{
-				DatasetID: datasetID, // No fields changed
+				DatasetAddress: datasetID, // No fields changed
 				Name:      []byte("Dataset Name"),
 			},
 			State: func() state.Mutable {
@@ -50,7 +50,7 @@ func TestUpdateDatasetAction(t *testing.T) {
 			Name:  "InvalidNameUpdate",
 			Actor: addr,
 			Action: &UpdateDataset{
-				DatasetID: datasetID,
+				DatasetAddress: datasetID,
 				Name:      []byte("Na"), // Invalid name (too short)
 			},
 			State: func() state.Mutable {
@@ -64,7 +64,7 @@ func TestUpdateDatasetAction(t *testing.T) {
 			Name:  "ValidUpdateDataset",
 			Actor: addr,
 			Action: &UpdateDataset{
-				DatasetID:   datasetID,
+				DatasetAddress:   datasetID,
 				Name:        []byte("Updated Name"),
 				Description: []byte("Updated Description"),
 			},
@@ -103,7 +103,7 @@ func BenchmarkUpdateDataset(b *testing.B) {
 		Name:  "UpdateDatasetBenchmark",
 		Actor: actor,
 		Action: &UpdateDataset{
-			DatasetID:   datasetID,
+			DatasetAddress:   datasetID,
 			Name:        []byte("Benchmark Dataset Name"),
 			Description: []byte("Benchmark Description"),
 		},

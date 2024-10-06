@@ -78,7 +78,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	nftID := utils.GenerateIDWithAddress(d.MarketplaceAssetID, actor)
 	exists, _, _, _, _, _, _ := storage.GetAssetNFT(ctx, mu, nftID)
 	if exists {
-		return nil, ErrOutputNFTAlreadyExists
+		return nil, ErrNFTAlreadyExists
 	}
 
 	// Check if the dataset exists
@@ -116,7 +116,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 		return nil, err
 	}
 	if !exists {
-		return nil, ErrOutputAssetMissing
+		return nil, ErrAssetMissing
 	}
 	if assetType != nconsts.AssetMarketplaceTokenID {
 		return nil, ErrOutputWrongAssetType

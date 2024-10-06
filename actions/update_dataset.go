@@ -29,22 +29,22 @@ var (
 )
 
 type UpdateDataset struct {
-	// DatasetID ID to update
-	DatasetID ids.ID `serialize:"true" json:"dataset_id"`
+	// DatasetAddress to update
+	DatasetAddress codec.Address `serialize:"true" json:"dataset_address"`
 
 	// The title of the dataset
-	Name []byte `serialize:"true" json:"name"`
+	Name string `serialize:"true" json:"name"`
 
 	// The description of the dataset
-	Description []byte `serialize:"true" json:"description"`
+	Description string `serialize:"true" json:"description"`
 
 	// The categories of the dataset
-	Categories []byte `serialize:"true" json:"categories"`
+	Categories string `serialize:"true" json:"categories"`
 
 	// License of the dataset
-	LicenseName   []byte `serialize:"true" json:"license_name"`
-	LicenseSymbol []byte `serialize:"true" json:"license_symbol"`
-	LicenseURL    []byte `serialize:"true" json:"license_url"`
+	LicenseName   string `serialize:"true" json:"license_name"`
+	LicenseSymbol string `serialize:"true" json:"license_symbol"`
+	LicenseURL    string `serialize:"true" json:"license_url"`
 
 	// False for sole contributor and true for open contribution
 	IsCommunityDataset bool `serialize:"true" json:"is_community_dataset"`
@@ -54,9 +54,9 @@ func (*UpdateDataset) GetTypeID() uint8 {
 	return nconsts.UpdateDatasetID
 }
 
-func (u *UpdateDataset) StateKeys(_ codec.Address) state.Keys {
+func (u *UpdateDataset) StateKeys(codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.DatasetInfoKey(u.DatasetID)): state.Allocate | state.Write,
+		string(storage.DatasetInfoKey(u.DatasetAddress)): state.Read | state.Write,
 	}
 }
 
@@ -69,21 +69,17 @@ func (u *UpdateDataset) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the dataset exists
-	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := storage.GetDatasetInfoNoController(ctx, mu, u.DatasetID)
+	name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, marketplaceAssetAddress, baseAssetAddress, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := storage.GetDatasetInfoNoController(ctx, mu, u.DatasetAddress)
 	if err != nil {
 		return nil, err
 	}
-	if !exists {
-		return nil, ErrDatasetNotFound
-	}
-
 	// Check if the actor is the owner of the dataset
 	if owner != actor {
 		return nil, ErrWrongOwner
 	}
 
 	// Ensure that at least one field is being updated
-	if (len(u.Name) == 0 || bytes.Equal(u.Name, name)) && (len(u.Description) == 0 || bytes.Equal(u.Description, description)) && (len(u.Categories) == 0 || bytes.Equal(u.Categories, categories)) && (len(u.LicenseName) == 0 || bytes.Equal(u.LicenseName, licenseName)) && (len(u.LicenseSymbol) == 0 || bytes.Equal(u.LicenseSymbol, licenseSymbol)) && (len(u.LicenseURL) == 0 || bytes.Equal(u.LicenseURL, licenseURL)) && u.IsCommunityDataset == isCommunityDataset {
+	if (len(u.Name) == 0 || bytes.Equal([]byte(u.Name), name)) && (len(u.Description) == 0 || bytes.Equal([]byte(u.Description), description)) && (len(u.Categories) == 0 || bytes.Equal([]byte(u.Categories), categories)) && (len(u.LicenseName) == 0 || bytes.Equal([]byte(u.LicenseName), licenseName)) && (len(u.LicenseSymbol) == 0 || bytes.Equal([]byte(u.LicenseSymbol), licenseSymbol)) && (len(u.LicenseURL) == 0 || bytes.Equal([]byte(u.LicenseURL), licenseURL)) && u.IsCommunityDataset == isCommunityDataset {
 		return nil, ErrOutputMustUpdateAtLeastOneField
 	}
 
@@ -92,51 +88,51 @@ func (u *UpdateDataset) Execute(
 	// if u.Name is passed, update the dataset name
 	// otherwise, keep the existing name
 	if len(u.Name) > 0 {
-		if len(u.Name) < 3 || len(u.Name) > MaxMetadataSize {
+		if len(u.Name) < 3 || len(u.Name) > storage.MaxAssetNameSize {
 			return nil, ErrNameInvalid
 		}
-		name = u.Name
-		updateDatasetResult.Name = name
+		name = []byte(u.Name)
+		updateDatasetResult.Name = u.Name
 	}
 
 	if len(u.Description) > 0 {
-		if len(u.Description) < 3 || len(u.Description) > MaxMetadataSize {
+		if len(u.Description) < 3 || len(u.Description) > storage.MaxDatasetTextSize {
 			return nil, ErrDescriptionInvalid
 		}
-		description = u.Description
-		updateDatasetResult.Description = description
+		description = []byte(u.Description)
+		updateDatasetResult.Description = u.Description
 	}
 
 	if len(u.Categories) > 0 {
-		if len(u.Categories) < 3 || len(u.Categories) > MaxMetadataSize {
+		if len(u.Categories) < 3 || len(u.Categories) > storage.MaxDatasetTextSize {
 			return nil, ErrCategoriesInvalid
 		}
-		categories = u.Categories
-		updateDatasetResult.Categories = categories
+		categories = []byte(u.Categories)
+		updateDatasetResult.Categories = u.Categories
 	}
 
 	if len(u.LicenseName) > 0 {
-		if len(u.LicenseName) < 3 || len(u.LicenseName) > MaxMetadataSize {
+		if len(u.LicenseName) < 3 || len(u.LicenseName) > storage.MaxAssetNameSize {
 			return nil, ErrLicenseNameInvalid
 		}
-		licenseName = u.LicenseName
-		updateDatasetResult.LicenseName = licenseName
+		licenseName = []byte(u.LicenseName)
+		updateDatasetResult.LicenseName = u.LicenseName
 	}
 
 	if len(u.LicenseSymbol) > 0 {
-		if len(u.LicenseSymbol) < 3 || len(u.LicenseSymbol) > MaxTextSize {
+		if len(u.LicenseSymbol) < 3 || len(u.LicenseSymbol) > storage.MaxAssetSymbolSize {
 			return nil, ErrLicenseSymbolInvalid
 		}
-		licenseSymbol = u.LicenseSymbol
-		updateDatasetResult.LicenseSymbol = licenseSymbol
+		licenseSymbol = []byte(u.LicenseSymbol)
+		updateDatasetResult.LicenseSymbol = u.LicenseSymbol
 	}
 
 	if len(u.LicenseURL) > 0 {
-		if len(u.LicenseURL) < 3 || len(u.LicenseURL) > MaxMetadataSize {
+		if len(u.LicenseURL) < 3 || len(u.LicenseURL) > storage.MaxDatasetTextSize {
 			return nil, ErrLicenseURLInvalid
 		}
-		licenseURL = u.LicenseURL
-		updateDatasetResult.LicenseURL = licenseURL
+		licenseURL = []byte(u.LicenseURL)
+		updateDatasetResult.LicenseURL = u.LicenseURL
 	}
 
 	if u.IsCommunityDataset {
@@ -145,7 +141,7 @@ func (u *UpdateDataset) Execute(
 	}
 
 	// Update the dataset
-	if err := storage.SetDatasetInfo(ctx, mu, u.DatasetID, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, u.IsCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
+	if err := storage.SetDatasetInfo(ctx, mu, u.DatasetAddress, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, u.IsCommunityDataset, marketplaceAssetAddress, baseAssetAddress, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
 		return nil, err
 	}
 
@@ -161,32 +157,15 @@ func (*UpdateDataset) ValidRange(chain.Rules) (int64, int64) {
 	return -1, -1
 }
 
-var _ chain.Marshaler = (*UpdateDataset)(nil)
-
-func (u *UpdateDataset) Size() int {
-	return ids.IDLen + codec.BytesLen(u.Name) + codec.BytesLen(u.Description) + codec.BytesLen(u.Categories) + codec.BytesLen(u.LicenseName) + codec.BytesLen(u.LicenseSymbol) + codec.BytesLen(u.LicenseURL) + consts.BoolLen
-}
-
-func (u *UpdateDataset) Marshal(p *codec.Packer) {
-	p.PackID(u.DatasetID)
-	p.PackBytes(u.Name)
-	p.PackBytes(u.Description)
-	p.PackBytes(u.Categories)
-	p.PackBytes(u.LicenseName)
-	p.PackBytes(u.LicenseSymbol)
-	p.PackBytes(u.LicenseURL)
-	p.PackBool(u.IsCommunityDataset)
-}
-
 func UnmarshalUpdateDataset(p *codec.Packer) (chain.Action, error) {
 	var update UpdateDataset
-	p.UnpackID(true, &update.DatasetID)
-	p.UnpackBytes(MaxMetadataSize, false, &update.Name)
-	p.UnpackBytes(MaxMetadataSize, false, &update.Description)
-	p.UnpackBytes(MaxMetadataSize, false, &update.Categories)
-	p.UnpackBytes(MaxMetadataSize, false, &update.LicenseName)
-	p.UnpackBytes(MaxTextSize, false, &update.LicenseSymbol)
-	p.UnpackBytes(MaxMetadataSize, false, &update.LicenseURL)
+	p.UnpackAddress(&update.DatasetAddress)
+	update.Name = p.UnpackString(false)
+	update.Description = p.UnpackString(false)
+	update.Categories = p.UnpackString(false)
+	update.LicenseName = p.UnpackString(false)
+	update.LicenseSymbol = p.UnpackString(false)
+	update.LicenseURL = p.UnpackString(false)
 	update.IsCommunityDataset = p.UnpackBool()
 	return &update, p.Err()
 }
@@ -197,12 +176,12 @@ var (
 )
 
 type UpdateDatasetResult struct {
-	Name               []byte `serialize:"true" json:"name"`
-	Description        []byte `serialize:"true" json:"description"`
-	Categories         []byte `serialize:"true" json:"categories"`
-	LicenseName        []byte `serialize:"true" json:"license_name"`
-	LicenseSymbol      []byte `serialize:"true" json:"license_symbol"`
-	LicenseURL         []byte `serialize:"true" json:"license_url"`
+	Name               string `serialize:"true" json:"name"`
+	Description        string `serialize:"true" json:"description"`
+	Categories         string `serialize:"true" json:"categories"`
+	LicenseName        string `serialize:"true" json:"license_name"`
+	LicenseSymbol      string `serialize:"true" json:"license_symbol"`
+	LicenseURL         string `serialize:"true" json:"license_url"`
 	IsCommunityDataset bool   `serialize:"true" json:"is_community_dataset"`
 }
 
@@ -211,27 +190,27 @@ func (*UpdateDatasetResult) GetTypeID() uint8 {
 }
 
 func (r *UpdateDatasetResult) Size() int {
-	return codec.BytesLen(r.Name) + codec.BytesLen(r.Description) + codec.BytesLen(r.Categories) + codec.BytesLen(r.LicenseName) + codec.BytesLen(r.LicenseSymbol) + codec.BytesLen(r.LicenseURL) + consts.BoolLen
+	return codec.StringLen(r.Name) + codec.StringLen(r.Description) + codec.StringLen(r.Categories) + codec.StringLen(r.LicenseName) + codec.StringLen(r.LicenseSymbol) + codec.StringLen(r.LicenseURL) + consts.BoolLen
 }
 
 func (r *UpdateDatasetResult) Marshal(p *codec.Packer) {
-	p.PackBytes(r.Name)
-	p.PackBytes(r.Description)
-	p.PackBytes(r.Categories)
-	p.PackBytes(r.LicenseName)
-	p.PackBytes(r.LicenseSymbol)
-	p.PackBytes(r.LicenseURL)
+	p.PackString(r.Name)
+	p.PackString(r.Description)
+	p.PackString(r.Categories)
+	p.PackString(r.LicenseName)
+	p.PackString(r.LicenseSymbol)
+	p.PackString(r.LicenseURL)
 	p.PackBool(r.IsCommunityDataset)
 }
 
 func UnmarshalUpdateDatasetResult(p *codec.Packer) (codec.Typed, error) {
 	var result UpdateDatasetResult
-	p.UnpackBytes(MaxMetadataSize, false, &result.Name)
-	p.UnpackBytes(MaxMetadataSize, false, &result.Description)
-	p.UnpackBytes(MaxMetadataSize, false, &result.Categories)
-	p.UnpackBytes(MaxMetadataSize, false, &result.LicenseName)
-	p.UnpackBytes(MaxTextSize, false, &result.LicenseSymbol)
-	p.UnpackBytes(MaxMetadataSize, false, &result.LicenseURL)
+	result.Name = p.UnpackString(false)
+	result.Description = p.UnpackString(false)
+	result.Categories = p.UnpackString(false)
+	result.LicenseName = p.UnpackString(false)
+	result.LicenseSymbol = p.UnpackString(false)
+	result.LicenseURL = p.UnpackString(false)
 	result.IsCommunityDataset = p.UnpackBool()
 	return &result, p.Err()
 }

@@ -49,11 +49,15 @@ func AssetAddress(assetType uint8, name []byte, symbol []byte, decimals uint8, m
 	return codec.CreateAddress(assetType, id)
 }
 
-func AssetNFTAddress(assetAddress codec.Address, uniqueID uint64) codec.Address {
-	actionBytes := make([]byte, codec.AddressLen+consts.Uint64Len)
-	copy(actionBytes, assetAddress[:])
-	binary.BigEndian.PutUint64(actionBytes[codec.AddressLen:], uniqueID)
-	id := utils.ToID(actionBytes)
+func AssetNFTAddress(assetAddress codec.Address, metadata []byte, owner codec.Address) codec.Address {
+	v := make([]byte, codec.AddressLen+len(metadata)+codec.AddressLen)
+	offset := 0
+	copy(v[offset:], assetAddress[:])
+	offset += codec.AddressLen
+	copy(v[offset:], metadata)
+	offset += len(metadata)
+	copy(v[offset:], owner[:])
+	id := utils.ToID(v)
 	return codec.CreateAddress(nconsts.AssetNonFungibleTokenID, id)
 }
 
@@ -228,6 +232,10 @@ func MintAsset(ctx context.Context, mu state.Mutable, asset codec.Address, to co
 	if err != nil {
 		return 0, err
 	}
+	// Ensure minting doesn't exceed max supply
+	if maxSupply != 0 && newTotalSupply > maxSupply {
+		return 0, ErrMaxSupplyExceeded
+	}
 	newBalance, err := smath.Add(balance, mintAmount)
 	if err != nil {
 		return 0, err
@@ -372,6 +380,15 @@ func TransferAsset(
 		}
 	}
 	return newFromBalance, newToBalance, nil
+}
+
+func DeleteAsset(
+	ctx context.Context,
+	mu state.Mutable,
+	assetAddress codec.Address,
+) error {
+	k := AssetInfoKey(assetAddress)
+	return mu.Remove(ctx, k)
 }
 
 func AssetExists(

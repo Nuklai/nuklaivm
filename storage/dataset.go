@@ -19,7 +19,10 @@ const (
 	DatasetContributionInfoChunks uint16 = 10
 )
 
-const MaxDatasetMetadataSize = 5120
+const ( 
+	MaxDatasetTextSize = 256
+	MaxDatasetMetadataSize = 5120
+)
 
 func DatasetInfoKey(datasetAddress codec.Address) (k []byte) {
 	k = make([]byte, 1+codec.AddressLen+consts.Uint16Len)                 // Length of prefix + datasetAddress + DatasetInfoChunks

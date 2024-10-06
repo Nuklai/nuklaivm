@@ -40,7 +40,7 @@ func TestCreateAssetAction(t *testing.T) {
 				URI:       "uri",
 				MaxSupply: 1000,
 			},
-			ExpectedErr: ErrOutputAssetTypeInvalid,
+			ExpectedErr: ErrAssetTypeInvalid,
 		},
 		{
 			Name:  "InvalidName",
@@ -70,7 +70,7 @@ func TestCreateAssetAction(t *testing.T) {
 				URI:       "uri",
 				MaxSupply: 1000,
 			},
-			ExpectedErr: ErrOutputSymbolInvalid,
+			ExpectedErr: ErrSymbolInvalid,
 		},
 		{
 			Name:  "InvalidDecimalsForFungible",
@@ -85,7 +85,7 @@ func TestCreateAssetAction(t *testing.T) {
 				URI:       "uri",
 				MaxSupply: 1000,
 			},
-			ExpectedErr: ErrOutputDecimalsInvalid,
+			ExpectedErr: ErrDecimalsInvalid,
 		},
 		{
 			Name:  "InvalidDecimalsForNonFungible",
@@ -100,7 +100,7 @@ func TestCreateAssetAction(t *testing.T) {
 				URI:       "uri",
 				MaxSupply: 1,
 			},
-			ExpectedErr: ErrOutputDecimalsInvalid,
+			ExpectedErr: ErrDecimalsInvalid,
 		},
 		{
 			Name:  "InvalidMetadata",
@@ -130,7 +130,7 @@ func TestCreateAssetAction(t *testing.T) {
 				URI:       strings.Repeat("a", MaxMetadataSize+1), // Invalid URI, too long
 				MaxSupply: 1000,
 			},
-			ExpectedErr: ErrOutputURIInvalid,
+			ExpectedErr: ErrURIInvalid,
 		},
 		{
 			Name:     "ValidFungibleTokenCreation",
@@ -167,9 +167,9 @@ func TestCreateAssetAction(t *testing.T) {
 				require.Equal(t, codec.EmptyAddress, enableDisableKYCAccountAdmin)
 			},
 			ExpectedOutputs: &CreateAssetResult{
-				AssetID:            assetID,
+				AssetAddress:            assetID,
 				AssetBalance:       0,
-				DatasetParentNftID: ids.Empty,
+				DatasetParentNftAddress: ids.Empty,
 			},
 		},
 		{
@@ -207,9 +207,9 @@ func TestCreateAssetAction(t *testing.T) {
 				require.Equal(t, codec.EmptyAddress, enableDisableKYCAccountAdmin)
 			},
 			ExpectedOutputs: &CreateAssetResult{
-				AssetID:            assetID,
+				AssetAddress:            assetID,
 				AssetBalance:       0,
-				DatasetParentNftID: ids.Empty,
+				DatasetParentNftAddress: ids.Empty,
 			},
 		},
 		{
@@ -259,9 +259,9 @@ func TestCreateAssetAction(t *testing.T) {
 				require.Equal(t, addr.String(), owner.String())
 			},
 			ExpectedOutputs: &CreateAssetResult{
-				AssetID:            assetID,
+				AssetAddress:            assetID,
 				AssetBalance:       1,
-				DatasetParentNftID: nftID,
+				DatasetParentNftAddress: nftID,
 			},
 		},
 	}

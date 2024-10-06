@@ -201,7 +201,7 @@ func TestTransferAction(t *testing.T) {
 				require.NoError(t, storage.SetAssetAccountBalance(context.Background(), store, nftAddress, codec.EmptyAddress, 1))
 				return store
 			}(),
-			ExpectedErr: ErrInsufficientTokenBalance,
+			ExpectedErr: ErrInsufficientAssetBalance,
 		},
 	}
 

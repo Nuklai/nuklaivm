@@ -28,7 +28,7 @@ func TestCreateDatasetAction(t *testing.T) {
 			Name:  "InvalidName",
 			Actor: addr,
 			Action: &CreateDataset{
-				AssetID:       datasetID,
+				AssetAddress:       datasetID,
 				Name:          []byte("Na"), // Invalid name (too short)
 				Description:   []byte("Valid Description"),
 				Categories:    []byte("Science"),
@@ -43,7 +43,7 @@ func TestCreateDatasetAction(t *testing.T) {
 			Name:  "InvalidDescription",
 			Actor: addr,
 			Action: &CreateDataset{
-				AssetID:       datasetID,
+				AssetAddress:       datasetID,
 				Name:          []byte("Valid Name"),
 				Description:   []byte("De"), // Invalid description (too short)
 				Categories:    []byte("Science"),
@@ -58,7 +58,7 @@ func TestCreateDatasetAction(t *testing.T) {
 			Name:  "InvalidCategories",
 			Actor: addr,
 			Action: &CreateDataset{
-				AssetID:       datasetID,
+				AssetAddress:       datasetID,
 				Name:          []byte("Valid Name"),
 				Description:   []byte("Valid Description"),
 				Categories:    []byte("Ca"), // Invalid categories (too short)
@@ -73,7 +73,7 @@ func TestCreateDatasetAction(t *testing.T) {
 			Name:  "InvalidLicenseName",
 			Actor: addr,
 			Action: &CreateDataset{
-				AssetID:       datasetID,
+				AssetAddress:       datasetID,
 				Name:          []byte("Valid Name"),
 				Description:   []byte("Valid Description"),
 				Categories:    []byte("Science"),
@@ -88,7 +88,7 @@ func TestCreateDatasetAction(t *testing.T) {
 			Name:  "InvalidLicenseSymbol",
 			Actor: addr,
 			Action: &CreateDataset{
-				AssetID:       datasetID,
+				AssetAddress:       datasetID,
 				Name:          []byte("Valid Name"),
 				Description:   []byte("Valid Description"),
 				Categories:    []byte("Science"),
@@ -103,7 +103,7 @@ func TestCreateDatasetAction(t *testing.T) {
 			Name:  "InvalidLicenseURL",
 			Actor: addr,
 			Action: &CreateDataset{
-				AssetID:       datasetID,
+				AssetAddress:       datasetID,
 				Name:          []byte("Valid Name"),
 				Description:   []byte("Valid Description"),
 				Categories:    []byte("Science"),
@@ -119,7 +119,7 @@ func TestCreateDatasetAction(t *testing.T) {
 			ActionID: datasetID,
 			Actor:    addr,
 			Action: &CreateDataset{
-				AssetID:            datasetID,
+				AssetAddress:            datasetID,
 				Name:               []byte("Dataset Name"),
 				Description:        []byte("This is a dataset"),
 				Categories:         []byte("Science"),
@@ -166,8 +166,8 @@ func TestCreateDatasetAction(t *testing.T) {
 				*/
 			},
 			ExpectedOutputs: &CreateDatasetResult{
-				DatasetID:          datasetID,
-				DatasetParentNftID: utils.GenerateIDWithIndex(datasetID, 0),
+				DatasetAddress:          datasetID,
+				DatasetParentNftAddress: utils.GenerateIDWithIndex(datasetID, 0),
 			},
 		},
 	}
@@ -186,7 +186,7 @@ func BenchmarkCreateDataset(b *testing.B) {
 		Name:  "CreateDatasetBenchmark",
 		Actor: actor,
 		Action: &CreateDataset{
-			AssetID:            datasetID,
+			AssetAddress:            datasetID,
 			Name:               []byte("Benchmark Dataset"),
 			Description:        []byte("This is a benchmark dataset"),
 			Categories:         []byte("Science"),
