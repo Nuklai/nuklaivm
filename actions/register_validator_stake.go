@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/storage"
 
@@ -51,8 +52,8 @@ func (*RegisterValidatorStake) GetTypeID() uint8 {
 
 func (r *RegisterValidatorStake) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.BalanceKey(actor, ids.Empty)): state.Read | state.Write,
-		string(storage.ValidatorStakeKey(r.NodeID)):  state.Allocate | state.Write,
+		string(storage.ValidatorStakeKey(r.NodeID)):                       state.Allocate | state.Write,
+		string(storage.AssetAccountBalanceKey(storage.NAIAddress, actor)): state.Read | state.Write,
 	}
 }
 
@@ -155,9 +156,22 @@ func (r *RegisterValidatorStake) Execute(
 		return nil, err
 	}
 
-	if _, err := storage.SubBalance(ctx, mu, actor, ids.Empty, stakeInfo.StakedAmount); err != nil {
+	// Ensure that the balance is sufficient and subtract the staked amount
+	balance, err := storage.GetAssetAccountBalanceNoController(ctx, mu, storage.NAIAddress, actor)
+	if err != nil {
 		return nil, err
 	}
+	if balance < stakeInfo.StakedAmount {
+		return nil, ErrInsufficientAssetBalance
+	}
+	newBalance, err := smath.Sub(balance, stakeInfo.StakedAmount)
+	if err != nil {
+		return nil, err
+	}
+	if err = storage.SetAssetAccountBalance(ctx, mu, storage.NAIAddress, actor, newBalance); err != nil {
+		return nil, err
+	}
+
 	if err := storage.SetValidatorStake(ctx, mu, stakeInfo.NodeID, stakeInfo.StakeStartBlock, stakeInfo.StakeEndBlock, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate, stakeInfo.RewardAddress, actor); err != nil {
 		return nil, err
 	}

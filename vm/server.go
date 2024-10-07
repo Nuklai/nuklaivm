@@ -111,7 +111,7 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 	if err != nil {
 		return err
 	}
-	assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAssetInfoFromState(ctx, j.vm.ReadState, assetAddress)
+	assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoFromState(ctx, j.vm.ReadState, assetAddress)
 	if err != nil {
 		return err
 	}
@@ -120,8 +120,8 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 		reply.AssetType = consts.AssetFungibleTokenDesc
 	case consts.AssetNonFungibleTokenID:
 		reply.AssetType = consts.AssetNonFungibleTokenDesc
-	case consts.AssetDatasetTokenID:
-		reply.AssetType = consts.AssetDatasetTokenDesc
+	case consts.AssetFractionalTokenID:
+		reply.AssetType = consts.AssetFractionalTokenDesc
 	case consts.AssetMarketplaceTokenID:
 		reply.AssetType = consts.AssetMarketplaceTokenDesc
 	}
@@ -132,11 +132,11 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 	reply.URI = string(uri)
 	reply.TotalSupply = totalSupply
 	reply.MaxSupply = maxSupply
-	reply.Owner = admin.String()
-	reply.MintAdmin = mintActor.String()
-	reply.PauseUnpauseAdmin = pauseUnpauseActor.String()
-	reply.FreezeUnfreezeAdmin = freezeUnfreezeActor.String()
-	reply.EnableDisableKYCAccountAdmin = enableDisableKYCAccountActor.String()
+	reply.Owner = owner.String()
+	reply.MintAdmin = mintAdmin.String()
+	reply.PauseUnpauseAdmin = pauseUnpauseAdmin.String()
+	reply.FreezeUnfreezeAdmin = freezeUnfreezeAdmin.String()
+	reply.EnableDisableKYCAccountAdmin = enableDisableKYCAccountAdmin.String()
 
 	return nil
 }

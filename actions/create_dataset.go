@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	ErrDatasetAlreadyExists			 = errors.New("dataset already exists")
+	ErrDatasetAlreadyExists              = errors.New("dataset already exists")
 	ErrDescriptionInvalid                = errors.New("description is invalid")
 	ErrCategoriesInvalid                 = errors.New("categories is invalid")
 	ErrLicenseNameInvalid                = errors.New("license name is invalid")
@@ -62,8 +62,8 @@ func (*CreateDataset) GetTypeID() uint8 {
 
 func (c *CreateDataset) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.AssetInfoKey(c.AssetAddress)):   state.Read | state.Write,
-		string(storage.DatasetInfoKey(c.AssetAddress)): state.All,
+		string(storage.AssetInfoKey(c.AssetAddress)):                  state.Read | state.Write,
+		string(storage.DatasetInfoKey(c.AssetAddress)):                state.All,
 		string(storage.AssetAccountBalanceKey(c.AssetAddress, actor)): state.All,
 	}
 }
@@ -76,22 +76,22 @@ func (c *CreateDataset) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-	if len(c.Name) < 3 || len(c.Name) > storage.MaxAssetNameSize {
+	if len(c.Name) < 3 || len(c.Name) > storage.MaxNameSize {
 		return nil, ErrNameInvalid
 	}
-	if len(c.Description) > storage.MaxDatasetTextSize {
+	if len(c.Description) > storage.MaxTextSize {
 		return nil, ErrDescriptionInvalid
 	}
-	if len(c.Categories) > storage.MaxDatasetTextSize {
+	if len(c.Categories) > storage.MaxTextSize {
 		return nil, ErrCategoriesInvalid
 	}
-	if len(c.LicenseName) > storage.MaxAssetNameSize {
+	if len(c.LicenseName) > storage.MaxNameSize {
 		return nil, ErrLicenseNameInvalid
 	}
-	if len(c.LicenseSymbol) > storage.MaxAssetSymbolSize {
+	if len(c.LicenseSymbol) > storage.MaxSymbolSize {
 		return nil, ErrLicenseSymbolInvalid
 	}
-	if len(c.LicenseURL) > storage.MaxDatasetTextSize {
+	if len(c.LicenseURL) > storage.MaxTextSize {
 		return nil, ErrLicenseURLInvalid
 	}
 	if len(c.Metadata) > storage.MaxDatasetMetadataSize {
@@ -103,7 +103,7 @@ func (c *CreateDataset) Execute(
 	if err != nil {
 		return nil, err
 	}
-	if assetType != nconsts.AssetDatasetTokenID {
+	if assetType != nconsts.AssetFractionalTokenID {
 		return nil, ErrOutputWrongAssetType
 	}
 	if owner != actor {
@@ -115,7 +115,7 @@ func (c *CreateDataset) Execute(
 		revenueModelDataOwnerCut = 10
 	}
 
-	// Continue only if dataset doesn't exist 
+	// Continue only if dataset doesn't exist
 	if storage.DatasetExists(ctx, mu, c.AssetAddress) {
 		return nil, ErrDatasetAlreadyExists
 	}
@@ -134,7 +134,7 @@ func (c *CreateDataset) Execute(
 
 	return &CreateDatasetResult{
 		DatasetAddress:          c.AssetAddress,
-		DatasetParentNftAddress: storage.AssetNFTAddress(c.AssetAddress, []byte(metadata), owner),
+		DatasetParentNftAddress: storage.AssetAddressNFT(c.AssetAddress, []byte(metadata), owner),
 	}, nil
 }
 

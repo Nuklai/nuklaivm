@@ -26,20 +26,17 @@ const (
 var _ chain.Action = (*PublishDatasetMarketplace)(nil)
 
 type PublishDatasetMarketplace struct {
-	// TODO: Remove after hypersdk adds pseudorandom actionID generation
-	MarketplaceAssetID ids.ID `serialize:"true" json:"marketplace_asset_id"`
+	// DatasetAddress
+	DatasetAddress codec.Address `serialize:"true" json:"dataset_address"`
 
-	// DatasetID ID
-	DatasetID ids.ID `serialize:"true" json:"dataset_id"`
-
-	// This is the asset ID to use for calculating the price for one block
-	BaseAssetID ids.ID `serialize:"true" json:"base_asset_id"`
+	// This is the asset to use for calculating the price for one block
+	PaymentAssetAddress codec.Address `serialize:"true" json:"payment_asset_address"`
 
 	// This is the base price in the `baseAsset` amount for one block
 	// For example, if the base price is 1 and the base asset is NAI,
 	// then the price for one block is 1 NAI
 	// If 0 is passed, the dataset is free to use
-	BasePrice uint64 `serialize:"true" json:"base_price"`
+	DatasetPricePerBlock uint64 `serialize:"true" json:"dataset_price_per_block"`
 }
 
 func (*PublishDatasetMarketplace) GetTypeID() uint8 {
@@ -47,11 +44,10 @@ func (*PublishDatasetMarketplace) GetTypeID() uint8 {
 }
 
 func (d *PublishDatasetMarketplace) StateKeys(_ codec.Address) state.Keys {
+	marketplaceAssetAddress := storage.AssetAddressFractional(d.DatasetAddress)
 	return state.Keys{
-		string(storage.AssetInfoKey(d.MarketplaceAssetID)): state.All,
-		string(storage.DatasetInfoKey(d.DatasetID)):        state.Read | state.Write,
-		string(storage.AssetInfoKey(d.DatasetID)):          state.Read,
-		string(storage.AssetInfoKey(d.MarketplaceAssetID)): state.Allocate | state.Write,
+		string(storage.AssetInfoKey(marketplaceAssetAddress)): state.All,
+		string(storage.DatasetInfoKey(d.DatasetAddress)):      state.Read | state.Write,
 	}
 }
 
@@ -63,43 +59,35 @@ func (d *PublishDatasetMarketplace) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
+	marketplaceAssetAddress := storage.AssetAddressFractional(d.DatasetAddress)
+
+	// Check if the marketplace asset already exists
+	if storage.AssetExists(ctx, mu, marketplaceAssetAddress) {
+		return nil, ErrAssetExists
+	}
+
 	// Check if the dataset exists
-	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, _, _, _, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := storage.GetDatasetInfoNoController(ctx, mu, d.DatasetID)
+	name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, _, _, _, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := storage.GetDatasetInfoNoController(ctx, mu, d.DatasetAddress)
 	if err != nil {
 		return nil, err
 	}
-	if !exists {
-		return nil, ErrDatasetNotFound
-	}
-
 	// Check if the actor is the owner of the dataset
 	if owner != actor {
 		return nil, ErrWrongOwner
 	}
 
 	// Update the dataset
-	if err := storage.SetDatasetInfo(ctx, mu, d.DatasetID, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, d.MarketplaceAssetID, d.BaseAssetID, d.BasePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
+	if err := storage.SetDatasetInfo(ctx, mu, d.DatasetAddress, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, marketplaceAssetAddress, d.PaymentAssetAddress, d.DatasetPricePerBlock, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner); err != nil {
 		return nil, err
 	}
-
-	// Retrieve the asset info
-	exists, _, name, symbol, _, _, _, _, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, d.DatasetID)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, ErrAssetNotFound
-	}
-	name = utils.CombineWithPrefix([]byte("Dataset-Marketplace-"), name, MaxMetadataSize)
-	symbol = utils.CombineWithPrefix([]byte("DM-"), symbol, MaxTextSize)
 
 	// Create an asset that represents that this dataset is published to the marketplace
 	// This is a special type of token that cannot be manually created/minted
 	metadataMap := make(map[string]string, 0)
-	metadataMap["datasetID"] = d.DatasetID.String()
-	metadataMap["marketplaceAssetID"] = d.MarketplaceAssetID.String()
-	metadataMap["datasetPricePerBlock"] = fmt.Sprint(d.BasePrice)
-	metadataMap["assetForPayment"] = d.BaseAssetID.String()
+	metadataMap["datasetAddress"] = d.DatasetAddress.String()
+	metadataMap["marketplaceAssetAddress"] = marketplaceAssetAddress.String()
+	metadataMap["datasetPricePerBlock"] = fmt.Sprint(d.DatasetPricePerBlock)
+	metadataMap["paymentAssetAddress"] = d.PaymentAssetAddress.String()
 	metadataMap["publisher"] = actor.String()
 	metadataMap["lastClaimedBlock"] = "0"
 	metadataMap["subscriptions"] = "0"
@@ -110,22 +98,15 @@ func (d *PublishDatasetMarketplace) Execute(
 	if err != nil {
 		return nil, err
 	}
-
-	// TODO: Remove after hypersdk adds pseudorandom actionID generation
-	exists, _, _, _, _, _, _, _, _, _, _, _, _, _, _ = storage.GetAssetInfoNoController(ctx, mu, d.MarketplaceAssetID)
-	if exists {
-		return nil, ErrAssetAlreadyExists
-	}
-
-	if err := storage.SetAssetInfo(ctx, mu, d.MarketplaceAssetID, nconsts.AssetMarketplaceTokenID, name, symbol, 0, metadata, []byte(d.DatasetID.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, marketplaceAssetAddress, nconsts.AssetMarketplaceTokenID, []byte(storage.MarketplaceAssetName), []byte(storage.MarketplaceAssetSymbol), 0, metadata, d.DatasetAddress[:], 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}
 
 	return &PublishDatasetMarketplaceResult{
-		MarketplaceAssetID:   d.MarketplaceAssetID,
-		AssetForPayment:      d.BaseAssetID,
-		DatasetPricePerBlock: d.BasePrice,
-		Publisher:            actor,
+		MarketplaceAssetAddress: marketplaceAssetAddress,
+		PaymentAssetAddress:     d.PaymentAssetAddress,
+		DatasetPricePerBlock:    d.DatasetPricePerBlock,
+		Publisher:               actor,
 	}, nil
 }
 
@@ -138,25 +119,11 @@ func (*PublishDatasetMarketplace) ValidRange(chain.Rules) (int64, int64) {
 	return -1, -1
 }
 
-var _ chain.Marshaler = (*PublishDatasetMarketplace)(nil)
-
-func (*PublishDatasetMarketplace) Size() int {
-	return ids.IDLen*3 + consts.Uint64Len
-}
-
-func (d *PublishDatasetMarketplace) Marshal(p *codec.Packer) {
-	p.PackID(d.MarketplaceAssetID)
-	p.PackID(d.DatasetID)
-	p.PackID(d.BaseAssetID)
-	p.PackUint64(d.BasePrice)
-}
-
 func UnmarshalPublishDatasetMarketplace(p *codec.Packer) (chain.Action, error) {
 	var publish PublishDatasetMarketplace
-	p.UnpackID(true, &publish.MarketplaceAssetID)
-	p.UnpackID(true, &publish.DatasetID)
-	p.UnpackID(false, &publish.BaseAssetID)
-	publish.BasePrice = p.UnpackUint64(false)
+	p.UnpackAddress(&publish.DatasetAddress)
+	p.UnpackAddress(&publish.PaymentAssetAddress)
+	publish.DatasetPricePerBlock = p.UnpackUint64(false)
 	return &publish, p.Err()
 }
 
@@ -166,10 +133,10 @@ var (
 )
 
 type PublishDatasetMarketplaceResult struct {
-	MarketplaceAssetID   ids.ID        `serialize:"true" json:"marketplace_asset_id"`
-	AssetForPayment      ids.ID        `serialize:"true" json:"asset_for_payment"`
-	DatasetPricePerBlock uint64        `serialize:"true" json:"dataset_price_per_block"`
-	Publisher            codec.Address `serialize:"true" json:"publisher"`
+	MarketplaceAssetAddress codec.Address `serialize:"true" json:"marketplace_asset_address"`
+	PaymentAssetAddress     codec.Address `serialize:"true" json:"payment_asset_address"`
+	Publisher               codec.Address `serialize:"true" json:"publisher"`
+	DatasetPricePerBlock    uint64        `serialize:"true" json:"dataset_price_per_block"`
 }
 
 func (*PublishDatasetMarketplaceResult) GetTypeID() uint8 {
@@ -177,21 +144,21 @@ func (*PublishDatasetMarketplaceResult) GetTypeID() uint8 {
 }
 
 func (*PublishDatasetMarketplaceResult) Size() int {
-	return ids.IDLen*2 + consts.Uint64Len + codec.AddressLen
+	return codec.AddressLen*3 + consts.Uint64Len
 }
 
 func (r *PublishDatasetMarketplaceResult) Marshal(p *codec.Packer) {
-	p.PackID(r.MarketplaceAssetID)
-	p.PackID(r.AssetForPayment)
-	p.PackUint64(r.DatasetPricePerBlock)
+	p.PackAddress(r.MarketplaceAssetAddress)
+	p.PackAddress(r.PaymentAssetAddress)
 	p.PackAddress(r.Publisher)
+	p.PackUint64(r.DatasetPricePerBlock)
 }
 
 func UnmarshalPublishDatasetMarketplaceResult(p *codec.Packer) (codec.Typed, error) {
 	var result PublishDatasetMarketplaceResult
-	p.UnpackID(true, &result.MarketplaceAssetID)
-	p.UnpackID(false, &result.AssetForPayment)
-	result.DatasetPricePerBlock = p.UnpackUint64(false)
+	p.UnpackAddress(&result.MarketplaceAssetAddress)
+	p.UnpackAddress(&result.PaymentAssetAddress)
 	p.UnpackAddress(&result.Publisher)
+	result.DatasetPricePerBlock = p.UnpackUint64(false)
 	return &result, p.Err()
 }

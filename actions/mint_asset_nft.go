@@ -9,6 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
@@ -23,7 +24,7 @@ const (
 )
 
 var (
-	ErrNFTAlreadyExists                          = errors.New("NFT already exists")
+	ErrNFTAlreadyExists                                = errors.New("NFT already exists")
 	ErrOutputUniqueIDGreaterThanMaxSupply              = errors.New("unique ID is greater than or equal to max supply")
 	_                                     chain.Action = (*MintAssetNFT)(nil)
 )
@@ -44,12 +45,12 @@ func (*MintAssetNFT) GetTypeID() uint8 {
 }
 
 func (m *MintAssetNFT) StateKeys(actor codec.Address) state.Keys {
-	nftAddress := storage.AssetNFTAddress(m.AssetAddress, []byte(m.Metadata), m.To)
+	nftAddress := storage.AssetAddressNFT(m.AssetAddress, []byte(m.Metadata), m.To)
 	return state.Keys{
-		string(storage.AssetInfoKey(m.AssetAddress)):     state.Read | state.Write,
-		string(storage.AssetInfoKey(nftAddress)):     state.All,
+		string(storage.AssetInfoKey(m.AssetAddress)):                 state.Read | state.Write,
+		string(storage.AssetInfoKey(nftAddress)):                     state.All,
 		string(storage.AssetAccountBalanceKey(m.AssetAddress, m.To)): state.Read | state.Write,
-		string(storage.AssetAccountBalanceKey(nftAddress, m.To)): state.All,
+		string(storage.AssetAccountBalanceKey(nftAddress, m.To)):     state.All,
 	}
 }
 
@@ -65,7 +66,7 @@ func (m *MintAssetNFT) Execute(
 		return nil, ErrMetadataInvalid
 	}
 
-	assetType, name, symbol, _, metadata, _, _, _, _, mintAdmin, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, m.AssetAddress)
+	assetType, name, symbol, _, metadata, _, totalSupply, _, _, mintAdmin, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, m.AssetAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +79,7 @@ func (m *MintAssetNFT) Execute(
 	}
 
 	// Check if the nftAddress already exists
-	nftAddress := storage.AssetNFTAddress(m.AssetAddress, []byte(m.Metadata), m.To)
+	nftAddress := storage.AssetAddressNFT(m.AssetAddress, []byte(m.Metadata), m.To)
 	if storage.AssetExists(ctx, mu, nftAddress) {
 		return nil, ErrNFTAlreadyExists
 	}
@@ -88,6 +89,7 @@ func (m *MintAssetNFT) Execute(
 	if err != nil {
 		return nil, err
 	}
+	symbol = utils.CombineWithSuffix(symbol, totalSupply+1, storage.MaxSymbolSize)
 	if err := storage.SetAssetInfo(ctx, mu, nftAddress, assetType, name, symbol, 0, metadata, m.AssetAddress[:], 0, 1, m.To, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}
@@ -96,9 +98,9 @@ func (m *MintAssetNFT) Execute(
 	}
 
 	return &MintAssetNFTResult{
-		AssetNftAddress:            nftAddress,
-		OldBalance:       newBalance - 1,
-		NewBalance:       newBalance,
+		AssetNftAddress: nftAddress,
+		OldBalance:      newBalance - 1,
+		NewBalance:      newBalance,
 	}, nil
 }
 
@@ -125,9 +127,9 @@ var (
 )
 
 type MintAssetNFTResult struct {
-	AssetNftAddress            codec.Address        `serialize:"true" json:"asset_nft_address"`
-	OldBalance       uint64        `serialize:"true" json:"old_balance"`
-	NewBalance       uint64        `serialize:"true" json:"new_balance"`
+	AssetNftAddress codec.Address `serialize:"true" json:"asset_nft_address"`
+	OldBalance      uint64        `serialize:"true" json:"old_balance"`
+	NewBalance      uint64        `serialize:"true" json:"new_balance"`
 }
 
 func (*MintAssetNFTResult) GetTypeID() uint8 {

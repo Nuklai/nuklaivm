@@ -85,12 +85,12 @@ func (cli *JSONRPCClient) Asset(
 	ctx context.Context,
 	asset string,
 	useCache bool,
-) (bool, string, string, string, uint8, string, string, uint64, uint64, string, string, string, string, string, error) {
+) (string, string, string, uint8, string, string, uint64, uint64, string, string, string, string, string, error) {
 	cli.assetsL.Lock()
 	r, ok := cli.assets[asset]
 	cli.assetsL.Unlock()
 	if ok && useCache {
-		return true, r.AssetType, r.Name, r.Symbol, r.Decimals, r.Metadata, r.URI, r.TotalSupply, r.MaxSupply, r.Owner, r.MintAdmin, r.PauseUnpauseAdmin, r.FreezeUnfreezeAdmin, r.EnableDisableKYCAccountAdmin, nil
+		return r.AssetType, r.Name, r.Symbol, r.Decimals, r.Metadata, r.URI, r.TotalSupply, r.MaxSupply, r.Owner, r.MintAdmin, r.PauseUnpauseAdmin, r.FreezeUnfreezeAdmin, r.EnableDisableKYCAccountAdmin, nil
 	}
 
 	// Check if it's the native asset
@@ -104,24 +104,24 @@ func (cli *JSONRPCClient) Asset(
 		resp,
 	)
 	if err != nil {
-		return false, "", "", "", 0, "", "", 0, 0, "", "", "", "", "", err
+		return "", "", "", 0, "", "", 0, 0, "", "", "", "", "", err
 	}
 	cli.assetsL.Lock()
 	cli.assets[asset] = resp
 	cli.assetsL.Unlock()
-	return true, resp.AssetType, resp.Name, resp.Symbol, resp.Decimals, resp.Metadata, resp.URI, resp.TotalSupply, resp.MaxSupply, resp.Owner, resp.MintAdmin, resp.PauseUnpauseAdmin, resp.FreezeUnfreezeAdmin, resp.EnableDisableKYCAccountAdmin, nil
+	return resp.AssetType, resp.Name, resp.Symbol, resp.Decimals, resp.Metadata, resp.URI, resp.TotalSupply, resp.MaxSupply, resp.Owner, resp.MintAdmin, resp.PauseUnpauseAdmin, resp.FreezeUnfreezeAdmin, resp.EnableDisableKYCAccountAdmin, nil
 }
 
 func (cli *JSONRPCClient) Dataset(
 	ctx context.Context,
 	dataset string,
 	useCache bool,
-) (bool, string, string, string, string, string, string, string, bool, string, string, uint64, uint8, uint8, uint8, uint8, string, error) {
+) (string, string, string, string, string, string, string, bool, string, string, uint64, uint8, uint8, uint8, uint8, string, error) {
 	cli.assetsL.Lock()
 	r, ok := cli.datasets[dataset]
 	cli.assetsL.Unlock()
 	if ok && useCache {
-		return true, r.Name, r.Description, r.Categories, r.LicenseName, r.LicenseSymbol, r.LicenseURL, r.Metadata, r.IsCommunityDataset, r.MarketplaceAssetAddress, r.BaseAssetAddress, r.BasePrice, r.RevenueModelDataShare, r.RevenueModelMetadataShare, r.RevenueModelDataOwnerCut, r.RevenueModelMetadataOwnerCut, r.Owner, nil
+		return r.Name, r.Description, r.Categories, r.LicenseName, r.LicenseSymbol, r.LicenseURL, r.Metadata, r.IsCommunityDataset, r.MarketplaceAssetAddress, r.BaseAssetAddress, r.BasePrice, r.RevenueModelDataShare, r.RevenueModelMetadataShare, r.RevenueModelDataOwnerCut, r.RevenueModelMetadataOwnerCut, r.Owner, nil
 	}
 
 	resp := new(DatasetReply)
@@ -134,12 +134,12 @@ func (cli *JSONRPCClient) Dataset(
 		resp,
 	)
 	if err != nil {
-		return false, "", "", "", "", "", "", "", false, "", "", 0, 0, 0, 0, 0, "", nil
+		return "", "", "", "", "", "", "", false, "", "", 0, 0, 0, 0, 0, "", nil
 	}
 	cli.assetsL.Lock()
 	cli.datasets[dataset] = resp
 	cli.assetsL.Unlock()
-	return true, resp.Name, resp.Description, resp.Categories, resp.LicenseName, resp.LicenseSymbol, resp.LicenseURL, resp.Metadata, resp.IsCommunityDataset, resp.MarketplaceAssetAddress, resp.BaseAssetAddress, resp.BasePrice, resp.RevenueModelDataShare, resp.RevenueModelMetadataShare, resp.RevenueModelDataOwnerCut, resp.RevenueModelMetadataOwnerCut, resp.Owner, nil
+	return resp.Name, resp.Description, resp.Categories, resp.LicenseName, resp.LicenseSymbol, resp.LicenseURL, resp.Metadata, resp.IsCommunityDataset, resp.MarketplaceAssetAddress, resp.BaseAssetAddress, resp.BasePrice, resp.RevenueModelDataShare, resp.RevenueModelMetadataShare, resp.RevenueModelDataOwnerCut, resp.RevenueModelMetadataOwnerCut, resp.Owner, nil
 }
 
 func (cli *JSONRPCClient) DatasetContribution(ctx context.Context, dataset string) (string, string, string, string, bool, error) {

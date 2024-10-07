@@ -34,12 +34,12 @@ const (
 	// Asset TypeIDs
 	AssetFungibleTokenID    uint8 = iota // 0
 	AssetNonFungibleTokenID              // 1
-	AssetDatasetTokenID                  // 2
+	AssetFractionalTokenID               // 2
 	AssetMarketplaceTokenID              // 3
 
 	// Asset Names for TypeIDs
 	AssetFungibleTokenDesc    = "Fungible Token"     // #nosec
 	AssetNonFungibleTokenDesc = "Non-Fungible Token" // #nosec
-	AssetDatasetTokenDesc     = "Dataset Token"      // #nosec
-	AssetMarketplaceTokenDesc = "Marketplace Token"  // #nosec
+	AssetFractionalTokenDesc  = "Fractional Token"   // #nosec
+	AssetMarketplaceTokenDesc = "Marketplace Token"  // #nose
 )

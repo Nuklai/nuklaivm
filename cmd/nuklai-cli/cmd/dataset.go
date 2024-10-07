@@ -131,7 +131,7 @@ var createDatasetFromExistingAssetCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.CreateDataset{
-			AssetAddress:            assetID,
+			AssetAddress:       assetID,
 			Name:               []byte(name),
 			Description:        []byte(description),
 			Categories:         []byte(name),
@@ -183,7 +183,7 @@ var updateDatasetCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.UpdateDataset{
-			DatasetAddress:          datasetID,
+			DatasetAddress:     datasetID,
 			Name:               []byte(name),
 			IsCommunityDataset: isCommunityDataset,
 		}}, cli, ncli, ws, factory)
@@ -259,7 +259,7 @@ var initiateContributeDatasetCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.InitiateContributeDataset{
-			DatasetID:      datasetID,
+			DatasetAddress: datasetID,
 			DataLocation:   []byte("default"),
 			DataIdentifier: []byte(dataIdentifier),
 		}}, cli, ncli, ws, factory)
@@ -345,9 +345,9 @@ var completeContributeDatasetCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.CompleteContributeDataset{
-			DatasetID:                 datasetID,
-			Contributor:               contributor,
-			UniqueNFTIDForContributor: uniqueID,
+			DatasetAddress:               datasetID,
+			DatasetContributor:           contributor,
+			UniqueContributorNFTMetadata: uniqueID,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err

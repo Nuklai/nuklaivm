@@ -24,7 +24,7 @@ const (
 )
 
 var (
-	ErrWrongOwner											= errors.New("wrong owner")
+	ErrWrongOwner                                             = errors.New("wrong owner")
 	ErrAssetNotFound                                          = errors.New("asset not found")
 	ErrOutputMustUpdateAtLeastOneField                        = errors.New("must update at least one field")
 	ErrOutputMaxSupplyInvalid                                 = errors.New("max supply must be greater than or equal to total supply")
@@ -120,7 +120,7 @@ func (u *UpdateAsset) Execute(
 	// if u.Name is passed, update the dataset name
 	// otherwise, keep the existing name
 	if len(u.Name) > 0 {
-		if len(u.Name) < 3 || len(u.Name) > storage.MaxAssetNameSize {
+		if len(u.Name) < 3 || len(u.Name) > storage.MaxNameSize {
 			return nil, ErrNameInvalid
 		}
 		name = []byte(u.Name)
@@ -128,7 +128,7 @@ func (u *UpdateAsset) Execute(
 	}
 
 	if len(u.Symbol) > 0 {
-		if len(u.Symbol) < 3 || len(u.Symbol) > storage.MaxAssetSymbolSize {
+		if len(u.Symbol) < 3 || len(u.Symbol) > storage.MaxSymbolSize {
 			return nil, ErrSymbolInvalid
 		}
 		symbol = []byte(u.Symbol)
@@ -144,7 +144,7 @@ func (u *UpdateAsset) Execute(
 	}
 
 	if len(u.URI) > 0 {
-		if len(u.URI) < 3 || len(u.URI) > storage.MaxAssetURISize {
+		if len(u.URI) < 3 || len(u.URI) > storage.MaxTextSize {
 			return nil, ErrURIInvalid
 		}
 		uri = []byte(u.URI)
@@ -226,11 +226,11 @@ var (
 )
 
 type UpdateAssetResult struct {
-	Name                         string `serialize:"true" json:"name"`
-	Symbol                       string `serialize:"true" json:"symbol"`
-	Metadata                     string `serialize:"true" json:"metadata"`
-	URI                          string`serialize:"true" json:"uri"`
-	MaxSupply                    uint64 `serialize:"true" json:"max_supply"`
+	Name                         string        `serialize:"true" json:"name"`
+	Symbol                       string        `serialize:"true" json:"symbol"`
+	Metadata                     string        `serialize:"true" json:"metadata"`
+	URI                          string        `serialize:"true" json:"uri"`
+	MaxSupply                    uint64        `serialize:"true" json:"max_supply"`
 	Owner                        codec.Address `serialize:"true" json:"owner"`
 	MintAdmin                    codec.Address `serialize:"true" json:"mint_admin"`
 	PauseUnpauseAdmin            codec.Address `serialize:"true" json:"pause_unpause_admin"`

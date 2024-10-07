@@ -37,7 +37,7 @@ func (*BurnAssetFT) GetTypeID() uint8 {
 
 func (b *BurnAssetFT) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.AssetInfoKey(b.AssetAddress)):      state.Read | state.Write,
+		string(storage.AssetInfoKey(b.AssetAddress)):                  state.Read | state.Write,
 		string(storage.AssetAccountBalanceKey(b.AssetAddress, actor)): state.Read | state.Write,
 	}
 }
@@ -63,15 +63,6 @@ func (b *BurnAssetFT) Execute(
 		return nil, ErrAssetTypeInvalid
 	}
 
-	// Check that actor does not burn move than what they currently have
-	balance, err := storage.GetAssetAccountBalanceNoController(ctx, mu, b.AssetAddress, actor)
-	if err != nil {
-		return nil, err
-	}
-	if balance < b.Value {
-		return nil, ErrInsufficientAssetBalance
-	}
-
 	// Burning logic for fungible tokens
 	newBalance, err := storage.BurnAsset(ctx, mu, b.AssetAddress, actor, b.Value)
 	if err != nil {
@@ -79,8 +70,8 @@ func (b *BurnAssetFT) Execute(
 	}
 
 	return &BurnAssetFTResult{
-		OldBalance:       newBalance + b.Value,
-		NewBalance:       newBalance,
+		OldBalance: newBalance + b.Value,
+		NewBalance: newBalance,
 	}, nil
 }
 
@@ -106,8 +97,8 @@ var (
 )
 
 type BurnAssetFTResult struct {
-	OldBalance       uint64        `serialize:"true" json:"old_balance"`
-	NewBalance       uint64        `serialize:"true" json:"new_balance"`
+	OldBalance uint64 `serialize:"true" json:"old_balance"`
+	NewBalance uint64 `serialize:"true" json:"new_balance"`
 }
 
 func (*BurnAssetFTResult) GetTypeID() uint8 {
@@ -115,7 +106,7 @@ func (*BurnAssetFTResult) GetTypeID() uint8 {
 }
 
 func (*BurnAssetFTResult) Size() int {
-	return consts.Uint64Len*2
+	return consts.Uint64Len * 2
 }
 
 func (r *BurnAssetFTResult) Marshal(p *codec.Packer) {

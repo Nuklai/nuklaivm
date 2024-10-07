@@ -77,7 +77,7 @@ func (t *Transfer) Execute(
 	} else if t.Value == 0 {
 		return nil, ErrValueZero
 	}
-	if len(t.Memo) > MaxMemoSize {
+	if len(t.Memo) > storage.MaxTextSize {
 		return nil, ErrMemoTooLarge
 	}
 

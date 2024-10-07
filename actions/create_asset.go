@@ -9,6 +9,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
@@ -23,14 +24,14 @@ const (
 )
 
 var (
-	ErrAssetExists						= errors.New("asset already exists")
+	ErrAssetExists                   = errors.New("asset already exists")
 	ErrAssetTypeInvalid              = errors.New("asset type is invalid")
-	ErrNameInvalid                         = errors.New("name is invalid")
+	ErrNameInvalid                   = errors.New("name is invalid")
 	ErrSymbolInvalid                 = errors.New("symbol is invalid")
 	ErrDecimalsInvalid               = errors.New("decimals is invalid")
-	ErrMetadataInvalid                     = errors.New("metadata is invalid")
+	ErrMetadataInvalid               = errors.New("metadata is invalid")
 	ErrURIInvalid                    = errors.New("uri is invalid")
-	_                         chain.Action = (*CreateAsset)(nil)
+	_                   chain.Action = (*CreateAsset)(nil)
 )
 
 type CreateAsset struct {
@@ -81,8 +82,8 @@ func (c *CreateAsset) StateKeys(actor codec.Address) state.Keys {
 
 	// Check if c.AssetType is a dataset type so we
 	// can create the NFT ID
-	if c.AssetType == nconsts.AssetDatasetTokenID {
-		nftAddress := storage.AssetNFTAddress(assetAddress, []byte(c.Metadata), actor)
+	if c.AssetType == nconsts.AssetFractionalTokenID {
+		nftAddress := storage.AssetAddressNFT(assetAddress, []byte(c.Metadata), actor)
 		stateKeys[string(storage.AssetAccountBalanceKey(nftAddress, actor))] = state.Allocate | state.Write
 	}
 	return stateKeys
@@ -98,13 +99,13 @@ func (c *CreateAsset) Execute(
 ) (codec.Typed, error) {
 	assetAddress := storage.AssetAddress(c.AssetType, []byte(c.Name), []byte(c.Symbol), c.Decimals, []byte(c.Metadata), []byte(c.URI), actor)
 
-	if c.AssetType != nconsts.AssetFungibleTokenID && c.AssetType != nconsts.AssetNonFungibleTokenID && c.AssetType != nconsts.AssetDatasetTokenID {
+	if c.AssetType != nconsts.AssetFungibleTokenID && c.AssetType != nconsts.AssetNonFungibleTokenID && c.AssetType != nconsts.AssetFractionalTokenID {
 		return nil, ErrAssetTypeInvalid
 	}
-	if len(c.Name) < 3 || len(c.Name) > storage.MaxAssetNameSize {
+	if len(c.Name) < 3 || len(c.Name) > storage.MaxNameSize {
 		return nil, ErrNameInvalid
 	}
-	if len(c.Symbol) < 3 || len(c.Symbol) > storage.MaxAssetSymbolSize {
+	if len(c.Symbol) < 3 || len(c.Symbol) > storage.MaxSymbolSize {
 		return nil, ErrSymbolInvalid
 	}
 	if c.AssetType == nconsts.AssetFungibleTokenID && c.Decimals > storage.MaxAssetDecimals {
@@ -116,7 +117,7 @@ func (c *CreateAsset) Execute(
 	if len(c.Metadata) > storage.MaxAssetMetadataSize {
 		return nil, ErrMetadataInvalid
 	}
-	if len(c.URI) > storage.MaxAssetURISize  {
+	if len(c.URI) > storage.MaxTextSize {
 		return nil, ErrURIInvalid
 	}
 	mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin := codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress
@@ -139,7 +140,7 @@ func (c *CreateAsset) Execute(
 	}
 
 	output := CreateAssetResult{
-		AssetAddress:      assetAddress,
+		AssetAddress: assetAddress,
 		AssetBalance: uint64(0),
 	}
 
@@ -148,16 +149,17 @@ func (c *CreateAsset) Execute(
 		return nil, err
 	}
 
-	if c.AssetType == nconsts.AssetDatasetTokenID {
+	if c.AssetType == nconsts.AssetFractionalTokenID {
 		amountOfToken := uint64(1)
-		// Add to NFT collection too 
+		// Add to NFT collection too
 		if _, err := storage.MintAsset(ctx, mu, assetAddress, actor, amountOfToken); err != nil {
 			return nil, err
 		}
 		// Mint the parent NFT for the dataset(fractionalized asset)
-		nftAddress := storage.AssetNFTAddress(assetAddress, []byte(c.Metadata), actor)
+		nftAddress := storage.AssetAddressNFT(assetAddress, []byte(c.Metadata), actor)
 		output.DatasetParentNftAddress = nftAddress
-		if err := storage.SetAssetInfo(ctx, mu, nftAddress, c.AssetType, []byte(c.Name), []byte(c.Symbol), 0, []byte(c.Metadata), assetAddress[:], 0, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
+		symbol := utils.CombineWithSuffix([]byte(c.Symbol), 0, storage.MaxSymbolSize)
+		if err := storage.SetAssetInfo(ctx, mu, nftAddress, c.AssetType, []byte(c.Name), symbol, 0, []byte(c.Metadata), assetAddress[:], 0, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 			return nil, err
 		}
 		newBalance, err := storage.MintAsset(ctx, mu, nftAddress, actor, amountOfToken)
@@ -202,7 +204,7 @@ var (
 
 type CreateAssetResult struct {
 	AssetAddress            codec.Address `serialize:"true" json:"asset_id"`
-	AssetBalance       uint64 `serialize:"true" json:"asset_balance"`
+	AssetBalance            uint64        `serialize:"true" json:"asset_balance"`
 	DatasetParentNftAddress codec.Address `serialize:"true" json:"nft_id"`
 }
 
@@ -211,7 +213,7 @@ func (*CreateAssetResult) GetTypeID() uint8 {
 }
 
 func (*CreateAssetResult) Size() int {
-	return  codec.AddressLen + consts.Uint64Len + codec.AddressLen
+	return codec.AddressLen + consts.Uint64Len + codec.AddressLen
 }
 
 func (r *CreateAssetResult) Marshal(p *codec.Packer) {

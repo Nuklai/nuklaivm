@@ -168,7 +168,7 @@ func TestCreateAssetAction(t *testing.T) {
 			},
 			ExpectedOutputs: &CreateAssetResult{
 				AssetAddress:            assetID,
-				AssetBalance:       0,
+				AssetBalance:            0,
 				DatasetParentNftAddress: ids.Empty,
 			},
 		},
@@ -208,7 +208,7 @@ func TestCreateAssetAction(t *testing.T) {
 			},
 			ExpectedOutputs: &CreateAssetResult{
 				AssetAddress:            assetID,
-				AssetBalance:       0,
+				AssetBalance:            0,
 				DatasetParentNftAddress: ids.Empty,
 			},
 		},
@@ -218,7 +218,7 @@ func TestCreateAssetAction(t *testing.T) {
 			ActionID: assetID,
 			Action: &CreateAsset{
 				AssetID:   assetID.String(),
-				AssetType: nconsts.AssetDatasetTokenID,
+				AssetType: nconsts.AssetFractionalTokenID,
 				Name:      "Dataset Asset",
 				Symbol:    "DAT",
 				Decimals:  0,
@@ -232,7 +232,7 @@ func TestCreateAssetAction(t *testing.T) {
 				exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, assetID)
 				require.True(t, exists)
 				require.NoError(t, err)
-				require.Equal(t, nconsts.AssetDatasetTokenID, assetType)
+				require.Equal(t, nconsts.AssetFractionalTokenID, assetType)
 				require.Equal(t, "Dataset Asset", string(name))
 				require.Equal(t, "DAT", string(symbol))
 				require.Equal(t, uint8(0), decimals)
@@ -260,7 +260,7 @@ func TestCreateAssetAction(t *testing.T) {
 			},
 			ExpectedOutputs: &CreateAssetResult{
 				AssetAddress:            assetID,
-				AssetBalance:       1,
+				AssetBalance:            1,
 				DatasetParentNftAddress: nftID,
 			},
 		},

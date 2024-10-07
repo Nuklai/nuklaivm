@@ -19,6 +19,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/storage"
 	"github.com/nuklai/nuklaivm/vm"
 	"github.com/rs/cors"
 	"golang.org/x/time/rate"
@@ -112,7 +113,7 @@ func transferCoins(to string) (string, error) {
 		parser,
 		[]chain.Action{&actions.Transfer{
 			To:           toAddr,
-			AssetAddress: consts.Symbol,
+			AssetAddress: storage.NAIAddress,
 			Value:        amt,
 		}},
 		factory,

@@ -34,9 +34,9 @@ func TestClaimMarketplacePaymentAction(t *testing.T) {
 			Name:  "DatasetNotFound",
 			Actor: addr,
 			Action: &ClaimMarketplacePayment{
-				DatasetID:          datasetID, // Non-existent dataset ID
-				MarketplaceAssetID: marketplaceAssetID,
-				AssetForPayment:    baseAssetID,
+				DatasetID:               datasetID, // Non-existent dataset ID
+				MarketplaceAssetAddress: marketplaceAssetID,
+				PaymentAssetAddress:     baseAssetID,
 			},
 			State:       chaintest.NewInMemoryStore(),
 			ExpectedErr: ErrDatasetNotFound,
@@ -45,9 +45,9 @@ func TestClaimMarketplacePaymentAction(t *testing.T) {
 			Name:  "WrongOwner",
 			Actor: codectest.NewRandomAddress(), // Not the owner of the dataset
 			Action: &ClaimMarketplacePayment{
-				DatasetID:          datasetID,
-				MarketplaceAssetID: marketplaceAssetID,
-				AssetForPayment:    baseAssetID,
+				DatasetID:               datasetID,
+				MarketplaceAssetAddress: marketplaceAssetID,
+				PaymentAssetAddress:     baseAssetID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -61,9 +61,9 @@ func TestClaimMarketplacePaymentAction(t *testing.T) {
 			Name:  "AssetNotSupported",
 			Actor: addr,
 			Action: &ClaimMarketplacePayment{
-				DatasetID:          datasetID,
-				MarketplaceAssetID: marketplaceAssetID,
-				AssetForPayment:    ids.GenerateTestID(), // Non-existent base asset ID
+				DatasetID:               datasetID,
+				MarketplaceAssetAddress: marketplaceAssetID,
+				PaymentAssetAddress:     ids.GenerateTestID(), // Non-existent base asset ID
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -71,15 +71,15 @@ func TestClaimMarketplacePaymentAction(t *testing.T) {
 				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
 				return store
 			}(),
-			ExpectedErr: ErrBaseAssetNotSupported,
+			ExpectedErr: ErrPaymentAssetNotSupported,
 		},
 		{
 			Name:  "NoPaymentRemaining",
 			Actor: addr,
 			Action: &ClaimMarketplacePayment{
-				DatasetID:          datasetID,
-				MarketplaceAssetID: marketplaceAssetID,
-				AssetForPayment:    baseAssetID,
+				DatasetID:               datasetID,
+				MarketplaceAssetAddress: marketplaceAssetID,
+				PaymentAssetAddress:     baseAssetID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -103,9 +103,9 @@ func TestClaimMarketplacePaymentAction(t *testing.T) {
 			ActionID: marketplaceAssetID,
 			Actor:    addr,
 			Action: &ClaimMarketplacePayment{
-				DatasetID:          datasetID,
-				MarketplaceAssetID: marketplaceAssetID,
-				AssetForPayment:    baseAssetID,
+				DatasetID:               datasetID,
+				MarketplaceAssetAddress: marketplaceAssetID,
+				PaymentAssetAddress:     baseAssetID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -167,9 +167,9 @@ func BenchmarkClaimMarketplacePayment(b *testing.B) {
 		Name:  "ClaimMarketplacePaymentBenchmark",
 		Actor: actor,
 		Action: &ClaimMarketplacePayment{
-			DatasetID:          datasetID,
-			MarketplaceAssetID: marketplaceAssetID,
-			AssetForPayment:    baseAssetID,
+			DatasetID:               datasetID,
+			MarketplaceAssetAddress: marketplaceAssetID,
+			PaymentAssetAddress:     baseAssetID,
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()

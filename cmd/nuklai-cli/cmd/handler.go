@@ -83,7 +83,7 @@ func (h *Handler) ImportCLI(cliPath string) error {
 	return h.h.StoreDefaultChain(chainID)
 }
 
-func (h *Handler) BalanceAsset(checkAllChains bool, isNFT bool, printBalance func(string, codec.Address, ids.ID, bool) error) error {
+func (h *Handler) BalanceAsset(checkAllChains bool, isNFT bool, printBalance func(string, codec.Address, codec.Address, bool) error) error {
 	addr, _, err := h.h.GetDefaultKey(true)
 	if err != nil {
 		return err
@@ -93,7 +93,7 @@ func (h *Handler) BalanceAsset(checkAllChains bool, isNFT bool, printBalance fun
 		return err
 	}
 
-	assetID, err := prompt.ID("assetID")
+	assetAddress, err := prompt.Address("assetAddress")
 	if err != nil {
 		return err
 	}
@@ -104,7 +104,7 @@ func (h *Handler) BalanceAsset(checkAllChains bool, isNFT bool, printBalance fun
 	}
 	for _, uri := range uris[:max] {
 		utils.Outf("{{yellow}}uri:{{/}} %s\n", uri)
-		if err := printBalance(uri, addr, assetID, isNFT); err != nil {
+		if err := printBalance(uri, addr, assetAddress, isNFT); err != nil {
 			return err
 		}
 	}
@@ -199,50 +199,44 @@ func (*Handler) GetBalance(
 func (*Handler) GetAssetInfo(
 	ctx context.Context,
 	cli *vm.JSONRPCClient,
-	addr codec.Address,
-	assetID ids.ID,
+	actor codec.Address,
+	assetAddress codec.Address,
 	checkBalance bool,
 ) (uint64, string, string, string, uint8, string, uint64, uint64, string, string, string, string, string, error) {
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := cli.Asset(ctx, assetID.String(), false)
+	assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := cli.Asset(ctx, assetAddress.String(), false)
 	if err != nil {
 		return 0, "", "", "", 0, "", 0, 0, "", "", "", "", "", err
 	}
-	if assetID != ids.Empty {
-		if !exists {
-			utils.Outf("{{red}}%s does not exist{{/}}\n", assetID)
-			utils.Outf("{{red}}exiting...{{/}}\n")
-			return 0, "", "", "", 0, "", 0, 0, "", "", "", "", "", nil
-		}
-		utils.Outf(
-			"{{blue}}assetType: {{/}} %s name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}uri:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}owner:{{/}} %s {{blue}}mintAdmin:{{/}} %s {{blue}}pauseUnpauseAdmin:{{/}} %s {{blue}}freezeUnfreezeAdmin:{{/}} %s {{blue}}enableDisableKYCAccountAdmin:{{/}} %s\n",
-			assetType,
-			name,
-			symbol,
-			decimals,
-			metadata,
-			uri,
-			totalSupply,
-			maxSupply,
-			owner,
-			mintAdmin,
-			pauseUnpauseAdmin,
-			freezeUnfreezeAdmin,
-			enableDisableKYCAccountAdmin,
-		)
-	}
+	utils.Outf(
+		"{{blue}}assetType: {{/}} %s name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}uri:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}owner:{{/}} %s {{blue}}mintAdmin:{{/}} %s {{blue}}pauseUnpauseAdmin:{{/}} %s {{blue}}freezeUnfreezeAdmin:{{/}} %s {{blue}}enableDisableKYCAccountAdmin:{{/}} %s\n",
+		assetType,
+		name,
+		symbol,
+		decimals,
+		metadata,
+		uri,
+		totalSupply,
+		maxSupply,
+		owner,
+		mintAdmin,
+		pauseUnpauseAdmin,
+		freezeUnfreezeAdmin,
+		enableDisableKYCAccountAdmin,
+	)
+
 	if !checkBalance {
 		return 0, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, nil
 	}
-	balance, err := cli.Balance(ctx, addr.String(), assetID.String())
+	balance, err := cli.Balance(ctx, actor.String(), assetAddress.String())
 	if err != nil {
 		return 0, "", "", "", 0, "", 0, 0, "", "", "", "", "", err
 	}
 	if balance == 0 {
-		utils.Outf("{{red}}assetID:{{/}} %s\n", assetID)
+		utils.Outf("{{red}}assetID:{{/}} %s\n", assetAddress)
 		utils.Outf("{{red}}name:{{/}} %s\n", name)
 		utils.Outf("{{red}}symbol:{{/}} %s\n", symbol)
 		utils.Outf("{{red}}balance:{{/}} 0\n")
-		utils.Outf("{{red}}please send funds to %s{{/}}\n", addr.String())
+		utils.Outf("{{red}}please send funds to %s{{/}}\n", actor.String())
 		utils.Outf("{{red}}exiting...{{/}}\n")
 	} else {
 		utils.Outf(
@@ -257,44 +251,44 @@ func (*Handler) GetAssetInfo(
 func (*Handler) GetAssetNFTInfo(
 	ctx context.Context,
 	cli *vm.JSONRPCClient,
-	addr codec.Address,
-	nftID ids.ID,
+	actor codec.Address,
+	nftAddress codec.Address,
 	checkBalance bool,
-) (bool, string, uint64, string, string, string, error) {
-	exists, collectionID, uniqueID, uri, metadata, ownerAddress, err := cli.AssetNFT(ctx, nftID.String(), false)
+) (uint64, string, string, string, string, string, string, error) {
+	assetType, name, symbol, decimals, metadata, uri, _, _, owner, _, _, _, _, err := cli.Asset(ctx, nftAddress.String(), false)
 	if err != nil {
-		return false, "", 0, "", "", "", err
+		return 0, "", "", "", "", "", "", err
 	}
-	if !exists {
-		utils.Outf("{{red}}%s does not exist{{/}}\n", nftID)
-		utils.Outf("{{red}}exiting...{{/}}\n")
-		return false, "", 0, "", "", "", nil
-	}
-	if nftID == ids.Empty {
-		utils.Outf("{{red}}%s is a native asset. Please pass in NFT ID{{/}}\n", nftID)
-		utils.Outf("{{red}}exiting...{{/}}\n")
-		return false, "", 0, "", "", "", nil
-	}
+	utils.Outf(
+		"{{blue}}assetType: {{/}} %s {{blue}}name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}metadata:{{/}} %s {{blue}}collectionAssetAddress:{{/}} %s {{blue}}owner:{{/}} %s\n",
+		assetType,
+		name,
+		symbol,
+		metadata,
+		uri,
+		owner,
+	)
 
 	if !checkBalance {
-		return false, collectionID, uniqueID, uri, metadata, ownerAddress, nil
+		return 0, assetType, name, symbol, metadata, uri, owner, nil
 	}
-	balance, err := cli.Balance(ctx, addr.String(), nftID.String())
+	balance, err := cli.Balance(ctx, actor.String(), uri)
 	if err != nil {
-		return false, "", 0, "", "", "", err
+		return 0, "", "", "", "", "", "", err
 	}
-	utils.Outf("{{blue}}collectionID:{{/}} %s\n", collectionID)
-	utils.Outf("{{blue}}uniqueID:{{/}} %d\n", uniqueID)
-	utils.Outf("{{blue}}uri:{{/}} %s\n", uri)
-	utils.Outf("{{blue}}metadata:{{/}} %s\n", metadata)
-	utils.Outf("{{blue}}ownerAddress:{{/}} %s\n", ownerAddress)
-	if ownerAddress != addr.String() || balance == 0 {
+	if owner != actor.String() {
 		utils.Outf("{{red}}You do not own this NFT{{/}}\n")
 		utils.Outf("{{red}}exiting...{{/}}\n")
 	} else {
+		utils.Outf(
+			"{{blue}}collectionAssetAddress:{{/}} %s {{blue}}balance:{{/}} %s %s\n",
+			uri,
+			nutils.FormatBalance(balance, decimals),
+			symbol,
+		)
 		utils.Outf("{{blue}}You own this NFT{{/}}\n")
 	}
-	return true, collectionID, uniqueID, uri, metadata, ownerAddress, nil
+	return balance, assetType, name, symbol, metadata, uri, owner, nil
 }
 
 func (*Handler) GetEmissionInfo(
@@ -433,14 +427,9 @@ func (*Handler) GetDatasetInfo(
 	cli *vm.JSONRPCClient,
 	datasetID ids.ID,
 ) (string, string, string, string, string, string, string, bool, string, string, uint64, uint8, uint8, uint8, uint8, string, error) {
-	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := cli.Dataset(ctx, datasetID.String(), false)
+	name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := cli.Dataset(ctx, datasetID.String(), false)
 	if err != nil {
 		return "", "", "", "", "", "", "", false, "", "", 0, 0, 0, 0, 0, "", err
-	}
-	if !exists {
-		utils.Outf("{{red}}%s does not exist{{/}}\n", datasetID)
-		utils.Outf("{{red}}exiting...{{/}}\n")
-		return "", "", "", "", "", "", "", false, "", "", 0, 0, 0, 0, 0, "", nil
 	}
 
 	utils.Outf(
@@ -468,42 +457,36 @@ func (*Handler) GetDatasetInfo(
 func (*Handler) GetDataContributionPendingInfo(
 	ctx context.Context,
 	cli *vm.JSONRPCClient,
-	datasetID ids.ID,
-) ([]vm.DataContribution, error) {
-	contributions, err := cli.DataContributionPending(ctx, datasetID.String())
+	contributionID ids.ID,
+) (string, string, string, string, bool, error) {
+	datasetAddress, dataLocation, dataIdentifier, contributor, contributionAcceptedByDatasetOwner, err := cli.DatasetContribution(ctx, contributionID.String())
 	if err != nil {
-		return nil, err
+		return "", "", "", "", false, err
 	}
-	for index, contribution := range contributions {
-		utils.Outf(
-			"{{blue}}Contribution %d:{{/}} Contributor=%s DataLocation=%s DataIdentifier=%s\n",
-			index,
-			contribution.Contributor,
-			contribution.DataLocation,
-			contribution.DataIdentifier,
-		)
-	}
-	return contributions, nil
+	utils.Outf(
+		"{{blue}}contribution info: {{/}}\nDatasetAddress=%s DataLocation=%s DataIdentifier=%s Contributor=%s ContributionAcceptedByDatasetOwner=%t\n",
+		datasetAddress,
+		dataLocation,
+		dataIdentifier,
+		contributor,
+		contributionAcceptedByDatasetOwner,
+	)
+	return datasetAddress, dataLocation, dataIdentifier, contributor, contributionAcceptedByDatasetOwner, nil
 }
 
 func (*Handler) GetDatasetInfoFromMarketplace(
 	ctx context.Context,
 	cli *vm.JSONRPCClient,
-	datasetID ids.ID,
+	datasetAddress codec.Address,
 ) (string, string, bool, string, string, uint64, string, string, string, string, string, uint64, uint64, string, map[string]string, error) {
-	exists, datasetName, description, _, _, _, _, _, isCommunityDataset, saleID, baseAsset, basePrice, _, _, _, _, owner, err := cli.Dataset(ctx, datasetID.String(), false)
-	if !exists {
-		utils.Outf("{{red}}Dataset '%s' does not exist{{/}}\n", datasetID)
-		utils.Outf("{{red}}exiting...{{/}}\n")
-		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
-	}
-	if saleID == ids.Empty.String() {
-		utils.Outf("{{red}}Dataset '%s' is not on sale{{/}}\n", datasetID)
+	datasetName, description, _, _, _, _, _, isCommunityDataset, marketplaceAssetAddress, paymentAssetAddress, datasetPricePerBlock, _, _, _, _, owner, err := cli.Dataset(ctx, datasetAddress.String(), false)
+	if marketplaceAssetAddress == codec.EmptyAddress.String() {
+		utils.Outf("{{red}}Dataset '%s' is not on sale{{/}}\n", datasetAddress)
 		utils.Outf("{{red}}exiting...{{/}}\n")
 		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
 	}
 
-	_, assetType, assetName, symbol, _, metadata, uri, totalSupply, maxSupply, admin, _, _, _, _, err := cli.Asset(ctx, saleID, false)
+	assetType, assetName, symbol, _, metadata, uri, totalSupply, maxSupply, admin, _, _, _, _, err := cli.Asset(ctx, marketplaceAssetAddress, false)
 	if err != nil {
 		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
 	}
@@ -513,13 +496,13 @@ func (*Handler) GetDatasetInfoFromMarketplace(
 		return "", "", false, "", "", 0, "", "", "", "", "", 0, 0, "", nil, err
 	}
 	utils.Outf(
-		"{{blue}}dataset info from marketplace: {{/}}\nDatasetName=%s DatasetDescription=%s IsCommunityDataset=%t MarketplaceAssetID=%s AssetForPayment=%s PricePerBlock=%d DatasetOwner=%s\n{{blue}}marketplace asset info: {{/}}\nAssetType=%s AssetName=%s AssetSymbol=%s AssetURI=%s TotalSupply=%d MaxSupply=%d Owner=%s\nAssetMetadata=%#v\n",
+		"{{blue}}marketplace dataset info: {{/}}\nDatasetName=%s DatasetDescription=%s IsCommunityDataset=%t MarketplaceAssetAddress=%s PaymentAssetAddress=%s DatasetPricePerBlock=%d DatasetOwner=%s\n{{blue}}\nmarketplace asset info: {{/}}\nAssetType=%s AssetName=%s AssetSymbol=%s AssetURI=%s TotalSupply=%d MaxSupply=%d Owner=%s\nAssetMetadata=%#v\n",
 		datasetName,
 		description,
 		isCommunityDataset,
-		saleID,
-		baseAsset,
-		basePrice,
+		marketplaceAssetAddress,
+		paymentAssetAddress,
+		datasetPricePerBlock,
 		owner,
 		assetType,
 		assetName,
@@ -533,9 +516,9 @@ func (*Handler) GetDatasetInfoFromMarketplace(
 	return datasetName,
 		description,
 		isCommunityDataset,
-		saleID,
-		baseAsset,
-		basePrice,
+		marketplaceAssetAddress,
+		paymentAssetAddress,
+		datasetPricePerBlock,
 		owner,
 		assetType,
 		assetName,

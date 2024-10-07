@@ -4,6 +4,7 @@
 package utils
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 )
@@ -20,20 +21,27 @@ func FormatBalance(bal uint64, decimals uint8) string {
 	return strconv.FormatFloat(float64(bal)/math.Pow10(int(decimals)), 'f', int(decimals), 64)
 }
 
-// Function to combine the prefix with the name byte slice
-func CombineWithPrefix(prefix, name []byte, maxLength int) []byte {
-	prefixLen := len(prefix)
+func CombineWithSuffix(name []byte, uniqueNum uint64, maxLength int) []byte {
+	// Convert the unique number to a string and append a hyphen
+	uniqueNumStr := fmt.Sprintf("-%d", uniqueNum)
+	uniqueNumLen := len(uniqueNumStr)
+
+	// Ensure there is space for the suffix
+	if maxLength < uniqueNumLen {
+		// If maxLength is less than the suffix length, return only the suffix (truncated if necessary)
+		return []byte(uniqueNumStr)[:maxLength]
+	}
 
 	// Calculate the maximum allowable length for the name
-	maxNameLen := maxLength - prefixLen
+	maxNameLen := maxLength - uniqueNumLen
 
-	// Truncate the name if it's too long
+	// Truncate the name if it's too long to fit with the suffix
 	if len(name) > maxNameLen {
 		name = name[:maxNameLen]
 	}
 
-	// Combine the prefix with the (potentially truncated) name
-	prefix = append(prefix, name...)
+	// Combine the truncated name with the suffix
+	result := append(name, []byte(uniqueNumStr)...)
 
-	return prefix
+	return result
 }

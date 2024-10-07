@@ -6,7 +6,6 @@ package actions
 import (
 	"bytes"
 	"context"
-	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
@@ -24,8 +23,7 @@ const (
 )
 
 var (
-	ErrDatasetNotFound              = errors.New("dataset not found")
-	_                  chain.Action = (*UpdateDataset)(nil)
+	_ chain.Action = (*UpdateDataset)(nil)
 )
 
 type UpdateDataset struct {
@@ -88,7 +86,7 @@ func (u *UpdateDataset) Execute(
 	// if u.Name is passed, update the dataset name
 	// otherwise, keep the existing name
 	if len(u.Name) > 0 {
-		if len(u.Name) < 3 || len(u.Name) > storage.MaxAssetNameSize {
+		if len(u.Name) < 3 || len(u.Name) > storage.MaxNameSize {
 			return nil, ErrNameInvalid
 		}
 		name = []byte(u.Name)
@@ -96,7 +94,7 @@ func (u *UpdateDataset) Execute(
 	}
 
 	if len(u.Description) > 0 {
-		if len(u.Description) < 3 || len(u.Description) > storage.MaxDatasetTextSize {
+		if len(u.Description) < 3 || len(u.Description) > storage.MaxTextSize {
 			return nil, ErrDescriptionInvalid
 		}
 		description = []byte(u.Description)
@@ -104,7 +102,7 @@ func (u *UpdateDataset) Execute(
 	}
 
 	if len(u.Categories) > 0 {
-		if len(u.Categories) < 3 || len(u.Categories) > storage.MaxDatasetTextSize {
+		if len(u.Categories) < 3 || len(u.Categories) > storage.MaxTextSize {
 			return nil, ErrCategoriesInvalid
 		}
 		categories = []byte(u.Categories)
@@ -112,7 +110,7 @@ func (u *UpdateDataset) Execute(
 	}
 
 	if len(u.LicenseName) > 0 {
-		if len(u.LicenseName) < 3 || len(u.LicenseName) > storage.MaxAssetNameSize {
+		if len(u.LicenseName) < 3 || len(u.LicenseName) > storage.MaxNameSize {
 			return nil, ErrLicenseNameInvalid
 		}
 		licenseName = []byte(u.LicenseName)
@@ -120,7 +118,7 @@ func (u *UpdateDataset) Execute(
 	}
 
 	if len(u.LicenseSymbol) > 0 {
-		if len(u.LicenseSymbol) < 3 || len(u.LicenseSymbol) > storage.MaxAssetSymbolSize {
+		if len(u.LicenseSymbol) < 3 || len(u.LicenseSymbol) > storage.MaxSymbolSize {
 			return nil, ErrLicenseSymbolInvalid
 		}
 		licenseSymbol = []byte(u.LicenseSymbol)
@@ -128,7 +126,7 @@ func (u *UpdateDataset) Execute(
 	}
 
 	if len(u.LicenseURL) > 0 {
-		if len(u.LicenseURL) < 3 || len(u.LicenseURL) > storage.MaxDatasetTextSize {
+		if len(u.LicenseURL) < 3 || len(u.LicenseURL) > storage.MaxTextSize {
 			return nil, ErrLicenseURLInvalid
 		}
 		licenseURL = []byte(u.LicenseURL)

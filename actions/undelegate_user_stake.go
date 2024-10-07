@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/ava-labs/avalanchego/ids"
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/storage"
 
@@ -34,8 +35,8 @@ func (*UndelegateUserStake) GetTypeID() uint8 {
 
 func (u *UndelegateUserStake) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.BalanceKey(actor, ids.Empty)):       state.Read | state.Write,
-		string(storage.DelegatorStakeKey(actor, u.NodeID)): state.Read | state.Write,
+		string(storage.DelegatorStakeKey(actor, u.NodeID)):                state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(storage.NAIAddress, actor)): state.Read | state.Write,
 	}
 }
 
@@ -71,8 +72,17 @@ func (u *UndelegateUserStake) Execute(
 	if err := storage.DeleteDelegatorStake(ctx, mu, actor, u.NodeID); err != nil {
 		return nil, err
 	}
-	balance, err := storage.AddBalance(ctx, mu, actor, ids.Empty, rewardAmount+stakedAmount, true)
+
+	// Get the reward + staked amount
+	balance, err := storage.GetAssetAccountBalanceNoController(ctx, mu, storage.NAIAddress, actor)
 	if err != nil {
+		return nil, err
+	}
+	newBalance, err := smath.Add(balance, rewardAmount+stakedAmount)
+	if err != nil {
+		return nil, err
+	}
+	if err = storage.SetAssetAccountBalance(ctx, mu, storage.NAIAddress, actor, newBalance); err != nil {
 		return nil, err
 	}
 

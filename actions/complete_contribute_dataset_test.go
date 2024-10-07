@@ -40,9 +40,9 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			Name:  "DatasetNotFound",
 			Actor: addr,
 			Action: &CompleteContributeDataset{
-				DatasetID:                 datasetID, // Non-existent dataset ID
-				Contributor:               addr,
-				UniqueNFTIDForContributor: uniqueNFTID,
+				DatasetAddress:               datasetID, // Non-existent dataset ID
+				DatasetContributor:           addr,
+				UniqueContributorNFTMetadata: uniqueNFTID,
 			},
 			State:       chaintest.NewInMemoryStore(),
 			ExpectedErr: ErrDatasetNotFound,
@@ -51,9 +51,9 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			Name:  "WrongOwner",
 			Actor: codectest.NewRandomAddress(), // Not the owner of the dataset
 			Action: &CompleteContributeDataset{
-				DatasetID:                 datasetID,
-				Contributor:               addr,
-				UniqueNFTIDForContributor: uniqueNFTID,
+				DatasetAddress:               datasetID,
+				DatasetContributor:           addr,
+				UniqueContributorNFTMetadata: uniqueNFTID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -67,9 +67,9 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			Name:  "DatasetAlreadyOnSale",
 			Actor: addr,
 			Action: &CompleteContributeDataset{
-				DatasetID:                 datasetID,
-				Contributor:               addr,
-				UniqueNFTIDForContributor: uniqueNFTID,
+				DatasetAddress:               datasetID,
+				DatasetContributor:           addr,
+				UniqueContributorNFTMetadata: uniqueNFTID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -83,9 +83,9 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			Name:  "NFTAlreadyExists",
 			Actor: addr,
 			Action: &CompleteContributeDataset{
-				DatasetID:                 datasetID,
-				Contributor:               addr,
-				UniqueNFTIDForContributor: uniqueNFTID, // NFT already exists
+				DatasetAddress:               datasetID,
+				DatasetContributor:           addr,
+				UniqueContributorNFTMetadata: uniqueNFTID, // NFT already exists
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -103,18 +103,18 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			ActionID: ids.GenerateTestID(),
 			Actor:    addr,
 			Action: &CompleteContributeDataset{
-				DatasetID:                 datasetID,
-				Contributor:               addr,
-				UniqueNFTIDForContributor: uniqueNFTID,
+				DatasetAddress:               datasetID,
+				DatasetContributor:           addr,
+				UniqueContributorNFTMetadata: uniqueNFTID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set valid dataset
 				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, addr, addr, addr, addr, addr))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetFractionalTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, addr, addr, addr, addr, addr))
 				// Set balance to 0
 				config := marketplace.GetDatasetConfig()
-				require.NoError(t, storage.SetBalance(context.Background(), store, addr, config.CollateralAssetIDForDataContribution, 0))
+				require.NoError(t, storage.SetBalance(context.Background(), store, addr, config.CollateralAssetAddressForDataContribution, 0))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
@@ -122,7 +122,7 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 				nftID := utils.GenerateIDWithIndex(datasetID, uniqueNFTID)
 
 				// Check if the balance is correctly updated
-				balance, err := storage.GetBalance(ctx, store, addr, config.CollateralAssetIDForDataContribution)
+				balance, err := storage.GetBalance(ctx, store, addr, config.CollateralAssetAddressForDataContribution)
 				require.NoError(t, err)
 				require.Equal(t, config.CollateralAmountForDataContribution, balance) // Collateral refunded
 
@@ -138,10 +138,10 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 				require.Equal(t, string(dataIdentifier), string(contribution.DataIdentifier))
 			},
 			ExpectedOutputs: &CompleteContributeDatasetResult{
-				CollateralAssetID:        marketplace.GetDatasetConfig().CollateralAssetIDForDataContribution,
+				CollateralAssetAddress:   marketplace.GetDatasetConfig().CollateralAssetAddressForDataContribution,
 				CollateralAmountRefunded: marketplace.GetDatasetConfig().CollateralAmountForDataContribution,
 				DatasetID:                datasetID,
-				DatasetChildNftID:        utils.GenerateIDWithIndex(datasetID, uniqueNFTID),
+				DatasetChildNftAddress:   utils.GenerateIDWithIndex(datasetID, uniqueNFTID),
 				To:                       addr,
 				DataLocation:             dataLocation,
 				DataIdentifier:           dataIdentifier,
@@ -174,25 +174,25 @@ func BenchmarkCompleteContributeDataset(b *testing.B) {
 		Name:  "CompleteContributeDatasetBenchmark",
 		Actor: actor,
 		Action: &CompleteContributeDataset{
-			DatasetID:                 datasetID,
-			Contributor:               actor,
-			UniqueNFTIDForContributor: uniqueNFTID,
+			DatasetAddress:               datasetID,
+			DatasetContributor:           actor,
+			UniqueContributorNFTMetadata: uniqueNFTID,
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set valid dataset
 			require.NoError(storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, actor))
-			require.NoError(storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, actor, actor, actor, actor, actor))
+			require.NoError(storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetFractionalTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, actor, actor, actor, actor, actor))
 			// Set balance to 0
 			config := marketplace.GetDatasetConfig()
-			require.NoError(storage.SetBalance(context.Background(), store, actor, config.CollateralAssetIDForDataContribution, 0))
+			require.NoError(storage.SetBalance(context.Background(), store, actor, config.CollateralAssetAddressForDataContribution, 0))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			config := marketplace.GetDatasetConfig()
 
 			// Check if the balance is correctly updated
-			balance, err := storage.GetBalance(ctx, store, actor, config.CollateralAssetIDForDataContribution)
+			balance, err := storage.GetBalance(ctx, store, actor, config.CollateralAssetAddressForDataContribution)
 			require.NoError(err)
 			require.Equal(b, config.CollateralAmountForDataContribution, balance) // Collateral refunded
 

@@ -72,10 +72,10 @@ var publishDatasetMarketplaceCmd = &cobra.Command{
 			return err
 		}
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.PublishDatasetMarketplace{
-			MarketplaceAssetID: assetID,
-			DatasetID:          datasetID,
-			BaseAssetID:        assetForPayment,
-			BasePrice:          priceAmountPerBlock,
+			MarketplaceAssetID:   assetID,
+			DatasetAddress:       datasetID,
+			PaymentAssetAddress:  assetForPayment,
+			DatasetPricePerBlock: priceAmountPerBlock,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err
@@ -142,10 +142,10 @@ var subscribeDatasetMarketplaceCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.SubscribeDatasetMarketplace{
-			DatasetID:            datasetID,
-			MarketplaceAssetID:   marketplaceID,
-			AssetForPayment:      assetForPayment,
-			NumBlocksToSubscribe: uint64(numBlocksToSubscribe),
+			DatasetID:               datasetID,
+			MarketplaceAssetAddress: marketplaceID,
+			PaymentAssetAddress:     assetForPayment,
+			NumBlocksToSubscribe:    uint64(numBlocksToSubscribe),
 		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err
@@ -221,9 +221,9 @@ var claimPaymentMarketplaceCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.ClaimMarketplacePayment{
-			DatasetID:          datasetID,
-			MarketplaceAssetID: marketplaceID,
-			AssetForPayment:    assetForPayment,
+			DatasetID:               datasetID,
+			MarketplaceAssetAddress: marketplaceID,
+			PaymentAssetAddress:     assetForPayment,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err

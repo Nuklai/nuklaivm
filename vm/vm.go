@@ -9,7 +9,6 @@ import (
 	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
-	"github.com/nuklai/nuklaivm/marketplace"
 	"github.com/nuklai/nuklaivm/storage"
 
 	"github.com/ava-labs/hypersdk/api/indexer"
@@ -30,7 +29,6 @@ var (
 	AuthParser      *codec.TypeParser[chain.Auth]
 	OutputParser    *codec.TypeParser[codec.Typed]
 	emissionTracker emission.Tracker
-	marketplaceHub  marketplace.Hub
 	wasmRuntime     *runtime.WasmRuntime
 )
 
@@ -121,7 +119,6 @@ func NewWithOptions(options ...vm.Option) (*vm.VM, error) {
 	opts := append([]vm.Option{
 		WithRuntime(),
 		WithEmissionBalancer(),
-		WithNuklaiMarketplace(),
 	}, options...)
 	return vm.New(
 		consts.Version,

@@ -35,10 +35,10 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 			Name:  "DatasetNotFound",
 			Actor: addr,
 			Action: &SubscribeDatasetMarketplace{
-				DatasetID:            datasetID, // Non-existent dataset ID
-				MarketplaceAssetID:   marketplaceAssetID,
-				AssetForPayment:      baseAssetID,
-				NumBlocksToSubscribe: 10,
+				DatasetID:               datasetID, // Non-existent dataset ID
+				MarketplaceAssetAddress: marketplaceAssetID,
+				PaymentAssetAddress:     baseAssetID,
+				NumBlocksToSubscribe:    10,
 			},
 			State:       chaintest.NewInMemoryStore(),
 			ExpectedErr: ErrDatasetNotFound,
@@ -47,10 +47,10 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 			Name:  "DatasetNotOnSale",
 			Actor: addr,
 			Action: &SubscribeDatasetMarketplace{
-				DatasetID:            datasetID,
-				MarketplaceAssetID:   marketplaceAssetID,
-				AssetForPayment:      baseAssetID,
-				NumBlocksToSubscribe: 10,
+				DatasetID:               datasetID,
+				MarketplaceAssetAddress: marketplaceAssetID,
+				PaymentAssetAddress:     baseAssetID,
+				NumBlocksToSubscribe:    10,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -64,10 +64,10 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 			Name:  "InvalidMarketplaceAssetID",
 			Actor: addr,
 			Action: &SubscribeDatasetMarketplace{
-				DatasetID:            datasetID,
-				MarketplaceAssetID:   ids.GenerateTestID(), // Incorrect marketplace asset ID
-				AssetForPayment:      baseAssetID,
-				NumBlocksToSubscribe: 10,
+				DatasetID:               datasetID,
+				MarketplaceAssetAddress: ids.GenerateTestID(), // Incorrect marketplace asset ID
+				PaymentAssetAddress:     baseAssetID,
+				NumBlocksToSubscribe:    10,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -75,16 +75,16 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, addr))
 				return store
 			}(),
-			ExpectedErr: ErrMarketplaceAssetIDInvalid,
+			ExpectedErr: ErrMarketplaceAssetAddressInvalid,
 		},
 		{
 			Name:  "BaseAssetNotSupported",
 			Actor: addr,
 			Action: &SubscribeDatasetMarketplace{
-				DatasetID:            datasetID,
-				MarketplaceAssetID:   marketplaceAssetID,
-				AssetForPayment:      ids.GenerateTestID(), // Invalid base asset ID
-				NumBlocksToSubscribe: 10,
+				DatasetID:               datasetID,
+				MarketplaceAssetAddress: marketplaceAssetID,
+				PaymentAssetAddress:     ids.GenerateTestID(), // Invalid base asset ID
+				NumBlocksToSubscribe:    10,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -92,23 +92,23 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, addr))
 				return store
 			}(),
-			ExpectedErr: ErrBaseAssetNotSupported,
+			ExpectedErr: ErrPaymentAssetNotSupported,
 		},
 		{
 			Name:     "ValidSubscription",
 			ActionID: marketplaceAssetID,
 			Actor:    addr,
 			Action: &SubscribeDatasetMarketplace{
-				DatasetID:            datasetID,
-				MarketplaceAssetID:   marketplaceAssetID,
-				AssetForPayment:      baseAssetID,
-				NumBlocksToSubscribe: 10,
+				DatasetID:               datasetID,
+				MarketplaceAssetAddress: marketplaceAssetID,
+				PaymentAssetAddress:     baseAssetID,
+				NumBlocksToSubscribe:    10,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set dataset with a valid sale ID and base asset
 				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, addr))
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, addr, addr, addr, addr, addr))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetFractionalTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, addr, addr, addr, addr, addr))
 				// Set base asset balance to sufficient amount
 				require.NoError(t, storage.SetBalance(context.Background(), store, addr, baseAssetID, 5000))
 				// Set the marketplace asset for the dataset
@@ -152,10 +152,10 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 				require.Equal(t, addr.String(), metadataMap["publisher"])
 			},
 			ExpectedOutputs: &SubscribeDatasetMarketplaceResult{
-				MarketplaceAssetID:               marketplaceAssetID,
+				MarketplaceAssetAddress:          marketplaceAssetID,
 				MarketplaceAssetNumSubscriptions: 1,
-				SubscriptionNftID:                utils.GenerateIDWithAddress(marketplaceAssetID, addr),
-				AssetForPayment:                  baseAssetID,
+				SubscriptionNftAddress:           utils.GenerateIDWithAddress(marketplaceAssetID, addr),
+				PaymentAssetAddress:              baseAssetID,
 				DatasetPricePerBlock:             100,
 				TotalCost:                        1000,
 				NumBlocksToSubscribe:             10,
@@ -185,16 +185,16 @@ func BenchmarkSubscribeDatasetMarketplace(b *testing.B) {
 		Name:  "SubscribeDatasetMarketplaceBenchmark",
 		Actor: actor,
 		Action: &SubscribeDatasetMarketplace{
-			DatasetID:            datasetID,
-			MarketplaceAssetID:   marketplaceAssetID,
-			AssetForPayment:      baseAssetID,
-			NumBlocksToSubscribe: 10,
+			DatasetID:               datasetID,
+			MarketplaceAssetAddress: marketplaceAssetID,
+			PaymentAssetAddress:     baseAssetID,
+			NumBlocksToSubscribe:    10,
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set dataset with a valid sale ID and base asset
 			require.NoError(storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, marketplaceAssetID, baseAssetID, 100, 100, 0, 100, 100, actor))
-			require.NoError(storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, actor, actor, actor, actor, actor))
+			require.NoError(storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetFractionalTokenID, []byte("Base Token"), []byte("BASE"), 0, []byte("Metadata"), []byte("uri"), 0, 0, actor, actor, actor, actor, actor))
 			// Set base asset balance to sufficient amount
 			require.NoError(storage.SetBalance(context.Background(), store, actor, baseAssetID, 5000))
 			// Set the marketplace asset for the dataset

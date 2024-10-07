@@ -12,7 +12,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/ava-labs/avalanchego/ids"
+	"github.com/nuklai/nuklaivm/storage"
 	"github.com/nuklai/nuklaivm/vm"
 	"github.com/spf13/cobra"
 
@@ -150,7 +150,7 @@ var balanceKeyCmd = &cobra.Command{
 			return err
 		}
 		for _, ncli := range nclients {
-			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, ids.Empty, true); err != nil {
+			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, storage.NAIAddress, true); err != nil {
 				return err
 			}
 		}
@@ -158,14 +158,14 @@ var balanceKeyCmd = &cobra.Command{
 	},
 }
 
-func lookupKeyBalance(uri string, addr codec.Address, assetID ids.ID, isNFT bool) error {
+func lookupKeyBalance(uri string, addr codec.Address, assetAddress codec.Address, isNFT bool) error {
 	var err error
 	if isNFT {
-		_, _, _, _, _, _, err = handler.GetAssetNFTInfo(context.TODO(), vm.NewJSONRPCClient(uri), addr, assetID, true)
+		_, _, _, _, _, _, _, err = handler.GetAssetNFTInfo(context.TODO(), vm.NewJSONRPCClient(uri), addr, assetAddress, true)
 	} else {
 		_, _, _, _, _, _, _, _, _, _, _, _, _, err = handler.GetAssetInfo(
 			context.TODO(), vm.NewJSONRPCClient(uri),
-			addr, assetID, true)
+			addr, assetAddress, true)
 	}
 	return err
 }
@@ -185,12 +185,12 @@ var balanceFTKeyCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		assetID, err := prompt.ID("assetID")
+		assetAddress, err := prompt.Address("assetAddress")
 		if err != nil {
 			return err
 		}
 		for _, ncli := range nclients {
-			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, assetID, true); err != nil {
+			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, assetAddress, true); err != nil {
 				return err
 			}
 		}
@@ -213,12 +213,12 @@ var balanceNFTKeyCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		nftID, err := prompt.ID("nftID")
+		nftAddress, err := prompt.Address("nftAddress")
 		if err != nil {
 			return err
 		}
 		for _, ncli := range nclients {
-			if _, _, _, _, _, _, err := handler.GetAssetNFTInfo(context.TODO(), ncli, addr, nftID, true); err != nil {
+			if _, _, _, _, _, _, _, err := handler.GetAssetNFTInfo(context.TODO(), ncli, addr, nftAddress, true); err != nil {
 				return err
 			}
 		}

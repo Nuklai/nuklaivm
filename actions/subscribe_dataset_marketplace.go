@@ -10,8 +10,9 @@ import (
 	"strconv"
 
 	"github.com/ava-labs/avalanchego/ids"
+	smath "github.com/ava-labs/avalanchego/utils/math"
+	"github.com/nuklai/nuklaivm/dataset"
 	"github.com/nuklai/nuklaivm/emission"
-	"github.com/nuklai/nuklaivm/marketplace"
 	"github.com/nuklai/nuklaivm/storage"
 	"github.com/nuklai/nuklaivm/utils"
 
@@ -20,7 +21,6 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
-	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -30,21 +30,20 @@ const (
 
 var (
 	ErrDatasetNotOnSale                               = errors.New("dataset is not on sale")
-	ErrMarketplaceAssetIDInvalid                      = errors.New("marketplace asset ID is invalid")
-	ErrBaseAssetNotSupported                          = errors.New("base asset is not supported")
+	ErrMarketplaceAssetAddressInvalid                 = errors.New("marketplace asset ID is invalid")
+	ErrPaymentAssetNotSupported                       = errors.New("base asset is not supported")
 	ErrOutputNumBlocksToSubscribeInvalid              = errors.New("num blocks to subscribe is invalid")
+	ErrUserAlreadySubscribed                          = errors.New("user is already subscribed")
 	_                                    chain.Action = (*SubscribeDatasetMarketplace)(nil)
 )
 
 type SubscribeDatasetMarketplace struct {
-	// DatasetID ID
-	DatasetID ids.ID `serialize:"true" json:"dataset_id"`
-
-	// Marketplace ID(This is also the asset ID in the marketplace that represents the dataset)
-	MarketplaceAssetID ids.ID `serialize:"true" json:"marketplace_asset_id"`
+	// Marketplace asset address that represents the dataset subscription in the
+	// marketplace
+	MarketplaceAssetAddress codec.Address `serialize:"true" json:"marketplace_asset_address"`
 
 	// Asset to use for the subscription
-	AssetForPayment ids.ID `serialize:"true" json:"asset_for_payment"`
+	PaymentAssetAddress codec.Address `serialize:"true" json:"payment_asset_address"`
 
 	// Total amount of blocks to subscribe to
 	NumBlocksToSubscribe uint64 `serialize:"true" json:"num_blocks_to_subscribe"`
@@ -55,14 +54,12 @@ func (*SubscribeDatasetMarketplace) GetTypeID() uint8 {
 }
 
 func (d *SubscribeDatasetMarketplace) StateKeys(actor codec.Address) state.Keys {
-	nftID := utils.GenerateIDWithAddress(d.MarketplaceAssetID, actor)
+	nftAddress := storage.AssetAddressNFT(d.MarketplaceAssetAddress, nil, actor)
 	return state.Keys{
-		string(storage.DatasetInfoKey(d.DatasetID)):             state.Read,
-		string(storage.AssetInfoKey(d.MarketplaceAssetID)):      state.Read | state.Write,
-		string(storage.AssetNFTKey(nftID)):                      state.All,
-		string(storage.BalanceKey(actor, d.AssetForPayment)):    state.Read | state.Write,
-		string(storage.BalanceKey(actor, d.MarketplaceAssetID)): state.Allocate | state.Write,
-		string(storage.BalanceKey(actor, nftID)):                state.Allocate | state.Write,
+		string(storage.AssetInfoKey(d.MarketplaceAssetAddress)):                  state.Read | state.Write,
+		string(storage.AssetInfoKey(nftAddress)):                                 state.All,
+		string(storage.AssetAccountBalanceKey(d.MarketplaceAssetAddress, actor)): state.Allocate | state.Write,
+		string(storage.AssetAccountBalanceKey(nftAddress, actor)):                state.All,
 	}
 }
 
@@ -75,71 +72,62 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the nftID already exists(This means the user is already subscribed)
-	nftID := utils.GenerateIDWithAddress(d.MarketplaceAssetID, actor)
-	exists, _, _, _, _, _, _ := storage.GetAssetNFT(ctx, mu, nftID)
-	if exists {
-		return nil, ErrNFTAlreadyExists
-	}
-
-	// Check if the dataset exists
-	exists, _, _, _, _, _, _, _, _, saleID, baseAsset, basePrice, _, _, _, _, _, err := storage.GetDatasetInfoNoController(ctx, mu, d.DatasetID)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, ErrDatasetNotFound
-	}
-
-	// Check if the dataset is on sale
-	if saleID == ids.Empty {
-		return nil, ErrDatasetNotOnSale
-	}
-	// Check if the marketplace ID is correct
-	if saleID != d.MarketplaceAssetID {
-		return nil, ErrMarketplaceAssetIDInvalid
-	}
-
-	// Ensure assetForPayment is supported
-	if d.AssetForPayment != baseAsset {
-		return nil, ErrBaseAssetNotSupported
+	nftAddress := storage.AssetAddressNFT(d.MarketplaceAssetAddress, nil, actor)
+	if storage.AssetExists(ctx, mu, nftAddress) {
+		return nil, ErrUserAlreadySubscribed
 	}
 
 	// Ensure numBlocksToSubscribe is valid
-	dataConfig := marketplace.GetDatasetConfig()
+	dataConfig := dataset.GetDatasetConfig()
 	if d.NumBlocksToSubscribe < dataConfig.MinBlocksToSubscribe {
 		return nil, ErrOutputNumBlocksToSubscribeInvalid
 	}
 
 	// Check for the asset
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAssetInfoNoController(ctx, mu, d.MarketplaceAssetID)
+	assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, mu, d.MarketplaceAssetAddress)
 	if err != nil {
 		return nil, err
 	}
-	if !exists {
-		return nil, ErrAssetMissing
-	}
+	// Ensure the asset is a marketplace token
 	if assetType != nconsts.AssetMarketplaceTokenID {
 		return nil, ErrOutputWrongAssetType
 	}
 
-	// Mint the subscription non-fungible token to represent the user is subscribed
-	// to the dataset
-	amountOfToken := uint64(1)
-	newSupply, err := smath.Add(totalSupply, amountOfToken)
+	// Convert the metdata to a map
+	metadataMap, err := utils.BytesToMap(metadata)
 	if err != nil {
 		return nil, err
 	}
-	if maxSupply != 0 && newSupply > maxSupply {
-		return nil, ErrOutputMaxSupplyReached
+	// Check if the marketplaceAssetAddress is correct
+	if metadataMap["marketplaceAssetAddress"] != d.MarketplaceAssetAddress.String() {
+		return nil, ErrMarketplaceAssetAddressInvalid
 	}
-	totalSupply = newSupply
+	// Ensure paymentAssetAddress is supported
+	if metadataMap["paymentAssetAddress"] != d.PaymentAssetAddress.String() {
+		return nil, ErrPaymentAssetNotSupported
+	}
 
 	// Calculate the total cost of the subscription
-	totalCost := d.NumBlocksToSubscribe * basePrice
+	datasetPricePerBlock, err := strconv.ParseUint(metadataMap["datasetPricePerBlock"], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	totalCost := d.NumBlocksToSubscribe * datasetPricePerBlock
 
 	// Check if the actor has enough balance to subscribe
 	if totalCost > 0 {
-		if _, err := storage.SubBalance(ctx, mu, actor, d.AssetForPayment, totalCost); err != nil {
+		balance, err := storage.GetAssetAccountBalanceNoController(ctx, mu, d.PaymentAssetAddress, actor)
+		if err != nil {
+			return nil, err
+		}
+		if balance < totalCost {
+			return nil, storage.ErrInsufficientAssetBalance
+		}
+		newBalance, err := smath.Sub(balance, totalCost)
+		if err != nil {
+			return nil, err
+		}
+		if err = storage.SetAssetAccountBalance(ctx, mu, d.PaymentAssetAddress, actor, newBalance); err != nil {
 			return nil, err
 		}
 	}
@@ -148,31 +136,6 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	emissionInstance := emission.GetEmission()
 	currentBlock := emissionInstance.GetLastAcceptedBlockHeight()
 
-	// Mint the NFT for the subscription
-	metadataNFTMap := make(map[string]string, 0)
-	metadataNFTMap["datasetID"] = d.DatasetID.String()
-	metadataNFTMap["marketplaceAssetID"] = d.MarketplaceAssetID.String()
-	metadataNFTMap["datasetPricePerBlock"] = fmt.Sprint(basePrice)
-	metadataNFTMap["assetForPayment"] = d.AssetForPayment.String()
-	metadataNFTMap["totalCost"] = fmt.Sprint(totalCost)
-	metadataNFTMap["issuanceBlock"] = fmt.Sprint(currentBlock)
-	metadataNFTMap["numBlocksToSubscribe"] = fmt.Sprint(d.NumBlocksToSubscribe)
-	metadataNFTMap["expirationBlock"] = fmt.Sprint(currentBlock + d.NumBlocksToSubscribe)
-	// Convert the map to a JSON string
-	metadataNFT, err := utils.MapToBytes(metadataNFTMap)
-	if err != nil {
-		return nil, err
-	}
-	// Set the NFT metadata
-	if err := storage.SetAssetNFT(ctx, mu, d.MarketplaceAssetID, totalSupply, nftID, []byte(d.DatasetID.String()), metadataNFT, actor); err != nil {
-		return nil, err
-	}
-
-	// Unmarshal the metadata JSON into a map
-	metadataMap, err := utils.BytesToMap(metadata)
-	if err != nil {
-		return nil, err
-	}
 	// Update the paymentRemaining, subscriptions and lastClaimedBlock fields
 	prevPaymentRemaining, err := strconv.ParseUint(metadataMap["paymentRemaining"], 10, 64)
 	if err != nil {
@@ -196,26 +159,45 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	if err != nil {
 		return nil, err
 	}
-	// Update the asset with the new total supply and updated metadata
-	if err := storage.SetAssetInfo(ctx, mu, d.MarketplaceAssetID, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
+	// Update the asset with the updated metadata
+	if err := storage.SetAssetInfo(ctx, mu, d.MarketplaceAssetAddress, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin); err != nil {
 		return nil, err
 	}
 
-	// Add the balance to NFT collection
-	if _, err := storage.AddBalance(ctx, mu, actor, d.MarketplaceAssetID, amountOfToken, true); err != nil {
+	// Mint the NFT for the subscription
+	metadataNFTMap := make(map[string]string, 0)
+	metadataNFTMap["datasetAddress"] = metadataMap["datasetAddress"]
+	metadataNFTMap["marketplaceAssetAddress"] = d.MarketplaceAssetAddress.String()
+	metadataNFTMap["datasetPricePerBlock"] = metadataMap["datasetPricePerBlock"]
+	metadataNFTMap["assetForPayment"] = d.PaymentAssetAddress.String()
+	metadataNFTMap["totalCost"] = fmt.Sprint(totalCost)
+	metadataNFTMap["issuanceBlock"] = fmt.Sprint(currentBlock)
+	metadataNFTMap["numBlocksToSubscribe"] = fmt.Sprint(d.NumBlocksToSubscribe)
+	metadataNFTMap["expirationBlock"] = fmt.Sprint(currentBlock + d.NumBlocksToSubscribe)
+	// Convert the map to a JSON string
+	metadataNFT, err := utils.MapToBytes(metadataNFTMap)
+	if err != nil {
 		return nil, err
 	}
-	// Add the balance to individual NFT
-	if _, err := storage.AddBalance(ctx, mu, actor, nftID, amountOfToken, true); err != nil {
+
+	// Minting logic for non-fungible tokens
+	if _, err := storage.MintAsset(ctx, mu, d.MarketplaceAssetAddress, actor, 1); err != nil {
+		return nil, err
+	}
+	symbol = utils.CombineWithSuffix(symbol, totalSupply+1, storage.MaxSymbolSize)
+	if err := storage.SetAssetInfo(ctx, mu, nftAddress, nconsts.AssetNonFungibleTokenID, name, symbol, 0, metadataNFT, d.MarketplaceAssetAddress[:], 0, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
+		return nil, err
+	}
+	if _, err := storage.MintAsset(ctx, mu, nftAddress, actor, 1); err != nil {
 		return nil, err
 	}
 
 	return &SubscribeDatasetMarketplaceResult{
-		MarketplaceAssetID:               d.MarketplaceAssetID,
+		MarketplaceAssetAddress:          d.MarketplaceAssetAddress,
 		MarketplaceAssetNumSubscriptions: prevSubscriptions + 1,
-		SubscriptionNftID:                nftID,
-		AssetForPayment:                  d.AssetForPayment,
-		DatasetPricePerBlock:             basePrice,
+		SubscriptionNftAddress:           nftAddress,
+		PaymentAssetAddress:              d.PaymentAssetAddress,
+		DatasetPricePerBlock:             datasetPricePerBlock,
 		TotalCost:                        totalCost,
 		NumBlocksToSubscribe:             d.NumBlocksToSubscribe,
 		IssuanceBlock:                    currentBlock,
@@ -232,24 +214,10 @@ func (*SubscribeDatasetMarketplace) ValidRange(chain.Rules) (int64, int64) {
 	return -1, -1
 }
 
-var _ chain.Marshaler = (*SubscribeDatasetMarketplace)(nil)
-
-func (*SubscribeDatasetMarketplace) Size() int {
-	return ids.IDLen*3 + consts.Uint64Len
-}
-
-func (d *SubscribeDatasetMarketplace) Marshal(p *codec.Packer) {
-	p.PackID(d.DatasetID)
-	p.PackID(d.MarketplaceAssetID)
-	p.PackID(d.AssetForPayment)
-	p.PackUint64(d.NumBlocksToSubscribe)
-}
-
 func UnmarshalSubscribeDatasetMarketplace(p *codec.Packer) (chain.Action, error) {
 	var subscribe SubscribeDatasetMarketplace
-	p.UnpackID(true, &subscribe.DatasetID)
-	p.UnpackID(true, &subscribe.MarketplaceAssetID)
-	p.UnpackID(false, &subscribe.AssetForPayment)
+	p.UnpackAddress(&subscribe.MarketplaceAssetAddress)
+	p.UnpackAddress(&subscribe.PaymentAssetAddress)
 	subscribe.NumBlocksToSubscribe = p.UnpackUint64(true)
 	return &subscribe, p.Err()
 }
@@ -260,15 +228,15 @@ var (
 )
 
 type SubscribeDatasetMarketplaceResult struct {
-	MarketplaceAssetID               ids.ID `serialize:"true" json:"marketplace_asset_id"`
-	MarketplaceAssetNumSubscriptions uint64 `serialize:"true" json:"marketplace_asset_num_subscriptions"`
-	SubscriptionNftID                ids.ID `serialize:"true" json:"subscription_nft_id"`
-	AssetForPayment                  ids.ID `serialize:"true" json:"asset_for_payment"`
-	DatasetPricePerBlock             uint64 `serialize:"true" json:"dataset_price_per_block"`
-	TotalCost                        uint64 `serialize:"true" json:"total_cost"`
-	NumBlocksToSubscribe             uint64 `serialize:"true" json:"num_blocks_to_subscribe"`
-	IssuanceBlock                    uint64 `serialize:"true" json:"issuance_block"`
-	ExpirationBlock                  uint64 `serialize:"true" json:"expiration_block"`
+	MarketplaceAssetAddress          codec.Address `serialize:"true" json:"marketplace_asset_address"`
+	MarketplaceAssetNumSubscriptions uint64        `serialize:"true" json:"marketplace_asset_num_subscriptions"`
+	SubscriptionNftAddress           codec.Address `serialize:"true" json:"subscription_nft_address"`
+	PaymentAssetAddress              codec.Address `serialize:"true" json:"payment_asset_address"`
+	DatasetPricePerBlock             uint64        `serialize:"true" json:"dataset_price_per_block"`
+	TotalCost                        uint64        `serialize:"true" json:"total_cost"`
+	NumBlocksToSubscribe             uint64        `serialize:"true" json:"num_blocks_to_subscribe"`
+	IssuanceBlock                    uint64        `serialize:"true" json:"issuance_block"`
+	ExpirationBlock                  uint64        `serialize:"true" json:"expiration_block"`
 }
 
 func (*SubscribeDatasetMarketplaceResult) GetTypeID() uint8 {
@@ -276,14 +244,14 @@ func (*SubscribeDatasetMarketplaceResult) GetTypeID() uint8 {
 }
 
 func (*SubscribeDatasetMarketplaceResult) Size() int {
-	return ids.IDLen*3 + consts.Uint64Len*6
+	return codec.AddressLen*3 + consts.Uint64Len*6
 }
 
 func (r *SubscribeDatasetMarketplaceResult) Marshal(p *codec.Packer) {
-	p.PackID(r.MarketplaceAssetID)
+	p.PackAddress(r.MarketplaceAssetAddress)
 	p.PackLong(r.MarketplaceAssetNumSubscriptions)
-	p.PackID(r.SubscriptionNftID)
-	p.PackID(r.AssetForPayment)
+	p.PackAddress(r.SubscriptionNftAddress)
+	p.PackAddress(r.PaymentAssetAddress)
 	p.PackUint64(r.DatasetPricePerBlock)
 	p.PackUint64(r.TotalCost)
 	p.PackUint64(r.NumBlocksToSubscribe)
@@ -293,10 +261,10 @@ func (r *SubscribeDatasetMarketplaceResult) Marshal(p *codec.Packer) {
 
 func UnmarshalSubscribeDatasetMarketplaceResult(p *codec.Packer) (codec.Typed, error) {
 	var result SubscribeDatasetMarketplaceResult
-	p.UnpackID(true, &result.MarketplaceAssetID)
+	p.UnpackAddress(&result.MarketplaceAssetAddress)
 	result.MarketplaceAssetNumSubscriptions = p.UnpackUint64(false)
-	p.UnpackID(true, &result.SubscriptionNftID)
-	p.UnpackID(false, &result.AssetForPayment)
+	p.UnpackAddress(&result.SubscriptionNftAddress)
+	p.UnpackAddress(&result.PaymentAssetAddress)
 	result.DatasetPricePerBlock = p.UnpackUint64(false)
 	result.TotalCost = p.UnpackUint64(false)
 	result.NumBlocksToSubscribe = p.UnpackUint64(true)

@@ -31,10 +31,10 @@ func TestPublishDatasetMarketplaceAction(t *testing.T) {
 			Name:  "DatasetNotFound",
 			Actor: addr,
 			Action: &PublishDatasetMarketplace{
-				MarketplaceAssetID: marketplaceAssetID,
-				DatasetID:          datasetID, // Non-existent dataset ID
-				BaseAssetID:        baseAssetID,
-				BasePrice:          100,
+				MarketplaceAssetID:   marketplaceAssetID,
+				DatasetAddress:       datasetID, // Non-existent dataset ID
+				PaymentAssetAddress:  baseAssetID,
+				DatasetPricePerBlock: 100,
 			},
 			State:       chaintest.NewInMemoryStore(),
 			ExpectedErr: ErrDatasetNotFound,
@@ -43,10 +43,10 @@ func TestPublishDatasetMarketplaceAction(t *testing.T) {
 			Name:  "WrongOwner",
 			Actor: codectest.NewRandomAddress(), // Not the owner of the dataset
 			Action: &PublishDatasetMarketplace{
-				MarketplaceAssetID: marketplaceAssetID,
-				DatasetID:          datasetID,
-				BaseAssetID:        baseAssetID,
-				BasePrice:          100,
+				MarketplaceAssetID:   marketplaceAssetID,
+				DatasetAddress:       datasetID,
+				PaymentAssetAddress:  baseAssetID,
+				DatasetPricePerBlock: 100,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -60,10 +60,10 @@ func TestPublishDatasetMarketplaceAction(t *testing.T) {
 			Name:  "AssetNotFound",
 			Actor: addr,
 			Action: &PublishDatasetMarketplace{
-				MarketplaceAssetID: marketplaceAssetID,
-				DatasetID:          datasetID,
-				BaseAssetID:        baseAssetID, // Non-existent base asset ID
-				BasePrice:          100,
+				MarketplaceAssetID:   marketplaceAssetID,
+				DatasetAddress:       datasetID,
+				PaymentAssetAddress:  baseAssetID, // Non-existent base asset ID
+				DatasetPricePerBlock: 100,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -78,17 +78,17 @@ func TestPublishDatasetMarketplaceAction(t *testing.T) {
 			ActionID: marketplaceAssetID,
 			Actor:    addr,
 			Action: &PublishDatasetMarketplace{
-				MarketplaceAssetID: marketplaceAssetID,
-				DatasetID:          datasetID,
-				BaseAssetID:        baseAssetID,
-				BasePrice:          100,
+				MarketplaceAssetID:   marketplaceAssetID,
+				DatasetAddress:       datasetID,
+				PaymentAssetAddress:  baseAssetID,
+				DatasetPricePerBlock: 100,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set the base asset with the required details
 				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
 				// Set the dataset with the correct owner
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Asset"), []byte("BA"), 0, []byte("Metadata"), []byte("uri"), 1, 0, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetFractionalTokenID, []byte("Base Asset"), []byte("BA"), 0, []byte("Metadata"), []byte("uri"), 1, 0, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
@@ -119,10 +119,10 @@ func TestPublishDatasetMarketplaceAction(t *testing.T) {
 				require.Equal(t, addr.String(), metadataMap["publisher"])
 			},
 			ExpectedOutputs: &PublishDatasetMarketplaceResult{
-				MarketplaceAssetID:   marketplaceAssetID,
-				AssetForPayment:      baseAssetID,
-				DatasetPricePerBlock: 100,
-				Publisher:            addr,
+				MarketplaceAssetAddress: marketplaceAssetID,
+				PaymentAssetAddress:     baseAssetID,
+				DatasetPricePerBlock:    100,
+				Publisher:               addr,
 			},
 		},
 	}
@@ -143,17 +143,17 @@ func BenchmarkPublishDatasetMarketplace(b *testing.B) {
 		Name:  "PublishDatasetMarketplaceBenchmark",
 		Actor: actor,
 		Action: &PublishDatasetMarketplace{
-			MarketplaceAssetID: marketplaceAssetID,
-			DatasetID:          datasetID,
-			BaseAssetID:        baseAssetID,
-			BasePrice:          100,
+			MarketplaceAssetID:   marketplaceAssetID,
+			DatasetAddress:       datasetID,
+			PaymentAssetAddress:  baseAssetID,
+			DatasetPricePerBlock: 100,
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set the base asset with the required details
 			require.NoError(storage.SetDatasetInfo(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, actor))
 			// Set the dataset with the correct owner
-			require.NoError(storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetDatasetTokenID, []byte("Base Asset"), []byte("BA"), 0, []byte("Metadata"), []byte("uri"), 1, 0, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+			require.NoError(storage.SetAssetInfo(context.Background(), store, datasetID, nconsts.AssetFractionalTokenID, []byte("Base Asset"), []byte("BA"), 0, []byte("Metadata"), []byte("uri"), 1, 0, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {

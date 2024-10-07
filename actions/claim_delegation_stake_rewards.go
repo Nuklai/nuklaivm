@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/storage"
 
@@ -35,8 +36,8 @@ func (*ClaimDelegationStakeRewards) GetTypeID() uint8 {
 
 func (c *ClaimDelegationStakeRewards) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.BalanceKey(actor, ids.Empty)):       state.All,
-		string(storage.DelegatorStakeKey(actor, c.NodeID)): state.Read,
+		string(storage.DelegatorStakeKey(actor, c.NodeID)):                state.Read,
+		string(storage.AssetAccountBalanceKey(storage.NAIAddress, actor)): state.All,
 	}
 }
 
@@ -74,8 +75,16 @@ func (c *ClaimDelegationStakeRewards) Execute(
 		return nil, err
 	}
 
-	balance, err := storage.AddBalance(ctx, mu, rewardAddress, ids.Empty, rewardAmount, true)
+	// Get the reward
+	balance, err := storage.GetAssetAccountBalanceNoController(ctx, mu, storage.NAIAddress, rewardAddress)
 	if err != nil {
+		return nil, err
+	}
+	newBalance, err := smath.Add(balance, rewardAmount)
+	if err != nil {
+		return nil, err
+	}
+	if err = storage.SetAssetAccountBalance(ctx, mu, storage.NAIAddress, rewardAddress, newBalance); err != nil {
 		return nil, err
 	}
 
@@ -83,8 +92,8 @@ func (c *ClaimDelegationStakeRewards) Execute(
 		StakeStartBlock:    stakeStartBlock,
 		StakeEndBlock:      stakeEndBlock,
 		StakedAmount:       stakedAmount,
-		BalanceBeforeClaim: balance - rewardAmount,
-		BalanceAfterClaim:  balance,
+		BalanceBeforeClaim: balance,
+		BalanceAfterClaim:  newBalance,
 		DistributedTo:      rewardAddress,
 	}, nil
 }

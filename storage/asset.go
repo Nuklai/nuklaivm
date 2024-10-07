@@ -24,11 +24,11 @@ const (
 )
 
 const (
-	MaxAssetNameSize     = 64
-	MaxAssetSymbolSize   = 8
+	MaxNameSize          = 64
+	MaxSymbolSize        = 24
 	MaxAssetMetadataSize = 256
-	MaxAssetURISize      = 256
-	MaxAssetDecimals     = 18
+	MaxTextSize          = 256
+	MaxAssetDecimals     = 9
 )
 
 func AssetAddress(assetType uint8, name []byte, symbol []byte, decimals uint8, metadata []byte, uri []byte, owner codec.Address) codec.Address {
@@ -49,7 +49,7 @@ func AssetAddress(assetType uint8, name []byte, symbol []byte, decimals uint8, m
 	return codec.CreateAddress(assetType, id)
 }
 
-func AssetNFTAddress(assetAddress codec.Address, metadata []byte, owner codec.Address) codec.Address {
+func AssetAddressNFT(assetAddress codec.Address, metadata []byte, owner codec.Address) codec.Address {
 	v := make([]byte, codec.AddressLen+len(metadata)+codec.AddressLen)
 	offset := 0
 	copy(v[offset:], assetAddress[:])
@@ -59,6 +59,11 @@ func AssetNFTAddress(assetAddress codec.Address, metadata []byte, owner codec.Ad
 	copy(v[offset:], owner[:])
 	id := utils.ToID(v)
 	return codec.CreateAddress(nconsts.AssetNonFungibleTokenID, id)
+}
+
+func AssetAddressFractional(assetAddress codec.Address) codec.Address {
+	id := utils.ToID(assetAddress[:])
+	return codec.CreateAddress(nconsts.AssetFractionalTokenID, id)
 }
 
 func AssetInfoKey(assetAddress codec.Address) (k []byte) {
@@ -308,6 +313,11 @@ func BurnAsset(
 	if err != nil {
 		return 0, err
 	}
+	// Ensure that the balance is sufficient
+	if balance < value {
+		return 0, ErrInsufficientAssetBalance
+	}
+
 	assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := GetAssetInfoNoController(ctx, mu, assetAddress)
 	if err != nil {
 		return 0, err

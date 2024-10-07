@@ -79,7 +79,7 @@ func TestTransferAction(t *testing.T) {
 				To:           codec.EmptyAddress,
 				AssetAddress: storage.NAIAddress,
 				Value:        1,
-				Memo:         strings.Repeat("a", MaxMemoSize+1),
+				Memo:         strings.Repeat("a", storage.MaxAssetMetadataSize+1),
 			},
 			State:       chaintest.NewInMemoryStore(),
 			ExpectedErr: ErrMemoTooLarge,

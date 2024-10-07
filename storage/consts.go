@@ -38,6 +38,12 @@ var (
 	successByte = byte(0x1)
 )
 
+// Data for Marketplace Token
+const (
+	MarketplaceAssetName   = "NMAsset"
+	MarketplaceAssetSymbol = "NMA"
+)
+
 var (
 	NAIAddress codec.Address
 )
