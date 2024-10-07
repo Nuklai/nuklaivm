@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 
 	"github.com/ava-labs/avalanchego/ids"
+
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
@@ -266,7 +267,8 @@ func GetDatasetContributionInfoFromState(ctx context.Context, f ReadState, contr
 func GetDatasetContributionInfoNoController(
 	ctx context.Context,
 	im state.Immutable,
-	contributionID ids.ID) (codec.Address, []byte, []byte, codec.Address, bool, error) {
+	contributionID ids.ID,
+) (codec.Address, []byte, []byte, codec.Address, bool, error) {
 	k := DatasetContributionInfoKey(contributionID)
 	v, err := im.GetValue(ctx, k)
 	if err != nil {

@@ -37,9 +37,9 @@ func (*BurnAssetNFT) GetTypeID() uint8 {
 
 func (b *BurnAssetNFT) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.AssetInfoKey(b.AssetAddress)):      state.Read | state.Write,
-		string(storage.AssetAccountBalanceKey(b.AssetAddress, actor)): state.Read | state.Write,
-		string(storage.AssetInfoKey(b.AssetNftAddress)):      state.Read | state.Write,
+		string(storage.AssetInfoKey(b.AssetAddress)):                     state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(b.AssetAddress, actor)):    state.Read | state.Write,
+		string(storage.AssetInfoKey(b.AssetNftAddress)):                  state.Read | state.Write,
 		string(storage.AssetAccountBalanceKey(b.AssetNftAddress, actor)): state.Read | state.Write,
 	}
 }
@@ -75,8 +75,8 @@ func (b *BurnAssetNFT) Execute(
 	}
 
 	return &BurnAssetNFTResult{
-		OldBalance:       newBalance + 1,
-		NewBalance:       newBalance,
+		OldBalance: newBalance + 1,
+		NewBalance: newBalance,
 	}, nil
 }
 
@@ -102,8 +102,8 @@ var (
 )
 
 type BurnAssetNFTResult struct {
-	OldBalance       uint64        `serialize:"true" json:"old_balance"`
-	NewBalance       uint64        `serialize:"true" json:"new_balance"`
+	OldBalance uint64 `serialize:"true" json:"old_balance"`
+	NewBalance uint64 `serialize:"true" json:"new_balance"`
 }
 
 func (*BurnAssetNFTResult) GetTypeID() uint8 {
@@ -111,7 +111,7 @@ func (*BurnAssetNFTResult) GetTypeID() uint8 {
 }
 
 func (*BurnAssetNFTResult) Size() int {
-	return consts.Uint64Len*2
+	return consts.Uint64Len * 2
 }
 
 func (r *BurnAssetNFTResult) Marshal(p *codec.Packer) {

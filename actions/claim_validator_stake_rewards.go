@@ -7,7 +7,6 @@ import (
 	"context"
 
 	"github.com/ava-labs/avalanchego/ids"
-	smath "github.com/ava-labs/avalanchego/utils/math"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/storage"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 

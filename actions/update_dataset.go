@@ -6,6 +6,7 @@ package actions
 import (
 	"bytes"
 	"context"
+	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
@@ -23,7 +24,8 @@ const (
 )
 
 var (
-	_ chain.Action = (*UpdateDataset)(nil)
+	ErrDatasetNotFound              = errors.New("dataset not found")
+	_                  chain.Action = (*UpdateDataset)(nil)
 )
 
 type UpdateDataset struct {

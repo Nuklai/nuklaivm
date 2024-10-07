@@ -8,13 +8,13 @@ import (
 	"encoding/binary"
 
 	"github.com/ava-labs/avalanchego/database"
-	smath "github.com/ava-labs/avalanchego/utils/math"
 
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/ava-labs/hypersdk/utils"
 
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 

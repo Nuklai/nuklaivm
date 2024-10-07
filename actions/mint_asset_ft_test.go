@@ -20,53 +20,53 @@ import (
 )
 
 func TestMintAssetFTAction(t *testing.T) {
-	addr := codectest.NewRandomAddress()
-	assetID := ids.GenerateTestID()
+	actor := codectest.NewRandomAddress()
+	assetAddress := storage.AssetAddress(nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), actor)
 
 	tests := []chaintest.ActionTest{
 		{
 			Name:  "NativeAssetMint",
-			Actor: addr,
+			Actor: actor,
 			Action: &MintAssetFT{
-				AssetAddress: ids.Empty, // Native asset, invalid for minting
-				Value:   1000,
-				To:      addr,
+				AssetAddress: storage.NAIAddress, // Native asset, invalid for minting
+				Value:        1000,
+				To:           actor,
 			},
 			ExpectedErr: ErrAssetIsNative,
 		},
 		{
 			Name:  "ZeroValueMint",
-			Actor: addr,
+			Actor: actor,
 			Action: &MintAssetFT{
-				AssetAddress: assetID,
-				Value:   0, // Invalid zero value
-				To:      addr,
+				AssetAddress: assetAddress,
+				Value:        0, // Invalid zero value
+				To:           actor,
 			},
 			ExpectedErr: ErrValueZero,
 		},
 		{
 			Name:  "AssetMissing",
-			Actor: addr,
+			Actor: actor,
 			Action: &MintAssetFT{
-				AssetAddress: assetID, // Asset does not exist
-				Value:   1000,
-				To:      addr,
+				AssetAddress: assetAddress, // Asset does not exist
+				Value:        1000,
+				To:           actor,
 			},
 			State:       chaintest.NewInMemoryStore(),
 			ExpectedErr: ErrAssetMissing,
 		},
 		{
 			Name:  "WrongAssetType",
-			Actor: addr,
+			Actor: actor,
 			Action: &MintAssetFT{
-				AssetAddress: assetID,
-				Value:   1000,
-				To:      addr,
+				AssetAddress: assetAddress,
+				Value:        1000,
+				To:           actor,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Setting asset type as non-fungible (invalid for FT minting)
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetNonFungibleTokenID, []byte("NFT"), []byte("NFT"), 0, []byte("metadata"), []byte("uri"), 0, 1, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), 0, 1000, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			ExpectedErr: ErrOutputWrongAssetType,
@@ -75,65 +75,62 @@ func TestMintAssetFTAction(t *testing.T) {
 			Name:  "WrongMintAdmin",
 			Actor: codec.CreateAddress(0, ids.GenerateTestID()), // Not the mint admin
 			Action: &MintAssetFT{
-				AssetAddress: assetID,
-				Value:   1000,
-				To:      addr,
+				AssetAddress: assetAddress,
+				Value:        1000,
+				To:           actor,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Setting correct asset details
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("Token"), []byte("TKN"), 9, []byte("metadata"), []byte("uri"), 0, 1000000, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), 0, 1000, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			ExpectedErr: ErrWrongMintAdmin,
 		},
 		{
 			Name:  "ExceedMaxSupply",
-			Actor: addr,
+			Actor: actor,
 			Action: &MintAssetFT{
-				AssetAddress: assetID,
-				Value:   1000001, // Exceeds max supply
-				To:      addr,
+				AssetAddress: assetAddress,
+				Value:        1000001, // Exceeds max supply
+				To:           actor,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Setting correct asset details with max supply 1,000,000
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("Token"), []byte("TKN"), 9, []byte("metadata"), []byte("uri"), 0, 1000000, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), 0, 1000000, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			ExpectedErr: ErrOutputMaxSupplyReached,
 		},
 		{
 			Name:  "ValidMint",
-			Actor: addr,
+			Actor: actor,
 			Action: &MintAssetFT{
-				AssetAddress: assetID,
-				Value:   1000,
-				To:      addr,
+				AssetAddress: assetAddress,
+				Value:        1000,
+				To:           actor,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Setting correct asset details with max supply 1,000,000
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("Token"), []byte("TKN"), 9, []byte("metadata"), []byte("uri"), 5000, 1000000, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), 5000, 1000000, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check new asset supply and balance
-				exists, _, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, store, assetID)
+				_, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, store, assetAddress)
 				require.NoError(t, err)
-				require.True(t, exists)
 				require.Equal(t, uint64(6000), totalSupply)
 
 				// Check if balance updated
-				balance, err := storage.GetBalance(ctx, store, addr, assetID)
+				balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, assetAddress, actor)
 				require.NoError(t, err)
 				require.Equal(t, uint64(1000), balance)
 			},
 			ExpectedOutputs: &MintAssetFTResult{
-				To:               addr,
-				OldBalance:       0,
-				NewBalance:       1000,
-				AssetTotalSupply: 6000,
+				OldBalance: 0,
+				NewBalance: 1000,
 			},
 		},
 	}
@@ -146,30 +143,29 @@ func TestMintAssetFTAction(t *testing.T) {
 func BenchmarkMintAssetFT(b *testing.B) {
 	require := require.New(b)
 	actor := codec.CreateAddress(0, ids.GenerateTestID())
-	assetID := ids.GenerateTestID()
+	assetAddress := storage.AssetAddress(nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), actor)
 
 	mintAssetFTActionBenchmark := &chaintest.ActionBenchmark{
 		Name:  "MintAssetFTBenchmark",
 		Actor: actor,
 		Action: &MintAssetFT{
-			AssetAddress: assetID,
-			Value:   1000,
-			To:      actor,
+			AssetAddress: assetAddress,
+			Value:        1000,
+			To:           actor,
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
-			require.NoError(storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("Benchmark Token"), []byte("BMT"), 9, []byte("benchmark metadata"), []byte("benchmark-uri"), 5000, 1000000, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+			require.NoError(storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), 5000, 1000000, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check new asset supply and balance
-			exists, _, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, store, assetID)
+			_, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, store, assetAddress)
 			require.NoError(err)
-			require.True(exists)
 			require.Equal(b, uint64(6000), totalSupply)
 
 			// Check if balance updated
-			balance, err := storage.GetBalance(ctx, store, actor, assetID)
+			balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, assetAddress, actor)
 			require.NoError(err)
 			require.Equal(b, uint64(1000), balance)
 		},

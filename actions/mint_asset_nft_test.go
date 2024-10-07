@@ -9,7 +9,6 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
-	"github.com/nuklai/nuklaivm/utils"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/hypersdk/chain/chaintest"
@@ -21,67 +20,60 @@ import (
 )
 
 func TestMintAssetNFTAction(t *testing.T) {
-	addr := codectest.NewRandomAddress()
-	assetID := ids.GenerateTestID()
-	nftID := utils.GenerateIDWithIndex(assetID, 0)
+	actor := codectest.NewRandomAddress()
+	assetAddress := storage.AssetAddress(nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), []byte("uri"), actor)
+	nftAddress := storage.AssetAddressNFT(assetAddress, []byte("metadata"), actor)
 
 	tests := []chaintest.ActionTest{
 		{
 			Name:  "InvalidURI",
-			Actor: addr,
+			Actor: actor,
 			Action: &MintAssetNFT{
-				AssetAddress:  assetID,
-				UniqueID: 0,
-				URI:      []byte("u"), // Invalid URI (too short)
-				Metadata: []byte("NFT Metadata"),
-				To:       addr,
+				AssetAddress: assetAddress,
+				Metadata:     "metadata",
+				To:           actor,
 			},
 			ExpectedErr: ErrURIInvalid,
 		},
 		{
 			Name:  "InvalidMetadata",
-			Actor: addr,
+			Actor: actor,
 			Action: &MintAssetNFT{
-				AssetAddress:  assetID,
-				UniqueID: 0,
-				URI:      []byte("nft-uri"),
-				Metadata: []byte("m"), // Invalid metadata (too short)
-				To:       addr,
+				AssetAddress: assetAddress,
+				Metadata:     "metadata",
+				To:           actor,
 			},
 			ExpectedErr: ErrMetadataInvalid,
 		},
 		{
 			Name:  "NFTAlreadyExists",
-			Actor: addr,
+			Actor: actor,
 			Action: &MintAssetNFT{
-				AssetAddress:  assetID,
-				UniqueID: 0,
-				URI:      []byte("nft-uri"),
-				Metadata: []byte("NFT Metadata"),
-				To:       addr,
+				AssetAddress: assetAddress,
+				Metadata:     "metadata",
+				To:           actor,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set an existing NFT in storage
-				require.NoError(t, storage.SetAssetNFT(context.Background(), store, assetID, 0, nftID, []byte("nft-uri"), []byte("NFT Metadata"), addr))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), []byte("uri"), 1, 1, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, nftAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), assetAddress[:], 1, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			ExpectedErr: ErrNFTAlreadyExists,
 		},
 		{
 			Name:  "WrongAssetType",
-			Actor: addr,
+			Actor: actor,
 			Action: &MintAssetNFT{
-				AssetAddress:  assetID,
-				UniqueID: 0,
-				URI:      []byte("nft-uri"),
-				Metadata: []byte("NFT Metadata"),
-				To:       addr,
+				AssetAddress: assetAddress,
+				Metadata:     "metadata",
+				To:           actor,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set asset type to fungible (invalid for NFT minting)
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetFungibleTokenID, []byte("Fungible"), []byte("FT"), 0, []byte("metadata"), []byte("uri"), 0, 100, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), 0, 1, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			ExpectedErr: ErrOutputWrongAssetType,
@@ -90,73 +82,75 @@ func TestMintAssetNFTAction(t *testing.T) {
 			Name:  "WrongMintAdmin",
 			Actor: codec.CreateAddress(0, ids.GenerateTestID()), // Not the mint admin
 			Action: &MintAssetNFT{
-				AssetAddress:  assetID,
-				UniqueID: 0,
-				URI:      []byte("nft-uri"),
-				Metadata: []byte("NFT Metadata"),
-				To:       addr,
+				AssetAddress: assetAddress,
+				Metadata:     "metadata",
+				To:           actor,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Setting asset with a different mint admin
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetNonFungibleTokenID, []byte("NFT Collection"), []byte("NFT"), 0, []byte("metadata"), []byte("uri"), 0, 100, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), 0, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			ExpectedErr: ErrWrongMintAdmin,
 		},
 		{
 			Name:  "ExceedMaxSupply",
-			Actor: addr,
+			Actor: actor,
 			Action: &MintAssetNFT{
-				AssetAddress:  assetID,
-				UniqueID: 100, // Exceeds max supply
-				URI:      []byte("nft-uri"),
-				Metadata: []byte("NFT Metadata"),
-				To:       addr,
+				AssetAddress: assetAddress,
+				Metadata:     "metadata",
+				To:           actor,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				// Set asset with max supply 100
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetNonFungibleTokenID, []byte("NFT Collection"), []byte("NFT"), 0, []byte("metadata"), []byte("uri"), 0, 100, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				// Set asset with max supply 1
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), 1, 1, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			ExpectedErr: ErrOutputUniqueIDGreaterThanMaxSupply,
 		},
 		{
 			Name:  "ValidNFTMint",
-			Actor: addr,
+			Actor: actor,
 			Action: &MintAssetNFT{
-				AssetAddress:  assetID,
-				UniqueID: 0,
-				URI:      []byte("nft-uri"),
-				Metadata: []byte("NFT Metadata"),
-				To:       addr,
+				AssetAddress: assetAddress,
+				Metadata:     "metadata",
+				To:           actor,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				// Set asset with max supply 100
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetNonFungibleTokenID, []byte("NFT Collection"), []byte("NFT"), 0, []byte("metadata"), []byte("uri"), 0, 100, addr, addr, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				// Set asset with max supply 1
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), 0, 1, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if the NFT was created correctly
-				exists, _, _, nftURI, nftMetadata, owner, _ := storage.GetAssetNFT(ctx, store, nftID)
-				require.True(t, exists)
-				require.Equal(t, "nft-uri", string(nftURI))
-				require.Equal(t, "NFT Metadata", string(nftMetadata))
-				require.Equal(t, addr.String(), owner.String())
+				assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, nftAddress)
+				require.NoError(t, err)
+				require.Equal(t, nconsts.AssetNonFungibleTokenID, assetType)
+				require.Equal(t, "name", string(name))
+				require.Equal(t, "SYM-0", string(symbol))
+				require.Equal(t, uint8(0), decimals)
+				require.Equal(t, "metadata", string(metadata))
+				require.Equal(t, assetAddress.String(), string(uri))
+				require.Equal(t, uint64(1), totalSupply)
+				require.Equal(t, uint64(1), maxSupply)
+				require.Equal(t, actor, owner)
+				require.Equal(t, codec.EmptyAddress, mintAdmin)
+				require.Equal(t, codec.EmptyAddress, pauseUnpauseAdmin)
+				require.Equal(t, codec.EmptyAddress, freezeUnfreezeAdmin)
+				require.Equal(t, codec.EmptyAddress, enableDisableKYCAccountAdmin)
 
 				// Check if the balance was updated
-				balance, err := storage.GetBalance(ctx, store, addr, assetID)
+				balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, assetAddress, actor)
 				require.NoError(t, err)
 				require.Equal(t, uint64(1), balance)
 			},
 			ExpectedOutputs: &MintAssetNFTResult{
-				AssetNftAddress:            nftID,
-				To:               addr,
-				OldBalance:       0,
-				NewBalance:       1,
-				AssetTotalSupply: 1,
+				AssetNftAddress: nftAddress,
+				OldBalance:      0,
+				NewBalance:      1,
 			},
 		},
 	}
@@ -168,37 +162,40 @@ func TestMintAssetNFTAction(t *testing.T) {
 
 func BenchmarkMintAssetNFT(b *testing.B) {
 	require := require.New(b)
-	actor := codec.CreateAddress(0, ids.GenerateTestID())
-	assetID := ids.GenerateTestID()
+	actor := codectest.NewRandomAddress()
+	assetAddress := storage.AssetAddress(nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), []byte("uri"), actor)
+	nftAddress := storage.AssetAddressNFT(assetAddress, []byte("metadata"), actor)
 
 	mintAssetNFTActionBenchmark := &chaintest.ActionBenchmark{
 		Name:  "MintAssetNFTBenchmark",
 		Actor: actor,
 		Action: &MintAssetNFT{
-			AssetAddress:  assetID,
-			UniqueID: 0,
-			URI:      []byte("nft-uri"),
-			Metadata: []byte("NFT Metadata"),
-			To:       actor,
+			AssetAddress: assetAddress,
+			Metadata:     "metadata",
+			To:           actor,
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
-			require.NoError(storage.SetAssetInfo(context.Background(), store, assetID, nconsts.AssetNonFungibleTokenID, []byte("Benchmark NFT Collection"), []byte("BNFT"), 0, []byte("benchmark metadata"), []byte("benchmark-uri"), 0, 100, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+			require.NoError(storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), 0, 1, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check if the NFT was created correctly
-			nftID := utils.GenerateIDWithIndex(assetID, 0)
-			exists, _, _, nftURI, nftMetadata, owner, _ := storage.GetAssetNFT(ctx, store, nftID)
-			require.True(exists)
-			require.Equal(b, "nft-uri", string(nftURI))
-			require.Equal(b, "NFT Metadata", string(nftMetadata))
-			require.Equal(b, actor.String(), owner.String())
-
-			// Check if balance updated
-			balance, err := storage.GetBalance(ctx, store, actor, assetID)
+			assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, nftAddress)
 			require.NoError(err)
-			require.Equal(b, uint64(1), balance)
+			require.Equal(nconsts.AssetNonFungibleTokenID, assetType)
+			require.Equal("name", string(name))
+			require.Equal("SYM-0", string(symbol))
+			require.Equal(uint8(0), decimals)
+			require.Equal("metadata", string(metadata))
+			require.Equal(assetAddress.String(), string(uri))
+			require.Equal(uint64(1), totalSupply)
+			require.Equal(uint64(1), maxSupply)
+			require.Equal(actor, owner)
+			require.Equal(codec.EmptyAddress, mintAdmin)
+			require.Equal(codec.EmptyAddress, pauseUnpauseAdmin)
+			require.Equal(codec.EmptyAddress, freezeUnfreezeAdmin)
+			require.Equal(codec.EmptyAddress, enableDisableKYCAccountAdmin)
 		},
 	}
 

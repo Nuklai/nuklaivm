@@ -23,12 +23,12 @@ const (
 )
 
 var (
-	ErrAssetDoesNotExist                     = errors.New("asset does not exist")
-	ErrValueZero                             = errors.New("value is zero")
-	ErrNFTValueMustBeOne                     = errors.New("NFT value must be one")
-	ErrInsufficientAssetBalance              = errors.New("insufficient token balance")
-	ErrMemoTooLarge                          = errors.New("memo is too large")
-	_                           chain.Action = (*Transfer)(nil)
+	ErrAssetDoesNotExist              = errors.New("asset does not exist")
+	ErrValueZero                      = errors.New("value is zero")
+	ErrNFTValueMustBeOne              = errors.New("NFT value must be one")
+	ErrMemoTooLarge                   = errors.New("memo is too large")
+	ErrTransferToSelf                 = errors.New("cannot transfer to self")
+	_                    chain.Action = (*Transfer)(nil)
 )
 
 type Transfer struct {
@@ -65,6 +65,10 @@ func (t *Transfer) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
+	// Ensure that the user is not transferring to self
+	if actor == t.To {
+		return nil, ErrTransferToSelf
+	}
 	// Check that asset exists
 	assetType, _, _, _, _, _, _, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, t.AssetAddress)
 	if err != nil {
@@ -87,7 +91,7 @@ func (t *Transfer) Execute(
 		return nil, err
 	}
 	if balance < t.Value {
-		return nil, ErrInsufficientAssetBalance
+		return nil, storage.ErrInsufficientAssetBalance
 	}
 
 	senderBalance, receiverBalance, err := storage.TransferAsset(ctx, mu, t.AssetAddress, actor, t.To, t.Value)

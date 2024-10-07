@@ -6,10 +6,11 @@ package utils
 import (
 	"strings"
 
+	"github.com/nuklai/nuklaivm/storage"
+
 	"github.com/ava-labs/hypersdk/codec"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
-	"github.com/nuklai/nuklaivm/storage"
 )
 
 func GetAssetAddressBySymbol(symbol string) (codec.Address, error) {

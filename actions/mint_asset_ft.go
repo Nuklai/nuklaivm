@@ -23,10 +23,10 @@ const (
 )
 
 var (
-	ErrAssetIsNative                 = errors.New("asset is native")
-	ErrAssetMissing                  = errors.New("asset missing")
+	ErrAssetIsNative                       = errors.New("asset is native")
+	ErrAssetMissing                        = errors.New("asset missing")
 	ErrOutputWrongAssetType                = errors.New("asset is not of correct type")
-	ErrWrongMintAdmin                = errors.New("mint admin is not correct")
+	ErrWrongMintAdmin                      = errors.New("mint admin is not correct")
 	ErrOutputMaxSupplyReached              = errors.New("max supply reached")
 	_                         chain.Action = (*MintAssetFT)(nil)
 )
@@ -48,7 +48,7 @@ func (*MintAssetFT) GetTypeID() uint8 {
 
 func (m *MintAssetFT) StateKeys(codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.AssetInfoKey(m.AssetAddress)):     state.Read | state.Write,
+		string(storage.AssetInfoKey(m.AssetAddress)):                 state.Read | state.Write,
 		string(storage.AssetAccountBalanceKey(m.AssetAddress, m.To)): state.All,
 	}
 }
@@ -87,8 +87,8 @@ func (m *MintAssetFT) Execute(
 	}
 
 	return &MintAssetFTResult{
-		OldBalance:       newBalance - m.Value,
-		NewBalance:       newBalance,
+		OldBalance: newBalance - m.Value,
+		NewBalance: newBalance,
 	}, nil
 }
 
@@ -115,8 +115,8 @@ var (
 )
 
 type MintAssetFTResult struct {
-	OldBalance       uint64        `serialize:"true" json:"old_balance"`
-	NewBalance       uint64        `serialize:"true" json:"new_balance"`
+	OldBalance uint64 `serialize:"true" json:"old_balance"`
+	NewBalance uint64 `serialize:"true" json:"new_balance"`
 }
 
 func (*MintAssetFTResult) GetTypeID() uint8 {
@@ -124,7 +124,7 @@ func (*MintAssetFTResult) GetTypeID() uint8 {
 }
 
 func (*MintAssetFTResult) Size() int {
-	return consts.Uint64Len*2
+	return consts.Uint64Len * 2
 }
 
 func (r *MintAssetFTResult) Marshal(p *codec.Packer) {

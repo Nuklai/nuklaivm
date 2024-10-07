@@ -34,7 +34,7 @@ type MintAssetNFT struct {
 	AssetAddress codec.Address `serialize:"true" json:"asset_address"`
 
 	// Metadata of the NFT
-	Metadata []byte `serialize:"true" json:"metadata"`
+	Metadata string `serialize:"true" json:"metadata"`
 
 	// To is the recipient of the [Value].
 	To codec.Address `serialize:"true" json:"to"`
@@ -89,7 +89,7 @@ func (m *MintAssetNFT) Execute(
 	if err != nil {
 		return nil, err
 	}
-	symbol = utils.CombineWithSuffix(symbol, totalSupply+1, storage.MaxSymbolSize)
+	symbol = utils.CombineWithSuffix(symbol, totalSupply, storage.MaxSymbolSize)
 	if err := storage.SetAssetInfo(ctx, mu, nftAddress, assetType, name, symbol, 0, metadata, m.AssetAddress[:], 0, 1, m.To, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func (*MintAssetNFT) ValidRange(chain.Rules) (int64, int64) {
 func UnmarshalMintAssetNFT(p *codec.Packer) (chain.Action, error) {
 	var mint MintAssetNFT
 	p.UnpackAddress(&mint.AssetAddress)
-	p.UnpackBytes(storage.MaxAssetMetadataSize, false, &mint.Metadata)
+	p.UnpackString(false)
 	p.UnpackAddress(&mint.To)
 	return &mint, p.Err()
 }

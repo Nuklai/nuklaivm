@@ -6,8 +6,9 @@ package storage
 import (
 	"context"
 
-	"github.com/ava-labs/hypersdk/codec"
 	"github.com/nuklai/nuklaivm/consts"
+
+	"github.com/ava-labs/hypersdk/codec"
 )
 
 type ReadState func(context.Context, [][]byte) ([][]byte, []error)
@@ -44,9 +45,7 @@ const (
 	MarketplaceAssetSymbol = "NMA"
 )
 
-var (
-	NAIAddress codec.Address
-)
+var NAIAddress codec.Address
 
 func init() {
 	NAIAddress = AssetAddress(consts.AssetFungibleTokenID, []byte(consts.Name), []byte(consts.Symbol), consts.Decimals, []byte(consts.Metadata), []byte(consts.Metadata), codec.EmptyAddress)

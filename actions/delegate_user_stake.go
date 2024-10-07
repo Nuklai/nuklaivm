@@ -8,7 +8,6 @@ import (
 	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
-	smath "github.com/ava-labs/avalanchego/utils/math"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/storage"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -112,7 +112,7 @@ func (s *DelegateUserStake) Execute(
 		return nil, err
 	}
 	if balance < s.StakedAmount {
-		return nil, ErrInsufficientAssetBalance
+		return nil, storage.ErrInsufficientAssetBalance
 	}
 	newBalance, err := smath.Sub(balance, s.StakedAmount)
 	if err != nil {
