@@ -44,7 +44,7 @@ func (*MintAssetNFT) GetTypeID() uint8 {
 	return nconsts.MintAssetNFTID
 }
 
-func (m *MintAssetNFT) StateKeys(actor codec.Address) state.Keys {
+func (m *MintAssetNFT) StateKeys(codec.Address) state.Keys {
 	nftAddress := storage.AssetAddressNFT(m.AssetAddress, []byte(m.Metadata), m.To)
 	return state.Keys{
 		string(storage.AssetInfoKey(m.AssetAddress)):                 state.Read | state.Write,

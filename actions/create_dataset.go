@@ -134,7 +134,7 @@ func (c *CreateDataset) Execute(
 
 	return &CreateDatasetResult{
 		DatasetAddress:          c.AssetAddress,
-		DatasetParentNftAddress: storage.AssetAddressNFT(c.AssetAddress, []byte(metadata), owner),
+		DatasetParentNftAddress: storage.AssetAddressNFT(c.AssetAddress, metadata, owner),
 	}, nil
 }
 

@@ -198,8 +198,10 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 
 func BenchmarkCompleteContributeDataset(b *testing.B) {
 	require := require.New(b)
-	dataLocation := "default"
-	dataIdentifier := "data_id_1234"
+	const (
+		dataLocation   = "default"
+		dataIdentifier = "data_id_1234"
+	)
 
 	actor := codectest.NewRandomAddress()
 	datasetAddress := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("Valid Name"), []byte("DATASET"), 0, []byte("metadata"), actor)

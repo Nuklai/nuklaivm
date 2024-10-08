@@ -163,7 +163,7 @@ func (*InitiateContributeDatasetResult) GetTypeID() uint8 {
 	return nconsts.InitiateContributeDatasetID
 }
 
-func (i *InitiateContributeDatasetResult) Size() int {
+func (*InitiateContributeDatasetResult) Size() int {
 	return ids.IDLen + codec.AddressLen + consts.Uint64Len
 }
 
