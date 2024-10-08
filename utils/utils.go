@@ -21,7 +21,7 @@ func FormatBalance(bal uint64, decimals uint8) string {
 	return strconv.FormatFloat(float64(bal)/math.Pow10(int(decimals)), 'f', int(decimals), 64)
 }
 
-func CombineWithSuffix(name []byte, uniqueNum uint64, maxLength int) []byte {
+func CombineWithSuffix(field []byte, uniqueNum uint64, maxLength int) []byte {
 	// Convert the unique number to a string and append a hyphen
 	uniqueNumStr := fmt.Sprintf("-%d", uniqueNum)
 	uniqueNumLen := len(uniqueNumStr)
@@ -36,12 +36,12 @@ func CombineWithSuffix(name []byte, uniqueNum uint64, maxLength int) []byte {
 	maxNameLen := maxLength - uniqueNumLen
 
 	// Truncate the name if it's too long to fit with the suffix
-	if len(name) > maxNameLen {
-		name = name[:maxNameLen]
+	if len(field) > maxNameLen {
+		field = field[:maxNameLen]
 	}
 
 	// Combine the truncated name with the suffix
-	result := append(name, []byte(uniqueNumStr)...)
+	field = append(field, []byte(uniqueNumStr)...)
 
-	return result
+	return field
 }

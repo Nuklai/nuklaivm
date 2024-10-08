@@ -25,6 +25,10 @@ const (
 	MaxDatasetDataLocationSize = 64
 )
 
+const (
+	DatasetDefaultLocation = "default"
+)
+
 func DatasetInfoKey(datasetAddress codec.Address) (k []byte) {
 	k = make([]byte, 1+codec.AddressLen+consts.Uint16Len)                 // Length of prefix + datasetAddress + DatasetInfoChunks
 	k[0] = datasetInfoPrefix                                              // datasetInfoPrefix is a constant representing the dataset category

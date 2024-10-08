@@ -86,7 +86,7 @@ func (d *InitiateContributeDataset) Execute(
 	}
 
 	// Check if the data location is valid
-	dataLocation := "default"
+	dataLocation := storage.DatasetDefaultLocation
 	if len(d.DataLocation) > 0 {
 		dataLocation = d.DataLocation
 	}
