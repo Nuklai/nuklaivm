@@ -17,8 +17,6 @@ import (
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/genesis"
 	"github.com/ava-labs/hypersdk/state"
-
-	safemath "github.com/ava-labs/avalanchego/utils/math"
 )
 
 var (
@@ -51,25 +49,8 @@ func (g *Genesis) InitializeState(ctx context.Context, tracer trace.Tracer, mu s
 	_, span := tracer.Start(ctx, "Nuklai Genesis.InitializeState")
 	defer span.End()
 
-	// Initialize state from the DefaultGenesis first
-	if err := g.DefaultGenesis.InitializeState(ctx, tracer, mu, balanceHandler); err != nil {
-		return err
-	}
-
-	// Get totalSupply
-	var (
-		totalSupply uint64
-		err         error
-	)
-	for _, alloc := range g.CustomAllocation {
-		totalSupply, err = safemath.Add(totalSupply, alloc.Balance)
-		if err != nil {
-			return err
-		}
-	}
-
 	// Set the asset info for NAI using storage.SetAsset
-	return storage.SetAssetInfo(
+	if err := storage.SetAssetInfo(
 		ctx,
 		mu,
 		storage.NAIAddress,                  // Asset Address
@@ -79,14 +60,19 @@ func (g *Genesis) InitializeState(ctx context.Context, tracer trace.Tracer, mu s
 		consts.Decimals,                     // Decimals
 		[]byte(consts.Metadata),             // Metadata
 		[]byte(storage.NAIAddress.String()), // URI
-		totalSupply,                         // Initial supply
+		0,                                   // Initial total supply
 		g.EmissionBalancer.MaxSupply,        // Max supply
 		codec.EmptyAddress,                  // Owner address
 		codec.EmptyAddress,                  // MintAdmin address
 		codec.EmptyAddress,                  // PauseUnpauseAdmin address
 		codec.EmptyAddress,                  // FreezeUnfreezeAdmin address
 		codec.EmptyAddress,                  // EnableDisableKYCAccountAdmin address
-	)
+	); err != nil {
+		return err
+	}
+
+	// Initialize state from the DefaultGenesis first
+	return g.DefaultGenesis.InitializeState(ctx, tracer, mu, balanceHandler)
 }
 
 func (g *Genesis) GetStateBranchFactor() merkledb.BranchFactor {

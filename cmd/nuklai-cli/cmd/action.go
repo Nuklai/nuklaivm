@@ -16,6 +16,7 @@ import (
 	"github.com/near/borsh-go"
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/storage"
 	"github.com/spf13/cobra"
 	"github.com/status-im/keycard-go/hexutils"
 
@@ -47,14 +48,14 @@ var transferCmd = &cobra.Command{
 			return err
 		}
 
-		// Get assetID
-		assetID, err := prompt.Asset("assetID", consts.Symbol, true)
+		// Get assetAddress
+		assetAddress, err := parseAsset("assetAddress")
 		if err != nil {
 			return err
 		}
 
 		// Get balance info
-		balance, _, _, _, decimals, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, assetID, true)
+		balance, _, _, _, decimals, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, assetAddress, true, false, -1)
 		if balance == 0 || err != nil {
 			return err
 		}
@@ -79,7 +80,7 @@ var transferCmd = &cobra.Command{
 
 		// Generate transaction
 		result, txID, err := sendAndWait(ctx, []chain.Action{&actions.Transfer{
-			AssetAddress: assetID.String(),
+			AssetAddress: assetAddress,
 			To:           recipient,
 			Value:        amount,
 		}}, cli, ncli, ws, factory)
@@ -299,7 +300,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			balance, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, nclients[0], validatorSignerKey.Address, ids.Empty, true)
+			balance, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, nclients[0], validatorSignerKey.Address, storage.NAIAddress, true, false, -1)
 			if err != nil {
 				return err
 			}
@@ -358,7 +359,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 		}
 
 		// Get balance info
-		balance, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, ids.Empty, true)
+		balance, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, storage.NAIAddress, true, false, -1)
 		if balance == 0 || err != nil {
 			return err
 		}
@@ -691,7 +692,7 @@ var delegateUserStakeCmd = &cobra.Command{
 		nodeID := validatorChosen.NodeID
 
 		// Get balance info
-		balance, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, ids.Empty, true)
+		balance, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(ctx, ncli, priv.Address, storage.NAIAddress, true, false, -1)
 		if balance == 0 || err != nil {
 			return err
 		}

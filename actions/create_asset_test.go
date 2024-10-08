@@ -214,7 +214,7 @@ func TestCreateAssetAction(t *testing.T) {
 				// Check if NFT was created correctly
 				assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err = storage.GetAssetInfoNoController(ctx, store, nftAddress)
 				require.NoError(t, err)
-				require.Equal(t, nconsts.AssetFractionalTokenID, assetType)
+				require.Equal(t, nconsts.AssetNonFungibleTokenID, assetType)
 				require.Equal(t, "name", string(name))
 				require.Equal(t, "SYM-0", string(symbol))
 				require.Equal(t, uint8(0), decimals)
@@ -273,7 +273,7 @@ func BenchmarkCreateAsset(b *testing.B) {
 			// Check if the asset was created correctly
 			assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, assetFT)
 			require.NoError(err)
-			require.Equal(nconsts.AssetFungibleTokenID, assetType)
+			require.Equal(nconsts.AssetNonFungibleTokenID, assetType)
 			require.Equal("name", string(name))
 			require.Equal("SYM", string(symbol))
 			require.Equal(uint8(9), decimals)

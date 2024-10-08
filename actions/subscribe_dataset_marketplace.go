@@ -98,10 +98,6 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	if err != nil {
 		return nil, err
 	}
-	// Check if the marketplaceAssetAddress is correct
-	if metadataMap["marketplaceAssetAddress"] != d.MarketplaceAssetAddress.String() {
-		return nil, ErrMarketplaceAssetAddressInvalid
-	}
 	// Ensure paymentAssetAddress is supported
 	if metadataMap["paymentAssetAddress"] != d.PaymentAssetAddress.String() {
 		return nil, ErrPaymentAssetNotSupported
@@ -169,7 +165,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	metadataNFTMap["datasetAddress"] = metadataMap["datasetAddress"]
 	metadataNFTMap["marketplaceAssetAddress"] = d.MarketplaceAssetAddress.String()
 	metadataNFTMap["datasetPricePerBlock"] = metadataMap["datasetPricePerBlock"]
-	metadataNFTMap["assetForPayment"] = d.PaymentAssetAddress.String()
+	metadataNFTMap["paymentAssetAddress"] = d.PaymentAssetAddress.String()
 	metadataNFTMap["totalCost"] = fmt.Sprint(totalCost)
 	metadataNFTMap["issuanceBlock"] = fmt.Sprint(currentBlock)
 	metadataNFTMap["numBlocksToSubscribe"] = fmt.Sprint(d.NumBlocksToSubscribe)
@@ -184,7 +180,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	if _, err := storage.MintAsset(ctx, mu, d.MarketplaceAssetAddress, actor, 1); err != nil {
 		return nil, err
 	}
-	symbol = utils.CombineWithSuffix(symbol, totalSupply+1, storage.MaxSymbolSize)
+	symbol = utils.CombineWithSuffix(symbol, totalSupply, storage.MaxSymbolSize)
 	if err := storage.SetAssetInfo(ctx, mu, nftAddress, nconsts.AssetNonFungibleTokenID, name, symbol, 0, metadataNFT, []byte(d.MarketplaceAssetAddress.String()), 0, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}

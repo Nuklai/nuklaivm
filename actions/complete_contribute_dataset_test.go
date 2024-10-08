@@ -156,7 +156,7 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 				// Check if NFT was created correctly
 				assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, nftAddress)
 				require.NoError(t, err)
-				require.Equal(t, nconsts.AssetFractionalTokenID, assetType)
+				require.Equal(t, nconsts.AssetNonFungibleTokenID, assetType)
 				require.Equal(t, "name", string(name))
 				require.Equal(t, "SYM-1", string(symbol))
 				require.Equal(t, uint8(0), decimals)
@@ -238,7 +238,7 @@ func BenchmarkCompleteContributeDataset(b *testing.B) {
 			// Check if NFT was created correctly
 			assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, nftAddress)
 			require.NoError(err)
-			require.Equal(nconsts.AssetFractionalTokenID, assetType)
+			require.Equal(nconsts.AssetNonFungibleTokenID, assetType)
 			require.Equal("name", string(name))
 			require.Equal("SYM-1", string(symbol))
 			require.Equal(uint8(0), decimals)

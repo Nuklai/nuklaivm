@@ -98,7 +98,7 @@ func (d *CompleteContributeDataset) Execute(
 	}
 
 	// Retrieve the asset info
-	assetType, name, symbol, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, d.DatasetAddress)
+	_, name, symbol, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, d.DatasetAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (d *CompleteContributeDataset) Execute(
 	}
 	nftAddress := codec.CreateAddress(nconsts.AssetFractionalTokenID, d.DatasetContributionID)
 	symbol = utils.CombineWithSuffix(symbol, totalSupply, storage.MaxSymbolSize)
-	if err := storage.SetAssetInfo(ctx, mu, nftAddress, assetType, name, symbol, 0, metadataNFT, []byte(d.DatasetAddress.String()), 0, 1, d.DatasetContributor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, nftAddress, nconsts.AssetNonFungibleTokenID, name, symbol, 0, metadataNFT, []byte(d.DatasetAddress.String()), 0, 1, d.DatasetContributor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}
 	if _, err := storage.MintAsset(ctx, mu, nftAddress, d.DatasetContributor, 1); err != nil {

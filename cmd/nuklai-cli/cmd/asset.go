@@ -14,8 +14,6 @@ import (
 	"github.com/ava-labs/hypersdk/cli/prompt"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/utils"
-
-	nutils "github.com/nuklai/nuklaivm/utils"
 )
 
 var assetCmd = &cobra.Command{
@@ -79,19 +77,12 @@ var createAssetCmd = &cobra.Command{
 			return err
 		}
 
-		// Generate transaction
-		assetID, err := nutils.GenerateRandomID()
-		if err != nil {
-			return err
-		}
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.CreateAsset{
-			AssetID:                      assetID.String(),
 			AssetType:                    uint8(assetType),
 			Name:                         name,
 			Symbol:                       symbol,
 			Decimals:                     uint8(decimals), // already constrain above to prevent overflow
 			Metadata:                     metadata,
-			URI:                          "https://nukl.ai",
 			MaxSupply:                    uint64(0),
 			MintAdmin:                    owner,
 			PauseUnpauseAdmin:            owner,
@@ -115,19 +106,19 @@ var updateAssetCmd = &cobra.Command{
 		}
 
 		// Select asset ID to update
-		assetID, err := prompt.ID("assetID")
+		assetAddress, err := prompt.Address("assetAddress")
 		if err != nil {
 			return err
 		}
 
 		// Add name to token
-		name, err := prompt.String("name", 1, actions.MaxMetadataSize)
+		name, err := prompt.String("name", 1, storage.MaxNameSize)
 		if err != nil {
 			return err
 		}
 
 		// Add symbol to token
-		symbol, err := prompt.String("symbol", 1, actions.MaxTextSize)
+		symbol, err := prompt.String("symbol", 1, storage.MaxSymbolSize)
 		if err != nil {
 			return err
 		}
@@ -140,9 +131,9 @@ var updateAssetCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.UpdateAsset{
-			AssetAddress: assetID,
-			Name:         []byte(name),
-			Symbol:       []byte(symbol),
+			AssetAddress: assetAddress,
+			Name:         name,
+			Symbol:       symbol,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err
@@ -161,21 +152,16 @@ var mintAssetFTCmd = &cobra.Command{
 		}
 
 		// Select token to mint
-		assetID, err := prompt.ID("assetID")
+		assetAddress, err := prompt.Address("assetAddress")
 		if err != nil {
 			return err
 		}
-		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := ncli.Asset(ctx, assetID.String(), false)
+		assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := ncli.Asset(ctx, assetAddress.String(), false)
 		if err != nil {
 			return err
-		}
-		if !exists {
-			utils.Outf("{{red}}assetID:%s does not exist{{/}}\n", assetID)
-			utils.Outf("{{red}}exiting...{{/}}\n")
-			return nil
 		}
 		if mintAdmin != priv.Address.String() {
-			utils.Outf("{{red}}%s has permission to mint asset '%s' with assetID '%s', you are not{{/}}\n", mintAdmin, name, assetID)
+			utils.Outf("{{red}}%s has permission to mint asset '%s' with assetID '%s', you are not{{/}}\n", mintAdmin, name, assetAddress)
 			utils.Outf("{{red}}exiting...{{/}}\n")
 			return nil
 		}
@@ -216,7 +202,7 @@ var mintAssetFTCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.MintAssetFT{
-			AssetAddress: assetID,
+			AssetAddress: assetAddress,
 			To:           recipient,
 			Value:        amount,
 		}}, cli, ncli, ws, factory)
@@ -237,21 +223,16 @@ var mintAssetNFTCmd = &cobra.Command{
 		}
 
 		// Select nft collection id to mint to
-		assetID, err := prompt.ID("assetID")
+		assetAddress, err := prompt.Address("assetAddress")
 		if err != nil {
 			return err
 		}
-		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := ncli.Asset(ctx, assetID.String(), false)
+		assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := ncli.Asset(ctx, assetAddress.String(), false)
 		if err != nil {
 			return err
-		}
-		if !exists {
-			utils.Outf("{{red}}name: %s with assetID:%s does not exist{{/}}\n", name, assetID)
-			utils.Outf("{{red}}exiting...{{/}}\n")
-			return nil
 		}
 		if mintAdmin != priv.Address.String() {
-			utils.Outf("{{red}}%s has permission to mint asset '%s' with assetID '%s', you are not{{/}}\n", mintAdmin, name, assetID)
+			utils.Outf("{{red}}%s has permission to mint asset '%s' with assetID '%s', you are not{{/}}\n", mintAdmin, name, assetAddress)
 			utils.Outf("{{red}}exiting...{{/}}\n")
 			return nil
 		}
@@ -278,14 +259,8 @@ var mintAssetNFTCmd = &cobra.Command{
 			return err
 		}
 
-		// Choose unique id for the NFT
-		uniqueID, err := prompt.Int("unique nft #", consts.MaxInt)
-		if err != nil {
-			return err
-		}
-
 		// Add metadata for the NFT
-		metadataNFT, err := prompt.String("metadata", 1, actions.MaxMetadataSize)
+		metadataNFT, err := prompt.String("metadata", 1, storage.MaxAssetMetadataSize)
 		if err != nil {
 			return err
 		}
@@ -298,11 +273,9 @@ var mintAssetNFTCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.MintAssetNFT{
-			AssetAddress: assetID,
-			UniqueID:     uint64(uniqueID),
+			AssetAddress: assetAddress,
 			To:           recipient,
-			URI:          []byte(metadataNFT),
-			Metadata:     []byte(metadataNFT),
+			Metadata:     metadataNFT,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err
@@ -324,18 +297,13 @@ var burnAssetFTCmd = &cobra.Command{
 		}
 
 		// Select token to burn
-		assetID, err := prompt.ID("assetID")
+		assetAddress, err := prompt.Address("assetAddress")
 		if err != nil {
 			return err
 		}
-		exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := ncli.Asset(ctx, assetID.String(), false)
+		assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := ncli.Asset(ctx, assetAddress.String(), false)
 		if err != nil {
 			return err
-		}
-		if !exists {
-			utils.Outf("{{red}}assetID:%s does not exist{{/}}\n", assetID)
-			utils.Outf("{{red}}exiting...{{/}}\n")
-			return nil
 		}
 		utils.Outf(
 			"{{blue}}assetType:{{/}} %s name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}uri:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}admin:{{/}} %s {{blue}}mintActor:{{/}} %s {{blue}}pauseUnpauseActor:{{/}} %s {{blue}}freezeUnfreezeActor:{{/}} %s {{blue}}enableDisableKYCAccountActor:{{/}} %s\n",
@@ -368,7 +336,7 @@ var burnAssetFTCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.BurnAssetFT{
-			AssetAddress: assetID,
+			AssetAddress: assetAddress,
 			Value:        amount,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
@@ -388,18 +356,18 @@ var burnAssetNFTCmd = &cobra.Command{
 		}
 
 		// Select asset ID to burn
-		assetID, err := prompt.ID("assetID")
+		assetAddress, err := prompt.Address("assetAddress")
 		if err != nil {
 			return err
 		}
 
 		// Select nft ID to burn
-		nftID, err := prompt.ID("nftID")
+		nftAddress, err := prompt.Address("nftAddress")
 		if err != nil {
 			return err
 		}
 
-		if _, _, _, _, _, _, err = handler.GetAssetNFTInfo(context.TODO(), ncli, priv.Address, nftID, true); err != nil {
+		if _, _, _, _, _, _, _, err = handler.GetAssetNFTInfo(context.TODO(), ncli, priv.Address, nftAddress, true); err != nil {
 			return err
 		}
 
@@ -411,8 +379,8 @@ var burnAssetNFTCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.BurnAssetNFT{
-			AssetAddress:    assetID,
-			AssetNftAddress: nftID,
+			AssetAddress:    assetAddress,
+			AssetNftAddress: nftAddress,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err

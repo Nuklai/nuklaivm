@@ -4,12 +4,16 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/manifoldco/promptui"
+	"github.com/nuklai/nuklaivm/consts"
+	"github.com/nuklai/nuklaivm/storage"
 	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/cli/prompt"
+	"github.com/ava-labs/hypersdk/codec"
 )
 
 func parseAmount(
@@ -39,4 +43,37 @@ func parseAmount(
 	}
 	rawAmount = strings.TrimSpace(rawAmount)
 	return utils.ParseBalance(rawAmount, decimals)
+}
+
+func parseAsset(label string) (codec.Address, error) {
+	text := fmt.Sprintf("%s (use %s for native token)", label, consts.Symbol)
+	promptText := promptui.Prompt{
+		Label: text,
+		Validate: func(input string) error {
+			if len(input) == 0 {
+				return prompt.ErrInputEmpty
+			}
+			if input == consts.Symbol {
+				return nil
+			}
+			_, err := codec.StringToAddress(input)
+			return err
+		},
+	}
+	asset, err := promptText.Run()
+	if err != nil {
+		return codec.EmptyAddress, err
+	}
+	asset = strings.TrimSpace(asset)
+	assetAddress := storage.NAIAddress
+	if asset != consts.Symbol {
+		assetAddress, err = codec.StringToAddress(asset)
+		if err != nil {
+			return codec.EmptyAddress, err
+		}
+	}
+	if assetAddress == codec.EmptyAddress {
+		return codec.EmptyAddress, prompt.ErrInvalidChoice
+	}
+	return assetAddress, nil
 }

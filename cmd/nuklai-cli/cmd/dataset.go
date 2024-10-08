@@ -5,15 +5,13 @@ package cmd
 
 import (
 	"context"
-	"strconv"
 
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/actions"
+	"github.com/nuklai/nuklaivm/storage"
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/cli/prompt"
-	"github.com/ava-labs/hypersdk/consts"
 
 	hutils "github.com/ava-labs/hypersdk/utils"
 )
@@ -93,20 +91,20 @@ var createDatasetFromExistingAssetCmd = &cobra.Command{
 			return err
 		}
 
-		// Select asset ID
-		assetID, err := prompt.ID("assetID")
+		// Select asset
+		assetAddress, err := prompt.Address("assetAddress")
 		if err != nil {
 			return err
 		}
 
 		// Add name to dataset
-		name, err := prompt.String("name", 1, actions.MaxMetadataSize)
+		name, err := prompt.String("name", 1, storage.MaxNameSize)
 		if err != nil {
 			return err
 		}
 
 		// Add description to dataset
-		description, err := prompt.String("description", 1, actions.MaxMetadataSize)
+		description, err := prompt.String("description", 1, storage.MaxTextSize)
 		if err != nil {
 			return err
 		}
@@ -118,7 +116,7 @@ var createDatasetFromExistingAssetCmd = &cobra.Command{
 		}
 
 		// Add metadata to dataset
-		metadata, err := prompt.String("metadata", 1, actions.MaxDatasetMetadataSize)
+		metadata, err := prompt.String("metadata", 1, storage.MaxDatasetMetadataSize)
 		if err != nil {
 			return err
 		}
@@ -131,14 +129,14 @@ var createDatasetFromExistingAssetCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.CreateDataset{
-			AssetAddress:       assetID,
-			Name:               []byte(name),
-			Description:        []byte(description),
-			Categories:         []byte(name),
-			LicenseName:        []byte("MIT"),
-			LicenseSymbol:      []byte("MIT"),
-			LicenseURL:         []byte("https://opensource.org/licenses/MIT"),
-			Metadata:           []byte(metadata),
+			AssetAddress:       assetAddress,
+			Name:               name,
+			Description:        description,
+			Categories:         name,
+			LicenseName:        "MIT",
+			LicenseSymbol:      "MIT",
+			LicenseURL:         "https://opensource.org/licenses/MIT",
+			Metadata:           metadata,
 			IsCommunityDataset: isCommunityDataset,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
@@ -158,13 +156,13 @@ var updateDatasetCmd = &cobra.Command{
 		}
 
 		// Select dataset ID to update
-		datasetID, err := prompt.ID("datasetID")
+		datasetAddress, err := prompt.Address("datasetAddress")
 		if err != nil {
 			return err
 		}
 
 		// Update name to dataset
-		name, err := prompt.String("name", 1, actions.MaxMetadataSize)
+		name, err := prompt.String("name", 1, storage.MaxNameSize)
 		if err != nil {
 			return err
 		}
@@ -183,8 +181,8 @@ var updateDatasetCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.UpdateDataset{
-			DatasetAddress:     datasetID,
-			Name:               []byte(name),
+			DatasetAddress:     datasetAddress,
+			Name:               name,
 			IsCommunityDataset: isCommunityDataset,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
@@ -211,21 +209,21 @@ var getDatasetCmd = &cobra.Command{
 		ncli := nclients[0]
 
 		// Select dataset to look up
-		datasetID, err := prompt.ID("datasetID")
+		datasetAddress, err := prompt.Address("datasetAddress")
 		if err != nil {
 			return err
 		}
 
 		// Get dataset info
-		hutils.Outf("Retrieving dataset info for datasetID: %s\n", datasetID)
-		_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, err = handler.GetDatasetInfo(ctx, ncli, datasetID)
+		hutils.Outf("Retrieving dataset info for datasetID: %s\n", datasetAddress)
+		_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, err = handler.GetDatasetInfo(ctx, ncli, datasetAddress)
 		if err != nil {
 			return err
 		}
 
 		// Get asset info
-		hutils.Outf("Retrieving asset info for assetID: %s\n", datasetID)
-		_, _, _, _, _, _, _, _, _, _, _, _, _, err = handler.GetAssetInfo(ctx, ncli, priv.Address, datasetID, true)
+		hutils.Outf("Retrieving asset info for assetID: %s\n", datasetAddress)
+		_, _, _, _, _, _, _, _, _, _, _, _, _, err = handler.GetAssetInfo(ctx, ncli, priv.Address, datasetAddress, true, true, -1)
 		return err
 	},
 }
@@ -239,14 +237,14 @@ var initiateContributeDatasetCmd = &cobra.Command{
 			return err
 		}
 
-		// Select dataset ID to contribute to
-		datasetID, err := prompt.ID("datasetID")
+		// Select dataset to contribute to
+		datasetAddress, err := prompt.Address("datasetAddress")
 		if err != nil {
 			return err
 		}
 
 		// Add data identifier to dataset
-		dataIdentifier, err := prompt.String("dataIdentifier", 1, actions.MaxMetadataSize-actions.MaxTextSize)
+		dataIdentifier, err := prompt.String("dataIdentifier", 1, storage.MaxAssetMetadataSize-storage.MaxDatasetDataLocationSize)
 		if err != nil {
 			return err
 		}
@@ -259,9 +257,9 @@ var initiateContributeDatasetCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.InitiateContributeDataset{
-			DatasetAddress: datasetID,
-			DataLocation:   []byte("default"),
-			DataIdentifier: []byte(dataIdentifier),
+			DatasetAddress: datasetAddress,
+			DataLocation:   "default",
+			DataIdentifier: dataIdentifier,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err
@@ -283,24 +281,16 @@ var getDataContributionPendingCmd = &cobra.Command{
 		ncli := nclients[0]
 
 		// Select dataset to look up
-		datasetIDStr, err := prompt.String("datasetID", 1, consts.MaxInt)
-		if err != nil {
-			return err
-		}
-		datasetID, err := ids.FromString(datasetIDStr)
+		contributionID, err := prompt.ID("contributionID")
 		if err != nil {
 			return err
 		}
 
 		// Get pending data contributions info
-		hutils.Outf("Retrieving pending data contributions info for datasetID: %s\n", datasetID)
-		contributions, err := handler.GetDataContributionPendingInfo(ctx, ncli, datasetID)
+		hutils.Outf("Retrieving pending data contributions info for datasetID: %s\n", contributionID)
+		_, _, _, _, _, err = handler.GetDataContributionInfo(ctx, ncli, contributionID)
 		if err != nil {
 			return err
-		}
-		if len(contributions) == 0 {
-			hutils.Outf("{{red}}This contribution does not exist{{/}}\n")
-			hutils.Outf("{{red}}exiting...{{/}}\n")
 		}
 		return nil
 	},
@@ -316,23 +306,19 @@ var completeContributeDatasetCmd = &cobra.Command{
 		}
 
 		// Select dataset ID
-		datasetID, err := prompt.ID("datasetID")
+		datasetAddress, err := prompt.Address("datasetAddress")
+		if err != nil {
+			return err
+		}
+
+		// Select contribution ID
+		contributionID, err := prompt.ID("contributionID")
 		if err != nil {
 			return err
 		}
 
 		// Select the contributor
 		contributor, err := prompt.Address("contributor")
-		if err != nil {
-			return err
-		}
-
-		// Choose unique id for the NFT to be minted
-		uniqueIDStr, err := prompt.String("unique nft #", 1, actions.MaxTextSize)
-		if err != nil {
-			return err
-		}
-		uniqueID, err := strconv.ParseUint(uniqueIDStr, 10, 64)
 		if err != nil {
 			return err
 		}
@@ -345,9 +331,9 @@ var completeContributeDatasetCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.CompleteContributeDataset{
-			DatasetAddress:               datasetID,
-			DatasetContributor:           contributor,
-			UniqueContributorNFTMetadata: uniqueID,
+			DatasetContributionID: contributionID,
+			DatasetAddress:        datasetAddress,
+			DatasetContributor:    contributor,
 		}}, cli, ncli, ws, factory)
 		if err != nil {
 			return err

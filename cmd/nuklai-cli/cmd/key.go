@@ -130,27 +130,34 @@ var importKeyCmd = &cobra.Command{
 var setKeyCmd = &cobra.Command{
 	Use: "set",
 	RunE: func(*cobra.Command, []string) error {
-		return handler.Root().SetKey()
+		return handler.SetKey()
 	},
 }
 
 var balanceKeyCmd = &cobra.Command{
 	Use: "balance [address]",
 	RunE: func(_ *cobra.Command, args []string) error {
+		var (
+			addr codec.Address
+			err  error
+		)
 		if len(args) != 1 {
-			return handler.Root().Balance(checkAllChains)
+			addr, _, err = handler.h.GetDefaultKey(true)
+			if err != nil {
+				return err
+			}
+		} else {
+			addr, err = codec.StringToAddress(args[0])
+			if err != nil {
+				return err
+			}
 		}
-		addr, err := codec.StringToAddress(args[0])
-		if err != nil {
-			return err
-		}
-		utils.Outf("{{yellow}}address:{{/}} %s\n", addr)
 		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
 		if err != nil {
 			return err
 		}
 		for _, ncli := range nclients {
-			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, storage.NAIAddress, true); err != nil {
+			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, storage.NAIAddress, true, false, -1); err != nil {
 				return err
 			}
 		}
@@ -165,7 +172,7 @@ func lookupKeyBalance(uri string, addr codec.Address, assetAddress codec.Address
 	} else {
 		_, _, _, _, _, _, _, _, _, _, _, _, _, err = handler.GetAssetInfo(
 			context.TODO(), vm.NewJSONRPCClient(uri),
-			addr, assetAddress, true)
+			addr, assetAddress, true, false, -1)
 	}
 	return err
 }
@@ -180,7 +187,6 @@ var balanceFTKeyCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		utils.Outf("{{yellow}}address:{{/}} %s\n", addr)
 		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
 		if err != nil {
 			return err
@@ -190,7 +196,7 @@ var balanceFTKeyCmd = &cobra.Command{
 			return err
 		}
 		for _, ncli := range nclients {
-			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, assetAddress, true); err != nil {
+			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, assetAddress, true, false, -1); err != nil {
 				return err
 			}
 		}
@@ -208,7 +214,6 @@ var balanceNFTKeyCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		utils.Outf("{{yellow}}address:{{/}} %s\n", addr)
 		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
 		if err != nil {
 			return err

@@ -6,10 +6,12 @@ package cmd
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
+	"github.com/nuklai/nuklaivm/storage"
 	"github.com/nuklai/nuklaivm/vm"
 
 	"github.com/ava-labs/hypersdk/api/jsonrpc"
@@ -38,6 +40,46 @@ func NewHandler(h *cli.Handler) *Handler {
 
 func (h *Handler) Root() *cli.Handler {
 	return h.h
+}
+
+func (h *Handler) SetKey() error {
+	keys, err := h.h.GetKeys()
+	if err != nil {
+		return err
+	}
+	if len(keys) == 0 {
+		utils.Outf("{{red}}no stored keys{{/}}\n")
+		return nil
+	}
+	_, uris, err := h.h.GetDefaultChain(true)
+	if err != nil {
+		return err
+	}
+	if len(uris) == 0 {
+		utils.Outf("{{red}}no available chains{{/}}\n")
+		return nil
+	}
+	utils.Outf("{{cyan}}stored keys:{{/}} %d\n", len(keys))
+	for i := 0; i < len(keys); i++ {
+		addrStr := keys[i].Address
+		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
+		if err != nil {
+			return err
+		}
+		for _, ncli := range nclients {
+			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addrStr, storage.NAIAddress, true, false, i); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Select key
+	keyIndex, err := prompt.Choice("set default key", len(keys))
+	if err != nil {
+		return err
+	}
+	key := keys[keyIndex]
+	return h.h.StoreDefaultKey(key.Address)
 }
 
 func (h *Handler) ImportChain(uri string) error {
@@ -202,27 +244,31 @@ func (*Handler) GetAssetInfo(
 	actor codec.Address,
 	assetAddress codec.Address,
 	checkBalance bool,
+	printOutput bool,
+	index int,
 ) (uint64, string, string, string, uint8, string, uint64, uint64, string, string, string, string, string, error) {
 	assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := cli.Asset(ctx, assetAddress.String(), false)
 	if err != nil {
 		return 0, "", "", "", 0, "", 0, 0, "", "", "", "", "", err
 	}
-	utils.Outf(
-		"{{blue}}assetType: {{/}} %s name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}uri:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}owner:{{/}} %s {{blue}}mintAdmin:{{/}} %s {{blue}}pauseUnpauseAdmin:{{/}} %s {{blue}}freezeUnfreezeAdmin:{{/}} %s {{blue}}enableDisableKYCAccountAdmin:{{/}} %s\n",
-		assetType,
-		name,
-		symbol,
-		decimals,
-		metadata,
-		uri,
-		totalSupply,
-		maxSupply,
-		owner,
-		mintAdmin,
-		pauseUnpauseAdmin,
-		freezeUnfreezeAdmin,
-		enableDisableKYCAccountAdmin,
-	)
+	if printOutput {
+		utils.Outf(
+			"{{blue}}assetType: {{/}} %s name:{{/}} %s {{blue}}symbol:{{/}} %s {{blue}}decimals:{{/}} %d {{blue}}metadata:{{/}} %s {{blue}}uri:{{/}} %s {{blue}}totalSupply:{{/}} %d {{blue}}maxSupply:{{/}} %d {{blue}}owner:{{/}} %s {{blue}}mintAdmin:{{/}} %s {{blue}}pauseUnpauseAdmin:{{/}} %s {{blue}}freezeUnfreezeAdmin:{{/}} %s {{blue}}enableDisableKYCAccountAdmin:{{/}} %s\n",
+			assetType,
+			name,
+			symbol,
+			decimals,
+			metadata,
+			uri,
+			totalSupply,
+			maxSupply,
+			owner,
+			mintAdmin,
+			pauseUnpauseAdmin,
+			freezeUnfreezeAdmin,
+			enableDisableKYCAccountAdmin,
+		)
+	}
 
 	if !checkBalance {
 		return 0, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, nil
@@ -231,20 +277,13 @@ func (*Handler) GetAssetInfo(
 	if err != nil {
 		return 0, "", "", "", 0, "", 0, 0, "", "", "", "", "", err
 	}
-	if balance == 0 {
-		utils.Outf("{{red}}assetID:{{/}} %s\n", assetAddress)
-		utils.Outf("{{red}}name:{{/}} %s\n", name)
-		utils.Outf("{{red}}symbol:{{/}} %s\n", symbol)
-		utils.Outf("{{red}}balance:{{/}} 0\n")
-		utils.Outf("{{red}}please send funds to %s{{/}}\n", actor.String())
-		utils.Outf("{{red}}exiting...{{/}}\n")
-	} else {
-		utils.Outf(
-			"{{blue}}balance:{{/}} %s %s\n",
-			nutils.FormatBalance(balance, decimals),
-			symbol,
-		)
+	output := ""
+	if index >= 0 {
+		output += fmt.Sprintf("%d) ", index)
 	}
+	output += fmt.Sprintf("{{cyan}}address:{{/}} %s {{cyan}}balance:{{/}} %s %s\n", actor, utils.FormatBalance(balance), symbol)
+	utils.Outf(output)
+
 	return balance, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, nil
 }
 
@@ -425,9 +464,9 @@ func (*Handler) GetUserStake(ctx context.Context,
 func (*Handler) GetDatasetInfo(
 	ctx context.Context,
 	cli *vm.JSONRPCClient,
-	datasetID ids.ID,
+	datasetAddress codec.Address,
 ) (string, string, string, string, string, string, string, bool, string, string, uint64, uint8, uint8, uint8, uint8, string, error) {
-	name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := cli.Dataset(ctx, datasetID.String(), false)
+	name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err := cli.Dataset(ctx, datasetAddress.String(), false)
 	if err != nil {
 		return "", "", "", "", "", "", "", false, "", "", 0, 0, 0, 0, 0, "", err
 	}
@@ -454,7 +493,7 @@ func (*Handler) GetDatasetInfo(
 	return name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadataOwnerCut, owner, err
 }
 
-func (*Handler) GetDataContributionPendingInfo(
+func (*Handler) GetDataContributionInfo(
 	ctx context.Context,
 	cli *vm.JSONRPCClient,
 	contributionID ids.ID,

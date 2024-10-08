@@ -154,7 +154,7 @@ func (c *CreateAsset) Execute(
 		nftAddress := storage.AssetAddressNFT(assetAddress, []byte(c.Metadata), actor)
 		output.DatasetParentNftAddress = nftAddress
 		symbol := utils.CombineWithSuffix([]byte(c.Symbol), 0, storage.MaxSymbolSize)
-		if err := storage.SetAssetInfo(ctx, mu, nftAddress, c.AssetType, []byte(c.Name), symbol, 0, []byte(c.Metadata), []byte(assetAddress.String()), 0, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
+		if err := storage.SetAssetInfo(ctx, mu, nftAddress, nconsts.AssetNonFungibleTokenID, []byte(c.Name), symbol, 0, []byte(c.Metadata), []byte(assetAddress.String()), 0, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 			return nil, err
 		}
 		newBalance, err := storage.MintAsset(ctx, mu, nftAddress, actor, amountOfToken)

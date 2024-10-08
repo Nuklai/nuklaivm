@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/dataset"
 	"github.com/nuklai/nuklaivm/storage"
 	"github.com/stretchr/testify/require"
@@ -17,6 +16,8 @@ import (
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/codec/codectest"
 	"github.com/ava-labs/hypersdk/state"
+
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 func TestInitiateContributeDatasetAction(t *testing.T) {

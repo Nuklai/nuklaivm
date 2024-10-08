@@ -99,7 +99,7 @@ func (d *PublishDatasetMarketplace) Execute(
 		return nil, err
 	}
 	// Create a new marketplace asset
-	if err := storage.SetAssetInfo(ctx, mu, marketplaceAssetAddress, nconsts.AssetMarketplaceTokenID, []byte(storage.MarketplaceAssetName), []byte(storage.MarketplaceAssetSymbol), 0, metadata, []byte(marketplaceAssetAddress.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, marketplaceAssetAddress, nconsts.AssetMarketplaceTokenID, []byte(storage.MarketplaceAssetName), []byte(storage.MarketplaceAssetSymbol), 0, metadata, []byte(marketplaceAssetAddress.String()), 0, 0, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}
 

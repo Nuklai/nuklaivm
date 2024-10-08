@@ -94,7 +94,7 @@ func handleTx(tx *chain.Transaction, result *chain.Result) {
 		case *actions.ContractCall:
 			summaryStr = fmt.Sprintf("contractAddress: %s value: %d function: %s calldata: %s\n", act.ContractAddress, act.Value, act.Function, string(act.CallData))
 		case *actions.CreateAsset:
-			assetAddress := storage.AssetAddress(act.AssetType, []byte(act.Name), []byte(act.Symbol), act.Decimals, []byte(act.Metadata), []byte(act.URI), actor)
+			assetAddress := storage.AssetAddress(act.AssetType, []byte(act.Name), []byte(act.Symbol), act.Decimals, []byte(act.Metadata), actor)
 			summaryStr = fmt.Sprintf("assetAddress: %s symbol: %s decimals: %d metadata: %s\n", assetAddress, act.Symbol, act.Decimals, act.Metadata)
 		case *actions.UpdateAsset:
 			summaryStr = fmt.Sprintf("assetAddress: %s updated\n", act.AssetAddress)

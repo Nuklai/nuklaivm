@@ -271,9 +271,8 @@ If successful, the balance response should look like this:
 
 ```bash
 address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
-chainID: 2F1QmuxSSVntNHXnEevYHBZzyhsNGvAE5Y2pqJW2a4iBugTMWd
-uri: http://127.0.0.1:9650/ext/bc/nuklaivm
-address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 balance: 853000000.000000000 NAI
+chainID: PAroBtUb83kcU5m3XiD37D263cB8kaZsiZ1rG7DLKxs8EX7Cq
+address: 00cf77495ce1bdbf11e5e45463fad5a862cb6cc0a20e00e658c4ac3355dcdc64bb balance: 853000000.000000000 NAI
 ```
 
 You can also check the balance of another address by passing in the address as the argument
@@ -285,15 +284,8 @@ You can also check the balance of another address by passing in the address as t
 Should give output
 
 ```bash
-address: 01b27c7ce992cdb7ff039294d7901851902394bb85fa4f3dc4cbb960b07284b7f9
-chainID: 2F1QmuxSSVntNHXnEevYHBZzyhsNGvAE5Y2pqJW2a4iBugTMWd
-assetID (use NAI for native token): NAI
-assetID: 11111111111111111111111111111111LpoYY
-name: nuklaivm
-symbol: NAI
-balance: 0
-please send funds to 01b27c7ce992cdb7ff039294d7901851902394bb85fa4f3dc4cbb960b07284b7f9
-exiting...
+chainID: PAroBtUb83kcU5m3XiD37D263cB8kaZsiZ1rG7DLKxs8EX7Cq
+address: 00cf77495ce1bdbf11e5e45463fad5a862cb6cc0a20e00e658c4ac3355dcdc64bb balance: 0.000000000 NAI
 ```
 
 ### Generate Another Address
@@ -311,8 +303,8 @@ Note that we are now generating a key with curve secp256r1 instead of ed25519 li
 If successful, the `nuklai-cli` will emit the new address:
 
 ```bash
-created address: 01b27c7ce992cdb7ff039294d7901851902394bb85fa4f3dc4cbb960b07284b7f9
-Private Key String: h3geZh5VQ4JEe829BTvaKaECnrVUGA1fEUY4imgnzbg=
+created address: 011ddbf62f227dd32deea73b31945d65bb6676cccae6cf0b829dfc21b290387bac
+Private Key String(Base64): J5kwBjyvMuvV4PfjTUOO8ZF40Db3KzhFidhH7ER+9Jg=
 ```
 
 We can also generate a bls key doing
@@ -331,11 +323,14 @@ the following command to set it back to `demo.pk`:
 You should see something like this:
 
 ```bash
-chainID: 2F1QmuxSSVntNHXnEevYHBZzyhsNGvAE5Y2pqJW2a4iBugTMWd
+chainID: PAroBtUb83kcU5m3XiD37D263cB8kaZsiZ1rG7DLKxs8EX7Cq
 stored keys: 3
-0) address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 balance: 853000000.000000000 NAI
-1) address: 01b27c7ce992cdb7ff039294d7901851902394bb85fa4f3dc4cbb960b07284b7f9 balance: 0.000000000 NAI
-2) address: 023d4f5711f36fc407e114a86b513b8c51ae124224d11eee5430c27e2d8e673893 balance: 0.000000000 NAI
+chainID: PAroBtUb83kcU5m3XiD37D263cB8kaZsiZ1rG7DLKxs8EX7Cq
+0) address: 00cf77495ce1bdbf11e5e45463fad5a862cb6cc0a20e00e658c4ac3355dcdc64bb balance: 853000000.000000000 NAI
+chainID: PAroBtUb83kcU5m3XiD37D263cB8kaZsiZ1rG7DLKxs8EX7Cq
+1) address: 00cf77495ce1bdbf11e5e45463fad5a862cb6cc0a20e00e658c4ac3355dcdc64bb balance: 0.000000000 NAI
+chainID: PAroBtUb83kcU5m3XiD37D263cB8kaZsiZ1rG7DLKxs8EX7Cq
+2) address: 00cf77495ce1bdbf11e5e45463fad5a862cb6cc0a20e00e658c4ac3355dcdc64bb balance: 0.000000000 NAI
 set default key: 0
 ```
 
@@ -376,15 +371,14 @@ The `nuklai-cli` will emit the following logs when the transfer is successful:
 
 ```bash
 address: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9
-chainID: 2hKDi8QVgngBxCbakibVqQFa3EV8YzA957q7nPT5vrQRpx8Z9E
-assetID (use NAI for native token): NAI
-balance: 853000000.000000000 NAI
-recipient: 00fa92500595699234176c32afbf5c6558df21deb10ba4d2d691e5e5148658c64a
-amount: 1
+chainID: PAroBtUb83kcU5m3XiD37D263cB8kaZsiZ1rG7DLKxs8EX7Cq
+assetAddress (use NAI for native token): NAI
+address: 00cf77495ce1bdbf11e5e45463fad5a862cb6cc0a20e00e658c4ac3355dcdc64bb balance: 853000000.000000000 NAI
+✔ amount: 1█
 continue (y/n): y
-✅ txID: X4HTZbkvrXy8Ka3VBdEJLGj1eUVNQf9LoWZyLZCxham1D1zND
-fee consumed: 0.000032100
-output:  &{SenderBalance:852999998999967900 ReceiverBalance:1000000000}
+✅ txID: wjzqXJeYedVSyBWfapoGiHYC9EQr2HgkA7xrVW4KZQyP1jxxG
+txID: wjzqXJeYedVSyBWfapoGiHYC9EQr2HgkA7xrVW4KZQyP1jxxG
+fee consumed: 0.000048500 NAI
 ```
 
 ### Bonus: Watch Activity in Real-Time
@@ -408,7 +402,7 @@ select chainID: 0 [auto-selected]
 uri: http://127.0.0.1:9650/ext/bc/nuklaivm
 watching for new blocks on 2F1QmuxSSVntNHXnEevYHBZzyhsNGvAE5Y2pqJW2a4iBugTMWd 👀
 height:3003 txs:1 root:uNXBoJRGNo8JCJ8XDEioqVnJjwrVSSKBMgbaTd9AWFiUke2vE size:0.30KB units consumed: [bandwidth=224 compute=7 storage(read)=14 storage(allocate)=50 storage(write)=26] unit prices: [bandwidth=100 compute=100 storage(read)=100 storage(allocate)=100 storage(write)=100] [TPS:0.10 latency:66ms gap:142ms]
-✅ X3VcRchV8E8CoK38qEWYG9mNFLTwxm5V1mhZzsF4KCdkuwfPB actor: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 summary (*actions.Transfer): [assetID: 11111111111111111111111111111111LpoYY amount: 100000000000 -> 01b27c7ce992cdb7ff039294d7901851902394bb85fa4f3dc4cbb960b07284b7f9
+✅ 2deLZJJpfXm1Wrad1f8uZL1aZnrCkEtBZ6aFXNcR7stFYN8Rm8 actor: 00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9 summary (*actions.Transfer): [assetID: 00cf77495ce1bdbf11e5e45463fad5a862cb6cc0a20e00e658c4ac3355dcdc64bb amount: 1000000000 -> 00cf77495ce1bdbf11e5e45463fad5a862cb6cc0a20e00e658c4ac3355dcdc64bb
 ]
 ```
 

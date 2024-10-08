@@ -46,7 +46,7 @@ func (*StateManager) AddBalance(
 	addr codec.Address,
 	mu state.Mutable,
 	amount uint64,
-	createAccount bool,
+	_ bool,
 ) error {
 	_, err := MintAsset(ctx, mu, NAIAddress, addr, amount)
 	return err
@@ -54,6 +54,7 @@ func (*StateManager) AddBalance(
 
 func (*StateManager) SponsorStateKeys(addr codec.Address) state.Keys {
 	return state.Keys{
+		string(AssetInfoKey(NAIAddress)):                 state.All,
 		string(AssetAccountBalanceKey(NAIAddress, addr)): state.All,
 	}
 }
