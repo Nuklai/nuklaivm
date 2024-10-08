@@ -91,8 +91,8 @@ func (u *UndelegateUserStake) Execute(
 		StakeEndBlock:        stakeEndBlock,
 		UnstakedAmount:       stakedAmount,
 		RewardAmount:         rewardAmount,
-		BalanceBeforeUnstake: balance - rewardAmount - stakedAmount,
-		BalanceAfterUnstake:  balance,
+		BalanceBeforeUnstake: balance,
+		BalanceAfterUnstake:  newBalance,
 		DistributedTo:        actor,
 	}, nil
 }

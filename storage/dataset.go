@@ -217,10 +217,10 @@ func DatasetContributionID(datasetAddress codec.Address, dataLocation, dataIdent
 }
 
 func DatasetContributionInfoKey(contributionID ids.ID) (k []byte) {
-	k = make([]byte, 1+ids.IDLen+consts.Uint16Len)                                    // Length of prefix + contributionID + MarketplaceContributionInfoChunks
-	k[0] = marketplaceContributionPrefix                                              // marketplaceContributionPrefix is a constant representing the contribution category
-	copy(k[1:1+ids.IDLen], contributionID[:])                                         // Copy the contributionID
-	binary.BigEndian.PutUint16(k[1+codec.AddressLen:], DatasetContributionInfoChunks) // Adding MarketplaceContributionInfoChunks
+	k = make([]byte, 1+ids.IDLen+consts.Uint16Len)                             // Length of prefix + contributionID + MarketplaceContributionInfoChunks
+	k[0] = marketplaceContributionPrefix                                       // marketplaceContributionPrefix is a constant representing the contribution category
+	copy(k[1:1+ids.IDLen], contributionID[:])                                  // Copy the contributionID
+	binary.BigEndian.PutUint16(k[1+ids.IDLen:], DatasetContributionInfoChunks) // Adding MarketplaceContributionInfoChunks
 	return
 }
 

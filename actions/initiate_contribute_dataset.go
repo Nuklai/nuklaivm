@@ -51,7 +51,7 @@ func (*InitiateContributeDataset) GetTypeID() uint8 {
 func (d *InitiateContributeDataset) StateKeys(actor codec.Address) state.Keys {
 	datasetContributionID := storage.DatasetContributionID(d.DatasetAddress, []byte(d.DataLocation), []byte(d.DataIdentifier), actor)
 	return state.Keys{
-		string(storage.DatasetContributionInfoKey(datasetContributionID)):                                                   state.Read,
+		string(storage.DatasetContributionInfoKey(datasetContributionID)):                                                   state.All,
 		string(storage.DatasetInfoKey(d.DatasetAddress)):                                                                    state.Read,
 		string(storage.AssetAccountBalanceKey(dataset.GetDatasetConfig().CollateralAssetAddressForDataContribution, actor)): state.Read | state.Write,
 	}

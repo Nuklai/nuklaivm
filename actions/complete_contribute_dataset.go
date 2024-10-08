@@ -69,6 +69,19 @@ func (d *CompleteContributeDataset) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
+	// Check if the dataset exists
+	_, _, _, _, _, _, _, _, marketplaceAssetAddress, _, _, _, _, _, _, owner, err := storage.GetDatasetInfoNoController(ctx, mu, d.DatasetAddress)
+	if err != nil {
+		return nil, err
+	}
+	if actor != owner {
+		return nil, ErrWrongOwner
+	}
+	// Check if the dataset is already on sale
+	if marketplaceAssetAddress != codec.EmptyAddress {
+		return nil, ErrDatasetAlreadyOnSale
+	}
+
 	// Check if the dataset contribution exists
 	datasetAddress, dataLocation, dataIdentifier, contributor, active, err := storage.GetDatasetContributionInfoNoController(ctx, mu, d.DatasetContributionID)
 	if err != nil {
@@ -84,30 +97,10 @@ func (d *CompleteContributeDataset) Execute(
 		return nil, ErrDatasetContributorMismatch
 	}
 
-	// Check if the dataset exists
-	_, _, _, _, _, _, _, _, marketplaceAssetAddress, _, _, _, _, _, _, owner, err := storage.GetDatasetInfoNoController(ctx, mu, d.DatasetAddress)
-	if err != nil {
-		return nil, err
-	}
-	if actor != owner {
-		return nil, ErrWrongOwner
-	}
-
-	// Check if the dataset is already on sale
-	if marketplaceAssetAddress != codec.EmptyAddress {
-		return nil, ErrDatasetAlreadyOnSale
-	}
-
 	// Retrieve the asset info
 	assetType, name, symbol, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, d.DatasetAddress)
 	if err != nil {
 		return nil, err
-	}
-
-	// Check if the nftAddress already exists
-	nftAddress := codec.CreateAddress(nconsts.AssetFractionalTokenID, d.DatasetContributionID)
-	if storage.AssetExists(ctx, mu, nftAddress) {
-		return nil, ErrNFTAlreadyExists
 	}
 
 	// Minting logic for non-fungible tokens
@@ -122,7 +115,8 @@ func (d *CompleteContributeDataset) Execute(
 	if err != nil {
 		return nil, err
 	}
-	symbol = utils.CombineWithSuffix(symbol, totalSupply+1, storage.MaxSymbolSize)
+	nftAddress := codec.CreateAddress(nconsts.AssetFractionalTokenID, d.DatasetContributionID)
+	symbol = utils.CombineWithSuffix(symbol, totalSupply, storage.MaxSymbolSize)
 	if err := storage.SetAssetInfo(ctx, mu, nftAddress, assetType, name, symbol, 0, metadataNFT, []byte(d.DatasetAddress.String()), 0, 1, d.DatasetContributor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}
