@@ -31,8 +31,8 @@ const (
 	MaxAssetDecimals     = 9
 )
 
-func AssetAddress(assetType uint8, name []byte, symbol []byte, decimals uint8, metadata []byte, uri []byte, owner codec.Address) codec.Address {
-	v := make([]byte, len(name)+len(symbol)+consts.Uint8Len+len(metadata)+len(uri)+codec.AddressLen)
+func AssetAddress(assetType uint8, name []byte, symbol []byte, decimals uint8, metadata []byte, owner codec.Address) codec.Address {
+	v := make([]byte, len(name)+len(symbol)+consts.Uint8Len+len(metadata)+codec.AddressLen)
 	offset := 0
 	copy(v[offset:], name)
 	offset += len(name)
@@ -42,8 +42,6 @@ func AssetAddress(assetType uint8, name []byte, symbol []byte, decimals uint8, m
 	offset += consts.Uint8Len
 	copy(v[offset:], metadata)
 	offset += len(metadata)
-	copy(v[offset:], uri)
-	offset += len(uri)
 	copy(v[offset:], owner[:])
 	id := utils.ToID(v)
 	return codec.CreateAddress(assetType, id)

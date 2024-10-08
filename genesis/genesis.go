@@ -72,20 +72,20 @@ func (g *Genesis) InitializeState(ctx context.Context, tracer trace.Tracer, mu s
 	return storage.SetAssetInfo(
 		ctx,
 		mu,
-		storage.NAIAddress,           // Asset Address
-		consts.AssetFungibleTokenID,  // Asset type ID
-		[]byte(consts.Name),          // Name
-		[]byte(consts.Symbol),        // Symbol
-		consts.Decimals,              // Decimals
-		[]byte(consts.Metadata),      // Metadata
-		[]byte(consts.Metadata),      // Description
-		totalSupply,                  // Initial supply
-		g.EmissionBalancer.MaxSupply, // Max supply
-		codec.EmptyAddress,           // Owner address
-		codec.EmptyAddress,           // MintAdmin address
-		codec.EmptyAddress,           // PauseUnpauseAdmin address
-		codec.EmptyAddress,           // FreezeUnfreezeAdmin address
-		codec.EmptyAddress,           // EnableDisableKYCAccountAdmin address
+		storage.NAIAddress,                  // Asset Address
+		consts.AssetFungibleTokenID,         // Asset type ID
+		[]byte(consts.Name),                 // Name
+		[]byte(consts.Symbol),               // Symbol
+		consts.Decimals,                     // Decimals
+		[]byte(consts.Metadata),             // Metadata
+		[]byte(storage.NAIAddress.String()), // URI
+		totalSupply,                         // Initial supply
+		g.EmissionBalancer.MaxSupply,        // Max supply
+		codec.EmptyAddress,                  // Owner address
+		codec.EmptyAddress,                  // MintAdmin address
+		codec.EmptyAddress,                  // PauseUnpauseAdmin address
+		codec.EmptyAddress,                  // FreezeUnfreezeAdmin address
+		codec.EmptyAddress,                  // EnableDisableKYCAccountAdmin address
 	)
 }
 

@@ -23,12 +23,10 @@ const (
 )
 
 var (
-	ErrAssetIsNative                       = errors.New("asset is native")
-	ErrAssetMissing                        = errors.New("asset missing")
-	ErrOutputWrongAssetType                = errors.New("asset is not of correct type")
-	ErrWrongMintAdmin                      = errors.New("mint admin is not correct")
-	ErrOutputMaxSupplyReached              = errors.New("max supply reached")
-	_                         chain.Action = (*MintAssetFT)(nil)
+	ErrAssetIsNative               = errors.New("asset is native")
+	ErrAssetMissing                = errors.New("asset missing")
+	ErrWrongMintAdmin              = errors.New("mint admin is not correct")
+	_                 chain.Action = (*MintAssetFT)(nil)
 )
 
 type MintAssetFT struct {

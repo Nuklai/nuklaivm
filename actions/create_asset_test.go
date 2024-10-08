@@ -21,9 +21,9 @@ import (
 
 func TestCreateAssetAction(t *testing.T) {
 	actor := codectest.NewRandomAddress()
-	assetFT := storage.AssetAddress(nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), actor)
-	assetNFT := storage.AssetAddress(nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), []byte("uri"), actor)
-	assetFractional := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), []byte("uri"), actor)
+	assetFT := storage.AssetAddress(nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), actor)
+	assetNFT := storage.AssetAddress(nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), actor)
+	assetFractional := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), actor)
 	nftAddress := storage.AssetAddressNFT(assetFractional, []byte("metadata"), actor)
 
 	tests := []chaintest.ActionTest{
@@ -36,7 +36,6 @@ func TestCreateAssetAction(t *testing.T) {
 				Symbol:    "MYA",
 				Decimals:  0,
 				Metadata:  "Metadata",
-				URI:       "uri",
 				MaxSupply: 1000,
 			},
 			ExpectedErr: ErrAssetTypeInvalid,
@@ -50,7 +49,6 @@ func TestCreateAssetAction(t *testing.T) {
 				Symbol:    "MYA",
 				Decimals:  0,
 				Metadata:  "Metadata",
-				URI:       "uri",
 				MaxSupply: 1000,
 			},
 			ExpectedErr: ErrNameInvalid,
@@ -64,7 +62,6 @@ func TestCreateAssetAction(t *testing.T) {
 				Symbol:    "SY", // Invalid symbol, too short
 				Decimals:  0,
 				Metadata:  "Metadata",
-				URI:       "uri",
 				MaxSupply: 1000,
 			},
 			ExpectedErr: ErrSymbolInvalid,
@@ -78,7 +75,6 @@ func TestCreateAssetAction(t *testing.T) {
 				Symbol:    "MYA",
 				Decimals:  19, // Invalid decimals, exceeds max
 				Metadata:  "Metadata",
-				URI:       "uri",
 				MaxSupply: 1000,
 			},
 			ExpectedErr: ErrDecimalsInvalid,
@@ -92,7 +88,6 @@ func TestCreateAssetAction(t *testing.T) {
 				Symbol:    "NFT",
 				Decimals:  1, // Invalid decimals for non-fungible token
 				Metadata:  "Metadata",
-				URI:       "uri",
 				MaxSupply: 1,
 			},
 			ExpectedErr: ErrDecimalsInvalid,
@@ -106,24 +101,9 @@ func TestCreateAssetAction(t *testing.T) {
 				Symbol:    "MYA",
 				Decimals:  0,
 				Metadata:  strings.Repeat("a", storage.MaxAssetMetadataSize+1), // Invalid metadata, too long
-				URI:       "uri",
 				MaxSupply: 1000,
 			},
 			ExpectedErr: ErrMetadataInvalid,
-		},
-		{
-			Name:  "InvalidURI",
-			Actor: actor,
-			Action: &CreateAsset{
-				AssetType: nconsts.AssetFungibleTokenID,
-				Name:      "My Asset",
-				Symbol:    "MYA",
-				Decimals:  0,
-				Metadata:  "Metadata",
-				URI:       strings.Repeat("a", storage.MaxTextSize+1), // Invalid URI, too long
-				MaxSupply: 1000,
-			},
-			ExpectedErr: ErrURIInvalid,
 		},
 		{
 			Name:  "ValidFungibleTokenCreation",
@@ -134,7 +114,6 @@ func TestCreateAssetAction(t *testing.T) {
 				Symbol:    "SYM",
 				Decimals:  9,
 				Metadata:  "metadata",
-				URI:       "uri",
 				MaxSupply: 1000000,
 			},
 			State: chaintest.NewInMemoryStore(),
@@ -147,7 +126,7 @@ func TestCreateAssetAction(t *testing.T) {
 				require.Equal(t, "SYM", string(symbol))
 				require.Equal(t, uint8(9), decimals)
 				require.Equal(t, "metadata", string(metadata))
-				require.Equal(t, "uri", string(uri))
+				require.Equal(t, assetFT.String(), string(uri))
 				require.Equal(t, uint64(0), totalSupply)
 				require.Equal(t, uint64(1000000), maxSupply)
 				require.Equal(t, actor, owner)
@@ -171,7 +150,6 @@ func TestCreateAssetAction(t *testing.T) {
 				Symbol:    "SYM",
 				Decimals:  0,
 				Metadata:  "metadata",
-				URI:       "uri",
 				MaxSupply: 10,
 			},
 			State: chaintest.NewInMemoryStore(),
@@ -184,7 +162,7 @@ func TestCreateAssetAction(t *testing.T) {
 				require.Equal(t, "SYM", string(symbol))
 				require.Equal(t, uint8(0), decimals)
 				require.Equal(t, "metadata", string(metadata))
-				require.Equal(t, "uri", string(uri))
+				require.Equal(t, assetNFT.String(), string(uri))
 				require.Equal(t, uint64(0), totalSupply)
 				require.Equal(t, uint64(10), maxSupply)
 				require.Equal(t, actor, owner)
@@ -208,7 +186,6 @@ func TestCreateAssetAction(t *testing.T) {
 				Symbol:    "SYM",
 				Decimals:  0,
 				Metadata:  "metadata",
-				URI:       "uri",
 				MaxSupply: 100,
 			},
 			State: chaintest.NewInMemoryStore(),
@@ -221,7 +198,7 @@ func TestCreateAssetAction(t *testing.T) {
 				require.Equal(t, "SYM", string(symbol))
 				require.Equal(t, uint8(0), decimals)
 				require.Equal(t, "metadata", string(metadata))
-				require.Equal(t, "uri", string(uri))
+				require.Equal(t, assetFractional.String(), string(uri))
 				require.Equal(t, uint64(1), totalSupply)
 				require.Equal(t, uint64(100), maxSupply)
 				require.Equal(t, actor, owner)
@@ -229,12 +206,29 @@ func TestCreateAssetAction(t *testing.T) {
 				require.Equal(t, codec.EmptyAddress, pauseUnpauseAdmin)
 				require.Equal(t, codec.EmptyAddress, freezeUnfreezeAdmin)
 				require.Equal(t, codec.EmptyAddress, enableDisableKYCAccountAdmin)
-				// Check NFT balance for addr
-				balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, nftAddress, actor)
+				// Check  balance for addr
+				balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, assetFractional, actor)
 				require.NoError(t, err)
 				require.Equal(t, uint64(1), balance)
-				// Check collectionID balance for addr
-				balance, err = storage.GetAssetAccountBalanceNoController(ctx, store, assetFractional, actor)
+
+				// Check if NFT was created correctly
+				assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err = storage.GetAssetInfoNoController(ctx, store, nftAddress)
+				require.NoError(t, err)
+				require.Equal(t, nconsts.AssetFractionalTokenID, assetType)
+				require.Equal(t, "name", string(name))
+				require.Equal(t, "SYM-0", string(symbol))
+				require.Equal(t, uint8(0), decimals)
+				require.Equal(t, "metadata", string(metadata))
+				require.Equal(t, assetFractional.String(), string(uri))
+				require.Equal(t, uint64(1), totalSupply)
+				require.Equal(t, uint64(1), maxSupply)
+				require.Equal(t, actor, owner)
+				require.Equal(t, codec.EmptyAddress, mintAdmin)
+				require.Equal(t, codec.EmptyAddress, pauseUnpauseAdmin)
+				require.Equal(t, codec.EmptyAddress, freezeUnfreezeAdmin)
+				require.Equal(t, codec.EmptyAddress, enableDisableKYCAccountAdmin)
+				// Check NFT balance
+				balance, err = storage.GetAssetAccountBalanceNoController(ctx, store, nftAddress, actor)
 				require.NoError(t, err)
 				require.Equal(t, uint64(1), balance)
 
@@ -257,7 +251,7 @@ func TestCreateAssetAction(t *testing.T) {
 func BenchmarkCreateAsset(b *testing.B) {
 	require := require.New(b)
 	actor := codectest.NewRandomAddress()
-	assetFT := storage.AssetAddress(nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), []byte("uri"), actor)
+	assetFT := storage.AssetAddress(nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), actor)
 
 	createAssetActionBenchmark := &chaintest.ActionBenchmark{
 		Name:  "CreateAssetBenchmark",
@@ -268,7 +262,6 @@ func BenchmarkCreateAsset(b *testing.B) {
 			Symbol:    "SYM",
 			Decimals:  9,
 			Metadata:  "metadata",
-			URI:       "uri",
 			MaxSupply: 1000000,
 		},
 		CreateState: func() state.Mutable {
@@ -285,7 +278,7 @@ func BenchmarkCreateAsset(b *testing.B) {
 			require.Equal("SYM", string(symbol))
 			require.Equal(uint8(9), decimals)
 			require.Equal("metadata", string(metadata))
-			require.Equal("uri", string(uri))
+			require.Equal(assetFT.String(), string(uri))
 			require.Equal(uint64(0), totalSupply)
 			require.Equal(uint64(1000000), maxSupply)
 			require.Equal(actor, owner)

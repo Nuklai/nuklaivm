@@ -21,7 +21,7 @@ import (
 
 func TestUpdateAssetAction(t *testing.T) {
 	actor := codectest.NewRandomAddress()
-	assetAddress := storage.AssetAddress(nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), actor)
+	assetAddress := storage.AssetAddress(nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), actor)
 
 	tests := []chaintest.ActionTest{
 		{
@@ -44,7 +44,7 @@ func TestUpdateAssetAction(t *testing.T) {
 			Actor: actor,
 			Action: &UpdateAsset{
 				AssetAddress: assetAddress,
-				Name:         "My Token", // Same as current name
+				Name:         "name", // Same as current name
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
@@ -91,7 +91,7 @@ func TestUpdateAssetAction(t *testing.T) {
 				require.Equal(t, "Updated Name", string(name))
 				require.Equal(t, "UPD", string(symbol))
 				require.Equal(t, uint8(9), decimals)
-				require.Equal(t, "Metadata", string(metadata))
+				require.Equal(t, "metadata", string(metadata))
 				require.Equal(t, "uri", string(uri))
 				require.Equal(t, uint64(0), totalSupply)
 				require.Equal(t, uint64(1000), maxSupply)
@@ -117,7 +117,7 @@ func TestUpdateAssetAction(t *testing.T) {
 func BenchmarkUpdateAsset(b *testing.B) {
 	require := require.New(b)
 	actor := codectest.NewRandomAddress()
-	assetAddress := storage.AssetAddress(nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), actor)
+	assetAddress := storage.AssetAddress(nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), actor)
 
 	updateAssetActionBenchmark := &chaintest.ActionBenchmark{
 		Name:  "UpdateAssetBenchmark",
@@ -140,7 +140,7 @@ func BenchmarkUpdateAsset(b *testing.B) {
 			require.Equal("Benchmark Updated Asset", string(name))
 			require.Equal("BUP", string(symbol))
 			require.Equal(uint8(9), decimals)
-			require.Equal("Metadata", string(metadata))
+			require.Equal("metadata", string(metadata))
 			require.Equal("uri", string(uri))
 			require.Equal(uint64(0), totalSupply)
 			require.Equal(uint64(1000), maxSupply)

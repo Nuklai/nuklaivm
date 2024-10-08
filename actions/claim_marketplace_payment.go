@@ -68,7 +68,7 @@ func (c *ClaimMarketplacePayment) Execute(
 	}
 	// Ensure the asset is a marketplace token
 	if assetType != nconsts.AssetMarketplaceTokenID {
-		return nil, ErrOutputWrongAssetType
+		return nil, ErrAssetTypeInvalid
 	}
 	// Check if the user is the owner of the asset
 	// Only the owner can claim the payment

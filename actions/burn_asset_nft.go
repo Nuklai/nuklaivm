@@ -5,6 +5,7 @@ package actions
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
@@ -21,7 +22,10 @@ const (
 	BurnAssetNFTComputeUnits = 1
 )
 
-var _ chain.Action = (*BurnAssetNFT)(nil)
+var (
+	ErrNFTDoesNotBelongToTheCollection              = errors.New("NFT does not belong to the collection")
+	_                                  chain.Action = (*BurnAssetNFT)(nil)
+)
 
 type BurnAssetNFT struct {
 	// AssetAddress of the asset to burn(this is the nft collection address)
@@ -52,6 +56,7 @@ func (b *BurnAssetNFT) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
+	// Retrieve asset info
 	assetType, _, _, _, _, _, _, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, b.AssetAddress)
 	if err != nil {
 		return nil, err
@@ -60,9 +65,15 @@ func (b *BurnAssetNFT) Execute(
 	if assetType != nconsts.AssetNonFungibleTokenID {
 		return nil, ErrAssetTypeInvalid
 	}
-	// Ensure the asset exists
-	if !storage.AssetExists(ctx, mu, b.AssetNftAddress) {
-		return nil, ErrAssetNotFound
+
+	// Retrieve nft info
+	_, _, _, _, _, uri, _, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, b.AssetNftAddress)
+	if err != nil {
+		return nil, err
+	}
+	// Ensure that b.AssetAddress is not the same as uri
+	if b.AssetAddress.String() != string(uri) || b.AssetAddress == b.AssetNftAddress {
+		return nil, ErrNFTDoesNotBelongToTheCollection
 	}
 
 	// Burning logic for non-fungible tokens

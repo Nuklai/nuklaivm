@@ -21,7 +21,7 @@ import (
 
 func TestCreateDatasetAction(t *testing.T) {
 	actor := codectest.NewRandomAddress()
-	datasetAddress := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("Valid Name"), []byte("DATASET"), 0, []byte("metadata"), []byte("uri"), actor)
+	datasetAddress := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("Valid Name"), []byte("DATASET"), 0, []byte("metadata"), actor)
 	nftAddress := storage.AssetAddressNFT(datasetAddress, []byte("metadata"), actor)
 
 	tests := []chaintest.ActionTest{
@@ -106,7 +106,7 @@ func TestCreateDatasetAction(t *testing.T) {
 func BenchmarkCreateDataset(b *testing.B) {
 	require := require.New(b)
 	actor := codectest.NewRandomAddress()
-	datasetAddress := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("Valid Name"), []byte("DATASET"), 0, []byte("metadata"), []byte("uri"), actor)
+	datasetAddress := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("Valid Name"), []byte("DATASET"), 0, []byte("metadata"), actor)
 	// nftAddress := storage.AssetAddressNFT(datasetAddress, []byte("metadata"), actor)
 
 	createDatasetBenchmark := &chaintest.ActionBenchmark{

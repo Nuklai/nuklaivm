@@ -24,9 +24,9 @@ const (
 )
 
 var (
-	ErrNFTAlreadyExists                                = errors.New("NFT already exists")
-	ErrOutputUniqueIDGreaterThanMaxSupply              = errors.New("unique ID is greater than or equal to max supply")
-	_                                     chain.Action = (*MintAssetNFT)(nil)
+	ErrNFTAlreadyExists                      = errors.New("NFT already exists")
+	ErrCantFractionalizeFurther              = errors.New("asset already has a parent")
+	_                           chain.Action = (*MintAssetNFT)(nil)
 )
 
 type MintAssetNFT struct {
@@ -49,7 +49,7 @@ func (m *MintAssetNFT) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.AssetInfoKey(m.AssetAddress)):                 state.Read | state.Write,
 		string(storage.AssetInfoKey(nftAddress)):                     state.All,
-		string(storage.AssetAccountBalanceKey(m.AssetAddress, m.To)): state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(m.AssetAddress, m.To)): state.All,
 		string(storage.AssetAccountBalanceKey(nftAddress, m.To)):     state.All,
 	}
 }
@@ -66,7 +66,7 @@ func (m *MintAssetNFT) Execute(
 		return nil, ErrMetadataInvalid
 	}
 
-	assetType, name, symbol, _, metadata, _, totalSupply, _, _, mintAdmin, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, m.AssetAddress)
+	assetType, name, symbol, _, metadata, uri, totalSupply, _, _, mintAdmin, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, m.AssetAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -76,6 +76,10 @@ func (m *MintAssetNFT) Execute(
 	}
 	if mintAdmin != actor {
 		return nil, ErrWrongMintAdmin
+	}
+	// Ensure that m.AssetAddress is not the same as uri
+	if m.AssetAddress.String() != string(uri) {
+		return nil, ErrCantFractionalizeFurther
 	}
 
 	// Check if the nftAddress already exists
@@ -90,7 +94,7 @@ func (m *MintAssetNFT) Execute(
 		return nil, err
 	}
 	symbol = utils.CombineWithSuffix(symbol, totalSupply, storage.MaxSymbolSize)
-	if err := storage.SetAssetInfo(ctx, mu, nftAddress, assetType, name, symbol, 0, metadata, m.AssetAddress[:], 0, 1, m.To, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, nftAddress, assetType, name, symbol, 0, metadata, []byte(m.AssetAddress.String()), 0, 1, m.To, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}
 	if _, err := storage.MintAsset(ctx, mu, nftAddress, m.To, 1); err != nil {

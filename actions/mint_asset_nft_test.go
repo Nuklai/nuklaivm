@@ -5,12 +5,13 @@ package actions
 
 import (
 	"context"
+	"strings"
 	"testing"
 
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/hypersdk/chain/chaintest"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/codec/codectest"
@@ -21,26 +22,16 @@ import (
 
 func TestMintAssetNFTAction(t *testing.T) {
 	actor := codectest.NewRandomAddress()
-	assetAddress := storage.AssetAddress(nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), []byte("uri"), actor)
+	assetAddress := storage.AssetAddress(nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), actor)
 	nftAddress := storage.AssetAddressNFT(assetAddress, []byte("metadata"), actor)
 
 	tests := []chaintest.ActionTest{
-		{
-			Name:  "InvalidURI",
-			Actor: actor,
-			Action: &MintAssetNFT{
-				AssetAddress: assetAddress,
-				Metadata:     "metadata",
-				To:           actor,
-			},
-			ExpectedErr: ErrURIInvalid,
-		},
 		{
 			Name:  "InvalidMetadata",
 			Actor: actor,
 			Action: &MintAssetNFT{
 				AssetAddress: assetAddress,
-				Metadata:     "metadata",
+				Metadata:     strings.Repeat("a", storage.MaxAssetMetadataSize+1),
 				To:           actor,
 			},
 			ExpectedErr: ErrMetadataInvalid,
@@ -56,8 +47,8 @@ func TestMintAssetNFTAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set an existing NFT in storage
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), []byte("uri"), 1, 1, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, nftAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), assetAddress[:], 1, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), []byte(assetAddress.String()), 1, 1, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, nftAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), []byte(assetAddress.String()), 1, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			ExpectedErr: ErrNFTAlreadyExists,
@@ -73,10 +64,10 @@ func TestMintAssetNFTAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set asset type to fungible (invalid for NFT minting)
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), 0, 1, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte(assetAddress.String()), 0, 1, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
-			ExpectedErr: ErrOutputWrongAssetType,
+			ExpectedErr: ErrAssetTypeInvalid,
 		},
 		{
 			Name:  "WrongMintAdmin",
@@ -89,10 +80,25 @@ func TestMintAssetNFTAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Setting asset with a different mint admin
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), 0, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte(assetAddress.String()), 0, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			ExpectedErr: ErrWrongMintAdmin,
+		},
+		{
+			Name:  "AssetAlreadyHasParent",
+			Actor: actor,
+			Action: &MintAssetNFT{
+				AssetAddress: nftAddress, // Asset already has a parent
+				To:           actor,
+			},
+			State: func() state.Mutable {
+				store := chaintest.NewInMemoryStore()
+				// Setting correct asset details
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, nftAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte(assetAddress.String()), 0, 1000, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				return store
+			}(),
+			ExpectedErr: ErrCantFractionalizeFurther,
 		},
 		{
 			Name:  "ExceedMaxSupply",
@@ -105,10 +111,10 @@ func TestMintAssetNFTAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set asset with max supply 1
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), 1, 1, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte(assetAddress.String()), 1, 1, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
-			ExpectedErr: ErrOutputUniqueIDGreaterThanMaxSupply,
+			ExpectedErr: storage.ErrMaxSupplyExceeded,
 		},
 		{
 			Name:  "ValidNFTMint",
@@ -121,7 +127,7 @@ func TestMintAssetNFTAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set asset with max supply 1
-				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), 0, 1, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte(assetAddress.String()), 0, 1, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
@@ -146,6 +152,11 @@ func TestMintAssetNFTAction(t *testing.T) {
 				balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, assetAddress, actor)
 				require.NoError(t, err)
 				require.Equal(t, uint64(1), balance)
+
+				// Check if the total supply was reduced
+				_, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err = storage.GetAssetInfoNoController(ctx, store, assetAddress)
+				require.NoError(t, err)
+				require.Equal(t, uint64(1), totalSupply)
 			},
 			ExpectedOutputs: &MintAssetNFTResult{
 				AssetNftAddress: nftAddress,
@@ -163,7 +174,7 @@ func TestMintAssetNFTAction(t *testing.T) {
 func BenchmarkMintAssetNFT(b *testing.B) {
 	require := require.New(b)
 	actor := codectest.NewRandomAddress()
-	assetAddress := storage.AssetAddress(nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), []byte("uri"), actor)
+	assetAddress := storage.AssetAddress(nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), actor)
 	nftAddress := storage.AssetAddressNFT(assetAddress, []byte("metadata"), actor)
 
 	mintAssetNFTActionBenchmark := &chaintest.ActionBenchmark{
@@ -176,7 +187,7 @@ func BenchmarkMintAssetNFT(b *testing.B) {
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
-			require.NoError(storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte("uri"), 0, 1, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+			require.NoError(storage.SetAssetInfo(context.Background(), store, assetAddress, nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), []byte(assetAddress.String()), 0, 1, actor, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
@@ -196,6 +207,11 @@ func BenchmarkMintAssetNFT(b *testing.B) {
 			require.Equal(codec.EmptyAddress, pauseUnpauseAdmin)
 			require.Equal(codec.EmptyAddress, freezeUnfreezeAdmin)
 			require.Equal(codec.EmptyAddress, enableDisableKYCAccountAdmin)
+
+			// Check if the total supply was reduced
+			_, _, _, _, _, _, totalSupply, _, _, _, _, _, _, err = storage.GetAssetInfoNoController(ctx, store, assetAddress)
+			require.NoError(err)
+			require.Equal(uint64(1), totalSupply)
 		},
 	}
 

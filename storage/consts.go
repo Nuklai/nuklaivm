@@ -48,5 +48,5 @@ const (
 var NAIAddress codec.Address
 
 func init() {
-	NAIAddress = AssetAddress(consts.AssetFungibleTokenID, []byte(consts.Name), []byte(consts.Symbol), consts.Decimals, []byte(consts.Metadata), []byte(consts.Metadata), codec.EmptyAddress)
+	NAIAddress = AssetAddress(consts.AssetFungibleTokenID, []byte(consts.Name), []byte(consts.Symbol), consts.Decimals, []byte(consts.Metadata), codec.EmptyAddress)
 }

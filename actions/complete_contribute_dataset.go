@@ -123,7 +123,7 @@ func (d *CompleteContributeDataset) Execute(
 		return nil, err
 	}
 	symbol = utils.CombineWithSuffix(symbol, totalSupply+1, storage.MaxSymbolSize)
-	if err := storage.SetAssetInfo(ctx, mu, nftAddress, assetType, name, symbol, 0, metadataNFT, d.DatasetAddress[:], 0, 1, d.DatasetContributor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, nftAddress, assetType, name, symbol, 0, metadataNFT, []byte(d.DatasetAddress.String()), 0, 1, d.DatasetContributor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}
 	if _, err := storage.MintAsset(ctx, mu, nftAddress, d.DatasetContributor, 1); err != nil {

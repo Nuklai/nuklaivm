@@ -104,7 +104,7 @@ func (c *CreateDataset) Execute(
 		return nil, err
 	}
 	if assetType != nconsts.AssetFractionalTokenID {
-		return nil, ErrOutputWrongAssetType
+		return nil, ErrAssetTypeInvalid
 	}
 	if owner != actor {
 		return nil, ErrWrongOwner

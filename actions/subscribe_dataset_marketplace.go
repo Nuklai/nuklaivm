@@ -90,7 +90,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	}
 	// Ensure the asset is a marketplace token
 	if assetType != nconsts.AssetMarketplaceTokenID {
-		return nil, ErrOutputWrongAssetType
+		return nil, ErrAssetTypeInvalid
 	}
 
 	// Convert the metdata to a map
@@ -185,7 +185,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 		return nil, err
 	}
 	symbol = utils.CombineWithSuffix(symbol, totalSupply+1, storage.MaxSymbolSize)
-	if err := storage.SetAssetInfo(ctx, mu, nftAddress, nconsts.AssetNonFungibleTokenID, name, symbol, 0, metadataNFT, d.MarketplaceAssetAddress[:], 0, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, nftAddress, nconsts.AssetNonFungibleTokenID, name, symbol, 0, metadataNFT, []byte(d.MarketplaceAssetAddress.String()), 0, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
 	}
 	if _, err := storage.MintAsset(ctx, mu, nftAddress, actor, 1); err != nil {

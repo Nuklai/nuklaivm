@@ -20,7 +20,7 @@ import (
 
 func TestUpdateDatasetAction(t *testing.T) {
 	actor := codectest.NewRandomAddress()
-	datasetAddress := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("Valid Name"), []byte("DATASET"), 0, []byte("metadata"), []byte("uri"), actor)
+	datasetAddress := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("Valid Name"), []byte("DATASET"), 0, []byte("metadata"), actor)
 
 	tests := []chaintest.ActionTest{
 		{
@@ -87,7 +87,7 @@ func TestUpdateDatasetAction(t *testing.T) {
 func BenchmarkUpdateDataset(b *testing.B) {
 	require := require.New(b)
 	actor := codectest.NewRandomAddress()
-	datasetAddress := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("Valid Name"), []byte("DATASET"), 0, []byte("metadata"), []byte("uri"), actor)
+	datasetAddress := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("Valid Name"), []byte("DATASET"), 0, []byte("metadata"), actor)
 
 	updateDatasetBenchmark := &chaintest.ActionBenchmark{
 		Name:  "UpdateDatasetBenchmark",
