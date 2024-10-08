@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	nconsts "github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/storage"
 	"github.com/stretchr/testify/require"
 
@@ -18,6 +17,8 @@ import (
 	"github.com/ava-labs/hypersdk/codec/codectest"
 	"github.com/ava-labs/hypersdk/state"
 	"github.com/ava-labs/hypersdk/state/tstate"
+
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 func TestTransferAction(t *testing.T) {
