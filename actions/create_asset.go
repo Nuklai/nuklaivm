@@ -81,6 +81,7 @@ func (c *CreateAsset) StateKeys(actor codec.Address) state.Keys {
 	// can create the NFT ID
 	if c.AssetType == nconsts.AssetFractionalTokenID {
 		nftAddress := storage.AssetAddressNFT(assetAddress, []byte(c.Metadata), actor)
+		stateKeys[string(storage.AssetInfoKey(nftAddress))] = state.All
 		stateKeys[string(storage.AssetAccountBalanceKey(nftAddress, actor))] = state.Allocate | state.Write
 	}
 	return stateKeys
@@ -135,7 +136,7 @@ func (c *CreateAsset) Execute(
 	}
 
 	output := CreateAssetResult{
-		AssetAddress: assetAddress,
+		AssetAddress: assetAddress.String(),
 		AssetBalance: uint64(0),
 	}
 
@@ -152,7 +153,7 @@ func (c *CreateAsset) Execute(
 		}
 		// Mint the parent NFT for the dataset(fractionalized asset)
 		nftAddress := storage.AssetAddressNFT(assetAddress, []byte(c.Metadata), actor)
-		output.DatasetParentNftAddress = nftAddress
+		output.DatasetParentNftAddress = nftAddress.String()
 		symbol := utils.CombineWithSuffix([]byte(c.Symbol), 0, storage.MaxSymbolSize)
 		if err := storage.SetAssetInfo(ctx, mu, nftAddress, nconsts.AssetNonFungibleTokenID, []byte(c.Name), symbol, 0, []byte(c.Metadata), []byte(assetAddress.String()), 0, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 			return nil, err
@@ -197,29 +198,29 @@ var (
 )
 
 type CreateAssetResult struct {
-	AssetAddress            codec.Address `serialize:"true" json:"asset_id"`
+	AssetAddress            string `serialize:"true" json:"asset_id"`
 	AssetBalance            uint64        `serialize:"true" json:"asset_balance"`
-	DatasetParentNftAddress codec.Address `serialize:"true" json:"nft_id"`
+	DatasetParentNftAddress string `serialize:"true" json:"nft_id"`
 }
 
 func (*CreateAssetResult) GetTypeID() uint8 {
 	return nconsts.CreateAssetID
 }
 
-func (*CreateAssetResult) Size() int {
-	return codec.AddressLen + consts.Uint64Len + codec.AddressLen
+func (c *CreateAssetResult) Size() int {
+	return codec.StringLen(c.AssetAddress) + consts.Uint64Len + codec.StringLen(c.DatasetParentNftAddress)
 }
 
 func (r *CreateAssetResult) Marshal(p *codec.Packer) {
-	p.PackAddress(r.AssetAddress)
+	p.PackString(r.AssetAddress)
 	p.PackUint64(r.AssetBalance)
-	p.PackAddress(r.DatasetParentNftAddress)
+	p.PackString(r.DatasetParentNftAddress)
 }
 
 func UnmarshalCreateAssetResult(p *codec.Packer) (codec.Typed, error) {
 	var result CreateAssetResult
-	p.UnpackAddress(&result.AssetAddress)
+	result.AssetAddress = p.UnpackString(true)
 	result.AssetBalance = p.UnpackUint64(false)
-	p.UnpackAddress(&result.DatasetParentNftAddress)
+	result.DatasetParentNftAddress = p.UnpackString(false)
 	return &result, p.Err()
 }

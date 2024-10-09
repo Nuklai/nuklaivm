@@ -128,8 +128,8 @@ func TestInitiateContributeDatasetAction(t *testing.T) {
 				require.False(t, active)
 			},
 			ExpectedOutputs: &InitiateContributeDatasetResult{
-				DatasetContributionID:  datasetContributionID,
-				CollateralAssetAddress: dataset.GetDatasetConfig().CollateralAssetAddressForDataContribution,
+				DatasetContributionID:  datasetContributionID.String(),
+				CollateralAssetAddress: dataset.GetDatasetConfig().CollateralAssetAddressForDataContribution.String(),
 				CollateralAmountTaken:  dataset.GetDatasetConfig().CollateralAmountForDataContribution,
 			},
 		},

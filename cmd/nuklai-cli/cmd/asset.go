@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/storage"
@@ -33,7 +34,7 @@ var createAssetCmd = &cobra.Command{
 		}
 
 		// Add assettype to token
-		assetType, err := prompt.Choice("assetType(0 for fungible, 1 for non-fungible and 2 for dataset)", 3)
+		assetType, err := prompt.Choice("assetType(0 for fungible, 1 for non-fungible and 2 for fractional)", 3)
 		if err != nil {
 			return err
 		}
@@ -193,6 +194,7 @@ var mintAssetFTCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		fmt.Println("amount: ", amount, decimals)
 
 		// Confirm action
 		cont, err := prompt.Continue()

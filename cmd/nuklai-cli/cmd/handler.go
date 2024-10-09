@@ -281,7 +281,7 @@ func (*Handler) GetAssetInfo(
 	if index >= 0 {
 		output += fmt.Sprintf("%d) ", index)
 	}
-	output += fmt.Sprintf("{{cyan}}address:{{/}} %s {{cyan}}balance:{{/}} %s %s\n", actor, utils.FormatBalance(balance), symbol)
+	output += fmt.Sprintf("{{cyan}}address:{{/}} %s {{cyan}}balance:{{/}} %s %s\n", actor, nutils.FormatBalance(balance, decimals), symbol)
 	utils.Outf(output)
 
 	return balance, assetType, name, symbol, decimals, metadata, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, nil

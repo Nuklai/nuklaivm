@@ -177,8 +177,8 @@ func lookupKeyBalance(uri string, addr codec.Address, assetAddress codec.Address
 	return err
 }
 
-var balanceFTKeyCmd = &cobra.Command{
-	Use: "balance-ft [address]",
+var balanceAssetKeyCmd = &cobra.Command{
+	Use: "balance-asset [address]",
 	RunE: func(_ *cobra.Command, args []string) error {
 		if len(args) != 1 {
 			return handler.BalanceAsset(checkAllChains, false, lookupKeyBalance)
@@ -205,7 +205,7 @@ var balanceFTKeyCmd = &cobra.Command{
 }
 
 var balanceNFTKeyCmd = &cobra.Command{
-	Use: "balance-nft [address]",
+	Use: "nft [address]",
 	RunE: func(_ *cobra.Command, args []string) error {
 		if len(args) != 1 {
 			return handler.BalanceAsset(checkAllChains, true, lookupKeyBalance)

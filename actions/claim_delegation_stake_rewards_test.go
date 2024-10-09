@@ -91,7 +91,7 @@ func TestClaimDelegationStakeRewardsActionSuccess(t *testing.T) {
 				StakedAmount:       1000,
 				BalanceBeforeClaim: 0,
 				BalanceAfterClaim:  20,
-				DistributedTo:      actor,
+				DistributedTo:      actor.String(),
 			},
 		},
 	}

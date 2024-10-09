@@ -160,31 +160,31 @@ func (u *UpdateAsset) Execute(
 		if owner, err = codec.StringToAddress(u.Owner); err != nil {
 			return nil, ErrOutputOwnerInvalid
 		}
-		updateAssetResult.Owner = owner
+		updateAssetResult.Owner = u.Owner
 	}
 	if len(u.MintAdmin) > 0 {
 		if mintAdmin, err = codec.StringToAddress(u.MintAdmin); err != nil {
 			return nil, ErrOutputMintAdminInvalid
 		}
-		updateAssetResult.MintAdmin = mintAdmin
+		updateAssetResult.MintAdmin = u.MintAdmin
 	}
 	if len(u.PauseUnpauseAdmin) > 0 {
 		if pauseUnpauseAdmin, err = codec.StringToAddress(u.PauseUnpauseAdmin); err != nil {
 			return nil, ErrOutputPauseUnpauseAdminInvalid
 		}
-		updateAssetResult.PauseUnpauseAdmin = pauseUnpauseAdmin
+		updateAssetResult.PauseUnpauseAdmin = u.PauseUnpauseAdmin
 	}
 	if len(u.FreezeUnfreezeAdmin) > 0 {
 		if freezeUnfreezeAdmin, err = codec.StringToAddress(u.FreezeUnfreezeAdmin); err != nil {
 			return nil, ErrOutputFreezeUnfreezeAdminInvalid
 		}
-		updateAssetResult.FreezeUnfreezeAdmin = freezeUnfreezeAdmin
+		updateAssetResult.FreezeUnfreezeAdmin = u.FreezeUnfreezeAdmin
 	}
 	if len(u.EnableDisableKYCAccountAdmin) > 0 {
 		if enableDisableKYCAccountAdmin, err = codec.StringToAddress(u.EnableDisableKYCAccountAdmin); err != nil {
 			return nil, ErrOutputEnableDisableKYCAccountAdminInvalid
 		}
-		updateAssetResult.EnableDisableKYCAccountAdmin = enableDisableKYCAccountAdmin
+		updateAssetResult.EnableDisableKYCAccountAdmin = u.EnableDisableKYCAccountAdmin
 	}
 
 	// Update the asset
@@ -231,11 +231,11 @@ type UpdateAssetResult struct {
 	Metadata                     string        `serialize:"true" json:"metadata"`
 	URI                          string        `serialize:"true" json:"uri"`
 	MaxSupply                    uint64        `serialize:"true" json:"max_supply"`
-	Owner                        codec.Address `serialize:"true" json:"owner"`
-	MintAdmin                    codec.Address `serialize:"true" json:"mint_admin"`
-	PauseUnpauseAdmin            codec.Address `serialize:"true" json:"pause_unpause_admin"`
-	FreezeUnfreezeAdmin          codec.Address `serialize:"true" json:"freeze_unfreeze_admin"`
-	EnableDisableKYCAccountAdmin codec.Address `serialize:"true" json:"enable_disable_kyc_account_admin"`
+	Owner                        string `serialize:"true" json:"owner"`
+	MintAdmin                    string `serialize:"true" json:"mint_admin"`
+	PauseUnpauseAdmin            string `serialize:"true" json:"pause_unpause_admin"`
+	FreezeUnfreezeAdmin          string `serialize:"true" json:"freeze_unfreeze_admin"`
+	EnableDisableKYCAccountAdmin string `serialize:"true" json:"enable_disable_kyc_account_admin"`
 }
 
 func (*UpdateAssetResult) GetTypeID() uint8 {
@@ -243,7 +243,7 @@ func (*UpdateAssetResult) GetTypeID() uint8 {
 }
 
 func (r *UpdateAssetResult) Size() int {
-	return codec.StringLen(r.Name) + codec.StringLen(r.Symbol) + codec.StringLen(r.Metadata) + codec.StringLen(r.URI) + consts.Uint64Len + codec.AddressLen*5
+	return codec.StringLen(r.Name) + codec.StringLen(r.Symbol) + codec.StringLen(r.Metadata) + codec.StringLen(r.URI) + consts.Uint64Len + codec.StringLen(r.Owner) + codec.StringLen(r.MintAdmin) + codec.StringLen(r.PauseUnpauseAdmin) + codec.StringLen(r.FreezeUnfreezeAdmin) + codec.StringLen(r.EnableDisableKYCAccountAdmin)
 }
 
 func (r *UpdateAssetResult) Marshal(p *codec.Packer) {
@@ -252,11 +252,11 @@ func (r *UpdateAssetResult) Marshal(p *codec.Packer) {
 	p.PackString(r.Metadata)
 	p.PackString(r.URI)
 	p.PackUint64(r.MaxSupply)
-	p.PackAddress(r.Owner)
-	p.PackAddress(r.MintAdmin)
-	p.PackAddress(r.PauseUnpauseAdmin)
-	p.PackAddress(r.FreezeUnfreezeAdmin)
-	p.PackAddress(r.EnableDisableKYCAccountAdmin)
+	p.PackString(r.Owner)
+	p.PackString(r.MintAdmin)
+	p.PackString(r.PauseUnpauseAdmin)
+	p.PackString(r.FreezeUnfreezeAdmin)
+	p.PackString(r.EnableDisableKYCAccountAdmin)
 }
 
 func UnmarshalUpdateAssetResult(p *codec.Packer) (codec.Typed, error) {
@@ -266,10 +266,10 @@ func UnmarshalUpdateAssetResult(p *codec.Packer) (codec.Typed, error) {
 	result.Metadata = p.UnpackString(false)
 	result.URI = p.UnpackString(false)
 	result.MaxSupply = p.UnpackUint64(false)
-	p.UnpackAddress(&result.Owner)
-	p.UnpackAddress(&result.MintAdmin)
-	p.UnpackAddress(&result.PauseUnpauseAdmin)
-	p.UnpackAddress(&result.FreezeUnfreezeAdmin)
-	p.UnpackAddress(&result.EnableDisableKYCAccountAdmin)
+	p.UnpackString(false)
+	p.UnpackString(false)
+	p.UnpackString(false)
+	p.UnpackString(false)
+	p.UnpackString(false)
 	return &result, p.Err()
 }

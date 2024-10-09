@@ -145,10 +145,10 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 				require.Equal(t, fmt.Sprint(mockEmission.GetLastAcceptedBlockHeight()), metadataMap["lastClaimedBlock"])
 			},
 			ExpectedOutputs: &SubscribeDatasetMarketplaceResult{
-				MarketplaceAssetAddress:          marketplaceAssetAddress,
+				MarketplaceAssetAddress:          marketplaceAssetAddress.String(),
 				MarketplaceAssetNumSubscriptions: 1,
-				SubscriptionNftAddress:           nftAddress,
-				PaymentAssetAddress:              baseAssetAddress,
+				SubscriptionNftAddress:           nftAddress.String(),
+				PaymentAssetAddress:              baseAssetAddress.String(),
 				DatasetPricePerBlock:             100,
 				TotalCost:                        1000,
 				NumBlocksToSubscribe:             10,

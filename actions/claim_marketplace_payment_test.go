@@ -155,7 +155,7 @@ func TestClaimMarketplacePaymentAction(t *testing.T) {
 				PaymentClaimed:    100,
 				PaymentRemaining:  0,
 				DistributedReward: 100,
-				DistributedTo:     actor,
+				DistributedTo:     actor.String(),
 			},
 		},
 	}

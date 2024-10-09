@@ -125,8 +125,8 @@ func (d *InitiateContributeDataset) Execute(
 	}
 
 	return &InitiateContributeDatasetResult{
-		DatasetContributionID:  datasetContributionID,
-		CollateralAssetAddress: dataConfig.CollateralAssetAddressForDataContribution,
+		DatasetContributionID:  datasetContributionID.String(),
+		CollateralAssetAddress: dataConfig.CollateralAssetAddressForDataContribution.String(),
 		CollateralAmountTaken:  dataConfig.CollateralAmountForDataContribution,
 	}, nil
 }
@@ -154,8 +154,8 @@ var (
 )
 
 type InitiateContributeDatasetResult struct {
-	DatasetContributionID  ids.ID        `serialize:"true" json:"dataset_contribution_id"`
-	CollateralAssetAddress codec.Address `serialize:"true" json:"collateral_asset_address"`
+	DatasetContributionID  string       `serialize:"true" json:"dataset_contribution_id"`
+	CollateralAssetAddress string `serialize:"true" json:"collateral_asset_address"`
 	CollateralAmountTaken  uint64        `serialize:"true" json:"collateral_amount_taken"`
 }
 
@@ -163,20 +163,20 @@ func (*InitiateContributeDatasetResult) GetTypeID() uint8 {
 	return nconsts.InitiateContributeDatasetID
 }
 
-func (*InitiateContributeDatasetResult) Size() int {
-	return ids.IDLen + codec.AddressLen + consts.Uint64Len
+func (i *InitiateContributeDatasetResult) Size() int {
+	return codec.StringLen(i.DatasetContributionID) + codec.StringLen(i.CollateralAssetAddress) + consts.Uint64Len
 }
 
 func (r *InitiateContributeDatasetResult) Marshal(p *codec.Packer) {
-	p.PackID(r.DatasetContributionID)
-	p.PackAddress(r.CollateralAssetAddress)
+	p.PackString(r.DatasetContributionID)
+	p.PackString(r.CollateralAssetAddress)
 	p.PackUint64(r.CollateralAmountTaken)
 }
 
 func UnmarshalInitiateContributeDatasetResult(p *codec.Packer) (codec.Typed, error) {
 	var result InitiateContributeDatasetResult
-	p.UnpackID(true, &result.DatasetContributionID)
-	p.UnpackAddress(&result.CollateralAssetAddress)
+	result.DatasetContributionID = p.UnpackString(true)
+	result.CollateralAssetAddress = p.UnpackString(true)
 	result.CollateralAmountTaken = p.UnpackUint64(true)
 	return &result, p.Err()
 }

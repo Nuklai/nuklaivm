@@ -165,7 +165,7 @@ func (c *ClaimMarketplacePayment) Execute(
 		PaymentClaimed:    paymentClaimed,
 		PaymentRemaining:  paymentRemaining,
 		DistributedReward: totalAccumulatedReward,
-		DistributedTo:     actor,
+		DistributedTo:     actor.String(),
 	}, nil
 }
 
@@ -195,15 +195,15 @@ type ClaimMarketplacePaymentResult struct {
 	PaymentClaimed    uint64        `serialize:"true" json:"payment_claimed"`
 	PaymentRemaining  uint64        `serialize:"true" json:"payment_remaining"`
 	DistributedReward uint64        `serialize:"true" json:"distributed_reward"`
-	DistributedTo     codec.Address `serialize:"true" json:"distributed_to"`
+	DistributedTo     string `serialize:"true" json:"distributed_to"`
 }
 
 func (*ClaimMarketplacePaymentResult) GetTypeID() uint8 {
 	return nconsts.ClaimMarketplacePaymentID
 }
 
-func (*ClaimMarketplacePaymentResult) Size() int {
-	return consts.Uint64Len*4 + codec.AddressLen
+func (c *ClaimMarketplacePaymentResult) Size() int {
+	return consts.Uint64Len*4 + codec.StringLen(c.DistributedTo)
 }
 
 func (r *ClaimMarketplacePaymentResult) Marshal(p *codec.Packer) {
@@ -211,7 +211,7 @@ func (r *ClaimMarketplacePaymentResult) Marshal(p *codec.Packer) {
 	p.PackUint64(r.PaymentClaimed)
 	p.PackUint64(r.PaymentRemaining)
 	p.PackUint64(r.DistributedReward)
-	p.PackAddress(r.DistributedTo)
+	p.PackString(r.DistributedTo)
 }
 
 func UnmarshalClaimMarketplacePaymentResult(p *codec.Packer) (codec.Typed, error) {
@@ -220,6 +220,6 @@ func UnmarshalClaimMarketplacePaymentResult(p *codec.Packer) (codec.Typed, error
 	result.PaymentClaimed = p.UnpackUint64(false)
 	result.PaymentRemaining = p.UnpackUint64(false)
 	result.DistributedReward = p.UnpackUint64(false)
-	p.UnpackAddress(&result.DistributedTo)
+	result.DistributedTo = p.UnpackString(true)
 	return &result, p.Err()
 }

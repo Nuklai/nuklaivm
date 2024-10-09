@@ -133,8 +133,8 @@ func (c *CreateDataset) Execute(
 	}
 
 	return &CreateDatasetResult{
-		DatasetAddress:          c.AssetAddress,
-		DatasetParentNftAddress: storage.AssetAddressNFT(c.AssetAddress, metadata, owner),
+		DatasetAddress:          c.AssetAddress.String(),
+		DatasetParentNftAddress: storage.AssetAddressNFT(c.AssetAddress, metadata, owner).String(),
 	}, nil
 }
 
@@ -167,26 +167,26 @@ var (
 )
 
 type CreateDatasetResult struct {
-	DatasetAddress          codec.Address `serialize:"true" json:"dataset_address"`
-	DatasetParentNftAddress codec.Address `serialize:"true" json:"dataset_parent_nft_address"`
+	DatasetAddress          string `serialize:"true" json:"dataset_address"`
+	DatasetParentNftAddress string `serialize:"true" json:"dataset_parent_nft_address"`
 }
 
 func (*CreateDatasetResult) GetTypeID() uint8 {
 	return nconsts.CreateDatasetID
 }
 
-func (*CreateDatasetResult) Size() int {
-	return codec.AddressLen * 2
+func (c *CreateDatasetResult) Size() int {
+	return codec.StringLen(c.DatasetAddress) + codec.StringLen(c.DatasetParentNftAddress)
 }
 
 func (r *CreateDatasetResult) Marshal(p *codec.Packer) {
-	p.PackAddress(r.DatasetAddress)
-	p.PackAddress(r.DatasetParentNftAddress)
+	p.PackString(r.DatasetAddress)
+	p.PackString(r.DatasetParentNftAddress)
 }
 
 func UnmarshalCreateDatasetResult(p *codec.Packer) (codec.Typed, error) {
 	var result CreateDatasetResult
-	p.UnpackAddress(&result.DatasetAddress)
-	p.UnpackAddress(&result.DatasetParentNftAddress)
+	result.DatasetAddress = p.UnpackString(true)
+	result.DatasetParentNftAddress = p.UnpackString(true)
 	return &result, p.Err()
 }

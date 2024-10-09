@@ -93,7 +93,7 @@ func (u *UndelegateUserStake) Execute(
 		RewardAmount:         rewardAmount,
 		BalanceBeforeUnstake: balance,
 		BalanceAfterUnstake:  newBalance,
-		DistributedTo:        actor,
+		DistributedTo:        actor.String(),
 	}, nil
 }
 
@@ -140,15 +140,15 @@ type UndelegateUserStakeResult struct {
 	RewardAmount         uint64        `serialize:"true" json:"reward_amount"`
 	BalanceBeforeUnstake uint64        `serialize:"true" json:"balance_before_unstake"`
 	BalanceAfterUnstake  uint64        `serialize:"true" json:"balance_after_unstake"`
-	DistributedTo        codec.Address `serialize:"true" json:"distributed_to"`
+	DistributedTo        string `serialize:"true" json:"distributed_to"`
 }
 
 func (*UndelegateUserStakeResult) GetTypeID() uint8 {
 	return nconsts.UndelegateUserStakeID
 }
 
-func (*UndelegateUserStakeResult) Size() int {
-	return 6*consts.Uint64Len + codec.AddressLen
+func (u *UndelegateUserStakeResult) Size() int {
+	return 6*consts.Uint64Len + codec.StringLen(u.DistributedTo)
 }
 
 func (r *UndelegateUserStakeResult) Marshal(p *codec.Packer) {
@@ -158,7 +158,7 @@ func (r *UndelegateUserStakeResult) Marshal(p *codec.Packer) {
 	p.PackUint64(r.RewardAmount)
 	p.PackUint64(r.BalanceBeforeUnstake)
 	p.PackUint64(r.BalanceAfterUnstake)
-	p.PackAddress(r.DistributedTo)
+	p.PackString(r.DistributedTo)
 }
 
 func UnmarshalUndelegateUserStakeResult(p *codec.Packer) (codec.Typed, error) {
@@ -169,6 +169,6 @@ func UnmarshalUndelegateUserStakeResult(p *codec.Packer) (codec.Typed, error) {
 	result.RewardAmount = p.UnpackUint64(false)
 	result.BalanceBeforeUnstake = p.UnpackUint64(false)
 	result.BalanceAfterUnstake = p.UnpackUint64(true)
-	p.UnpackAddress(&result.DistributedTo)
+	result.DistributedTo = p.UnpackString(true)
 	return &result, p.Err()
 }

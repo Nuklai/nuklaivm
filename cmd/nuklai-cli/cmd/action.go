@@ -437,7 +437,7 @@ var registerValidatorStakeCmd = &cobra.Command{
 
 		utils.Outf("{{blue}}Register Validator Stake Info - stakeStartBlock: %d stakeEndBlock: %d delegationFeeRate: %d rewardAddress: %s\n", stakeStartBlock, stakeEndBlock, delegationFeeRate, rewardAddress)
 
-		stakeInfo := &actions.RegisterValidatorStakeResult{
+		stakeInfo := &actions.ValidatorStakeInfo{
 			NodeID:            nodeID,
 			StakeStartBlock:   stakeStartBlock,
 			StakeEndBlock:     stakeEndBlock,

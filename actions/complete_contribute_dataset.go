@@ -144,10 +144,10 @@ func (d *CompleteContributeDataset) Execute(
 	}
 
 	return &CompleteContributeDatasetResult{
-		CollateralAssetAddress:   dataConfig.CollateralAssetAddressForDataContribution,
+		CollateralAssetAddress:   dataConfig.CollateralAssetAddressForDataContribution.String(),
 		CollateralAmountRefunded: dataConfig.CollateralAmountForDataContribution,
-		DatasetChildNftAddress:   nftAddress,
-		To:                       d.DatasetContributor,
+		DatasetChildNftAddress:   nftAddress.String(),
+		To:                       d.DatasetContributor.String(),
 		DataLocation:             string(dataLocation),
 		DataIdentifier:           string(dataIdentifier),
 	}, nil
@@ -176,10 +176,10 @@ var (
 )
 
 type CompleteContributeDatasetResult struct {
-	CollateralAssetAddress   codec.Address `serialize:"true" json:"collateral_asset_address"`
+	CollateralAssetAddress   string `serialize:"true" json:"collateral_asset_address"`
 	CollateralAmountRefunded uint64        `serialize:"true" json:"collateral_amount_refunded"`
-	DatasetChildNftAddress   codec.Address `serialize:"true" json:"dataset_child_nft_address"`
-	To                       codec.Address `serialize:"true" json:"to"`
+	DatasetChildNftAddress   string `serialize:"true" json:"dataset_child_nft_address"`
+	To                       string `serialize:"true" json:"to"`
 	DataLocation             string        `serialize:"true" json:"data_location"`
 	DataIdentifier           string        `serialize:"true" json:"data_identifier"`
 }
@@ -189,24 +189,24 @@ func (*CompleteContributeDatasetResult) GetTypeID() uint8 {
 }
 
 func (r *CompleteContributeDatasetResult) Size() int {
-	return codec.AddressLen*3 + consts.Uint64Len + codec.StringLen(r.DataLocation) + codec.StringLen(r.DataIdentifier)
+	return codec.StringLen(r.CollateralAssetAddress) + consts.Uint64Len + codec.StringLen(r.DatasetChildNftAddress) + codec.StringLen(r.To) + codec.StringLen(r.DataLocation) + codec.StringLen(r.DataIdentifier)
 }
 
 func (r *CompleteContributeDatasetResult) Marshal(p *codec.Packer) {
-	p.PackAddress(r.CollateralAssetAddress)
+	p.PackString(r.CollateralAssetAddress)
 	p.PackUint64(r.CollateralAmountRefunded)
-	p.PackAddress(r.DatasetChildNftAddress)
-	p.PackAddress(r.To)
+	p.PackString(r.DatasetChildNftAddress)
+	p.PackString(r.To)
 	p.PackString(r.DataLocation)
 	p.PackString(r.DataIdentifier)
 }
 
 func UnmarshalCompleteContributeDatasetResult(p *codec.Packer) (codec.Typed, error) {
 	var result CompleteContributeDatasetResult
-	p.UnpackAddress(&result.CollateralAssetAddress)
+	result.CollateralAssetAddress = p.UnpackString(true)
 	result.CollateralAmountRefunded = p.UnpackUint64(false)
-	p.UnpackAddress(&result.DatasetChildNftAddress)
-	p.UnpackAddress(&result.To)
+	result.DatasetChildNftAddress = p.UnpackString(true)
+	result.To = p.UnpackString(true)
 	result.DataLocation = p.UnpackString(true)
 	result.DataIdentifier = p.UnpackString(true)
 	return &result, p.Err()

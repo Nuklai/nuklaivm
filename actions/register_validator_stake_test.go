@@ -112,12 +112,12 @@ func TestRegisterValidatorStakeAction(t *testing.T) {
 				require.Equal(t, actor, ownerAddress)
 			},
 			ExpectedOutputs: &RegisterValidatorStakeResult{
-				NodeID:            nodeID,
+				NodeID:            nodeID.String(),
 				StakeStartBlock:   60,
 				StakeEndBlock:     200,
 				StakedAmount:      emission.GetStakingConfig().MinValidatorStake,
 				DelegationFeeRate: 10,
-				RewardAddress:     actor,
+				RewardAddress:     actor.String(),
 			},
 		},
 	}
@@ -198,7 +198,7 @@ func generateStakeInfoAndSignature(nodeID ids.NodeID, stakeStartBlock, stakeEndB
 	}
 	blsPublicKey := bls.PublicKeyToBytes(bls.PublicFromPrivateKey(secretKey))
 
-	stakeInfo := &RegisterValidatorStakeResult{
+	stakeInfo := &ValidatorStakeInfo{
 		NodeID:            nodeID,
 		StakeStartBlock:   stakeStartBlock,
 		StakeEndBlock:     stakeEndBlock,

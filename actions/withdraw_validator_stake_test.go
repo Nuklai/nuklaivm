@@ -83,7 +83,7 @@ func TestWithdrawValidatorStakeAction(t *testing.T) {
 				RewardAmount:         100,
 				BalanceBeforeUnstake: 0,
 				BalanceAfterUnstake:  10100, // Reward + Stake amount
-				DistributedTo:        actor,
+				DistributedTo:        actor.String(),
 			},
 		},
 	}

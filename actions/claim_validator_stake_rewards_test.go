@@ -94,7 +94,7 @@ func TestClaimValidatorStakeRewardsActionSuccess(t *testing.T) {
 				DelegationFeeRate:  10,
 				BalanceBeforeClaim: 0,
 				BalanceAfterClaim:  20,
-				DistributedTo:      actor,
+				DistributedTo:      actor.String(),
 			},
 		},
 	}

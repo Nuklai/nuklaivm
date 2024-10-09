@@ -102,7 +102,7 @@ func (m *MintAssetNFT) Execute(
 	}
 
 	return &MintAssetNFTResult{
-		AssetNftAddress: nftAddress,
+		AssetNftAddress: nftAddress.String(),
 		OldBalance:      newBalance - 1,
 		NewBalance:      newBalance,
 	}, nil
@@ -131,7 +131,7 @@ var (
 )
 
 type MintAssetNFTResult struct {
-	AssetNftAddress codec.Address `serialize:"true" json:"asset_nft_address"`
+	AssetNftAddress string `serialize:"true" json:"asset_nft_address"`
 	OldBalance      uint64        `serialize:"true" json:"old_balance"`
 	NewBalance      uint64        `serialize:"true" json:"new_balance"`
 }
@@ -140,19 +140,19 @@ func (*MintAssetNFTResult) GetTypeID() uint8 {
 	return nconsts.MintAssetNFTID
 }
 
-func (*MintAssetNFTResult) Size() int {
-	return codec.AddressLen + consts.Uint64Len*2
+func (m *MintAssetNFTResult) Size() int {
+	return codec.StringLen(m.AssetNftAddress) + consts.Uint64Len*2
 }
 
 func (r *MintAssetNFTResult) Marshal(p *codec.Packer) {
-	p.PackAddress(r.AssetNftAddress)
+	p.PackString(r.AssetNftAddress)
 	p.PackUint64(r.OldBalance)
 	p.PackUint64(r.NewBalance)
 }
 
 func UnmarshalMintAssetNFTResult(p *codec.Packer) (codec.Typed, error) {
 	var result MintAssetNFTResult
-	p.UnpackAddress(&result.AssetNftAddress)
+	result.AssetNftAddress = p.UnpackString(true)
 	result.OldBalance = p.UnpackUint64(false)
 	result.NewBalance = p.UnpackUint64(true)
 	return &result, p.Err()

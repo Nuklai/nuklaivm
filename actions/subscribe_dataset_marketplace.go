@@ -189,10 +189,10 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	}
 
 	return &SubscribeDatasetMarketplaceResult{
-		MarketplaceAssetAddress:          d.MarketplaceAssetAddress,
+		MarketplaceAssetAddress:          d.MarketplaceAssetAddress.String(),
 		MarketplaceAssetNumSubscriptions: prevSubscriptions + 1,
-		SubscriptionNftAddress:           nftAddress,
-		PaymentAssetAddress:              d.PaymentAssetAddress,
+		SubscriptionNftAddress:           nftAddress.String(),
+		PaymentAssetAddress:              d.PaymentAssetAddress.String(),
 		DatasetPricePerBlock:             datasetPricePerBlock,
 		TotalCost:                        totalCost,
 		NumBlocksToSubscribe:             d.NumBlocksToSubscribe,
@@ -224,10 +224,10 @@ var (
 )
 
 type SubscribeDatasetMarketplaceResult struct {
-	MarketplaceAssetAddress          codec.Address `serialize:"true" json:"marketplace_asset_address"`
+	MarketplaceAssetAddress          string `serialize:"true" json:"marketplace_asset_address"`
 	MarketplaceAssetNumSubscriptions uint64        `serialize:"true" json:"marketplace_asset_num_subscriptions"`
-	SubscriptionNftAddress           codec.Address `serialize:"true" json:"subscription_nft_address"`
-	PaymentAssetAddress              codec.Address `serialize:"true" json:"payment_asset_address"`
+	SubscriptionNftAddress           string `serialize:"true" json:"subscription_nft_address"`
+	PaymentAssetAddress              string `serialize:"true" json:"payment_asset_address"`
 	DatasetPricePerBlock             uint64        `serialize:"true" json:"dataset_price_per_block"`
 	TotalCost                        uint64        `serialize:"true" json:"total_cost"`
 	NumBlocksToSubscribe             uint64        `serialize:"true" json:"num_blocks_to_subscribe"`
@@ -239,15 +239,15 @@ func (*SubscribeDatasetMarketplaceResult) GetTypeID() uint8 {
 	return nconsts.SubscribeDatasetMarketplaceID
 }
 
-func (*SubscribeDatasetMarketplaceResult) Size() int {
-	return codec.AddressLen*3 + consts.Uint64Len*6
+func (s *SubscribeDatasetMarketplaceResult) Size() int {
+	return codec.StringLen(s.MarketplaceAssetAddress) + consts.Uint64Len*6 + codec.StringLen(s.SubscriptionNftAddress) + codec.StringLen(s.PaymentAssetAddress)
 }
 
 func (r *SubscribeDatasetMarketplaceResult) Marshal(p *codec.Packer) {
-	p.PackAddress(r.MarketplaceAssetAddress)
+	p.PackString(r.MarketplaceAssetAddress)
 	p.PackLong(r.MarketplaceAssetNumSubscriptions)
-	p.PackAddress(r.SubscriptionNftAddress)
-	p.PackAddress(r.PaymentAssetAddress)
+	p.PackString(r.SubscriptionNftAddress)
+	p.PackString(r.PaymentAssetAddress)
 	p.PackUint64(r.DatasetPricePerBlock)
 	p.PackUint64(r.TotalCost)
 	p.PackUint64(r.NumBlocksToSubscribe)
@@ -257,10 +257,10 @@ func (r *SubscribeDatasetMarketplaceResult) Marshal(p *codec.Packer) {
 
 func UnmarshalSubscribeDatasetMarketplaceResult(p *codec.Packer) (codec.Typed, error) {
 	var result SubscribeDatasetMarketplaceResult
-	p.UnpackAddress(&result.MarketplaceAssetAddress)
+	result.MarketplaceAssetAddress = p.UnpackString(true)
 	result.MarketplaceAssetNumSubscriptions = p.UnpackUint64(false)
-	p.UnpackAddress(&result.SubscriptionNftAddress)
-	p.UnpackAddress(&result.PaymentAssetAddress)
+	result.SubscriptionNftAddress = p.UnpackString(true)
+	result.PaymentAssetAddress = p.UnpackString(true)
 	result.DatasetPricePerBlock = p.UnpackUint64(false)
 	result.TotalCost = p.UnpackUint64(false)
 	result.NumBlocksToSubscribe = p.UnpackUint64(true)

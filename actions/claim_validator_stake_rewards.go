@@ -91,7 +91,7 @@ func (c *ClaimValidatorStakeRewards) Execute(
 		DelegationFeeRate:  delegationFeeRate,
 		BalanceBeforeClaim: balance,
 		BalanceAfterClaim:  newBalance,
-		DistributedTo:      rewardAddress,
+		DistributedTo:      rewardAddress.String(),
 	}, nil
 }
 
@@ -138,15 +138,15 @@ type ClaimValidatorStakeRewardsResult struct {
 	DelegationFeeRate  uint64        `serialize:"true" json:"delegation_fee_rate"`
 	BalanceBeforeClaim uint64        `serialize:"true" json:"balance_before_claim"`
 	BalanceAfterClaim  uint64        `serialize:"true" json:"balance_after_claim"`
-	DistributedTo      codec.Address `serialize:"true" json:"distributed_to"`
+	DistributedTo      string `serialize:"true" json:"distributed_to"`
 }
 
 func (*ClaimValidatorStakeRewardsResult) GetTypeID() uint8 {
 	return nconsts.ClaimValidatorStakeRewardsID
 }
 
-func (*ClaimValidatorStakeRewardsResult) Size() int {
-	return 6*consts.Uint64Len + codec.AddressLen
+func (c *ClaimValidatorStakeRewardsResult) Size() int {
+	return 6*consts.Uint64Len + codec.StringLen(c.DistributedTo)
 }
 
 func (r *ClaimValidatorStakeRewardsResult) Marshal(p *codec.Packer) {
@@ -156,7 +156,7 @@ func (r *ClaimValidatorStakeRewardsResult) Marshal(p *codec.Packer) {
 	p.PackUint64(r.DelegationFeeRate)
 	p.PackUint64(r.BalanceBeforeClaim)
 	p.PackUint64(r.BalanceAfterClaim)
-	p.PackAddress(r.DistributedTo)
+	p.PackString(r.DistributedTo)
 }
 
 func UnmarshalClaimValidatorStakeRewardsResult(p *codec.Packer) (codec.Typed, error) {
@@ -167,6 +167,6 @@ func UnmarshalClaimValidatorStakeRewardsResult(p *codec.Packer) (codec.Typed, er
 	result.DelegationFeeRate = p.UnpackUint64(true)
 	result.BalanceBeforeClaim = p.UnpackUint64(false)
 	result.BalanceAfterClaim = p.UnpackUint64(true)
-	p.UnpackAddress(&result.DistributedTo)
+	result.DistributedTo = p.UnpackString(true)
 	return &result, p.Err()
 }

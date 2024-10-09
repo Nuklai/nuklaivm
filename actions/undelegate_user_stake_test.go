@@ -92,7 +92,7 @@ func TestUndelegateUserStakeActionSuccess(t *testing.T) {
 				RewardAmount:         20,
 				BalanceBeforeUnstake: 0,
 				BalanceAfterUnstake:  1020,
-				DistributedTo:        actor,
+				DistributedTo:        actor.String(),
 			},
 		},
 	}

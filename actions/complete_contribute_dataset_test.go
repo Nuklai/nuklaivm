@@ -181,10 +181,10 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 				require.Equal(t, uint64(1), balance)
 			},
 			ExpectedOutputs: &CompleteContributeDatasetResult{
-				CollateralAssetAddress:   dataset.GetDatasetConfig().CollateralAssetAddressForDataContribution,
+				CollateralAssetAddress:   dataset.GetDatasetConfig().CollateralAssetAddressForDataContribution.String(),
 				CollateralAmountRefunded: dataset.GetDatasetConfig().CollateralAmountForDataContribution,
-				DatasetChildNftAddress:   nftAddress,
-				To:                       actor,
+				DatasetChildNftAddress:   nftAddress.String(),
+				To:                       actor.String(),
 				DataLocation:             dataLocation,
 				DataIdentifier:           dataIdentifier,
 			},

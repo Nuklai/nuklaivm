@@ -104,10 +104,10 @@ func (d *PublishDatasetMarketplace) Execute(
 	}
 
 	return &PublishDatasetMarketplaceResult{
-		MarketplaceAssetAddress: marketplaceAssetAddress,
-		PaymentAssetAddress:     d.PaymentAssetAddress,
+		MarketplaceAssetAddress: marketplaceAssetAddress.String(),
+		PaymentAssetAddress:     d.PaymentAssetAddress.String(),
 		DatasetPricePerBlock:    d.DatasetPricePerBlock,
-		Publisher:               actor,
+		Publisher:               actor.String(),
 	}, nil
 }
 
@@ -134,9 +134,9 @@ var (
 )
 
 type PublishDatasetMarketplaceResult struct {
-	MarketplaceAssetAddress codec.Address `serialize:"true" json:"marketplace_asset_address"`
-	PaymentAssetAddress     codec.Address `serialize:"true" json:"payment_asset_address"`
-	Publisher               codec.Address `serialize:"true" json:"publisher"`
+	MarketplaceAssetAddress string `serialize:"true" json:"marketplace_asset_address"`
+	PaymentAssetAddress     string `serialize:"true" json:"payment_asset_address"`
+	Publisher               string `serialize:"true" json:"publisher"`
 	DatasetPricePerBlock    uint64        `serialize:"true" json:"dataset_price_per_block"`
 }
 
@@ -144,22 +144,22 @@ func (*PublishDatasetMarketplaceResult) GetTypeID() uint8 {
 	return nconsts.PublishDatasetMarketplaceID
 }
 
-func (*PublishDatasetMarketplaceResult) Size() int {
-	return codec.AddressLen*3 + consts.Uint64Len
+func (p *PublishDatasetMarketplaceResult) Size() int {
+	return codec.StringLen(p.MarketplaceAssetAddress) + codec.StringLen(p.PaymentAssetAddress) + codec.StringLen(p.Publisher) + consts.Uint64Len
 }
 
 func (r *PublishDatasetMarketplaceResult) Marshal(p *codec.Packer) {
-	p.PackAddress(r.MarketplaceAssetAddress)
-	p.PackAddress(r.PaymentAssetAddress)
-	p.PackAddress(r.Publisher)
+	p.PackString(r.MarketplaceAssetAddress)
+	p.PackString(r.PaymentAssetAddress)
+	p.PackString(r.Publisher)
 	p.PackUint64(r.DatasetPricePerBlock)
 }
 
 func UnmarshalPublishDatasetMarketplaceResult(p *codec.Packer) (codec.Typed, error) {
 	var result PublishDatasetMarketplaceResult
-	p.UnpackAddress(&result.MarketplaceAssetAddress)
-	p.UnpackAddress(&result.PaymentAssetAddress)
-	p.UnpackAddress(&result.Publisher)
+	result.MarketplaceAssetAddress = p.UnpackString(true)
+	result.PaymentAssetAddress = p.UnpackString(true)
+	result.Publisher = p.UnpackString(true)
 	result.DatasetPricePerBlock = p.UnpackUint64(false)
 	return &result, p.Err()
 }
