@@ -32,7 +32,8 @@ jobs:
         run: scripts/build.sh
 
   nuklaivm-unit-tests:
-    runs-on: ubuntu-20.04-32
+    # runs-on: ubuntu-20.04-32
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout
