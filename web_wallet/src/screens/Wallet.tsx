@@ -11,7 +11,8 @@ TimeAgo.addDefaultLocale(timeAgoEn)
 const ago = new TimeAgo('en-US')
 
 const getDefaultValue = (fieldType: string) => {
-  if (fieldType === 'Address') return '00' + '00'.repeat(27) + '00deadc0de'
+  if (fieldType === 'Address')
+    return '00cf77495ce1bdbf11e5e45463fad5a862cb6cc0a20e00e658c4ac3355dcdc64bb'
   if (fieldType === '[]uint8') return ''
   if (fieldType === 'string') return ''
   if (fieldType === 'uint64') return '1'

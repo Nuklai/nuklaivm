@@ -49,9 +49,6 @@ type UpdateAsset struct {
 	// The metadata of the asset
 	Metadata string `serialize:"true" json:"metadata"`
 
-	// URI for the asset
-	URI string `serialize:"true" json:"uri"`
-
 	// The max supply of the asset
 	MaxSupply uint64 `serialize:"true" json:"max_supply"`
 
@@ -111,7 +108,7 @@ func (u *UpdateAsset) Execute(
 	}
 
 	// Ensure that at least one field is being updated
-	if (len(u.Name) == 0 || bytes.Equal([]byte(u.Name), name)) && (len(u.Symbol) == 0 || bytes.Equal([]byte(u.Symbol), symbol)) && (len(u.Metadata) == 0 || bytes.Equal([]byte(u.Metadata), metadata)) && (len(u.URI) == 0 || bytes.Equal([]byte(u.URI), uri)) && (u.MaxSupply == maxSupply) && (len(u.Owner) == 0 || u.Owner != owner.String()) && (len(u.MintAdmin) == 0 || u.MintAdmin != mintAdmin.String()) && (len(u.PauseUnpauseAdmin) == 0 || u.PauseUnpauseAdmin != pauseUnpauseAdmin.String()) && (len(u.FreezeUnfreezeAdmin) == 0 || u.FreezeUnfreezeAdmin != freezeUnfreezeAdmin.String()) && (len(u.EnableDisableKYCAccountAdmin) == 0 || u.EnableDisableKYCAccountAdmin != enableDisableKYCAccountAdmin.String()) {
+	if (len(u.Name) == 0 || bytes.Equal([]byte(u.Name), name)) && (len(u.Symbol) == 0 || bytes.Equal([]byte(u.Symbol), symbol)) && (len(u.Metadata) == 0 || bytes.Equal([]byte(u.Metadata), metadata)) && (u.MaxSupply == maxSupply) && (len(u.Owner) == 0 || u.Owner != owner.String()) && (len(u.MintAdmin) == 0 || u.MintAdmin != mintAdmin.String()) && (len(u.PauseUnpauseAdmin) == 0 || u.PauseUnpauseAdmin != pauseUnpauseAdmin.String()) && (len(u.FreezeUnfreezeAdmin) == 0 || u.FreezeUnfreezeAdmin != freezeUnfreezeAdmin.String()) && (len(u.EnableDisableKYCAccountAdmin) == 0 || u.EnableDisableKYCAccountAdmin != enableDisableKYCAccountAdmin.String()) {
 		return nil, ErrOutputMustUpdateAtLeastOneField
 	}
 
@@ -141,14 +138,6 @@ func (u *UpdateAsset) Execute(
 		}
 		metadata = []byte(u.Metadata)
 		updateAssetResult.Metadata = u.Metadata
-	}
-
-	if len(u.URI) > 0 {
-		if len(u.URI) < 3 || len(u.URI) > storage.MaxTextSize {
-			return nil, ErrURIInvalid
-		}
-		uri = []byte(u.URI)
-		updateAssetResult.URI = u.URI
 	}
 
 	if u.MaxSupply > 0 {
@@ -210,7 +199,6 @@ func UnmarshalUpdateAsset(p *codec.Packer) (chain.Action, error) {
 	create.Name = p.UnpackString(false)
 	create.Symbol = p.UnpackString(false)
 	create.Metadata = p.UnpackString(false)
-	create.URI = p.UnpackString(false)
 	create.MaxSupply = p.UnpackUint64(false)
 	create.Owner = p.UnpackString(false)
 	create.MintAdmin = p.UnpackString(false)
@@ -229,7 +217,6 @@ type UpdateAssetResult struct {
 	Name                         string `serialize:"true" json:"name"`
 	Symbol                       string `serialize:"true" json:"symbol"`
 	Metadata                     string `serialize:"true" json:"metadata"`
-	URI                          string `serialize:"true" json:"uri"`
 	MaxSupply                    uint64 `serialize:"true" json:"max_supply"`
 	Owner                        string `serialize:"true" json:"owner"`
 	MintAdmin                    string `serialize:"true" json:"mint_admin"`
@@ -243,14 +230,13 @@ func (*UpdateAssetResult) GetTypeID() uint8 {
 }
 
 func (r *UpdateAssetResult) Size() int {
-	return codec.StringLen(r.Name) + codec.StringLen(r.Symbol) + codec.StringLen(r.Metadata) + codec.StringLen(r.URI) + consts.Uint64Len + codec.StringLen(r.Owner) + codec.StringLen(r.MintAdmin) + codec.StringLen(r.PauseUnpauseAdmin) + codec.StringLen(r.FreezeUnfreezeAdmin) + codec.StringLen(r.EnableDisableKYCAccountAdmin)
+	return codec.StringLen(r.Name) + codec.StringLen(r.Symbol) + codec.StringLen(r.Metadata) + consts.Uint64Len + codec.StringLen(r.Owner) + codec.StringLen(r.MintAdmin) + codec.StringLen(r.PauseUnpauseAdmin) + codec.StringLen(r.FreezeUnfreezeAdmin) + codec.StringLen(r.EnableDisableKYCAccountAdmin)
 }
 
 func (r *UpdateAssetResult) Marshal(p *codec.Packer) {
 	p.PackString(r.Name)
 	p.PackString(r.Symbol)
 	p.PackString(r.Metadata)
-	p.PackString(r.URI)
 	p.PackUint64(r.MaxSupply)
 	p.PackString(r.Owner)
 	p.PackString(r.MintAdmin)
@@ -264,12 +250,11 @@ func UnmarshalUpdateAssetResult(p *codec.Packer) (codec.Typed, error) {
 	result.Name = p.UnpackString(false)
 	result.Symbol = p.UnpackString(false)
 	result.Metadata = p.UnpackString(false)
-	result.URI = p.UnpackString(false)
 	result.MaxSupply = p.UnpackUint64(false)
-	p.UnpackString(false)
-	p.UnpackString(false)
-	p.UnpackString(false)
-	p.UnpackString(false)
-	p.UnpackString(false)
+	result.Owner = p.UnpackString(false)
+	result.MintAdmin = p.UnpackString(false)
+	result.PauseUnpauseAdmin = p.UnpackString(false)
+	result.FreezeUnfreezeAdmin = p.UnpackString(false)
+	result.EnableDisableKYCAccountAdmin = p.UnpackString(false)
 	return &result, p.Err()
 }
