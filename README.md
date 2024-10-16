@@ -431,3 +431,13 @@ You can run the faucet by doing:
 ```bash
 FAUCET_PRIVATE_KEY_HEX="323b1d8f4eed5f0da9da93071b034f2dce9d2d22692c172f3cb252a64ddfafd01b057de320297c29ad0c1f589ea216869cf1938d88c9fbd70d6748323dbf2fa7" RPC_ENDPOINT="http://127.0.0.1:9650" go run ./cmd/faucet
 ```
+
+## Web wallet
+
+You can run the web wallet that provides access to the Metamask Snap and uses the VM's ABI to let users interact with any of the actions defined such as transfer, create_asset, create_dataset, etc.
+
+```bash
+cd web_wallet;
+yarn;
+yarn dev;
+```
