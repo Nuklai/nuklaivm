@@ -46,9 +46,9 @@ jobs:
       - name: Run unit tests
         shell: bash
         run: scripts/tests.unit.sh
-      # - name: Run integration tests
-      #   shell: bash
-      #   run: scripts/tests.integration.sh
+      - name: Run integration tests
+        shell: bash
+        run: scripts/tests.integration.sh
 
   # nuklaivm-e2e-tests:
   #   needs: [nuklaivm-lint, nuklaivm-unit-tests]

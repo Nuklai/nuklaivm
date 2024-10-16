@@ -49,6 +49,7 @@ func (*ClaimMarketplacePayment) GetTypeID() uint8 {
 func (c *ClaimMarketplacePayment) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
 		string(storage.AssetInfoKey(c.MarketplaceAssetAddress)):              state.Read | state.Write,
+		string(storage.AssetInfoKey(c.PaymentAssetAddress)):                  state.Read | state.Write,
 		string(storage.AssetAccountBalanceKey(c.PaymentAssetAddress, actor)): state.All,
 	}
 }

@@ -133,6 +133,7 @@ func TestClaimMarketplacePaymentAction(t *testing.T) {
 				metadataBytes, err := utils.MapToBytes(metadata)
 				require.NoError(t, err)
 				require.NoError(t, storage.SetAssetInfo(context.Background(), store, marketplaceAssetAddress, nconsts.AssetMarketplaceTokenID, []byte("name"), []byte("SYM"), 0, metadataBytes, []byte(marketplaceAssetAddress.String()), 0, 0, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
+				require.NoError(t, storage.SetAssetInfo(context.Background(), store, baseAssetAddress, nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 0, metadataBytes, []byte(baseAssetAddress.String()), 0, 0, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
