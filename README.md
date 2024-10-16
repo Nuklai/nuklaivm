@@ -3,7 +3,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/Nuklai/nuklaivm)](https://goreportcard.com/report/github.com/Nuklai/nuklaivm)
 [![CI](https://github.com/Nuklai/nuklaivm/actions/workflows/nuklaivm-ci.yml/badge.svg)](https://github.com/Nuklai/nuklaivm/actions/workflows/nuklaivm-ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![CodeQL](https://github.com/Nuklai/nuklaivm/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/Nuklai/nuklaivm/actions/workflows/codeql-analysis.yml)
+[![CodeQL](https://github.com/Nuklai/nuklaivm/actions/workflows/codeql-analysis.yml/badge.svg?branch=main)](https://github.com/Nuklai/nuklaivm/actions/workflows/codeql-analysis.yml)
 
 ## Disclaimer
 
