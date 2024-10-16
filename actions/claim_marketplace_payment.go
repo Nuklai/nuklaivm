@@ -105,7 +105,11 @@ func (c *ClaimMarketplacePayment) Execute(
 
 	// Store the initial total before updating
 	initialTotal := paymentRemaining + paymentClaimed
-	baseValueOfOneUnit, _ := utils.ParseBalance("1", decimals)
+	_, _, _, paymentAssetDecimals, _, _, _, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, c.PaymentAssetAddress)
+	if err != nil {
+		return nil, err
+	}
+	baseValueOfOneUnit, _ := utils.ParseBalance("1", paymentAssetDecimals)
 	// Get the current block height
 	currentBlockHeight := emission.GetEmission().GetLastAcceptedBlockHeight()
 	// Calculate the number of blocks the subscription has been active
@@ -191,10 +195,10 @@ var (
 )
 
 type ClaimMarketplacePaymentResult struct {
-	LastClaimedBlock  uint64        `serialize:"true" json:"last_claimed_block"`
-	PaymentClaimed    uint64        `serialize:"true" json:"payment_claimed"`
-	PaymentRemaining  uint64        `serialize:"true" json:"payment_remaining"`
-	DistributedReward uint64        `serialize:"true" json:"distributed_reward"`
+	LastClaimedBlock  uint64 `serialize:"true" json:"last_claimed_block"`
+	PaymentClaimed    uint64 `serialize:"true" json:"payment_claimed"`
+	PaymentRemaining  uint64 `serialize:"true" json:"payment_remaining"`
+	DistributedReward uint64 `serialize:"true" json:"distributed_reward"`
 	DistributedTo     string `serialize:"true" json:"distributed_to"`
 }
 

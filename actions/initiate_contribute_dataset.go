@@ -143,8 +143,8 @@ func (*InitiateContributeDataset) ValidRange(chain.Rules) (int64, int64) {
 func UnmarshalInitiateContributeDataset(p *codec.Packer) (chain.Action, error) {
 	var initiate InitiateContributeDataset
 	p.UnpackAddress(&initiate.DatasetAddress)
-	p.UnpackString(false)
-	p.UnpackString(true)
+	initiate.DataLocation = p.UnpackString(false)
+	initiate.DataIdentifier = p.UnpackString(true)
 	return &initiate, p.Err()
 }
 
@@ -154,9 +154,9 @@ var (
 )
 
 type InitiateContributeDatasetResult struct {
-	DatasetContributionID  string       `serialize:"true" json:"dataset_contribution_id"`
+	DatasetContributionID  string `serialize:"true" json:"dataset_contribution_id"`
 	CollateralAssetAddress string `serialize:"true" json:"collateral_asset_address"`
-	CollateralAmountTaken  uint64        `serialize:"true" json:"collateral_amount_taken"`
+	CollateralAmountTaken  uint64 `serialize:"true" json:"collateral_amount_taken"`
 }
 
 func (*InitiateContributeDatasetResult) GetTypeID() uint8 {

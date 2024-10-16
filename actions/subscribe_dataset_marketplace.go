@@ -60,6 +60,7 @@ func (d *SubscribeDatasetMarketplace) StateKeys(actor codec.Address) state.Keys 
 		string(storage.AssetInfoKey(nftAddress)):                                 state.All,
 		string(storage.AssetAccountBalanceKey(d.MarketplaceAssetAddress, actor)): state.Allocate | state.Write,
 		string(storage.AssetAccountBalanceKey(nftAddress, actor)):                state.All,
+		string(storage.AssetInfoKey(d.PaymentAssetAddress)):                      state.Read | state.Write,
 	}
 }
 
@@ -225,14 +226,14 @@ var (
 
 type SubscribeDatasetMarketplaceResult struct {
 	MarketplaceAssetAddress          string `serialize:"true" json:"marketplace_asset_address"`
-	MarketplaceAssetNumSubscriptions uint64        `serialize:"true" json:"marketplace_asset_num_subscriptions"`
+	MarketplaceAssetNumSubscriptions uint64 `serialize:"true" json:"marketplace_asset_num_subscriptions"`
 	SubscriptionNftAddress           string `serialize:"true" json:"subscription_nft_address"`
 	PaymentAssetAddress              string `serialize:"true" json:"payment_asset_address"`
-	DatasetPricePerBlock             uint64        `serialize:"true" json:"dataset_price_per_block"`
-	TotalCost                        uint64        `serialize:"true" json:"total_cost"`
-	NumBlocksToSubscribe             uint64        `serialize:"true" json:"num_blocks_to_subscribe"`
-	IssuanceBlock                    uint64        `serialize:"true" json:"issuance_block"`
-	ExpirationBlock                  uint64        `serialize:"true" json:"expiration_block"`
+	DatasetPricePerBlock             uint64 `serialize:"true" json:"dataset_price_per_block"`
+	TotalCost                        uint64 `serialize:"true" json:"total_cost"`
+	NumBlocksToSubscribe             uint64 `serialize:"true" json:"num_blocks_to_subscribe"`
+	IssuanceBlock                    uint64 `serialize:"true" json:"issuance_block"`
+	ExpirationBlock                  uint64 `serialize:"true" json:"expiration_block"`
 }
 
 func (*SubscribeDatasetMarketplaceResult) GetTypeID() uint8 {

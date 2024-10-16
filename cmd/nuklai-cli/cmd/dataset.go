@@ -23,65 +23,6 @@ var datasetCmd = &cobra.Command{
 	},
 }
 
-/*
-var createDatasetCmd = &cobra.Command{
-	Use: "create",
-	RunE: func(*cobra.Command, []string) error {
-		ctx := context.Background()
-		_, _, factory, cli, ncli, ws, err := handler.DefaultActor()
-		if err != nil {
-			return err
-		}
-
-		// Add name to dataset
-		name, err := prompt.String("name", 1, actions.MaxMetadataSize)
-		if err != nil {
-			return err
-		}
-
-		// Add description to dataset
-		description, err := prompt.String("description", 1, actions.MaxMetadataSize)
-		if err != nil {
-			return err
-		}
-
-		// Prompt for isCommunityDataset
-		isCommunityDataset, err := prompt.Bool("isCommunityDataset")
-		if err != nil {
-			return err
-		}
-
-		// Add metadata to dataset
-		metadata, err := prompt.String("metadata", 1, actions.MaxDatasetMetadataSize)
-		if err != nil {
-			return err
-		}
-
-		// Confirm action
-		cont, err := prompt.Continue()
-		if !cont || err != nil {
-			return err
-		}
-
-		// Generate transaction
-		result, _, err := sendAndWait(ctx, []chain.Action{&actions.CreateDataset{
-			AssetID:            ids.Empty,
-			Name:               []byte(name),
-			Description:        []byte(description),
-			Categories:         []byte(name),
-			LicenseName:        []byte("MIT"),
-			LicenseSymbol:      []byte("MIT"),
-			LicenseURL:         []byte("https://opensource.org/licenses/MIT"),
-			Metadata:           []byte(metadata),
-			IsCommunityDataset: isCommunityDataset,
-		}}, cli, ncli, ws, factory)
-		if err != nil {
-			return err
-		}
-		return processResult(result)
-	},
-} */
-
 var createDatasetFromExistingAssetCmd = &cobra.Command{
 	Use: "create",
 	RunE: func(*cobra.Command, []string) error {

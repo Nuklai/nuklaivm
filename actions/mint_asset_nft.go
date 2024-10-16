@@ -120,7 +120,7 @@ func (*MintAssetNFT) ValidRange(chain.Rules) (int64, int64) {
 func UnmarshalMintAssetNFT(p *codec.Packer) (chain.Action, error) {
 	var mint MintAssetNFT
 	p.UnpackAddress(&mint.AssetAddress)
-	p.UnpackString(false)
+	mint.Metadata = p.UnpackString(false)
 	p.UnpackAddress(&mint.To)
 	return &mint, p.Err()
 }
@@ -132,8 +132,8 @@ var (
 
 type MintAssetNFTResult struct {
 	AssetNftAddress string `serialize:"true" json:"asset_nft_address"`
-	OldBalance      uint64        `serialize:"true" json:"old_balance"`
-	NewBalance      uint64        `serialize:"true" json:"new_balance"`
+	OldBalance      uint64 `serialize:"true" json:"old_balance"`
+	NewBalance      uint64 `serialize:"true" json:"new_balance"`
 }
 
 func (*MintAssetNFTResult) GetTypeID() uint8 {

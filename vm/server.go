@@ -208,7 +208,7 @@ type DatasetContributionReply struct {
 	Active         bool   `json:"active"`
 }
 
-func (j *JSONRPCServer) DataContributionPending(req *http.Request, args *DatasetContributionArgs, reply *DatasetContributionReply) (err error) {
+func (j *JSONRPCServer) DatasetContribution(req *http.Request, args *DatasetContributionArgs, reply *DatasetContributionReply) (err error) {
 	ctx, span := j.vm.Tracer().Start(req.Context(), "Server.DatasetContribution")
 	defer span.End()
 

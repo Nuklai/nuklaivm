@@ -130,7 +130,7 @@ var infoDatasetMarketplaceCmd = &cobra.Command{
 		}
 		ncli := nclients[0]
 
-		// Select datasetAddress
+		// Select marketplaceAddress
 		datasetAddress, err := prompt.Address("datasetAddress")
 		if err != nil {
 			return err

@@ -142,13 +142,13 @@ func (cli *JSONRPCClient) Dataset(
 	return resp.Name, resp.Description, resp.Categories, resp.LicenseName, resp.LicenseSymbol, resp.LicenseURL, resp.Metadata, resp.IsCommunityDataset, resp.MarketplaceAssetAddress, resp.BaseAssetAddress, resp.BasePrice, resp.RevenueModelDataShare, resp.RevenueModelMetadataShare, resp.RevenueModelDataOwnerCut, resp.RevenueModelMetadataOwnerCut, resp.Owner, nil
 }
 
-func (cli *JSONRPCClient) DatasetContribution(ctx context.Context, dataset string) (string, string, string, string, bool, error) {
+func (cli *JSONRPCClient) DatasetContribution(ctx context.Context, contributionID string) (string, string, string, string, bool, error) {
 	resp := new(DatasetContributionReply)
 	err := cli.requester.SendRequest(
 		ctx,
 		"datasetContribution",
-		&DatasetArgs{
-			Dataset: dataset,
+		&DatasetContributionArgs{
+			ContributionID: contributionID,
 		},
 		resp,
 	)

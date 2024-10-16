@@ -58,9 +58,12 @@ var createAssetCmd = &cobra.Command{
 		}
 
 		// Add decimal to token
-		decimals, err := prompt.Choice("decimals", storage.MaxAssetDecimals+1)
-		if err != nil {
-			return err
+		decimals := 0
+		if assetType == 0 {
+			decimals, err = prompt.Choice("decimals", storage.MaxAssetDecimals+1)
+			if err != nil {
+				return err
+			}
 		}
 
 		// Add metadata to token
