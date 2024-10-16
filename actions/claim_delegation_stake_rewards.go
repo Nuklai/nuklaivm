@@ -135,11 +135,11 @@ var (
 )
 
 type ClaimDelegationStakeRewardsResult struct {
-	StakeStartBlock    uint64        `serialize:"true" json:"stake_start_block"`
-	StakeEndBlock      uint64        `serialize:"true" json:"stake_end_block"`
-	StakedAmount       uint64        `serialize:"true" json:"staked_amount"`
-	BalanceBeforeClaim uint64        `serialize:"true" json:"balance_before_claim"`
-	BalanceAfterClaim  uint64        `serialize:"true" json:"balance_after_claim"`
+	StakeStartBlock    uint64 `serialize:"true" json:"stake_start_block"`
+	StakeEndBlock      uint64 `serialize:"true" json:"stake_end_block"`
+	StakedAmount       uint64 `serialize:"true" json:"staked_amount"`
+	BalanceBeforeClaim uint64 `serialize:"true" json:"balance_before_claim"`
+	BalanceAfterClaim  uint64 `serialize:"true" json:"balance_after_claim"`
 	DistributedTo      string `serialize:"true" json:"distributed_to"`
 }
 
@@ -147,8 +147,8 @@ func (*ClaimDelegationStakeRewardsResult) GetTypeID() uint8 {
 	return nconsts.ClaimDelegationStakeRewardsID
 }
 
-func (c *ClaimDelegationStakeRewardsResult) Size() int {
-	return 5*consts.Uint64Len + codec.StringLen(c.DistributedTo)
+func (r *ClaimDelegationStakeRewardsResult) Size() int {
+	return 5*consts.Uint64Len + codec.StringLen(r.DistributedTo)
 }
 
 func (r *ClaimDelegationStakeRewardsResult) Marshal(p *codec.Packer) {

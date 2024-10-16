@@ -177,11 +177,11 @@ var (
 
 type CompleteContributeDatasetResult struct {
 	CollateralAssetAddress   string `serialize:"true" json:"collateral_asset_address"`
-	CollateralAmountRefunded uint64        `serialize:"true" json:"collateral_amount_refunded"`
+	CollateralAmountRefunded uint64 `serialize:"true" json:"collateral_amount_refunded"`
 	DatasetChildNftAddress   string `serialize:"true" json:"dataset_child_nft_address"`
 	To                       string `serialize:"true" json:"to"`
-	DataLocation             string        `serialize:"true" json:"data_location"`
-	DataIdentifier           string        `serialize:"true" json:"data_identifier"`
+	DataLocation             string `serialize:"true" json:"data_location"`
+	DataIdentifier           string `serialize:"true" json:"data_identifier"`
 }
 
 func (*CompleteContributeDatasetResult) GetTypeID() uint8 {

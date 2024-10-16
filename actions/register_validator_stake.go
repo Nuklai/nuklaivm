@@ -225,9 +225,7 @@ func VerifyAuthSignature(content, authSignature []byte) (codec.Address, error) {
 	return sig.Actor(), sig.Verify(context.TODO(), content)
 }
 
-var (
-	_ chain.Marshaler = (*ValidatorStakeInfo)(nil)
-)
+var _ chain.Marshaler = (*ValidatorStakeInfo)(nil)
 
 type ValidatorStakeInfo struct {
 	NodeID            ids.NodeID    `serialize:"true" json:"node_id"`
@@ -274,11 +272,11 @@ var (
 )
 
 type RegisterValidatorStakeResult struct {
-	NodeID            string    `serialize:"true" json:"node_id"`
-	StakeStartBlock   uint64        `serialize:"true" json:"stake_start_block"`
-	StakeEndBlock     uint64        `serialize:"true" json:"stake_end_block"`
-	StakedAmount      uint64        `serialize:"true" json:"staked_amount"`
-	DelegationFeeRate uint64        `serialize:"true" json:"delegation_fee_rate"`
+	NodeID            string `serialize:"true" json:"node_id"`
+	StakeStartBlock   uint64 `serialize:"true" json:"stake_start_block"`
+	StakeEndBlock     uint64 `serialize:"true" json:"stake_end_block"`
+	StakedAmount      uint64 `serialize:"true" json:"staked_amount"`
+	DelegationFeeRate uint64 `serialize:"true" json:"delegation_fee_rate"`
 	RewardAddress     string `serialize:"true" json:"reward_address"`
 }
 

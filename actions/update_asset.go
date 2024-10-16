@@ -226,11 +226,11 @@ var (
 )
 
 type UpdateAssetResult struct {
-	Name                         string        `serialize:"true" json:"name"`
-	Symbol                       string        `serialize:"true" json:"symbol"`
-	Metadata                     string        `serialize:"true" json:"metadata"`
-	URI                          string        `serialize:"true" json:"uri"`
-	MaxSupply                    uint64        `serialize:"true" json:"max_supply"`
+	Name                         string `serialize:"true" json:"name"`
+	Symbol                       string `serialize:"true" json:"symbol"`
+	Metadata                     string `serialize:"true" json:"metadata"`
+	URI                          string `serialize:"true" json:"uri"`
+	MaxSupply                    uint64 `serialize:"true" json:"max_supply"`
 	Owner                        string `serialize:"true" json:"owner"`
 	MintAdmin                    string `serialize:"true" json:"mint_admin"`
 	PauseUnpauseAdmin            string `serialize:"true" json:"pause_unpause_admin"`

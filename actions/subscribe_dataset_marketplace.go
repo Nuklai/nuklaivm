@@ -240,8 +240,8 @@ func (*SubscribeDatasetMarketplaceResult) GetTypeID() uint8 {
 	return nconsts.SubscribeDatasetMarketplaceID
 }
 
-func (s *SubscribeDatasetMarketplaceResult) Size() int {
-	return codec.StringLen(s.MarketplaceAssetAddress) + consts.Uint64Len*6 + codec.StringLen(s.SubscriptionNftAddress) + codec.StringLen(s.PaymentAssetAddress)
+func (r *SubscribeDatasetMarketplaceResult) Size() int {
+	return codec.StringLen(r.MarketplaceAssetAddress) + consts.Uint64Len*6 + codec.StringLen(r.SubscriptionNftAddress) + codec.StringLen(r.PaymentAssetAddress)
 }
 
 func (r *SubscribeDatasetMarketplaceResult) Marshal(p *codec.Packer) {

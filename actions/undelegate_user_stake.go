@@ -134,12 +134,12 @@ var (
 )
 
 type UndelegateUserStakeResult struct {
-	StakeStartBlock      uint64        `serialize:"true" json:"stake_start_block"`
-	StakeEndBlock        uint64        `serialize:"true" json:"stake_end_block"`
-	UnstakedAmount       uint64        `serialize:"true" json:"unstaked_amount"`
-	RewardAmount         uint64        `serialize:"true" json:"reward_amount"`
-	BalanceBeforeUnstake uint64        `serialize:"true" json:"balance_before_unstake"`
-	BalanceAfterUnstake  uint64        `serialize:"true" json:"balance_after_unstake"`
+	StakeStartBlock      uint64 `serialize:"true" json:"stake_start_block"`
+	StakeEndBlock        uint64 `serialize:"true" json:"stake_end_block"`
+	UnstakedAmount       uint64 `serialize:"true" json:"unstaked_amount"`
+	RewardAmount         uint64 `serialize:"true" json:"reward_amount"`
+	BalanceBeforeUnstake uint64 `serialize:"true" json:"balance_before_unstake"`
+	BalanceAfterUnstake  uint64 `serialize:"true" json:"balance_after_unstake"`
 	DistributedTo        string `serialize:"true" json:"distributed_to"`
 }
 
@@ -147,8 +147,8 @@ func (*UndelegateUserStakeResult) GetTypeID() uint8 {
 	return nconsts.UndelegateUserStakeID
 }
 
-func (u *UndelegateUserStakeResult) Size() int {
-	return 6*consts.Uint64Len + codec.StringLen(u.DistributedTo)
+func (r *UndelegateUserStakeResult) Size() int {
+	return 6*consts.Uint64Len + codec.StringLen(r.DistributedTo)
 }
 
 func (r *UndelegateUserStakeResult) Marshal(p *codec.Packer) {

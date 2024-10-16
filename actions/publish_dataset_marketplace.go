@@ -137,15 +137,15 @@ type PublishDatasetMarketplaceResult struct {
 	MarketplaceAssetAddress string `serialize:"true" json:"marketplace_asset_address"`
 	PaymentAssetAddress     string `serialize:"true" json:"payment_asset_address"`
 	Publisher               string `serialize:"true" json:"publisher"`
-	DatasetPricePerBlock    uint64        `serialize:"true" json:"dataset_price_per_block"`
+	DatasetPricePerBlock    uint64 `serialize:"true" json:"dataset_price_per_block"`
 }
 
 func (*PublishDatasetMarketplaceResult) GetTypeID() uint8 {
 	return nconsts.PublishDatasetMarketplaceID
 }
 
-func (p *PublishDatasetMarketplaceResult) Size() int {
-	return codec.StringLen(p.MarketplaceAssetAddress) + codec.StringLen(p.PaymentAssetAddress) + codec.StringLen(p.Publisher) + consts.Uint64Len
+func (r *PublishDatasetMarketplaceResult) Size() int {
+	return codec.StringLen(r.MarketplaceAssetAddress) + codec.StringLen(r.PaymentAssetAddress) + codec.StringLen(r.Publisher) + consts.Uint64Len
 }
 
 func (r *PublishDatasetMarketplaceResult) Marshal(p *codec.Packer) {

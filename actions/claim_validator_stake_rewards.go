@@ -132,12 +132,12 @@ var (
 )
 
 type ClaimValidatorStakeRewardsResult struct {
-	StakeStartBlock    uint64        `serialize:"true" json:"stake_start_block"`
-	StakeEndBlock      uint64        `serialize:"true" json:"stake_end_block"`
-	StakedAmount       uint64        `serialize:"true" json:"staked_amount"`
-	DelegationFeeRate  uint64        `serialize:"true" json:"delegation_fee_rate"`
-	BalanceBeforeClaim uint64        `serialize:"true" json:"balance_before_claim"`
-	BalanceAfterClaim  uint64        `serialize:"true" json:"balance_after_claim"`
+	StakeStartBlock    uint64 `serialize:"true" json:"stake_start_block"`
+	StakeEndBlock      uint64 `serialize:"true" json:"stake_end_block"`
+	StakedAmount       uint64 `serialize:"true" json:"staked_amount"`
+	DelegationFeeRate  uint64 `serialize:"true" json:"delegation_fee_rate"`
+	BalanceBeforeClaim uint64 `serialize:"true" json:"balance_before_claim"`
+	BalanceAfterClaim  uint64 `serialize:"true" json:"balance_after_claim"`
 	DistributedTo      string `serialize:"true" json:"distributed_to"`
 }
 
@@ -145,8 +145,8 @@ func (*ClaimValidatorStakeRewardsResult) GetTypeID() uint8 {
 	return nconsts.ClaimValidatorStakeRewardsID
 }
 
-func (c *ClaimValidatorStakeRewardsResult) Size() int {
-	return 6*consts.Uint64Len + codec.StringLen(c.DistributedTo)
+func (r *ClaimValidatorStakeRewardsResult) Size() int {
+	return 6*consts.Uint64Len + codec.StringLen(r.DistributedTo)
 }
 
 func (r *ClaimValidatorStakeRewardsResult) Marshal(p *codec.Packer) {

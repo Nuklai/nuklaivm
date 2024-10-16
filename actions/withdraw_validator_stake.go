@@ -145,13 +145,13 @@ var (
 )
 
 type WithdrawValidatorStakeResult struct {
-	StakeStartBlock      uint64        `serialize:"true" json:"stake_start_block"`
-	StakeEndBlock        uint64        `serialize:"true" json:"stake_end_block"`
-	UnstakedAmount       uint64        `serialize:"true" json:"unstaked_amount"`
-	DelegationFeeRate    uint64        `serialize:"true" json:"delegation_fee_rate"`
-	RewardAmount         uint64        `serialize:"true" json:"reward_amount"`
-	BalanceBeforeUnstake uint64        `serialize:"true" json:"balance_before_unstake"`
-	BalanceAfterUnstake  uint64        `serialize:"true" json:"balance_after_unstake"`
+	StakeStartBlock      uint64 `serialize:"true" json:"stake_start_block"`
+	StakeEndBlock        uint64 `serialize:"true" json:"stake_end_block"`
+	UnstakedAmount       uint64 `serialize:"true" json:"unstaked_amount"`
+	DelegationFeeRate    uint64 `serialize:"true" json:"delegation_fee_rate"`
+	RewardAmount         uint64 `serialize:"true" json:"reward_amount"`
+	BalanceBeforeUnstake uint64 `serialize:"true" json:"balance_before_unstake"`
+	BalanceAfterUnstake  uint64 `serialize:"true" json:"balance_after_unstake"`
 	DistributedTo        string `serialize:"true" json:"distributed_to"`
 }
 
@@ -159,8 +159,8 @@ func (*WithdrawValidatorStakeResult) GetTypeID() uint8 {
 	return nconsts.WithdrawValidatorStakeID
 }
 
-func (w *WithdrawValidatorStakeResult) Size() int {
-	return 7*consts.Uint64Len + codec.StringLen(w.DistributedTo)
+func (r *WithdrawValidatorStakeResult) Size() int {
+	return 7*consts.Uint64Len + codec.StringLen(r.DistributedTo)
 }
 
 func (r *WithdrawValidatorStakeResult) Marshal(p *codec.Packer) {

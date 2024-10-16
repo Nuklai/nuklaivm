@@ -140,8 +140,8 @@ func (*MintAssetNFTResult) GetTypeID() uint8 {
 	return nconsts.MintAssetNFTID
 }
 
-func (m *MintAssetNFTResult) Size() int {
-	return codec.StringLen(m.AssetNftAddress) + consts.Uint64Len*2
+func (r *MintAssetNFTResult) Size() int {
+	return codec.StringLen(r.AssetNftAddress) + consts.Uint64Len*2
 }
 
 func (r *MintAssetNFTResult) Marshal(p *codec.Packer) {

@@ -206,8 +206,8 @@ func (*ClaimMarketplacePaymentResult) GetTypeID() uint8 {
 	return nconsts.ClaimMarketplacePaymentID
 }
 
-func (c *ClaimMarketplacePaymentResult) Size() int {
-	return consts.Uint64Len*4 + codec.StringLen(c.DistributedTo)
+func (r *ClaimMarketplacePaymentResult) Size() int {
+	return consts.Uint64Len*4 + codec.StringLen(r.DistributedTo)
 }
 
 func (r *ClaimMarketplacePaymentResult) Marshal(p *codec.Packer) {

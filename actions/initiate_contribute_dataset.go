@@ -163,8 +163,8 @@ func (*InitiateContributeDatasetResult) GetTypeID() uint8 {
 	return nconsts.InitiateContributeDatasetID
 }
 
-func (i *InitiateContributeDatasetResult) Size() int {
-	return codec.StringLen(i.DatasetContributionID) + codec.StringLen(i.CollateralAssetAddress) + consts.Uint64Len
+func (r *InitiateContributeDatasetResult) Size() int {
+	return codec.StringLen(r.DatasetContributionID) + codec.StringLen(r.CollateralAssetAddress) + consts.Uint64Len
 }
 
 func (r *InitiateContributeDatasetResult) Marshal(p *codec.Packer) {

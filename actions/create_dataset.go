@@ -175,8 +175,8 @@ func (*CreateDatasetResult) GetTypeID() uint8 {
 	return nconsts.CreateDatasetID
 }
 
-func (c *CreateDatasetResult) Size() int {
-	return codec.StringLen(c.DatasetAddress) + codec.StringLen(c.DatasetParentNftAddress)
+func (r *CreateDatasetResult) Size() int {
+	return codec.StringLen(r.DatasetAddress) + codec.StringLen(r.DatasetParentNftAddress)
 }
 
 func (r *CreateDatasetResult) Marshal(p *codec.Packer) {

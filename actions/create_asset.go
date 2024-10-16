@@ -199,7 +199,7 @@ var (
 
 type CreateAssetResult struct {
 	AssetAddress            string `serialize:"true" json:"asset_id"`
-	AssetBalance            uint64        `serialize:"true" json:"asset_balance"`
+	AssetBalance            uint64 `serialize:"true" json:"asset_balance"`
 	DatasetParentNftAddress string `serialize:"true" json:"nft_id"`
 }
 
@@ -207,8 +207,8 @@ func (*CreateAssetResult) GetTypeID() uint8 {
 	return nconsts.CreateAssetID
 }
 
-func (c *CreateAssetResult) Size() int {
-	return codec.StringLen(c.AssetAddress) + consts.Uint64Len + codec.StringLen(c.DatasetParentNftAddress)
+func (r *CreateAssetResult) Size() int {
+	return codec.StringLen(r.AssetAddress) + consts.Uint64Len + codec.StringLen(r.DatasetParentNftAddress)
 }
 
 func (r *CreateAssetResult) Marshal(p *codec.Packer) {
