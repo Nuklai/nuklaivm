@@ -1,5 +1,10 @@
 # nuklaivm
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/Nuklai/nuklaivm)](https://goreportcard.com/report/github.com/Nuklai/nuklaivm)
+[![CI](https://github.com/Nuklai/nuklaivm/actions/workflows/nuklaivm-ci.yml/badge.svg)](https://github.com/Nuklai/nuklaivm/actions/workflows/nuklaivm-ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![CodeQL](https://github.com/Nuklai/nuklaivm/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/Nuklai/nuklaivm/actions/workflows/codeql-analysis.yml)
+
 ## Disclaimer
 
 **IMPORTANT NOTICE:** This project is currently in the alpha stage of development and is not intended for use in production environments. The software may contain bugs, incomplete features, or other issues that could cause it to malfunction. Use at your own risk.
@@ -10,9 +15,7 @@ Thank you for your understanding and support!
 
 ## Overview
 
-`nuklaivm` takes inspiration from [morpheusvm](https://github.com/ava-labs/hypersdk/tree/main/examples/morpheusvm) and
-[tokenvm](https://github.com/ava-labs/hypersdk/tree/main/examples/tokenvm) and implements the functionality of both of
-these VMs. In addition, `nuklaivm` also adds additional functionality such as staking native token `NAI`, has an
+`nuklaivm` takes inspiration from [morpheusvm](https://github.com/ava-labs/hypersdk/tree/main/examples/morpheusvm) implements the functionality of this VM. In addition, `nuklaivm` also adds additional functionality such as token functionalities(fungible, non-fungible and fraction) and staking native token `NAI`, has an
 emission balancer that keeps track of total supply of NAI, max supply of NAI, staking rewards per block and the emission
 address to direct 50% of all fees to.
 
