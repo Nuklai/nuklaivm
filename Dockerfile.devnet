@@ -1,0 +1,42 @@
+#####
+# Source of precompiled avalanchego
+#####
+ARG INSTALL_AVALANCHEGO_VERSION_SHORT=d366a137
+FROM avaplatform/avalanchego:${INSTALL_AVALANCHEGO_VERSION_SHORT} AS avalanchego
+
+#####
+# Base layer with hypersdk
+#####
+FROM golang:1.22-bookworm AS hypersdk-downloader
+
+RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y curl && apt clean && rm -rf /var/lib/apt/lists/*
+
+
+ARG INSTALL_AVALANCHEGO_VERSION=v1.11.12-rc.2
+COPY --from=avalanchego /avalanchego/build/avalanchego /root/.hypersdk/avalanchego-${INSTALL_AVALANCHEGO_VERSION}/avalanchego
+
+
+ENV GOMODCACHE /go/pkg/mod
+
+WORKDIR /app
+
+RUN go install github.com/onsi/ginkgo/v2/ginkgo@v2.13.1
+
+COPY ./go.mod ./go.sum ./
+
+COPY ./actions ./actions
+COPY ./chain ./chain
+COPY ./cmd/nuklaivm ./cmd/nuklaivm
+COPY ./consts ./consts
+COPY ./emission ./emission
+COPY ./genesis ./genesis
+COPY ./marketplace ./marketplace
+COPY ./scripts ./scripts
+COPY ./storage ./storage
+COPY ./tests ./tests
+COPY ./vm ./vm
+
+WORKDIR /app
+
+
+ENTRYPOINT ["/bin/bash", "-c", "./scripts/stop.sh; ./scripts/run.sh && echo 'Devnet started' && tail -f /dev/null"]

@@ -29,7 +29,7 @@ func TestRegisterValidatorStakeAction(t *testing.T) {
 	stakeInfo1, authSignature1, privateKey, publicKey := generateStakeInfoAndSignature(nodeID, 60, 200, emission.GetStakingConfig().MinValidatorStake, 10)
 	stakeInfo2, authSignature2, _, _ := generateStakeInfoAndSignature(nodeID, 60, 200, 10, 10)
 
-	addr := privateKey.Address
+	actor := privateKey.Address
 	emission.MockNewEmission(&emission.MockEmission{
 		LastAcceptedBlockHeight: 50, // Mock block height
 		Validator: &emission.Validator{
@@ -44,7 +44,7 @@ func TestRegisterValidatorStakeAction(t *testing.T) {
 	tests := []chaintest.ActionTest{
 		{
 			Name:  "InvalidNodeID",
-			Actor: addr,
+			Actor: actor,
 			Action: &RegisterValidatorStake{
 				NodeID:        otherNodeID, // Different NodeID than the one in StakeInfo
 				StakeInfo:     stakeInfo1,
@@ -55,7 +55,7 @@ func TestRegisterValidatorStakeAction(t *testing.T) {
 		},
 		{
 			Name:  "ValidatorAlreadyRegistered",
-			Actor: addr,
+			Actor: actor,
 			Action: &RegisterValidatorStake{
 				NodeID:        nodeID,
 				StakeInfo:     stakeInfo1,
@@ -64,14 +64,14 @@ func TestRegisterValidatorStakeAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Register the validator
-				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 50, 150, 10000, 10, addr, addr))
+				require.NoError(t, storage.SetValidatorStake(context.Background(), store, nodeID, 50, 150, 10000, 10, actor, actor))
 				return store
 			}(),
 			ExpectedErr: ErrValidatorAlreadyRegistered,
 		},
 		{
 			Name:  "InvalidStakeAmount",
-			Actor: addr,
+			Actor: actor,
 			Action: &RegisterValidatorStake{
 				NodeID:        nodeID,
 				StakeInfo:     stakeInfo2,
@@ -83,7 +83,7 @@ func TestRegisterValidatorStakeAction(t *testing.T) {
 		{
 			Name:     "ValidRegisterValidatorStake",
 			ActionID: ids.GenerateTestID(),
-			Actor:    addr,
+			Actor:    actor,
 			Action: &RegisterValidatorStake{
 				NodeID:        nodeID,
 				StakeInfo:     stakeInfo1,
@@ -92,32 +92,32 @@ func TestRegisterValidatorStakeAction(t *testing.T) {
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set the balance for the user
-				require.NoError(t, storage.SetBalance(context.Background(), store, addr, ids.Empty, emission.GetStakingConfig().MinValidatorStake*2))
+				require.NoError(t, storage.SetAssetAccountBalance(context.Background(), store, storage.NAIAddress, actor, emission.GetStakingConfig().MinValidatorStake*2))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if balance is correctly deducted
-				balance, err := storage.GetBalance(ctx, store, addr, ids.Empty)
+				balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, storage.NAIAddress, actor)
 				require.NoError(t, err)
 				require.Equal(t, emission.GetStakingConfig().MinValidatorStake, balance)
 
 				// Check if the stake was created correctly
-				exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, _ := storage.GetRegisterValidatorStake(ctx, store, nodeID)
+				exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, _ := storage.GetValidatorStakeNoController(ctx, store, nodeID)
 				require.True(t, exists)
 				require.Equal(t, uint64(60), stakeStartBlock)
 				require.Equal(t, uint64(200), stakeEndBlock)
 				require.Equal(t, emission.GetStakingConfig().MinValidatorStake, stakedAmount)
 				require.Equal(t, uint64(10), delegationFeeRate)
-				require.Equal(t, addr, rewardAddress)
-				require.Equal(t, addr, ownerAddress)
+				require.Equal(t, actor, rewardAddress)
+				require.Equal(t, actor, ownerAddress)
 			},
 			ExpectedOutputs: &RegisterValidatorStakeResult{
-				NodeID:            nodeID,
+				NodeID:            nodeID.String(),
 				StakeStartBlock:   60,
 				StakeEndBlock:     200,
 				StakedAmount:      emission.GetStakingConfig().MinValidatorStake,
 				DelegationFeeRate: 10,
-				RewardAddress:     addr,
+				RewardAddress:     actor.String(),
 			},
 		},
 	}
@@ -158,17 +158,17 @@ func BenchmarkRegisterValidatorStake(b *testing.B) {
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set the balance for the user
-			require.NoError(storage.SetBalance(context.Background(), store, actor, ids.Empty, emission.GetStakingConfig().MinValidatorStake*2))
+			require.NoError(storage.SetAssetAccountBalance(context.Background(), store, storage.NAIAddress, actor, emission.GetStakingConfig().MinValidatorStake*2))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check if balance is correctly deducted
-			balance, err := storage.GetBalance(ctx, store, actor, ids.Empty)
+			balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, storage.NAIAddress, actor)
 			require.NoError(err)
 			require.Equal(b, emission.GetStakingConfig().MinValidatorStake, balance)
 
 			// Check if the stake was created correctly
-			exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, _ := storage.GetRegisterValidatorStake(ctx, store, nodeID)
+			exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, _ := storage.GetValidatorStakeNoController(ctx, store, nodeID)
 			require.True(exists)
 			require.Equal(b, uint64(60), stakeStartBlock)
 			require.Equal(b, uint64(200), stakeEndBlock)
@@ -198,7 +198,7 @@ func generateStakeInfoAndSignature(nodeID ids.NodeID, stakeStartBlock, stakeEndB
 	}
 	blsPublicKey := bls.PublicKeyToBytes(bls.PublicFromPrivateKey(secretKey))
 
-	stakeInfo := &RegisterValidatorStakeResult{
+	stakeInfo := &ValidatorStakeInfo{
 		NodeID:            nodeID,
 		StakeStartBlock:   stakeStartBlock,
 		StakeEndBlock:     stakeEndBlock,

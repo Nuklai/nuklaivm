@@ -20,13 +20,13 @@ import (
 func TestClaimDelegationStakeRewardsActionFailure(t *testing.T) {
 	emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 10, StakeRewards: 20})
 
-	addr := codectest.NewRandomAddress()
+	actor := codectest.NewRandomAddress()
 	nodeID := ids.GenerateTestNodeID()
 
 	tests := []chaintest.ActionTest{
 		{
 			Name:  "StakeMissing",
-			Actor: addr,
+			Actor: actor,
 			Action: &ClaimDelegationStakeRewards{
 				NodeID: nodeID, // Non-existent stake
 			},
@@ -35,14 +35,14 @@ func TestClaimDelegationStakeRewardsActionFailure(t *testing.T) {
 		},
 		{
 			Name:  "StakeNotStarted",
-			Actor: addr,
+			Actor: actor,
 			Action: &ClaimDelegationStakeRewards{
 				NodeID: nodeID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set stake with end block greater than the current block height
-				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
+				require.NoError(t, storage.SetDelegatorStake(context.Background(), store, actor, nodeID, 25, 50, 1000, actor))
 				return store
 			}(),
 			ExpectedErr: ErrStakeNotStarted,
@@ -57,33 +57,33 @@ func TestClaimDelegationStakeRewardsActionFailure(t *testing.T) {
 func TestClaimDelegationStakeRewardsActionSuccess(t *testing.T) {
 	emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 51, StakeRewards: 20})
 
-	addr := codectest.NewRandomAddress()
+	actor := codectest.NewRandomAddress()
 	nodeID := ids.GenerateTestNodeID()
 
 	tests := []chaintest.ActionTest{
 		{
 			Name:     "ValidClaim",
 			ActionID: ids.GenerateTestID(),
-			Actor:    addr,
+			Actor:    actor,
 			Action: &ClaimDelegationStakeRewards{
 				NodeID: nodeID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set stake with end block less than the current block height
-				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
+				require.NoError(t, storage.SetDelegatorStake(context.Background(), store, actor, nodeID, 25, 50, 1000, actor))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if balance is correctly updated
-				balance, err := storage.GetBalance(ctx, store, addr, ids.Empty)
+				balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, storage.NAIAddress, actor)
 				require.NoError(t, err)
 				require.Equal(t, uint64(20), balance)
 
 				// Check if the stake was claimed correctly
-				exists, _, _, _, rewardAddress, _, _ := storage.GetDelegateUserStake(ctx, store, addr, nodeID)
+				exists, _, _, _, rewardAddress, _, _ := storage.GetDelegatorStakeNoController(ctx, store, actor, nodeID)
 				require.True(t, exists)
-				require.Equal(t, addr, rewardAddress)
+				require.Equal(t, actor, rewardAddress)
 			},
 			ExpectedOutputs: &ClaimDelegationStakeRewardsResult{
 				StakeStartBlock:    25,
@@ -91,7 +91,7 @@ func TestClaimDelegationStakeRewardsActionSuccess(t *testing.T) {
 				StakedAmount:       1000,
 				BalanceBeforeClaim: 0,
 				BalanceAfterClaim:  20,
-				DistributedTo:      addr,
+				DistributedTo:      actor.String(),
 			},
 		},
 	}
@@ -118,12 +118,12 @@ func BenchmarkClaimDelegationStakeRewards(b *testing.B) {
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set stake with end block less than the current block height
-			require.NoError(storage.SetDelegateUserStake(context.Background(), store, actor, nodeID, 25, 50, 1000, actor))
+			require.NoError(storage.SetDelegatorStake(context.Background(), store, actor, nodeID, 25, 50, 1000, actor))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check if balance is correctly updated
-			balance, err := storage.GetBalance(ctx, store, actor, ids.Empty)
+			balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, storage.NAIAddress, actor)
 			require.NoError(err)
 			require.Equal(b, uint64(20), balance)
 		},

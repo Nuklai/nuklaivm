@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -38,15 +39,11 @@ func (*WithdrawValidatorStake) GetTypeID() uint8 {
 	return nconsts.WithdrawValidatorStakeID
 }
 
-func (u *WithdrawValidatorStake) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (u *WithdrawValidatorStake) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.BalanceKey(actor, ids.Empty)):        state.Read | state.Write,
-		string(storage.RegisterValidatorStakeKey(u.NodeID)): state.Read | state.Write,
+		string(storage.ValidatorStakeKey(u.NodeID)):                       state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(storage.NAIAddress, actor)): state.Read | state.Write,
 	}
-}
-
-func (*WithdrawValidatorStake) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.RegisterValidatorStakeChunks}
 }
 
 func (u *WithdrawValidatorStake) Execute(
@@ -58,7 +55,7 @@ func (u *WithdrawValidatorStake) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the validator was already registered
-	exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, _, ownerAddress, _ := storage.GetRegisterValidatorStake(ctx, mu, u.NodeID)
+	exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, _, ownerAddress, _ := storage.GetValidatorStakeNoController(ctx, mu, u.NodeID)
 	if !exists {
 		return nil, ErrNotValidator
 	}
@@ -82,11 +79,20 @@ func (u *WithdrawValidatorStake) Execute(
 		return nil, err
 	}
 
-	if err := storage.DeleteRegisterValidatorStake(ctx, mu, u.NodeID); err != nil {
+	if err := storage.DeleteValidatorStake(ctx, mu, u.NodeID); err != nil {
 		return nil, err
 	}
-	balance, err := storage.AddBalance(ctx, mu, actor, ids.Empty, rewardAmount+stakedAmount, true)
+
+	// Get the reward + staked amount
+	balance, err := storage.GetAssetAccountBalanceNoController(ctx, mu, storage.NAIAddress, actor)
 	if err != nil {
+		return nil, err
+	}
+	newBalance, err := smath.Add(balance, rewardAmount+stakedAmount)
+	if err != nil {
+		return nil, err
+	}
+	if err = storage.SetAssetAccountBalance(ctx, mu, storage.NAIAddress, actor, newBalance); err != nil {
 		return nil, err
 	}
 
@@ -96,9 +102,9 @@ func (u *WithdrawValidatorStake) Execute(
 		UnstakedAmount:       stakedAmount,
 		DelegationFeeRate:    delegationFeeRate,
 		RewardAmount:         rewardAmount,
-		BalanceBeforeUnstake: balance - rewardAmount - stakedAmount,
-		BalanceAfterUnstake:  balance,
-		DistributedTo:        actor,
+		BalanceBeforeUnstake: balance,
+		BalanceAfterUnstake:  newBalance,
+		DistributedTo:        actor.String(),
 	}, nil
 }
 
@@ -139,22 +145,22 @@ var (
 )
 
 type WithdrawValidatorStakeResult struct {
-	StakeStartBlock      uint64        `serialize:"true" json:"stake_start_block"`
-	StakeEndBlock        uint64        `serialize:"true" json:"stake_end_block"`
-	UnstakedAmount       uint64        `serialize:"true" json:"unstaked_amount"`
-	DelegationFeeRate    uint64        `serialize:"true" json:"delegation_fee_rate"`
-	RewardAmount         uint64        `serialize:"true" json:"reward_amount"`
-	BalanceBeforeUnstake uint64        `serialize:"true" json:"balance_before_unstake"`
-	BalanceAfterUnstake  uint64        `serialize:"true" json:"balance_after_unstake"`
-	DistributedTo        codec.Address `serialize:"true" json:"distributed_to"`
+	StakeStartBlock      uint64 `serialize:"true" json:"stake_start_block"`
+	StakeEndBlock        uint64 `serialize:"true" json:"stake_end_block"`
+	UnstakedAmount       uint64 `serialize:"true" json:"unstaked_amount"`
+	DelegationFeeRate    uint64 `serialize:"true" json:"delegation_fee_rate"`
+	RewardAmount         uint64 `serialize:"true" json:"reward_amount"`
+	BalanceBeforeUnstake uint64 `serialize:"true" json:"balance_before_unstake"`
+	BalanceAfterUnstake  uint64 `serialize:"true" json:"balance_after_unstake"`
+	DistributedTo        string `serialize:"true" json:"distributed_to"`
 }
 
 func (*WithdrawValidatorStakeResult) GetTypeID() uint8 {
 	return nconsts.WithdrawValidatorStakeID
 }
 
-func (*WithdrawValidatorStakeResult) Size() int {
-	return 7*consts.Uint64Len + codec.AddressLen
+func (r *WithdrawValidatorStakeResult) Size() int {
+	return 7*consts.Uint64Len + codec.StringLen(r.DistributedTo)
 }
 
 func (r *WithdrawValidatorStakeResult) Marshal(p *codec.Packer) {
@@ -165,7 +171,7 @@ func (r *WithdrawValidatorStakeResult) Marshal(p *codec.Packer) {
 	p.PackUint64(r.RewardAmount)
 	p.PackUint64(r.BalanceBeforeUnstake)
 	p.PackUint64(r.BalanceAfterUnstake)
-	p.PackAddress(r.DistributedTo)
+	p.PackString(r.DistributedTo)
 }
 
 func UnmarshalWithdrawValidatorStakeResult(p *codec.Packer) (codec.Typed, error) {
@@ -177,6 +183,6 @@ func UnmarshalWithdrawValidatorStakeResult(p *codec.Packer) (codec.Typed, error)
 	result.RewardAmount = p.UnpackUint64(false)
 	result.BalanceBeforeUnstake = p.UnpackUint64(false)
 	result.BalanceAfterUnstake = p.UnpackUint64(true)
-	p.UnpackAddress(&result.DistributedTo)
+	result.DistributedTo = p.UnpackString(true)
 	return &result, p.Err()
 }

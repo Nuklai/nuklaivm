@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -32,15 +33,11 @@ func (*ClaimValidatorStakeRewards) GetTypeID() uint8 {
 	return nconsts.ClaimValidatorStakeRewardsID
 }
 
-func (c *ClaimValidatorStakeRewards) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (c *ClaimValidatorStakeRewards) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.BalanceKey(actor, ids.Empty)):        state.All,
-		string(storage.RegisterValidatorStakeKey(c.NodeID)): state.Read,
+		string(storage.ValidatorStakeKey(c.NodeID)):                       state.Read,
+		string(storage.AssetAccountBalanceKey(storage.NAIAddress, actor)): state.All,
 	}
-}
-
-func (*ClaimValidatorStakeRewards) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.RegisterValidatorStakeChunks}
 }
 
 func (c *ClaimValidatorStakeRewards) Execute(
@@ -52,7 +49,7 @@ func (c *ClaimValidatorStakeRewards) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check whether a validator is trying to claim its reward
-	exists, stakeStartBlock, stakeEndBlock, stakeAmount, delegationFeeRate, rewardAddress, _, _ := storage.GetRegisterValidatorStake(ctx, mu, c.NodeID)
+	exists, stakeStartBlock, stakeEndBlock, stakeAmount, delegationFeeRate, rewardAddress, _, _ := storage.GetValidatorStakeNoController(ctx, mu, c.NodeID)
 	if !exists {
 		return nil, ErrStakeMissing
 	}
@@ -74,8 +71,16 @@ func (c *ClaimValidatorStakeRewards) Execute(
 		return nil, err
 	}
 
-	balance, err := storage.AddBalance(ctx, mu, rewardAddress, ids.Empty, rewardAmount, true)
+	// Get the reward
+	balance, err := storage.GetAssetAccountBalanceNoController(ctx, mu, storage.NAIAddress, rewardAddress)
 	if err != nil {
+		return nil, err
+	}
+	newBalance, err := smath.Add(balance, rewardAmount)
+	if err != nil {
+		return nil, err
+	}
+	if err = storage.SetAssetAccountBalance(ctx, mu, storage.NAIAddress, rewardAddress, newBalance); err != nil {
 		return nil, err
 	}
 
@@ -84,9 +89,9 @@ func (c *ClaimValidatorStakeRewards) Execute(
 		StakeEndBlock:      stakeEndBlock,
 		StakedAmount:       stakeAmount,
 		DelegationFeeRate:  delegationFeeRate,
-		BalanceBeforeClaim: balance - rewardAmount,
-		BalanceAfterClaim:  balance,
-		DistributedTo:      rewardAddress,
+		BalanceBeforeClaim: balance,
+		BalanceAfterClaim:  newBalance,
+		DistributedTo:      rewardAddress.String(),
 	}, nil
 }
 
@@ -127,21 +132,21 @@ var (
 )
 
 type ClaimValidatorStakeRewardsResult struct {
-	StakeStartBlock    uint64        `serialize:"true" json:"stake_start_block"`
-	StakeEndBlock      uint64        `serialize:"true" json:"stake_end_block"`
-	StakedAmount       uint64        `serialize:"true" json:"staked_amount"`
-	DelegationFeeRate  uint64        `serialize:"true" json:"delegation_fee_rate"`
-	BalanceBeforeClaim uint64        `serialize:"true" json:"balance_before_claim"`
-	BalanceAfterClaim  uint64        `serialize:"true" json:"balance_after_claim"`
-	DistributedTo      codec.Address `serialize:"true" json:"distributed_to"`
+	StakeStartBlock    uint64 `serialize:"true" json:"stake_start_block"`
+	StakeEndBlock      uint64 `serialize:"true" json:"stake_end_block"`
+	StakedAmount       uint64 `serialize:"true" json:"staked_amount"`
+	DelegationFeeRate  uint64 `serialize:"true" json:"delegation_fee_rate"`
+	BalanceBeforeClaim uint64 `serialize:"true" json:"balance_before_claim"`
+	BalanceAfterClaim  uint64 `serialize:"true" json:"balance_after_claim"`
+	DistributedTo      string `serialize:"true" json:"distributed_to"`
 }
 
 func (*ClaimValidatorStakeRewardsResult) GetTypeID() uint8 {
 	return nconsts.ClaimValidatorStakeRewardsID
 }
 
-func (*ClaimValidatorStakeRewardsResult) Size() int {
-	return 6*consts.Uint64Len + codec.AddressLen
+func (r *ClaimValidatorStakeRewardsResult) Size() int {
+	return 6*consts.Uint64Len + codec.StringLen(r.DistributedTo)
 }
 
 func (r *ClaimValidatorStakeRewardsResult) Marshal(p *codec.Packer) {
@@ -151,7 +156,7 @@ func (r *ClaimValidatorStakeRewardsResult) Marshal(p *codec.Packer) {
 	p.PackUint64(r.DelegationFeeRate)
 	p.PackUint64(r.BalanceBeforeClaim)
 	p.PackUint64(r.BalanceAfterClaim)
-	p.PackAddress(r.DistributedTo)
+	p.PackString(r.DistributedTo)
 }
 
 func UnmarshalClaimValidatorStakeRewardsResult(p *codec.Packer) (codec.Typed, error) {
@@ -162,6 +167,6 @@ func UnmarshalClaimValidatorStakeRewardsResult(p *codec.Packer) (codec.Typed, er
 	result.DelegationFeeRate = p.UnpackUint64(true)
 	result.BalanceBeforeClaim = p.UnpackUint64(false)
 	result.BalanceAfterClaim = p.UnpackUint64(true)
-	p.UnpackAddress(&result.DistributedTo)
+	result.DistributedTo = p.UnpackString(true)
 	return &result, p.Err()
 }

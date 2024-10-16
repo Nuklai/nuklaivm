@@ -5,143 +5,132 @@ package actions
 
 import (
 	"context"
+	"strings"
 	"testing"
 
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/nuklai/nuklaivm/marketplace"
+	"github.com/nuklai/nuklaivm/dataset"
 	"github.com/nuklai/nuklaivm/storage"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ava-labs/hypersdk/chain/chaintest"
+	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/codec/codectest"
 	"github.com/ava-labs/hypersdk/state"
+
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 func TestInitiateContributeDatasetAction(t *testing.T) {
-	addr := codectest.NewRandomAddress()
-	datasetID := ids.GenerateTestID()
-	dataLocation := []byte("default")
-	dataIdentifier := []byte("data_id_1234")
+	dataLocation := "default"
+	dataIdentifier := "data_id_1234"
 
-	mockMarketplace := marketplace.MockNewMarketplace(&marketplace.MockMarketplace{
-		DataContribution: marketplace.DataContribution{
-			DataLocation:   dataLocation,
-			DataIdentifier: dataIdentifier,
-			Contributor:    addr,
-		},
-	})
+	actor := codectest.NewRandomAddress()
+	datasetAddress := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("Valid Name"), []byte("DATASET"), 0, []byte("metadata"), actor)
+	datasetContributionID := storage.DatasetContributionID(datasetAddress, []byte(dataLocation), []byte(dataIdentifier), actor)
 
 	tests := []chaintest.ActionTest{
 		{
-			Name:  "DatasetNotFound",
-			Actor: addr,
-			Action: &InitiateContributeDataset{
-				DatasetID:      datasetID, // Non-existent dataset ID
-				DataLocation:   dataLocation,
-				DataIdentifier: dataIdentifier,
-			},
-			State:       chaintest.NewInMemoryStore(),
-			ExpectedErr: ErrDatasetNotFound,
-		},
-		{
 			Name:  "DatasetNotOpenForContribution",
-			Actor: addr,
+			Actor: actor,
 			Action: &InitiateContributeDataset{
-				DatasetID:      datasetID,
+				DatasetAddress: datasetAddress,
 				DataLocation:   dataLocation,
 				DataIdentifier: dataIdentifier,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set dataset that is not open for contributions
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetAddress, []byte("Valid Name"), []byte("Valid Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, codec.EmptyAddress, codec.EmptyAddress, 0, 100, 0, 100, 0, actor))
 				return store
 			}(),
 			ExpectedErr: ErrDatasetNotOpenForContribution,
 		},
 		{
 			Name:  "DatasetAlreadyOnSale",
-			Actor: addr,
+			Actor: actor,
 			Action: &InitiateContributeDataset{
-				DatasetID:      datasetID,
+				DatasetAddress: datasetAddress,
 				DataLocation:   dataLocation,
 				DataIdentifier: dataIdentifier,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set dataset that is already on sale
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.GenerateTestID(), ids.Empty, 0, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetAddress, []byte("Valid Name"), []byte("Valid Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, codectest.NewRandomAddress(), codec.EmptyAddress, 0, 100, 0, 100, 0, actor))
 				return store
 			}(),
 			ExpectedErr: ErrDatasetAlreadyOnSale,
 		},
 		{
 			Name:  "InvalidDataLocation",
-			Actor: addr,
+			Actor: actor,
 			Action: &InitiateContributeDataset{
-				DatasetID:      datasetID,
-				DataLocation:   []byte("d"), // Invalid data location (too short)
+				DatasetAddress: datasetAddress,
+				DataLocation:   strings.Repeat("d", 65), // Invalid data location (too long)
 				DataIdentifier: dataIdentifier,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set valid dataset open for contributions
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetAddress, []byte("Valid Name"), []byte("Valid Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, codec.EmptyAddress, codec.EmptyAddress, 0, 100, 0, 100, 0, actor))
 				return store
 			}(),
-			ExpectedErr: ErrOutputDataLocationInvalid,
+			ExpectedErr: ErrDataLocationInvalid,
 		},
 		{
 			Name:  "InvalidDataIdentifier",
-			Actor: addr,
+			Actor: actor,
 			Action: &InitiateContributeDataset{
-				DatasetID:      datasetID,
+				DatasetAddress: datasetAddress,
 				DataLocation:   dataLocation,
-				DataIdentifier: []byte(""), // Invalid data identifier (empty)
+				DataIdentifier: "", // Invalid data identifier (empty)
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set valid dataset open for contributions
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetAddress, []byte("Valid Name"), []byte("Valid Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, codec.EmptyAddress, codec.EmptyAddress, 0, 100, 0, 100, 0, actor))
 				return store
 			}(),
-			ExpectedErr: ErrOutputURIInvalid,
+			ExpectedErr: ErrDataIdentifierInvalid,
 		},
 		{
-			Name:     "ValidContribution",
-			ActionID: ids.GenerateTestID(),
-			Actor:    addr,
+			Name:  "ValidContribution",
+			Actor: actor,
 			Action: &InitiateContributeDataset{
-				DatasetID:      datasetID,
+				DatasetAddress: datasetAddress,
 				DataLocation:   dataLocation,
 				DataIdentifier: dataIdentifier,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set valid dataset open for contributions
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetAddress, []byte("Valid Name"), []byte("Valid Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, codec.EmptyAddress, codec.EmptyAddress, 0, 100, 0, 100, 0, actor))
 				// Set sufficient balance for collateral
-				config := marketplace.GetDatasetConfig()
-				require.NoError(t, storage.SetBalance(context.Background(), store, addr, config.CollateralAssetIDForDataContribution, config.CollateralAmountForDataContribution))
+				config := dataset.GetDatasetConfig()
+				require.NoError(t, storage.SetAssetAccountBalance(context.Background(), store, config.CollateralAssetAddressForDataContribution, actor, config.CollateralAmountForDataContribution))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
-				config := marketplace.GetDatasetConfig()
+				config := dataset.GetDatasetConfig()
 
 				// Check if balance is correctly deducted
-				balance, err := storage.GetBalance(ctx, store, addr, config.CollateralAssetIDForDataContribution)
+				balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, config.CollateralAssetAddressForDataContribution, actor)
 				require.NoError(t, err)
 				require.Equal(t, uint64(0), balance) // Initial collateral balance should be zero after deduction
 
-				// Verify that the contribution is initiated correctly in the marketplace
-				contributions, err := mockMarketplace.GetDataContribution(datasetID, addr)
+				// Verify that the contribution is initiated correctly
+				datasetAddress, dataLocation, dataIdentifier, contributor, active, err := storage.GetDatasetContributionInfoNoController(ctx, store, datasetContributionID)
 				require.NoError(t, err)
-				require.Equal(t, string(dataLocation), string(contributions[0].DataLocation))
-				require.Equal(t, string(dataIdentifier), string(contributions[0].DataIdentifier))
+				require.Equal(t, datasetAddress, datasetAddress)
+				require.Equal(t, "default", string(dataLocation))
+				require.Equal(t, "data_id_1234", string(dataIdentifier))
+				require.Equal(t, actor, contributor)
+				require.False(t, active)
 			},
 			ExpectedOutputs: &InitiateContributeDatasetResult{
-				CollateralAssetID:     marketplace.GetDatasetConfig().CollateralAssetIDForDataContribution,
-				CollateralAmountTaken: marketplace.GetDatasetConfig().CollateralAmountForDataContribution,
+				DatasetContributionID:  datasetContributionID.String(),
+				CollateralAssetAddress: dataset.GetDatasetConfig().CollateralAssetAddressForDataContribution.String(),
+				CollateralAmountTaken:  dataset.GetDatasetConfig().CollateralAmountForDataContribution,
 			},
 		},
 	}
@@ -153,49 +142,46 @@ func TestInitiateContributeDatasetAction(t *testing.T) {
 
 func BenchmarkInitiateContributeDataset(b *testing.B) {
 	require := require.New(b)
-	actor := codectest.NewRandomAddress()
-	datasetID := ids.GenerateTestID()
-	dataLocation := []byte("default")
-	dataIdentifier := []byte("data_id_1234")
+	dataLocation := "default"
+	dataIdentifier := "data_id_1234"
 
-	mockMarketplace := marketplace.MockNewMarketplace(&marketplace.MockMarketplace{
-		DataContribution: marketplace.DataContribution{
-			DataLocation:   dataLocation,
-			DataIdentifier: dataIdentifier,
-			Contributor:    actor,
-		},
-	})
+	actor := codectest.NewRandomAddress()
+	datasetAddress := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("Valid Name"), []byte("DATASET"), 0, []byte("metadata"), actor)
+	datasetContributionID := storage.DatasetContributionID(datasetAddress, []byte(dataLocation), []byte(dataIdentifier), actor)
 
 	initiateContributeDatasetBenchmark := &chaintest.ActionBenchmark{
 		Name:  "InitiateContributeDatasetBenchmark",
 		Actor: actor,
 		Action: &InitiateContributeDataset{
-			DatasetID:      datasetID,
+			DatasetAddress: datasetAddress,
 			DataLocation:   dataLocation,
 			DataIdentifier: dataIdentifier,
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set valid dataset open for contributions
-			require.NoError(storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, ids.Empty, ids.Empty, 0, 100, 0, 100, 100, actor))
+			require.NoError(storage.SetDatasetInfo(context.Background(), store, datasetAddress, []byte("Valid Name"), []byte("Valid Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), true, codec.EmptyAddress, codec.EmptyAddress, 0, 100, 0, 100, 0, actor))
 			// Set sufficient balance for collateral
-			config := marketplace.GetDatasetConfig()
-			require.NoError(storage.SetBalance(context.Background(), store, actor, config.CollateralAssetIDForDataContribution, config.CollateralAmountForDataContribution))
+			config := dataset.GetDatasetConfig()
+			require.NoError(storage.SetAssetAccountBalance(context.Background(), store, config.CollateralAssetAddressForDataContribution, actor, config.CollateralAmountForDataContribution))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
-			config := marketplace.GetDatasetConfig()
+			config := dataset.GetDatasetConfig()
 
 			// Check if balance is correctly deducted
-			balance, err := storage.GetBalance(ctx, store, actor, config.CollateralAssetIDForDataContribution)
+			balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, config.CollateralAssetAddressForDataContribution, actor)
 			require.NoError(err)
-			require.Equal(b, uint64(0), balance) // Initial collateral balance should be zero after deduction
+			require.Equal(uint64(0), balance) // Initial collateral balance should be zero after deduction
 
-			// Verify that the contribution is initiated correctly in the marketplace
-			contributions, err := mockMarketplace.GetDataContribution(datasetID, actor)
+			// Verify that the contribution is initiated correctly
+			datasetAddress, dataLocation, dataIdentifier, contributor, active, err := storage.GetDatasetContributionInfoNoController(ctx, store, datasetContributionID)
 			require.NoError(err)
-			require.Equal(string(dataLocation), string(contributions[0].DataLocation))
-			require.Equal(string(dataIdentifier), string(contributions[0].DataIdentifier))
+			require.Equal(datasetAddress, datasetAddress)
+			require.Equal("default", string(dataLocation))
+			require.Equal("data_id_1234", string(dataIdentifier))
+			require.Equal(actor, contributor)
+			require.False(active)
 		},
 	}
 

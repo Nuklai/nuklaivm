@@ -7,7 +7,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/storage"
 	"github.com/stretchr/testify/require"
 
@@ -15,76 +14,67 @@ import (
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/codec/codectest"
 	"github.com/ava-labs/hypersdk/state"
+
+	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 func TestUpdateDatasetAction(t *testing.T) {
-	addr := codectest.NewRandomAddress()
-	datasetID := ids.GenerateTestID()
+	actor := codectest.NewRandomAddress()
+	datasetAddress := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("Valid Name"), []byte("DATASET"), 0, []byte("metadata"), actor)
 
 	tests := []chaintest.ActionTest{
 		{
-			Name:  "DatasetNotFound",
-			Actor: addr,
-			Action: &UpdateDataset{
-				DatasetID: datasetID, // Dataset does not exist
-				Name:      []byte("Updated Name"),
-			},
-			State:       chaintest.NewInMemoryStore(),
-			ExpectedErr: ErrDatasetNotFound,
-		},
-		{
 			Name:  "NoFieldsUpdated",
-			Actor: addr,
+			Actor: actor,
 			Action: &UpdateDataset{
-				DatasetID: datasetID, // No fields changed
-				Name:      []byte("Dataset Name"),
+				DatasetAddress: datasetAddress, // No fields changed
+				Name:           "Valid Name",
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 0, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetAddress, []byte("Valid Name"), []byte("Valid Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, codec.EmptyAddress, codec.EmptyAddress, 0, 100, 0, 100, 0, actor))
 				return store
 			}(),
 			ExpectedErr: ErrOutputMustUpdateAtLeastOneField,
 		},
 		{
 			Name:  "InvalidNameUpdate",
-			Actor: addr,
+			Actor: actor,
 			Action: &UpdateDataset{
-				DatasetID: datasetID,
-				Name:      []byte("Na"), // Invalid name (too short)
+				DatasetAddress: datasetAddress,
+				Name:           "na", // Invalid name (too short)
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 0, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetAddress, []byte("Valid Name"), []byte("Valid Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, codec.EmptyAddress, codec.EmptyAddress, 0, 100, 0, 100, 0, actor))
 				return store
 			}(),
-			ExpectedErr: ErrOutputNameInvalid,
+			ExpectedErr: ErrNameInvalid,
 		},
 		{
 			Name:  "ValidUpdateDataset",
-			Actor: addr,
+			Actor: actor,
 			Action: &UpdateDataset{
-				DatasetID:   datasetID,
-				Name:        []byte("Updated Name"),
-				Description: []byte("Updated Description"),
+				DatasetAddress: datasetAddress,
+				Name:           "Updated Name",
+				Description:    "Updated Description",
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
-				require.NoError(t, storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 0, addr))
+				require.NoError(t, storage.SetDatasetInfo(context.Background(), store, datasetAddress, []byte("Valid Name"), []byte("Valid Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, codec.EmptyAddress, codec.EmptyAddress, 0, 100, 0, 100, 0, actor))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if the dataset was updated correctly
-				exists, name, description, _, _, _, _, _, _, _, _, _, _, _, _, _, owner, err := storage.GetDataset(ctx, store, datasetID)
+				name, description, _, _, _, _, _, _, _, _, _, _, _, _, _, owner, err := storage.GetDatasetInfoNoController(ctx, store, datasetAddress)
 				require.NoError(t, err)
-				require.True(t, exists)
 				require.Equal(t, "Updated Name", string(name))
 				require.Equal(t, "Updated Description", string(description))
-				require.Equal(t, addr, owner)
+				require.Equal(t, actor, owner)
 			},
 			ExpectedOutputs: &UpdateDatasetResult{
-				Name:        []byte("Updated Name"),
-				Description: []byte("Updated Description"),
+				Name:        "Updated Name",
+				Description: "Updated Description",
 			},
 		},
 	}
@@ -96,27 +86,26 @@ func TestUpdateDatasetAction(t *testing.T) {
 
 func BenchmarkUpdateDataset(b *testing.B) {
 	require := require.New(b)
-	actor := codec.CreateAddress(0, ids.GenerateTestID())
-	datasetID := ids.GenerateTestID()
+	actor := codectest.NewRandomAddress()
+	datasetAddress := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("Valid Name"), []byte("DATASET"), 0, []byte("metadata"), actor)
 
 	updateDatasetBenchmark := &chaintest.ActionBenchmark{
 		Name:  "UpdateDatasetBenchmark",
 		Actor: actor,
 		Action: &UpdateDataset{
-			DatasetID:   datasetID,
-			Name:        []byte("Benchmark Dataset Name"),
-			Description: []byte("Benchmark Description"),
+			DatasetAddress: datasetAddress,
+			Name:           "Updated Name",
+			Description:    "Updated Description",
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
-			require.NoError(storage.SetDataset(context.Background(), store, datasetID, []byte("Dataset Name"), []byte("Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, ids.Empty, ids.Empty, 0, 100, 0, 100, 0, actor))
+			require.NoError(storage.SetDatasetInfo(context.Background(), store, datasetAddress, []byte("Valid Name"), []byte("Valid Description"), []byte("Science"), []byte("MIT"), []byte("MIT"), []byte("http://license-url.com"), []byte("Metadata"), false, codec.EmptyAddress, codec.EmptyAddress, 0, 100, 0, 100, 0, actor))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check if the dataset was updated correctly
-			exists, name, description, _, _, _, _, _, _, _, _, _, _, _, _, _, owner, err := storage.GetDataset(ctx, store, datasetID)
+			name, description, _, _, _, _, _, _, _, _, _, _, _, _, _, owner, err := storage.GetDatasetInfoNoController(ctx, store, datasetAddress)
 			require.NoError(err)
-			require.True(exists)
 			require.Equal(b, "Benchmark Dataset Name", string(name))
 			require.Equal(b, "Benchmark Description", string(description))
 			require.Equal(b, actor, owner)

@@ -5,10 +5,12 @@ package actions
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/nuklai/nuklaivm/marketplace"
+	"github.com/nuklai/nuklaivm/dataset"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
@@ -16,7 +18,6 @@ import (
 	"github.com/ava-labs/hypersdk/state"
 
 	smath "github.com/ava-labs/avalanchego/utils/math"
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -24,37 +25,40 @@ const (
 	CompleteContributeDatasetComputeUnits = 5
 )
 
-var _ chain.Action = (*CompleteContributeDataset)(nil)
+var (
+	ErrDatasetContributionAlreadyComplete              = errors.New("dataset contribution already complete")
+	ErrDatasetAddressMismatch                          = errors.New("dataset address mismatch")
+	ErrDatasetContributorMismatch                      = errors.New("dataset contributor mismatch")
+	_                                     chain.Action = (*CompleteContributeDataset)(nil)
+)
 
 type CompleteContributeDataset struct {
-	// DatasetID ID
-	DatasetID ids.ID `serialize:"true" json:"dataset_id"`
+	// Contribution ID
+	DatasetContributionID ids.ID `serialize:"true" json:"dataset_contribution_id"`
 
-	// Contributor
-	Contributor codec.Address `serialize:"true" json:"contributor"`
+	// DatasetAddress
+	DatasetAddress codec.Address `serialize:"true" json:"dataset_address"`
 
-	// Unique NFT ID to assign to the NFT
-	UniqueNFTIDForContributor uint64 `serialize:"true" json:"unique_nft_id_for_contributor"`
+	// DatasetContributor
+	DatasetContributor codec.Address `serialize:"true" json:"dataset_contributor"`
 }
 
 func (*CompleteContributeDataset) GetTypeID() uint8 {
 	return nconsts.CompleteContributeDatasetID
 }
 
-func (d *CompleteContributeDataset) StateKeys(_ codec.Address, _ ids.ID) state.Keys {
-	nftID := nchain.GenerateIDWithIndex(d.DatasetID, d.UniqueNFTIDForContributor)
+func (d *CompleteContributeDataset) StateKeys(_ codec.Address) state.Keys {
+	nftAddress := codec.CreateAddress(nconsts.AssetFractionalTokenID, d.DatasetContributionID)
 	return state.Keys{
-		string(storage.AssetKey(d.DatasetID)):                  state.Read | state.Write,
-		string(storage.AssetNFTKey(nftID)):                     state.Allocate | state.Write,
-		string(storage.DatasetKey(d.DatasetID)):                state.Read,
-		string(storage.BalanceKey(d.Contributor, ids.Empty)):   state.Read | state.Write,
-		string(storage.BalanceKey(d.Contributor, d.DatasetID)): state.Allocate | state.Write,
-		string(storage.BalanceKey(d.Contributor, nftID)):       state.Allocate | state.Write,
-	}
-}
+		string(storage.AssetInfoKey(d.DatasetAddress)): state.Read | state.Write,
+		string(storage.AssetInfoKey(nftAddress)):       state.All,
 
-func (*CompleteContributeDataset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.AssetNFTChunks, storage.DatasetChunks, storage.BalanceChunks, storage.BalanceChunks, storage.BalanceChunks}
+		string(storage.DatasetInfoKey(d.DatasetAddress)):                                                                                   state.Read,
+		string(storage.DatasetContributionInfoKey(d.DatasetContributionID)):                                                                state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(dataset.GetDatasetConfig().CollateralAssetAddressForDataContribution, d.DatasetContributor)): state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(d.DatasetAddress, d.DatasetContributor)):                                                     state.Allocate | state.Write,
+		string(storage.AssetAccountBalanceKey(nftAddress, d.DatasetContributor)):                                                           state.All,
+	}
 }
 
 func (d *CompleteContributeDataset) Execute(
@@ -66,99 +70,86 @@ func (d *CompleteContributeDataset) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the dataset exists
-	exists, _, description, _, _, _, _, _, _, saleID, _, _, _, _, _, _, owner, err := storage.GetDataset(ctx, mu, d.DatasetID)
+	_, _, _, _, _, _, _, _, marketplaceAssetAddress, _, _, _, _, _, _, owner, err := storage.GetDatasetInfoNoController(ctx, mu, d.DatasetAddress)
 	if err != nil {
 		return nil, err
 	}
-	if !exists {
-		return nil, ErrDatasetNotFound
-	}
 	if actor != owner {
-		return nil, ErrOutputWrongOwner
+		return nil, ErrWrongOwner
 	}
-
 	// Check if the dataset is already on sale
-	if saleID != ids.Empty {
+	if marketplaceAssetAddress != codec.EmptyAddress {
 		return nil, ErrDatasetAlreadyOnSale
 	}
 
-	// Check if the nftID already exists
-	nftID := nchain.GenerateIDWithIndex(d.DatasetID, d.UniqueNFTIDForContributor)
-	exists, _, _, _, _, _, _ = storage.GetAssetNFT(ctx, mu, nftID)
-	if exists {
-		return nil, ErrOutputNFTAlreadyExists
+	// Check if the dataset contribution exists
+	datasetAddress, dataLocation, dataIdentifier, contributor, active, err := storage.GetDatasetContributionInfoNoController(ctx, mu, d.DatasetContributionID)
+	if err != nil {
+		return nil, err
+	}
+	if active {
+		return nil, ErrDatasetContributionAlreadyComplete
+	}
+	if datasetAddress != d.DatasetAddress {
+		return nil, ErrDatasetAddressMismatch
+	}
+	if contributor != d.DatasetContributor {
+		return nil, ErrDatasetContributorMismatch
 	}
 
 	// Retrieve the asset info
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAsset(ctx, mu, d.DatasetID)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, ErrOutputAssetNotFound
-	}
-	if actor != mintActor {
-		return nil, ErrOutputWrongMintAdmin
-	}
-
-	// Ensure that total supply is less than max supply
-	amountOfToken := uint64(1)
-	newSupply, err := smath.Add(totalSupply, amountOfToken)
-	if err != nil {
-		return nil, err
-	}
-	if maxSupply != 0 && newSupply > maxSupply {
-		return nil, ErrOutputMaxSupplyReached
-	}
-	totalSupply = newSupply
-
-	// Get the marketplace instance
-	marketplaceInstance := marketplace.GetMarketplace()
-	dataContribution, err := marketplaceInstance.CompleteContributeDataset(d.DatasetID, d.Contributor)
+	_, name, symbol, _, _, _, totalSupply, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, d.DatasetAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	// Mint the child NFT for the dataset(fractionalized asset)
+	// Minting logic for non-fungible tokens
+	if _, err := storage.MintAsset(ctx, mu, d.DatasetAddress, d.DatasetContributor, 1); err != nil {
+		return nil, err
+	}
+	// Set the metadata for the NFT
 	metadataNFTMap := make(map[string]string, 0)
-	metadataNFTMap["dataLocation"] = string(dataContribution.DataLocation)
-	metadataNFTMap["dataIdentifier"] = string(dataContribution.DataIdentifier)
-	metadataNFT, err := nchain.MapToBytes(metadataNFTMap)
+	metadataNFTMap["dataLocation"] = string(dataLocation)
+	metadataNFTMap["dataIdentifier"] = string(dataIdentifier)
+	metadataNFT, err := utils.MapToBytes(metadataNFTMap)
 	if err != nil {
 		return nil, err
 	}
-	if err := storage.SetAssetNFT(ctx, mu, d.DatasetID, d.UniqueNFTIDForContributor, nftID, description, metadataNFT, d.Contributor); err != nil {
+	nftAddress := codec.CreateAddress(nconsts.AssetFractionalTokenID, d.DatasetContributionID)
+	symbol = utils.CombineWithSuffix(symbol, totalSupply, storage.MaxSymbolSize)
+	if err := storage.SetAssetInfo(ctx, mu, nftAddress, nconsts.AssetNonFungibleTokenID, name, symbol, 0, metadataNFT, []byte(d.DatasetAddress.String()), 0, 1, d.DatasetContributor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
+		return nil, err
+	}
+	if _, err := storage.MintAsset(ctx, mu, nftAddress, d.DatasetContributor, 1); err != nil {
 		return nil, err
 	}
 
-	// Update asset with new total supply
-	if err := storage.SetAsset(ctx, mu, d.DatasetID, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
-		return nil, err
-	}
-
-	// Add the balance to NFT collection
-	if _, err := storage.AddBalance(ctx, mu, d.Contributor, d.DatasetID, 1, true); err != nil {
-		return nil, err
-	}
-	// Add the balance to individual NFT
-	if _, err := storage.AddBalance(ctx, mu, d.Contributor, nftID, 1, true); err != nil {
+	// Update the dataset contribution
+	if err := storage.SetDatasetContributionInfo(ctx, mu, d.DatasetContributionID, datasetAddress, dataLocation, dataIdentifier, contributor, true); err != nil {
 		return nil, err
 	}
 
 	// Refund the collateral back to the contributor
-	dataConfig := marketplace.GetDatasetConfig()
-	if _, err := storage.AddBalance(ctx, mu, d.Contributor, dataConfig.CollateralAssetIDForDataContribution, dataConfig.CollateralAmountForDataContribution, true); err != nil {
+	dataConfig := dataset.GetDatasetConfig()
+	balance, err := storage.GetAssetAccountBalanceNoController(ctx, mu, dataConfig.CollateralAssetAddressForDataContribution, d.DatasetContributor)
+	if err != nil {
+		return nil, err
+	}
+	newBalance, err := smath.Add(balance, dataConfig.CollateralAmountForDataContribution)
+	if err != nil {
+		return nil, err
+	}
+	if err = storage.SetAssetAccountBalance(ctx, mu, dataConfig.CollateralAssetAddressForDataContribution, d.DatasetContributor, newBalance); err != nil {
 		return nil, err
 	}
 
 	return &CompleteContributeDatasetResult{
-		CollateralAssetID:        dataConfig.CollateralAssetIDForDataContribution,
+		CollateralAssetAddress:   dataConfig.CollateralAssetAddressForDataContribution.String(),
 		CollateralAmountRefunded: dataConfig.CollateralAmountForDataContribution,
-		DatasetID:                d.DatasetID,
-		DatasetChildNftID:        nftID,
-		To:                       d.Contributor,
-		DataLocation:             dataContribution.DataLocation,
-		DataIdentifier:           dataContribution.DataIdentifier,
+		DatasetChildNftAddress:   nftAddress.String(),
+		To:                       d.DatasetContributor.String(),
+		DataLocation:             string(dataLocation),
+		DataIdentifier:           string(dataIdentifier),
 	}, nil
 }
 
@@ -171,23 +162,11 @@ func (*CompleteContributeDataset) ValidRange(chain.Rules) (int64, int64) {
 	return -1, -1
 }
 
-var _ chain.Marshaler = (*CompleteContributeDataset)(nil)
-
-func (*CompleteContributeDataset) Size() int {
-	return ids.IDLen + codec.AddressLen + consts.Uint64Len
-}
-
-func (d *CompleteContributeDataset) Marshal(p *codec.Packer) {
-	p.PackID(d.DatasetID)
-	p.PackAddress(d.Contributor)
-	p.PackUint64(d.UniqueNFTIDForContributor)
-}
-
 func UnmarshalCompleteContributeDataset(p *codec.Packer) (chain.Action, error) {
 	var complete CompleteContributeDataset
-	p.UnpackID(true, &complete.DatasetID)
-	p.UnpackAddress(&complete.Contributor)
-	complete.UniqueNFTIDForContributor = p.UnpackUint64(true)
+	p.UnpackID(true, &complete.DatasetContributionID)
+	p.UnpackAddress(&complete.DatasetAddress)
+	p.UnpackAddress(&complete.DatasetContributor)
 	return &complete, p.Err()
 }
 
@@ -197,13 +176,12 @@ var (
 )
 
 type CompleteContributeDatasetResult struct {
-	CollateralAssetID        ids.ID        `serialize:"true" json:"collateral_asset_id"`
-	CollateralAmountRefunded uint64        `serialize:"true" json:"collateral_amount_refunded"`
-	DatasetID                ids.ID        `serialize:"true" json:"dataset_id"`
-	DatasetChildNftID        ids.ID        `serialize:"true" json:"dataset_child_nft_id"`
-	To                       codec.Address `serialize:"true" json:"to"`
-	DataLocation             []byte        `serialize:"true" json:"data_location"`
-	DataIdentifier           []byte        `serialize:"true" json:"data_identifier"`
+	CollateralAssetAddress   string `serialize:"true" json:"collateral_asset_address"`
+	CollateralAmountRefunded uint64 `serialize:"true" json:"collateral_amount_refunded"`
+	DatasetChildNftAddress   string `serialize:"true" json:"dataset_child_nft_address"`
+	To                       string `serialize:"true" json:"to"`
+	DataLocation             string `serialize:"true" json:"data_location"`
+	DataIdentifier           string `serialize:"true" json:"data_identifier"`
 }
 
 func (*CompleteContributeDatasetResult) GetTypeID() uint8 {
@@ -211,27 +189,25 @@ func (*CompleteContributeDatasetResult) GetTypeID() uint8 {
 }
 
 func (r *CompleteContributeDatasetResult) Size() int {
-	return ids.IDLen*3 + consts.Uint64Len + codec.AddressLen + codec.BytesLen(r.DataLocation) + codec.BytesLen(r.DataIdentifier)
+	return codec.StringLen(r.CollateralAssetAddress) + consts.Uint64Len + codec.StringLen(r.DatasetChildNftAddress) + codec.StringLen(r.To) + codec.StringLen(r.DataLocation) + codec.StringLen(r.DataIdentifier)
 }
 
 func (r *CompleteContributeDatasetResult) Marshal(p *codec.Packer) {
-	p.PackID(r.CollateralAssetID)
+	p.PackString(r.CollateralAssetAddress)
 	p.PackUint64(r.CollateralAmountRefunded)
-	p.PackID(r.DatasetID)
-	p.PackID(r.DatasetChildNftID)
-	p.PackAddress(r.To)
-	p.PackBytes(r.DataLocation)
-	p.PackBytes(r.DataIdentifier)
+	p.PackString(r.DatasetChildNftAddress)
+	p.PackString(r.To)
+	p.PackString(r.DataLocation)
+	p.PackString(r.DataIdentifier)
 }
 
 func UnmarshalCompleteContributeDatasetResult(p *codec.Packer) (codec.Typed, error) {
 	var result CompleteContributeDatasetResult
-	p.UnpackID(false, &result.CollateralAssetID)
-	result.CollateralAmountRefunded = p.UnpackUint64(true)
-	p.UnpackID(true, &result.DatasetID)
-	p.UnpackID(true, &result.DatasetChildNftID)
-	p.UnpackAddress(&result.To)
-	p.UnpackBytes(MaxTextSize, true, &result.DataLocation)
-	p.UnpackBytes(MaxMetadataSize-MaxTextSize, true, &result.DataIdentifier)
+	result.CollateralAssetAddress = p.UnpackString(true)
+	result.CollateralAmountRefunded = p.UnpackUint64(false)
+	result.DatasetChildNftAddress = p.UnpackString(true)
+	result.To = p.UnpackString(true)
+	result.DataLocation = p.UnpackString(true)
+	result.DataIdentifier = p.UnpackString(true)
 	return &result, p.Err()
 }

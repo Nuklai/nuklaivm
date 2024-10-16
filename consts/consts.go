@@ -12,6 +12,7 @@ const (
 	Name     = "nuklaivm"
 	Symbol   = "NAI"
 	Decimals = 9
+	Metadata = "Nuklai"
 )
 
 var ID ids.ID

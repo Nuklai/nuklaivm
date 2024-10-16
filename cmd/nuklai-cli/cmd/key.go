@@ -12,8 +12,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/nuklai/nuklaivm/chain"
+	"github.com/nuklai/nuklaivm/storage"
 	"github.com/nuklai/nuklaivm/vm"
 	"github.com/spf13/cobra"
 
@@ -25,6 +24,8 @@ import (
 	"github.com/ava-labs/hypersdk/crypto/ed25519"
 	"github.com/ava-labs/hypersdk/crypto/secp256r1"
 	"github.com/ava-labs/hypersdk/utils"
+
+	nutils "github.com/nuklai/nuklaivm/utils"
 )
 
 const (
@@ -129,31 +130,55 @@ var importKeyCmd = &cobra.Command{
 var setKeyCmd = &cobra.Command{
 	Use: "set",
 	RunE: func(*cobra.Command, []string) error {
-		return handler.Root().SetKey()
+		return handler.SetKey()
 	},
 }
 
 var balanceKeyCmd = &cobra.Command{
-	Use: "balance",
-	RunE: func(*cobra.Command, []string) error {
-		return handler.Root().Balance(checkAllChains)
+	Use: "balance [address]",
+	RunE: func(_ *cobra.Command, args []string) error {
+		var (
+			addr codec.Address
+			err  error
+		)
+		if len(args) != 1 {
+			addr, _, err = handler.h.GetDefaultKey(true)
+			if err != nil {
+				return err
+			}
+		} else {
+			addr, err = codec.StringToAddress(args[0])
+			if err != nil {
+				return err
+			}
+		}
+		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
+		if err != nil {
+			return err
+		}
+		for _, ncli := range nclients {
+			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, storage.NAIAddress, true, false, -1); err != nil {
+				return err
+			}
+		}
+		return nil
 	},
 }
 
-func lookupKeyBalance(uri string, addr codec.Address, assetID ids.ID, isNFT bool) error {
+func lookupKeyBalance(uri string, addr codec.Address, assetAddress codec.Address, isNFT bool) error {
 	var err error
 	if isNFT {
-		_, _, _, _, _, _, err = handler.GetAssetNFTInfo(context.TODO(), vm.NewJSONRPCClient(uri), addr, assetID, true)
+		_, _, _, _, _, _, _, err = handler.GetAssetNFTInfo(context.TODO(), vm.NewJSONRPCClient(uri), addr, assetAddress, true)
 	} else {
 		_, _, _, _, _, _, _, _, _, _, _, _, _, err = handler.GetAssetInfo(
 			context.TODO(), vm.NewJSONRPCClient(uri),
-			addr, assetID, true)
+			addr, assetAddress, true, false, -1)
 	}
 	return err
 }
 
-var balanceFTKeyCmd = &cobra.Command{
-	Use: "balance-ft [address]",
+var balanceAssetKeyCmd = &cobra.Command{
+	Use: "balance-asset [address]",
 	RunE: func(_ *cobra.Command, args []string) error {
 		if len(args) != 1 {
 			return handler.BalanceAsset(checkAllChains, false, lookupKeyBalance)
@@ -162,17 +187,16 @@ var balanceFTKeyCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		utils.Outf("{{yellow}}address:{{/}} %s\n", addr)
 		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
 		if err != nil {
 			return err
 		}
-		assetID, err := prompt.ID("assetID")
+		assetAddress, err := prompt.Address("assetAddress")
 		if err != nil {
 			return err
 		}
 		for _, ncli := range nclients {
-			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, assetID, true); err != nil {
+			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, assetAddress, true, false, -1); err != nil {
 				return err
 			}
 		}
@@ -181,7 +205,7 @@ var balanceFTKeyCmd = &cobra.Command{
 }
 
 var balanceNFTKeyCmd = &cobra.Command{
-	Use: "balance-nft [address]",
+	Use: "nft [address]",
 	RunE: func(_ *cobra.Command, args []string) error {
 		if len(args) != 1 {
 			return handler.BalanceAsset(checkAllChains, true, lookupKeyBalance)
@@ -190,17 +214,16 @@ var balanceNFTKeyCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		utils.Outf("{{yellow}}address:{{/}} %s\n", addr)
 		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
 		if err != nil {
 			return err
 		}
-		nftID, err := prompt.ID("nftID")
+		nftAddress, err := prompt.Address("nftAddress")
 		if err != nil {
 			return err
 		}
 		for _, ncli := range nclients {
-			if _, _, _, _, _, _, err := handler.GetAssetNFTInfo(context.TODO(), ncli, addr, nftID, true); err != nil {
+			if _, _, _, _, _, _, _, err := handler.GetAssetNFTInfo(context.TODO(), ncli, addr, nftAddress, true); err != nil {
 				return err
 			}
 		}
@@ -391,7 +414,7 @@ func generateVanityAddress(prefix string) (codec.Address, error) {
 				// Generate a batch of random IDs
 				for j := 0; j < batchSize; j++ {
 					// Generate a random ID instead of sequentially
-					randomID, err := chain.GenerateRandomID()
+					randomID, err := nutils.GenerateRandomID()
 					if err != nil {
 						errChan <- err
 						return

@@ -125,7 +125,7 @@ func init() {
 		importKeyCmd,
 		setKeyCmd,
 		balanceKeyCmd,
-		balanceFTKeyCmd,
+		balanceAssetKeyCmd,
 		balanceNFTKeyCmd,
 		vanityAddressCmd,
 	)
@@ -183,7 +183,7 @@ func init() {
 
 	// dataset
 	datasetCmd.AddCommand(
-		createDatasetCmd,
+		// createDatasetCmd,
 		createDatasetFromExistingAssetCmd,
 		updateDatasetCmd,
 		getDatasetCmd,

@@ -3,40 +3,50 @@
 
 package storage
 
-// State
-// / (height) => store in root
-//   -> [heightPrefix] => height
-// 0x0/ (balance)
-//   -> [owner] => balance
-// 0x1/ (hypersdk-height)
-// 0x2/ (hypersdk-timestamp)
-// 0x3/ (hypersdk-fee)
-// 0x4/ (account-storage)
-// 0x4/address/0x1 (address associated contract)
-// 0x4/address/0x1 (address associated state)
-// 0x5/ (contracts-storage)
+import (
+	"context"
+
+	"github.com/nuklai/nuklaivm/consts"
+
+	"github.com/ava-labs/hypersdk/codec"
+)
+
+type ReadState func(context.Context, [][]byte) ([][]byte, []error)
 
 const (
 	// Active state
-	balancePrefix   = 0x0
-	heightPrefix    = 0x1
-	timestampPrefix = 0x2
-	feePrefix       = 0x3
-	accountsPrefix  = 0x4
-	contractsPrefix = 0x5
+	assetAccountBalancePrefix byte = iota // 0x0
+	heightPrefix                          // 0x1
+	timestampPrefix                       // 0x2
+	feePrefix                             // 0x3
+	accountsPrefix                        // 0x4
+	contractsPrefix                       // 0x5
 
-	accountContractPrefix = 0x0
-	accountStatePrefix    = 0x1
+	accountContractPrefix // 0x6
+	accountStatePrefix    // 0x7
 
-	assetPrefix    = 0x0
-	assetNFTPrefix = 0x1
-	datasetPrefix  = 0x2
+	validatorStakePrefix // 0x8
+	delegatorStakePrefix // 0x9
 
-	registerValidatorStakePrefix = 0x0
-	delegateUserStakePrefix      = 0x0
+	assetInfoPrefix               // 0xa
+	assetNFTPrefix                // 0xb
+	datasetInfoPrefix             // 0xc
+	marketplaceContributionPrefix // 0xd
 )
 
 var (
 	failureByte = byte(0x0)
 	successByte = byte(0x1)
 )
+
+// Data for Marketplace Token
+const (
+	MarketplaceAssetName   = "NMAsset"
+	MarketplaceAssetSymbol = "NMA"
+)
+
+var NAIAddress codec.Address
+
+func init() {
+	NAIAddress = AssetAddress(consts.AssetFungibleTokenID, []byte(consts.Name), []byte(consts.Symbol), consts.Decimals, []byte(consts.Metadata), codec.EmptyAddress)
+}

@@ -33,7 +33,6 @@ type JSONRPCClient struct {
 	g         *genesis.Genesis
 	assetsL   sync.Mutex
 	assets    map[string]*AssetReply
-	assetsNFT map[string]*AssetNFTReply
 	datasets  map[string]*DatasetReply
 }
 
@@ -45,7 +44,6 @@ func NewJSONRPCClient(uri string) *JSONRPCClient {
 	return &JSONRPCClient{
 		requester: req,
 		assets:    map[string]*AssetReply{},
-		assetsNFT: map[string]*AssetNFTReply{},
 		datasets:  map[string]*DatasetReply{},
 	}
 }
@@ -87,12 +85,12 @@ func (cli *JSONRPCClient) Asset(
 	ctx context.Context,
 	asset string,
 	useCache bool,
-) (bool, string, string, string, uint8, string, string, uint64, uint64, string, string, string, string, string, error) {
+) (string, string, string, uint8, string, string, uint64, uint64, string, string, string, string, string, error) {
 	cli.assetsL.Lock()
 	r, ok := cli.assets[asset]
 	cli.assetsL.Unlock()
 	if ok && useCache {
-		return true, r.AssetType, r.Name, r.Symbol, r.Decimals, r.Metadata, r.URI, r.TotalSupply, r.MaxSupply, r.Admin, r.MintActor, r.PauseUnpauseActor, r.FreezeUnfreezeActor, r.EnableDisableKYCAccountActor, nil
+		return r.AssetType, r.Name, r.Symbol, r.Decimals, r.Metadata, r.URI, r.TotalSupply, r.MaxSupply, r.Owner, r.MintAdmin, r.PauseUnpauseAdmin, r.FreezeUnfreezeAdmin, r.EnableDisableKYCAccountAdmin, nil
 	}
 
 	// Check if it's the native asset
@@ -105,65 +103,25 @@ func (cli *JSONRPCClient) Asset(
 		},
 		resp,
 	)
-	switch {
-	// We use string parsing here because the JSON-RPC library we use may not
-	// allows us to perform errors.Is.
-	case err != nil && strings.Contains(err.Error(), ErrAssetNotFound.Error()):
-		return false, "", "", "", 0, "", "", 0, 0, "", "", "", "", "", nil
-	case err != nil:
-		return false, "", "", "", 0, "", "", 0, 0, "", "", "", "", "", nil
+	if err != nil {
+		return "", "", "", 0, "", "", 0, 0, "", "", "", "", "", err
 	}
 	cli.assetsL.Lock()
 	cli.assets[asset] = resp
 	cli.assetsL.Unlock()
-	return true, resp.AssetType, resp.Name, resp.Symbol, resp.Decimals, resp.Metadata, resp.URI, resp.TotalSupply, resp.MaxSupply, resp.Admin, resp.MintActor, resp.PauseUnpauseActor, resp.FreezeUnfreezeActor, resp.EnableDisableKYCAccountActor, nil
-}
-
-func (cli *JSONRPCClient) AssetNFT(
-	ctx context.Context,
-	nft string,
-	useCache bool,
-) (bool, string, uint64, string, string, string, error) {
-	cli.assetsL.Lock()
-	r, ok := cli.assetsNFT[nft]
-	cli.assetsL.Unlock()
-	if ok && useCache {
-		return true, r.CollectionID, r.UniqueID, r.URI, r.Metadata, r.Owner, nil
-	}
-
-	resp := new(AssetNFTReply)
-	err := cli.requester.SendRequest(
-		ctx,
-		"assetNFT",
-		&AssetArgs{
-			Asset: nft,
-		},
-		resp,
-	)
-	switch {
-	// We use string parsing here because the JSON-RPC library we use may not
-	// allows us to perform errors.Is.
-	case err != nil && strings.Contains(err.Error(), ErrAssetNotFound.Error()):
-		return false, "", 0, "", "", "", nil
-	case err != nil:
-		return false, "", 0, "", "", "", nil
-	}
-	cli.assetsL.Lock()
-	cli.assetsNFT[nft] = resp
-	cli.assetsL.Unlock()
-	return true, resp.CollectionID, resp.UniqueID, resp.URI, resp.Metadata, resp.Owner, nil
+	return resp.AssetType, resp.Name, resp.Symbol, resp.Decimals, resp.Metadata, resp.URI, resp.TotalSupply, resp.MaxSupply, resp.Owner, resp.MintAdmin, resp.PauseUnpauseAdmin, resp.FreezeUnfreezeAdmin, resp.EnableDisableKYCAccountAdmin, nil
 }
 
 func (cli *JSONRPCClient) Dataset(
 	ctx context.Context,
 	dataset string,
 	useCache bool,
-) (bool, string, string, string, string, string, string, string, bool, string, string, uint64, uint8, uint8, uint8, uint8, string, error) {
+) (string, string, string, string, string, string, string, bool, string, string, uint64, uint8, uint8, uint8, uint8, string, error) {
 	cli.assetsL.Lock()
 	r, ok := cli.datasets[dataset]
 	cli.assetsL.Unlock()
 	if ok && useCache {
-		return true, r.Name, r.Description, r.Categories, r.LicenseName, r.LicenseSymbol, r.LicenseURL, r.Metadata, r.IsCommunityDataset, r.SaleID, r.BaseAsset, r.BasePrice, r.RevenueModelDataShare, r.RevenueModelMetadataShare, r.RevenueModelDataOwnerCut, r.RevenueModelMetadataOwnerCut, r.Owner, nil
+		return r.Name, r.Description, r.Categories, r.LicenseName, r.LicenseSymbol, r.LicenseURL, r.Metadata, r.IsCommunityDataset, r.MarketplaceAssetAddress, r.BaseAssetAddress, r.BasePrice, r.RevenueModelDataShare, r.RevenueModelMetadataShare, r.RevenueModelDataOwnerCut, r.RevenueModelMetadataOwnerCut, r.Owner, nil
 	}
 
 	resp := new(DatasetReply)
@@ -175,51 +133,30 @@ func (cli *JSONRPCClient) Dataset(
 		},
 		resp,
 	)
-	switch {
-	// We use string parsing here because the JSON-RPC library we use may not
-	// allows us to perform errors.Is.
-	case err != nil && strings.Contains(err.Error(), ErrDatasetNotFound.Error()):
-		return false, "", "", "", "", "", "", "", false, "", "", 0, 0, 0, 0, 0, "", nil
-	case err != nil:
-		return false, "", "", "", "", "", "", "", false, "", "", 0, 0, 0, 0, 0, "", nil
+	if err != nil {
+		return "", "", "", "", "", "", "", false, "", "", 0, 0, 0, 0, 0, "", nil
 	}
 	cli.assetsL.Lock()
 	cli.datasets[dataset] = resp
 	cli.assetsL.Unlock()
-	return true, resp.Name, resp.Description, resp.Categories, resp.LicenseName, resp.LicenseSymbol, resp.LicenseURL, resp.Metadata, resp.IsCommunityDataset, resp.SaleID, resp.BaseAsset, resp.BasePrice, resp.RevenueModelDataShare, resp.RevenueModelMetadataShare, resp.RevenueModelDataOwnerCut, resp.RevenueModelMetadataOwnerCut, resp.Owner, nil
+	return resp.Name, resp.Description, resp.Categories, resp.LicenseName, resp.LicenseSymbol, resp.LicenseURL, resp.Metadata, resp.IsCommunityDataset, resp.MarketplaceAssetAddress, resp.BaseAssetAddress, resp.BasePrice, resp.RevenueModelDataShare, resp.RevenueModelMetadataShare, resp.RevenueModelDataOwnerCut, resp.RevenueModelMetadataOwnerCut, resp.Owner, nil
 }
 
-func (cli *JSONRPCClient) DataContributionPending(ctx context.Context, dataset string) ([]DataContribution, error) {
-	resp := new(DataContributionPendingReply)
+func (cli *JSONRPCClient) DatasetContribution(ctx context.Context, contributionID string) (string, string, string, string, bool, error) {
+	resp := new(DatasetContributionReply)
 	err := cli.requester.SendRequest(
 		ctx,
-		"dataContributionPending",
-		&DatasetArgs{
-			Dataset: dataset,
+		"datasetContribution",
+		&DatasetContributionArgs{
+			ContributionID: contributionID,
 		},
 		resp,
 	)
 	if err != nil {
-		return []DataContribution{}, err
+		return "", "", "", "", false, err
 	}
 
-	return resp.Contributions, nil
-}
-
-func (cli *JSONRPCClient) DatasetInfoFromMarketplace(ctx context.Context, dataset string) ([]DataContribution, error) {
-	resp := new(DataContributionPendingReply)
-	err := cli.requester.SendRequest(
-		ctx,
-		"datasetInfoFromMarketplace",
-		&DatasetArgs{
-			Dataset: dataset,
-		},
-		resp,
-	)
-	if err != nil {
-		return []DataContribution{}, err
-	}
-	return resp.Contributions, nil
+	return resp.DatasetAddress, resp.DataLocation, resp.DataIdentifier, resp.Contributor, resp.Active, nil
 }
 
 func (cli *JSONRPCClient) EmissionInfo(ctx context.Context) (uint64, uint64, uint64, uint64, uint64, EmissionAccount, emission.EpochTracker, error) {
@@ -313,7 +250,7 @@ func (cli *JSONRPCClient) WaitForBalance(
 		if !shouldExit {
 			utils.Outf(
 				"{{yellow}}waiting for %s balance: %s{{/}}\n",
-				utils.FormatBalance(min, consts.Decimals),
+				utils.FormatBalance(min),
 				addr,
 			)
 		}

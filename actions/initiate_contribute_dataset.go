@@ -8,7 +8,7 @@ import (
 	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/nuklai/nuklaivm/marketplace"
+	"github.com/nuklai/nuklaivm/dataset"
 	"github.com/nuklai/nuklaivm/storage"
 
 	"github.com/ava-labs/hypersdk/chain"
@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -24,36 +25,36 @@ const (
 )
 
 var (
-	ErrDatasetNotOpenForContribution              = errors.New("dataset is not open for contribution")
-	ErrDatasetAlreadyOnSale                       = errors.New("dataset is already on sale")
-	ErrOutputDataLocationInvalid                  = errors.New("data location is invalid")
-	_                                chain.Action = (*InitiateContributeDataset)(nil)
+	ErrDatasetNotOpenForContribution                 = errors.New("dataset is not open for contribution")
+	ErrDatasetAlreadyOnSale                          = errors.New("dataset is already on sale")
+	ErrDataLocationInvalid                           = errors.New("data location is invalid")
+	ErrDataIdentifierInvalid                         = errors.New("data identifier is invalid")
+	ErrDatasetContributionAlreadyExists              = errors.New("dataset contribution already exists")
+	_                                   chain.Action = (*InitiateContributeDataset)(nil)
 )
 
 type InitiateContributeDataset struct {
-	// DatasetID ID
-	DatasetID ids.ID `serialize:"true" json:"dataset_id"`
+	// DatasetAddress
+	DatasetAddress codec.Address `serialize:"true" json:"dataset_address"`
 
 	// Data location(default, S3, Filecoin, etc.)
-	DataLocation []byte `serialize:"true" json:"data_location"`
+	DataLocation string `serialize:"true" json:"data_location"`
 
 	// Data Identifier(id/hash/URL)
-	DataIdentifier []byte `serialize:"true" json:"data_identifier"`
+	DataIdentifier string `serialize:"true" json:"data_identifier"`
 }
 
 func (*InitiateContributeDataset) GetTypeID() uint8 {
 	return nconsts.InitiateContributeDatasetID
 }
 
-func (d *InitiateContributeDataset) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (d *InitiateContributeDataset) StateKeys(actor codec.Address) state.Keys {
+	datasetContributionID := storage.DatasetContributionID(d.DatasetAddress, []byte(d.DataLocation), []byte(d.DataIdentifier), actor)
 	return state.Keys{
-		string(storage.DatasetKey(d.DatasetID)):      state.Read,
-		string(storage.BalanceKey(actor, ids.Empty)): state.Read | state.Write,
+		string(storage.DatasetContributionInfoKey(datasetContributionID)):                                                   state.All,
+		string(storage.DatasetInfoKey(d.DatasetAddress)):                                                                    state.Read,
+		string(storage.AssetAccountBalanceKey(dataset.GetDatasetConfig().CollateralAssetAddressForDataContribution, actor)): state.Read | state.Write,
 	}
-}
-
-func (*InitiateContributeDataset) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.DatasetChunks, storage.BalanceChunks}
 }
 
 func (d *InitiateContributeDataset) Execute(
@@ -64,53 +65,69 @@ func (d *InitiateContributeDataset) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
+	// Check if the dataset contribution exists
+	datasetContributionID := storage.DatasetContributionID(d.DatasetAddress, []byte(d.DataLocation), []byte(d.DataIdentifier), actor)
+	if storage.DatasetContributionExists(ctx, mu, datasetContributionID) {
+		return nil, ErrDatasetContributionAlreadyExists
+	}
+
 	// Check if the dataset exists
-	exists, _, _, _, _, _, _, _, isCommunityDataset, saleID, _, _, _, _, _, _, _, err := storage.GetDataset(ctx, mu, d.DatasetID)
+	_, _, _, _, _, _, _, isCommunityDataset, marketplaceAssetAddress, _, _, _, _, _, _, _, err := storage.GetDatasetInfoNoController(ctx, mu, d.DatasetAddress)
 	if err != nil {
 		return nil, err
-	}
-	if !exists {
-		return nil, ErrDatasetNotFound
 	}
 	if !isCommunityDataset {
 		return nil, ErrDatasetNotOpenForContribution
 	}
 
 	// Check if the dataset is already on sale
-	if saleID != ids.Empty {
+	if marketplaceAssetAddress != codec.EmptyAddress {
 		return nil, ErrDatasetAlreadyOnSale
 	}
 
 	// Check if the data location is valid
-	dataLocation := []byte("default")
+	dataLocation := storage.DatasetDefaultLocation
 	if len(d.DataLocation) > 0 {
 		dataLocation = d.DataLocation
 	}
-	if len(dataLocation) < 3 || len(dataLocation) > MaxTextSize {
-		return nil, ErrOutputDataLocationInvalid
+	if len(dataLocation) > storage.MaxDatasetDataLocationSize {
+		return nil, ErrDataLocationInvalid
 	}
-	// Check if the data identifier is valid(MaxMetadataSize - MaxTextSize because the data location and data identifier are stored together as metadata in the NFT metadata)
-	if len(d.DataIdentifier) == 0 || len(d.DataIdentifier) > (MaxMetadataSize-MaxTextSize) {
-		return nil, ErrOutputURIInvalid
+	// Check if the data identifier is valid(MaxAssetMetadataSize - MaxDatasetDataLocationSize because the data location and data identifier are stored together as metadata in the NFT metadata)
+	if len(d.DataIdentifier) == 0 || len(d.DataIdentifier) > (storage.MaxAssetMetadataSize-storage.MaxDatasetDataLocationSize) {
+		return nil, ErrDataIdentifierInvalid
 	}
 
-	// Get the marketplace instance
-	marketplaceInstance := marketplace.GetMarketplace()
-	if err := marketplaceInstance.InitiateContributeDataset(d.DatasetID, dataLocation, d.DataIdentifier, actor); err != nil {
+	// Set the dataset contribution info to storage
+	if err := storage.SetDatasetContributionInfo(ctx, mu, datasetContributionID, d.DatasetAddress, []byte(d.DataLocation), []byte(d.DataIdentifier), actor, false); err != nil {
 		return nil, err
 	}
 
 	// Reduce the balance of the contributor with the collateral needed to contribute to the dataset
 	// This will be refunded if the contribution is successful
 	// This is done to prevent spamming the network with fake contributions
-	dataConfig := marketplace.GetDatasetConfig()
-	if _, err := storage.SubBalance(ctx, mu, actor, dataConfig.CollateralAssetIDForDataContribution, dataConfig.CollateralAmountForDataContribution); err != nil {
+	dataConfig := dataset.GetDatasetConfig()
+	// Subtract the collateral amount from the balance
+	// Ensure that the balance is sufficient
+	balance, err := storage.GetAssetAccountBalanceNoController(ctx, mu, dataConfig.CollateralAssetAddressForDataContribution, actor)
+	if err != nil {
+		return nil, err
+	}
+	if balance < dataConfig.CollateralAmountForDataContribution {
+		return nil, storage.ErrInsufficientAssetBalance
+	}
+	newBalance, err := smath.Sub(balance, dataConfig.CollateralAmountForDataContribution)
+	if err != nil {
+		return nil, err
+	}
+	if err = storage.SetAssetAccountBalance(ctx, mu, dataConfig.CollateralAssetAddressForDataContribution, actor, newBalance); err != nil {
 		return nil, err
 	}
 
 	return &InitiateContributeDatasetResult{
-		CollateralAssetID:     dataConfig.CollateralAssetIDForDataContribution,
-		CollateralAmountTaken: dataConfig.CollateralAmountForDataContribution,
+		DatasetContributionID:  datasetContributionID.String(),
+		CollateralAssetAddress: dataConfig.CollateralAssetAddressForDataContribution.String(),
+		CollateralAmountTaken:  dataConfig.CollateralAmountForDataContribution,
 	}, nil
 }
 
@@ -123,23 +140,11 @@ func (*InitiateContributeDataset) ValidRange(chain.Rules) (int64, int64) {
 	return -1, -1
 }
 
-var _ chain.Marshaler = (*InitiateContributeDataset)(nil)
-
-func (d *InitiateContributeDataset) Size() int {
-	return ids.IDLen + codec.BytesLen(d.DataLocation) + codec.BytesLen(d.DataIdentifier)
-}
-
-func (d *InitiateContributeDataset) Marshal(p *codec.Packer) {
-	p.PackID(d.DatasetID)
-	p.PackBytes(d.DataLocation)
-	p.PackBytes(d.DataIdentifier)
-}
-
 func UnmarshalInitiateContributeDataset(p *codec.Packer) (chain.Action, error) {
 	var initiate InitiateContributeDataset
-	p.UnpackID(true, &initiate.DatasetID)
-	p.UnpackBytes(MaxTextSize, false, &initiate.DataLocation)
-	p.UnpackBytes(MaxMetadataSize-MaxTextSize, true, &initiate.DataIdentifier)
+	p.UnpackAddress(&initiate.DatasetAddress)
+	initiate.DataLocation = p.UnpackString(false)
+	initiate.DataIdentifier = p.UnpackString(true)
 	return &initiate, p.Err()
 }
 
@@ -149,26 +154,29 @@ var (
 )
 
 type InitiateContributeDatasetResult struct {
-	CollateralAssetID     ids.ID `serialize:"true" json:"collateral_asset_id"`
-	CollateralAmountTaken uint64 `serialize:"true" json:"collateral_amount_taken"`
+	DatasetContributionID  string `serialize:"true" json:"dataset_contribution_id"`
+	CollateralAssetAddress string `serialize:"true" json:"collateral_asset_address"`
+	CollateralAmountTaken  uint64 `serialize:"true" json:"collateral_amount_taken"`
 }
 
 func (*InitiateContributeDatasetResult) GetTypeID() uint8 {
 	return nconsts.InitiateContributeDatasetID
 }
 
-func (*InitiateContributeDatasetResult) Size() int {
-	return ids.IDLen + consts.Uint64Len
+func (r *InitiateContributeDatasetResult) Size() int {
+	return codec.StringLen(r.DatasetContributionID) + codec.StringLen(r.CollateralAssetAddress) + consts.Uint64Len
 }
 
 func (r *InitiateContributeDatasetResult) Marshal(p *codec.Packer) {
-	p.PackID(r.CollateralAssetID)
+	p.PackString(r.DatasetContributionID)
+	p.PackString(r.CollateralAssetAddress)
 	p.PackUint64(r.CollateralAmountTaken)
 }
 
 func UnmarshalInitiateContributeDatasetResult(p *codec.Packer) (codec.Typed, error) {
 	var result InitiateContributeDatasetResult
-	p.UnpackID(false, &result.CollateralAssetID)
+	result.DatasetContributionID = p.UnpackString(true)
+	result.CollateralAssetAddress = p.UnpackString(true)
 	result.CollateralAmountTaken = p.UnpackUint64(true)
 	return &result, p.Err()
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -32,19 +33,11 @@ func (*UndelegateUserStake) GetTypeID() uint8 {
 	return nconsts.UndelegateUserStakeID
 }
 
-func (u *UndelegateUserStake) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (u *UndelegateUserStake) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.BalanceKey(actor, ids.Empty)):          state.Read | state.Write,
-		string(storage.DelegateUserStakeKey(actor, u.NodeID)): state.Read | state.Write,
+		string(storage.DelegatorStakeKey(actor, u.NodeID)):                state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(storage.NAIAddress, actor)): state.Read | state.Write,
 	}
-}
-
-func (*UndelegateUserStake) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.DelegateUserStakeChunks}
-}
-
-func (*UndelegateUserStake) OutputsWarpMessage() bool {
-	return false
 }
 
 func (u *UndelegateUserStake) Execute(
@@ -55,7 +48,7 @@ func (u *UndelegateUserStake) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-	exists, stakeStartBlock, stakeEndBlock, stakedAmount, _, ownerAddress, _ := storage.GetDelegateUserStake(ctx, mu, actor, u.NodeID)
+	exists, stakeStartBlock, stakeEndBlock, stakedAmount, _, ownerAddress, _ := storage.GetDelegatorStakeNoController(ctx, mu, actor, u.NodeID)
 	if !exists {
 		return nil, ErrStakeMissing
 	}
@@ -76,11 +69,20 @@ func (u *UndelegateUserStake) Execute(
 	if err != nil {
 		return nil, err
 	}
-	if err := storage.DeleteDelegateUserStake(ctx, mu, actor, u.NodeID); err != nil {
+	if err := storage.DeleteDelegatorStake(ctx, mu, actor, u.NodeID); err != nil {
 		return nil, err
 	}
-	balance, err := storage.AddBalance(ctx, mu, actor, ids.Empty, rewardAmount+stakedAmount, true)
+
+	// Get the reward + staked amount
+	balance, err := storage.GetAssetAccountBalanceNoController(ctx, mu, storage.NAIAddress, actor)
 	if err != nil {
+		return nil, err
+	}
+	newBalance, err := smath.Add(balance, rewardAmount+stakedAmount)
+	if err != nil {
+		return nil, err
+	}
+	if err = storage.SetAssetAccountBalance(ctx, mu, storage.NAIAddress, actor, newBalance); err != nil {
 		return nil, err
 	}
 
@@ -89,9 +91,9 @@ func (u *UndelegateUserStake) Execute(
 		StakeEndBlock:        stakeEndBlock,
 		UnstakedAmount:       stakedAmount,
 		RewardAmount:         rewardAmount,
-		BalanceBeforeUnstake: balance - rewardAmount - stakedAmount,
-		BalanceAfterUnstake:  balance,
-		DistributedTo:        actor,
+		BalanceBeforeUnstake: balance,
+		BalanceAfterUnstake:  newBalance,
+		DistributedTo:        actor.String(),
 	}, nil
 }
 
@@ -132,21 +134,21 @@ var (
 )
 
 type UndelegateUserStakeResult struct {
-	StakeStartBlock      uint64        `serialize:"true" json:"stake_start_block"`
-	StakeEndBlock        uint64        `serialize:"true" json:"stake_end_block"`
-	UnstakedAmount       uint64        `serialize:"true" json:"unstaked_amount"`
-	RewardAmount         uint64        `serialize:"true" json:"reward_amount"`
-	BalanceBeforeUnstake uint64        `serialize:"true" json:"balance_before_unstake"`
-	BalanceAfterUnstake  uint64        `serialize:"true" json:"balance_after_unstake"`
-	DistributedTo        codec.Address `serialize:"true" json:"distributed_to"`
+	StakeStartBlock      uint64 `serialize:"true" json:"stake_start_block"`
+	StakeEndBlock        uint64 `serialize:"true" json:"stake_end_block"`
+	UnstakedAmount       uint64 `serialize:"true" json:"unstaked_amount"`
+	RewardAmount         uint64 `serialize:"true" json:"reward_amount"`
+	BalanceBeforeUnstake uint64 `serialize:"true" json:"balance_before_unstake"`
+	BalanceAfterUnstake  uint64 `serialize:"true" json:"balance_after_unstake"`
+	DistributedTo        string `serialize:"true" json:"distributed_to"`
 }
 
 func (*UndelegateUserStakeResult) GetTypeID() uint8 {
 	return nconsts.UndelegateUserStakeID
 }
 
-func (*UndelegateUserStakeResult) Size() int {
-	return 6*consts.Uint64Len + codec.AddressLen
+func (r *UndelegateUserStakeResult) Size() int {
+	return 6*consts.Uint64Len + codec.StringLen(r.DistributedTo)
 }
 
 func (r *UndelegateUserStakeResult) Marshal(p *codec.Packer) {
@@ -156,7 +158,7 @@ func (r *UndelegateUserStakeResult) Marshal(p *codec.Packer) {
 	p.PackUint64(r.RewardAmount)
 	p.PackUint64(r.BalanceBeforeUnstake)
 	p.PackUint64(r.BalanceAfterUnstake)
-	p.PackAddress(r.DistributedTo)
+	p.PackString(r.DistributedTo)
 }
 
 func UnmarshalUndelegateUserStakeResult(p *codec.Packer) (codec.Typed, error) {
@@ -167,6 +169,6 @@ func UnmarshalUndelegateUserStakeResult(p *codec.Packer) (codec.Typed, error) {
 	result.RewardAmount = p.UnpackUint64(false)
 	result.BalanceBeforeUnstake = p.UnpackUint64(false)
 	result.BalanceAfterUnstake = p.UnpackUint64(true)
-	p.UnpackAddress(&result.DistributedTo)
+	result.DistributedTo = p.UnpackString(true)
 	return &result, p.Err()
 }

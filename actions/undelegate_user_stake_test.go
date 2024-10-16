@@ -20,13 +20,13 @@ import (
 func TestUndelegateUserStakeActionFailure(t *testing.T) {
 	emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 25, StakeRewards: 20})
 
-	addr := codectest.NewRandomAddress()
+	actor := codectest.NewRandomAddress()
 	nodeID := ids.GenerateTestNodeID()
 
 	tests := []chaintest.ActionTest{
 		{
 			Name:  "StakeMissing",
-			Actor: addr,
+			Actor: actor,
 			Action: &UndelegateUserStake{
 				NodeID: nodeID, // Non-existent stake
 			},
@@ -35,14 +35,14 @@ func TestUndelegateUserStakeActionFailure(t *testing.T) {
 		},
 		{
 			Name:  "StakeNotEnded",
-			Actor: addr,
+			Actor: actor,
 			Action: &UndelegateUserStake{
 				NodeID: nodeID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set stake with end block greater than the current block height
-				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
+				require.NoError(t, storage.SetDelegatorStake(context.Background(), store, actor, nodeID, 25, 50, 1000, actor))
 				return store
 			}(),
 			ExpectedErr: ErrStakeNotEnded,
@@ -57,32 +57,32 @@ func TestUndelegateUserStakeActionFailure(t *testing.T) {
 func TestUndelegateUserStakeActionSuccess(t *testing.T) {
 	emission.MockNewEmission(&emission.MockEmission{LastAcceptedBlockHeight: 51, StakeRewards: 20})
 
-	addr := codectest.NewRandomAddress()
+	actor := codectest.NewRandomAddress()
 	nodeID := ids.GenerateTestNodeID()
 
 	tests := []chaintest.ActionTest{
 		{
 			Name:  "ValidUnstake",
-			Actor: addr,
+			Actor: actor,
 			Action: &UndelegateUserStake{
 				NodeID: nodeID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set stake with end block less than the current block height
-				require.NoError(t, storage.SetDelegateUserStake(context.Background(), store, addr, nodeID, 25, 50, 1000, addr))
+				require.NoError(t, storage.SetDelegatorStake(context.Background(), store, actor, nodeID, 25, 50, 1000, actor))
 				// Set user balance before unstaking
-				require.NoError(t, storage.SetBalance(context.Background(), store, addr, ids.Empty, 0))
+				require.NoError(t, storage.SetAssetAccountBalance(context.Background(), store, storage.NAIAddress, actor, 0))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if balance is correctly updated after unstaking
-				balance, err := storage.GetBalance(ctx, store, addr, ids.Empty)
+				balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, storage.NAIAddress, actor)
 				require.NoError(t, err)
 				require.Equal(t, uint64(1020), balance)
 
 				// Check if the stake was deleted
-				exists, _, _, _, _, _, _ := storage.GetDelegateUserStake(ctx, store, addr, nodeID)
+				exists, _, _, _, _, _, _ := storage.GetDelegatorStakeNoController(ctx, store, actor, nodeID)
 				require.False(t, exists)
 			},
 			ExpectedOutputs: &UndelegateUserStakeResult{
@@ -92,7 +92,7 @@ func TestUndelegateUserStakeActionSuccess(t *testing.T) {
 				RewardAmount:         20,
 				BalanceBeforeUnstake: 0,
 				BalanceAfterUnstake:  1020,
-				DistributedTo:        addr,
+				DistributedTo:        actor.String(),
 			},
 		},
 	}
@@ -118,17 +118,18 @@ func BenchmarkUndelegateUserStake(b *testing.B) {
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set stake with end block less than the current block height
-			require.NoError(storage.SetDelegateUserStake(context.Background(), store, actor, nodeID, 25, 50, 1000, actor))
+			require.NoError(storage.SetDelegatorStake(context.Background(), store, actor, nodeID, 25, 50, 1000, actor))
+			require.NoError(storage.SetAssetAccountBalance(context.Background(), store, storage.NAIAddress, actor, 0))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check if balance is correctly updated after unstaking
-			balance, err := storage.GetBalance(ctx, store, actor, ids.Empty)
+			balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, storage.NAIAddress, actor)
 			require.NoError(err)
 			require.Equal(b, uint64(1020), balance)
 
 			// Check if the stake was deleted
-			exists, _, _, _, _, _, _ := storage.GetDelegateUserStake(ctx, store, actor, nodeID)
+			exists, _, _, _, _, _, _ := storage.GetDelegatorStakeNoController(ctx, store, actor, nodeID)
 			require.False(exists)
 		},
 	}

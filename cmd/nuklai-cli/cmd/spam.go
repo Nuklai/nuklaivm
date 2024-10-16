@@ -74,7 +74,7 @@ func (sh *SpamHelper) LookupBalance(choice int, address codec.Address) (uint64, 
 		"%d) {{cyan}}address:{{/}} %s {{cyan}}balance:{{/}} %s %s\n",
 		choice,
 		address,
-		utils.FormatBalance(balance, consts.Decimals),
+		utils.FormatBalance(balance),
 		consts.Symbol,
 	)
 	return balance, err
@@ -84,7 +84,7 @@ func (*SpamHelper) GetTransfer(address codec.Address, amount uint64, memo []byte
 	return []chain.Action{&actions.Transfer{
 		To:    address,
 		Value: amount,
-		Memo:  memo,
+		Memo:  string(memo),
 	}}
 }
 

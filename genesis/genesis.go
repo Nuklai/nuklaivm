@@ -17,8 +17,6 @@ import (
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/genesis"
 	"github.com/ava-labs/hypersdk/state"
-
-	safemath "github.com/ava-labs/avalanchego/utils/math"
 )
 
 var (
@@ -51,42 +49,30 @@ func (g *Genesis) InitializeState(ctx context.Context, tracer trace.Tracer, mu s
 	_, span := tracer.Start(ctx, "Nuklai Genesis.InitializeState")
 	defer span.End()
 
-	// Initialize state from the DefaultGenesis first
-	if err := g.DefaultGenesis.InitializeState(ctx, tracer, mu, balanceHandler); err != nil {
+	// Set the asset info for NAI using storage.SetAsset
+	if err := storage.SetAssetInfo(
+		ctx,
+		mu,
+		storage.NAIAddress,                  // Asset Address
+		consts.AssetFungibleTokenID,         // Asset type ID
+		[]byte(consts.Name),                 // Name
+		[]byte(consts.Symbol),               // Symbol
+		consts.Decimals,                     // Decimals
+		[]byte(consts.Metadata),             // Metadata
+		[]byte(storage.NAIAddress.String()), // URI
+		0,                                   // Initial total supply
+		g.EmissionBalancer.MaxSupply,        // Max supply
+		codec.EmptyAddress,                  // Owner address
+		codec.EmptyAddress,                  // MintAdmin address
+		codec.EmptyAddress,                  // PauseUnpauseAdmin address
+		codec.EmptyAddress,                  // FreezeUnfreezeAdmin address
+		codec.EmptyAddress,                  // EnableDisableKYCAccountAdmin address
+	); err != nil {
 		return err
 	}
 
-	// Get totalSupply
-	var (
-		totalSupply uint64
-		err         error
-	)
-	for _, alloc := range g.CustomAllocation {
-		totalSupply, err = safemath.Add(totalSupply, alloc.Balance)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Set the asset info for NAI using storage.SetAsset
-	return storage.SetAsset(
-		ctx,
-		mu,
-		ids.Empty,                    // Asset ID
-		consts.AssetFungibleTokenID,  // Asset type ID
-		[]byte(consts.Name),          // Name
-		[]byte(consts.Symbol),        // Symbol
-		consts.Decimals,              // Decimals
-		[]byte(consts.Name),          // Alias (could be same as name)
-		[]byte(consts.Name),          // Description
-		totalSupply,                  // Initial supply
-		g.EmissionBalancer.MaxSupply, // Max supply
-		codec.EmptyAddress,           // Emission address (if applicable)
-		codec.EmptyAddress,           // Address for reserve
-		codec.EmptyAddress,           // Address for minting
-		codec.EmptyAddress,           // Address for burning
-		codec.EmptyAddress,           // Address for freezing
-	)
+	// Initialize state from the DefaultGenesis first
+	return g.DefaultGenesis.InitializeState(ctx, tracer, mu, balanceHandler)
 }
 
 func (g *Genesis) GetStateBranchFactor() merkledb.BranchFactor {

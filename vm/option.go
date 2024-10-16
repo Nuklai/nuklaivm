@@ -5,7 +5,6 @@ package vm
 
 import (
 	"github.com/nuklai/nuklaivm/emission"
-	"github.com/nuklai/nuklaivm/marketplace"
 
 	"github.com/ava-labs/hypersdk/vm"
 	"github.com/ava-labs/hypersdk/x/contracts/runtime"
@@ -52,16 +51,6 @@ func WithEmissionBalancer() vm.Option {
 		emissionFactory := emission.NewEmissionSubscriptionFactory(v.Logger(), tracker)
 		vm.WithBlockSubscriptions(emissionFactory)(v)
 		emissionTracker = tracker
-		return nil
-	})
-}
-
-func WithNuklaiMarketplace() vm.Option {
-	return vm.NewOption(Namespace+"marketplace", NewDefaultConfig(), func(v *vm.VM, config Config) error {
-		if !config.Enabled {
-			return nil
-		}
-		marketplaceHub = marketplace.NewMarketplace(v.Logger(), v)
 		return nil
 	})
 }

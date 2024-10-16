@@ -13,14 +13,14 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
-	hutils "github.com/ava-labs/hypersdk/utils"
-	nchain "github.com/nuklai/nuklaivm/chain"
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -34,31 +34,24 @@ var (
 )
 
 type ClaimMarketplacePayment struct {
-	// DatasetID ID
-	DatasetID ids.ID `json:"dataset_id"`
-
-	// Marketplace ID(This is also the asset ID in the marketplace that represents the dataset)
-	MarketplaceAssetID ids.ID `json:"marketplace_asset_id"`
+	// Marketplace asset address that represents the dataset subscription in the
+	// marketplace
+	MarketplaceAssetAddress codec.Address `serialize:"true" json:"marketplace_asset_address"`
 
 	// Asset to use for the payment
-	AssetForPayment ids.ID `json:"asset_for_payment"`
+	PaymentAssetAddress codec.Address `serialize:"true" json:"payment_asset_address"`
 }
 
 func (*ClaimMarketplacePayment) GetTypeID() uint8 {
 	return nconsts.ClaimMarketplacePaymentID
 }
 
-func (c *ClaimMarketplacePayment) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (c *ClaimMarketplacePayment) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.DatasetKey(c.DatasetID)):              state.Read,
-		string(storage.AssetKey(c.MarketplaceAssetID)):       state.Read | state.Write,
-		string(storage.AssetKey(c.AssetForPayment)):          state.Read,
-		string(storage.BalanceKey(actor, c.AssetForPayment)): state.Allocate | state.Write,
+		string(storage.AssetInfoKey(c.MarketplaceAssetAddress)):              state.Read | state.Write,
+		string(storage.AssetInfoKey(c.PaymentAssetAddress)):                  state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(c.PaymentAssetAddress, actor)): state.All,
 	}
-}
-
-func (*ClaimMarketplacePayment) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.DatasetChunks, storage.AssetChunks, storage.AssetChunks, storage.BalanceChunks}
 }
 
 func (c *ClaimMarketplacePayment) Execute(
@@ -69,43 +62,31 @@ func (c *ClaimMarketplacePayment) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-	// Check if the dataset exists
-	exists, _, _, _, _, _, _, _, _, _, baseAsset, _, _, _, _, _, owner, err := storage.GetDataset(ctx, mu, c.DatasetID)
+	// Check for the asset
+	assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAssetInfoNoController(ctx, mu, c.MarketplaceAssetAddress)
 	if err != nil {
 		return nil, err
 	}
-	if !exists {
-		return nil, ErrDatasetNotFound
-	}
-
-	// Check if the user is the owner of the dataset
-	// Only the onwer can claim the payment
-	if owner != actor {
-		return nil, ErrOutputWrongOwner
-	}
-
-	// Ensure assetForPayment is supported
-	if c.AssetForPayment != baseAsset {
-		return nil, ErrBaseAssetNotSupported
-	}
-
-	// Check if the marketplace asset exists
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAsset(ctx, mu, c.MarketplaceAssetID)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, ErrOutputAssetMissing
-	}
+	// Ensure the asset is a marketplace token
 	if assetType != nconsts.AssetMarketplaceTokenID {
-		return nil, ErrOutputWrongAssetType
+		return nil, ErrAssetTypeInvalid
+	}
+	// Check if the user is the owner of the asset
+	// Only the owner can claim the payment
+	if owner != actor {
+		return nil, ErrWrongOwner
 	}
 
-	// Unmarshal the metadata JSON into a map
-	metadataMap, err := nchain.BytesToMap(metadata)
+	// Convert the metdata to a map
+	metadataMap, err := utils.BytesToMap(metadata)
 	if err != nil {
 		return nil, err
 	}
+	// Ensure paymentAssetAddress is supported
+	if metadataMap["paymentAssetAddress"] != c.PaymentAssetAddress.String() {
+		return nil, ErrPaymentAssetNotSupported
+	}
+
 	// Parse existing values from the metadata
 	paymentRemaining, err := strconv.ParseUint(metadataMap["paymentRemaining"], 10, 64)
 	if err != nil {
@@ -125,19 +106,11 @@ func (c *ClaimMarketplacePayment) Execute(
 
 	// Store the initial total before updating
 	initialTotal := paymentRemaining + paymentClaimed
-	// Parse the value of 1 in the base unit according to the number of decimals
-	decimalsToUse := uint8(nconsts.Decimals)
-	if c.AssetForPayment != ids.Empty {
-		exists, _, _, _, decimals, _, _, _, _, _, _, _, _, _, err = storage.GetAsset(ctx, mu, c.AssetForPayment)
-		if err != nil {
-			return nil, err
-		}
-		if !exists {
-			return nil, ErrOutputAssetNotFound
-		}
-		decimalsToUse = decimals
+	_, _, _, paymentAssetDecimals, _, _, _, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, c.PaymentAssetAddress)
+	if err != nil {
+		return nil, err
 	}
-	baseValueOfOneUnit, _ := hutils.ParseBalance("1", decimalsToUse)
+	baseValueOfOneUnit, _ := utils.ParseBalance("1", paymentAssetDecimals)
 	// Get the current block height
 	currentBlockHeight := emission.GetEmission().GetLastAcceptedBlockHeight()
 	// Calculate the number of blocks the subscription has been active
@@ -174,13 +147,21 @@ func (c *ClaimMarketplacePayment) Execute(
 	}
 
 	// Update the asset with the updated metadata
-	if err := storage.SetAsset(ctx, mu, c.MarketplaceAssetID, assetType, name, symbol, decimals, updatedMetadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
+	if err := storage.SetAssetInfo(ctx, mu, c.MarketplaceAssetAddress, assetType, name, symbol, decimals, updatedMetadata, uri, totalSupply, maxSupply, owner, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
 		return nil, err
 	}
 
 	// TODO: Distribute the rewards to all the users who contributed to the dataset
 	// This only distributes the rewards to the owner of the dataset
-	if _, err := storage.AddBalance(ctx, mu, actor, c.AssetForPayment, totalAccumulatedReward, true); err != nil {
+	balance, err := storage.GetAssetAccountBalanceNoController(ctx, mu, c.PaymentAssetAddress, actor)
+	if err != nil {
+		return nil, err
+	}
+	newBalance, err := smath.Add(balance, totalAccumulatedReward)
+	if err != nil {
+		return nil, err
+	}
+	if err = storage.SetAssetAccountBalance(ctx, mu, c.PaymentAssetAddress, actor, newBalance); err != nil {
 		return nil, err
 	}
 
@@ -189,7 +170,7 @@ func (c *ClaimMarketplacePayment) Execute(
 		PaymentClaimed:    paymentClaimed,
 		PaymentRemaining:  paymentRemaining,
 		DistributedReward: totalAccumulatedReward,
-		DistributedTo:     actor,
+		DistributedTo:     actor.String(),
 	}, nil
 }
 
@@ -202,23 +183,10 @@ func (*ClaimMarketplacePayment) ValidRange(chain.Rules) (int64, int64) {
 	return -1, -1
 }
 
-var _ chain.Marshaler = (*ClaimMarketplacePayment)(nil)
-
-func (*ClaimMarketplacePayment) Size() int {
-	return ids.IDLen * 3
-}
-
-func (c *ClaimMarketplacePayment) Marshal(p *codec.Packer) {
-	p.PackID(c.DatasetID)
-	p.PackID(c.MarketplaceAssetID)
-	p.PackID(c.AssetForPayment)
-}
-
 func UnmarshalClaimMarketplacePayment(p *codec.Packer) (chain.Action, error) {
 	var claimPaymentResult ClaimMarketplacePayment
-	p.UnpackID(true, &claimPaymentResult.DatasetID)
-	p.UnpackID(true, &claimPaymentResult.MarketplaceAssetID)
-	p.UnpackID(false, &claimPaymentResult.AssetForPayment)
+	p.UnpackAddress(&claimPaymentResult.MarketplaceAssetAddress)
+	p.UnpackAddress(&claimPaymentResult.PaymentAssetAddress)
 	return &claimPaymentResult, p.Err()
 }
 
@@ -228,19 +196,19 @@ var (
 )
 
 type ClaimMarketplacePaymentResult struct {
-	LastClaimedBlock  uint64        `serialize:"true" json:"last_claimed_block"`
-	PaymentClaimed    uint64        `serialize:"true" json:"payment_claimed"`
-	PaymentRemaining  uint64        `serialize:"true" json:"payment_remaining"`
-	DistributedReward uint64        `serialize:"true" json:"distributed_reward"`
-	DistributedTo     codec.Address `serialize:"true" json:"distributed_to"`
+	LastClaimedBlock  uint64 `serialize:"true" json:"last_claimed_block"`
+	PaymentClaimed    uint64 `serialize:"true" json:"payment_claimed"`
+	PaymentRemaining  uint64 `serialize:"true" json:"payment_remaining"`
+	DistributedReward uint64 `serialize:"true" json:"distributed_reward"`
+	DistributedTo     string `serialize:"true" json:"distributed_to"`
 }
 
 func (*ClaimMarketplacePaymentResult) GetTypeID() uint8 {
 	return nconsts.ClaimMarketplacePaymentID
 }
 
-func (*ClaimMarketplacePaymentResult) Size() int {
-	return consts.Uint64Len*4 + codec.AddressLen
+func (r *ClaimMarketplacePaymentResult) Size() int {
+	return consts.Uint64Len*4 + codec.StringLen(r.DistributedTo)
 }
 
 func (r *ClaimMarketplacePaymentResult) Marshal(p *codec.Packer) {
@@ -248,7 +216,7 @@ func (r *ClaimMarketplacePaymentResult) Marshal(p *codec.Packer) {
 	p.PackUint64(r.PaymentClaimed)
 	p.PackUint64(r.PaymentRemaining)
 	p.PackUint64(r.DistributedReward)
-	p.PackAddress(r.DistributedTo)
+	p.PackString(r.DistributedTo)
 }
 
 func UnmarshalClaimMarketplacePaymentResult(p *codec.Packer) (codec.Typed, error) {
@@ -257,6 +225,6 @@ func UnmarshalClaimMarketplacePaymentResult(p *codec.Packer) (codec.Typed, error
 	result.PaymentClaimed = p.UnpackUint64(false)
 	result.PaymentRemaining = p.UnpackUint64(false)
 	result.DistributedReward = p.UnpackUint64(false)
-	p.UnpackAddress(&result.DistributedTo)
+	result.DistributedTo = p.UnpackString(true)
 	return &result, p.Err()
 }

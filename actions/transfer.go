@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
-	nchain "github.com/nuklai/nuklaivm/chain"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -24,57 +23,38 @@ const (
 )
 
 var (
-	ErrOutputValueZero                      = errors.New("value is zero")
-	ErrOutputMemoTooLarge                   = errors.New("memo is too large")
-	ErrOutputWrongOwner                     = errors.New("wrong owner")
-	ErrOutputNFTValueMustBeOne              = errors.New("NFT value must be one")
-	_                          chain.Action = (*Transfer)(nil)
+	ErrAssetDoesNotExist              = errors.New("asset does not exist")
+	ErrValueZero                      = errors.New("value is zero")
+	ErrNFTValueMustBeOne              = errors.New("NFT value must be one")
+	ErrMemoTooLarge                   = errors.New("memo is too large")
+	ErrTransferToSelf                 = errors.New("cannot transfer to self")
+	_                    chain.Action = (*Transfer)(nil)
 )
 
 type Transfer struct {
 	// To is the recipient of the [Value].
 	To codec.Address `serialize:"true" json:"to"`
 
-	// AssetID to transfer.
-	AssetID ids.ID `serialize:"true" json:"asset_id"`
+	// AssetAddress to transfer.
+	AssetAddress codec.Address `serialize:"true" json:"asset_address"`
 
 	// Amount are transferred to [To].
 	Value uint64 `serialize:"true" json:"value"`
 
 	// Optional message to accompany transaction.
-	Memo []byte `serialize:"true" json:"memo"`
+	Memo string `serialize:"true" json:"memo"`
 }
 
 func (*Transfer) GetTypeID() uint8 {
 	return nconsts.TransferID
 }
 
-func (t *Transfer) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
-	// Initialize the base stateKeys map
-	stateKeys := state.Keys{
-		string(storage.BalanceKey(actor, t.AssetID)): state.Read | state.Write,
-		string(storage.BalanceKey(t.To, t.AssetID)):  state.All,
+func (t *Transfer) StateKeys(actor codec.Address) state.Keys {
+	return state.Keys{
+		string(storage.AssetInfoKey(t.AssetAddress)):                  state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(t.AssetAddress, actor)): state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(t.AssetAddress, t.To)):  state.All,
 	}
-
-	// Check if t.Asset is not empty, then add to stateKeys
-	if t.AssetID != ids.Empty {
-		stateKeys[string(storage.AssetKey(t.AssetID))] = state.Read | state.Write
-		stateKeys[string(storage.AssetNFTKey(t.AssetID))] = state.Read | state.Write
-	}
-
-	// Return the modified stateKeys
-	return stateKeys
-}
-
-func (t *Transfer) StateKeysMaxChunks() []uint16 {
-	stateKeysChunks := make([]uint16, 0)
-	stateKeysChunks = append(stateKeysChunks, storage.BalanceChunks)
-	stateKeysChunks = append(stateKeysChunks, storage.BalanceChunks)
-	if t.AssetID != ids.Empty {
-		stateKeysChunks = append(stateKeysChunks, storage.AssetChunks)
-		stateKeysChunks = append(stateKeysChunks, storage.AssetNFTChunks)
-	}
-	return stateKeysChunks
 }
 
 func (t *Transfer) Execute(
@@ -85,44 +65,36 @@ func (t *Transfer) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-	// Handle NFT transfers
-	if t.AssetID != ids.Empty {
-		exists, collectionID, uniqueID, uri, metadata, owner, _ := storage.GetAssetNFT(ctx, mu, t.AssetID)
-		if exists {
-			// Check if the sender is the owner of the NFT
-			if owner != actor {
-				return nil, ErrOutputWrongOwner
-			}
-			if t.Value != 1 {
-				return nil, ErrOutputNFTValueMustBeOne
-			}
-			// Subtract the balance from NFT collection for the original NFT owner
-			if _, err := storage.SubBalance(ctx, mu, actor, collectionID, t.Value); err != nil {
-				return nil, err
-			}
-			// Add the balance to NFT collection for the new NFT owner
-			if _, err := storage.AddBalance(ctx, mu, t.To, collectionID, t.Value, true); err != nil {
-				return nil, err
-			}
-			// Update the NFT Info
-			nftID := nchain.GenerateIDWithIndex(collectionID, uniqueID)
-			if err := storage.SetAssetNFT(ctx, mu, collectionID, uniqueID, nftID, uri, metadata, t.To); err != nil {
-				return nil, err
-			}
-		}
+	// Ensure that the user is not transferring to self
+	if actor == t.To {
+		return nil, ErrTransferToSelf
+	}
+	// Check that asset exists
+	assetType, _, _, _, _, _, _, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, t.AssetAddress)
+	if err != nil {
+		return nil, ErrAssetDoesNotExist
 	}
 
-	if t.Value == 0 {
-		return nil, ErrOutputValueZero
+	// Check the invariants
+	if assetType == nconsts.AssetNonFungibleTokenID && t.Value != 1 {
+		return nil, ErrNFTValueMustBeOne
+	} else if t.Value == 0 {
+		return nil, ErrValueZero
 	}
-	if len(t.Memo) > MaxMemoSize {
-		return nil, ErrOutputMemoTooLarge
+	if len(t.Memo) > storage.MaxTextSize {
+		return nil, ErrMemoTooLarge
 	}
-	senderBalance, err := storage.SubBalance(ctx, mu, actor, t.AssetID, t.Value)
+
+	// Check that balance is sufficient
+	balance, err := storage.GetAssetAccountBalanceNoController(ctx, mu, t.AssetAddress, actor)
 	if err != nil {
 		return nil, err
 	}
-	receiverBalance, err := storage.AddBalance(ctx, mu, t.To, t.AssetID, t.Value, true)
+	if balance < t.Value {
+		return nil, storage.ErrInsufficientAssetBalance
+	}
+
+	senderBalance, receiverBalance, err := storage.TransferAsset(ctx, mu, t.AssetAddress, actor, t.To, t.Value)
 	if err != nil {
 		return nil, err
 	}
@@ -142,26 +114,12 @@ func (*Transfer) ValidRange(chain.Rules) (int64, int64) {
 	return -1, -1
 }
 
-// Implementing chain.Marshaler is optional but can be used to optimize performance when hitting TPS limits
-var _ chain.Marshaler = (*Transfer)(nil)
-
-func (t *Transfer) Size() int {
-	return codec.AddressLen + ids.IDLen + consts.Uint64Len + codec.BytesLen(t.Memo)
-}
-
-func (t *Transfer) Marshal(p *codec.Packer) {
-	p.PackAddress(t.To)
-	p.PackID(t.AssetID)
-	p.PackLong(t.Value)
-	p.PackBytes(t.Memo)
-}
-
 func UnmarshalTransfer(p *codec.Packer) (chain.Action, error) {
 	var transfer Transfer
 	p.UnpackAddress(&transfer.To)
-	p.UnpackID(false, &transfer.AssetID) // empty ID is the native asset
+	p.UnpackAddress(&transfer.AssetAddress)
 	transfer.Value = p.UnpackUint64(true)
-	p.UnpackBytes(MaxMemoSize, false, &transfer.Memo)
+	transfer.Memo = p.UnpackString(false)
 	return &transfer, p.Err()
 }
 

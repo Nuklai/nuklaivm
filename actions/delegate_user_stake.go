@@ -16,6 +16,7 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -41,16 +42,12 @@ func (*DelegateUserStake) GetTypeID() uint8 {
 	return nconsts.DelegateUserStakeID
 }
 
-func (s *DelegateUserStake) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (s *DelegateUserStake) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.BalanceKey(actor, ids.Empty)):          state.Read | state.Write,
-		string(storage.DelegateUserStakeKey(actor, s.NodeID)): state.Allocate | state.Write,
-		string(storage.RegisterValidatorStakeKey(s.NodeID)):   state.Read,
+		string(storage.DelegatorStakeKey(actor, s.NodeID)):                state.Allocate | state.Write,
+		string(storage.ValidatorStakeKey(s.NodeID)):                       state.Read,
+		string(storage.AssetAccountBalanceKey(storage.NAIAddress, actor)): state.Read | state.Write,
 	}
-}
-
-func (*DelegateUserStake) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.DelegateUserStakeChunks, storage.RegisterValidatorStakeChunks}
 }
 
 func (s *DelegateUserStake) Execute(
@@ -62,13 +59,13 @@ func (s *DelegateUserStake) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	// Check if the validator the user is trying to delegate to is registered for staking
-	exists, stakeStartBlock, stakeEndBlock, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, s.NodeID)
+	exists, stakeStartBlock, stakeEndBlock, _, _, _, _, _ := storage.GetValidatorStakeNoController(ctx, mu, s.NodeID)
 	if !exists {
 		return nil, ErrValidatorNotYetRegistered
 	}
 
 	// Check if the user has already delegated to this validator node before
-	exists, _, _, _, _, _, _ = storage.GetDelegateUserStake(ctx, mu, actor, s.NodeID)
+	exists, _, _, _, _, _, _ = storage.GetDelegatorStakeNoController(ctx, mu, actor, s.NodeID)
 	if exists {
 		return nil, ErrUserAlreadyStaked
 	}
@@ -109,17 +106,29 @@ func (s *DelegateUserStake) Execute(
 		return nil, err
 	}
 
-	balance, err := storage.SubBalance(ctx, mu, actor, ids.Empty, s.StakedAmount)
+	// Ensure that the balance is sufficient and subtract the staked amount
+	balance, err := storage.GetAssetAccountBalanceNoController(ctx, mu, storage.NAIAddress, actor)
 	if err != nil {
 		return nil, err
 	}
-	if err := storage.SetDelegateUserStake(ctx, mu, actor, s.NodeID, s.StakeStartBlock, s.StakeEndBlock, s.StakedAmount, actor); err != nil {
+	if balance < s.StakedAmount {
+		return nil, storage.ErrInsufficientAssetBalance
+	}
+	newBalance, err := smath.Sub(balance, s.StakedAmount)
+	if err != nil {
+		return nil, err
+	}
+	if err = storage.SetAssetAccountBalance(ctx, mu, storage.NAIAddress, actor, newBalance); err != nil {
+		return nil, err
+	}
+
+	if err := storage.SetDelegatorStake(ctx, mu, actor, s.NodeID, s.StakeStartBlock, s.StakeEndBlock, s.StakedAmount, actor); err != nil {
 		return nil, err
 	}
 	return &DelegateUserStakeResult{
 		StakedAmount:       s.StakedAmount,
-		BalanceBeforeStake: balance + s.StakedAmount,
-		BalanceAfterStake:  balance,
+		BalanceBeforeStake: balance,
+		BalanceAfterStake:  newBalance,
 	}, nil
 }
 

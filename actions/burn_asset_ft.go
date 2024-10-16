@@ -14,7 +14,6 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
-	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -25,8 +24,8 @@ const (
 var _ chain.Action = (*BurnAssetFT)(nil)
 
 type BurnAssetFT struct {
-	// AssetID ID of the asset to burn.
-	AssetID ids.ID `serialize:"true" json:"asset_id"`
+	// AssetAddress of the asset to burn.
+	AssetAddress codec.Address `serialize:"true" json:"asset_address"`
 
 	// Number of assets to burn
 	Value uint64 `serialize:"true" json:"value"`
@@ -36,15 +35,11 @@ func (*BurnAssetFT) GetTypeID() uint8 {
 	return nconsts.BurnAssetFTID
 }
 
-func (b *BurnAssetFT) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (b *BurnAssetFT) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.AssetKey(b.AssetID)):          state.Read | state.Write,
-		string(storage.BalanceKey(actor, b.AssetID)): state.Read | state.Write,
+		string(storage.AssetInfoKey(b.AssetAddress)):                  state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(b.AssetAddress, actor)): state.Read | state.Write,
 	}
-}
-
-func (*BurnAssetFT) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.BalanceChunks}
 }
 
 func (b *BurnAssetFT) Execute(
@@ -56,38 +51,27 @@ func (b *BurnAssetFT) Execute(
 	_ ids.ID,
 ) (codec.Typed, error) {
 	if b.Value == 0 {
-		return nil, ErrOutputValueZero
+		return nil, ErrValueZero
 	}
 
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAsset(ctx, mu, b.AssetID)
+	assetType, _, _, _, _, _, _, _, _, _, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, b.AssetAddress)
 	if err != nil {
 		return nil, err
 	}
-	if !exists {
-		return nil, ErrOutputAssetMissing
-	}
+	// Ensure that it's a fungible token
 	if assetType != nconsts.AssetFungibleTokenID {
-		return nil, ErrOutputWrongAssetType
+		return nil, ErrAssetTypeInvalid
 	}
 
-	newSupply, err := smath.Sub(totalSupply, b.Value)
-	if err != nil {
-		return nil, err
-	}
-	if err := storage.SetAsset(ctx, mu, b.AssetID, assetType, name, symbol, decimals, metadata, uri, newSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor); err != nil {
-		return nil, err
-	}
-
-	newBalance, err := storage.SubBalance(ctx, mu, actor, b.AssetID, b.Value)
+	// Burning logic for fungible tokens
+	newBalance, err := storage.BurnAsset(ctx, mu, b.AssetAddress, actor, b.Value)
 	if err != nil {
 		return nil, err
 	}
 
 	return &BurnAssetFTResult{
-		From:             actor,
-		OldBalance:       newBalance + b.Value,
-		NewBalance:       newBalance,
-		AssetTotalSupply: newSupply,
+		OldBalance: newBalance + b.Value,
+		NewBalance: newBalance,
 	}, nil
 }
 
@@ -100,21 +84,10 @@ func (*BurnAssetFT) ValidRange(chain.Rules) (int64, int64) {
 	return -1, -1
 }
 
-var _ chain.Marshaler = (*BurnAssetFT)(nil)
-
-func (*BurnAssetFT) Size() int {
-	return ids.IDLen + consts.Uint64Len
-}
-
-func (b *BurnAssetFT) Marshal(p *codec.Packer) {
-	p.PackID(b.AssetID)
-	p.PackUint64(b.Value)
-}
-
 func UnmarshalBurnAssetFT(p *codec.Packer) (chain.Action, error) {
 	var burn BurnAssetFT
-	p.UnpackID(false, &burn.AssetID) // can burn native asset
-	burn.Value = p.UnpackUint64(false)
+	p.UnpackAddress(&burn.AssetAddress)
+	burn.Value = p.UnpackUint64(true)
 	return &burn, p.Err()
 }
 
@@ -124,10 +97,8 @@ var (
 )
 
 type BurnAssetFTResult struct {
-	From             codec.Address `serialize:"true" json:"from"`
-	OldBalance       uint64        `serialize:"true" json:"old_balance"`
-	NewBalance       uint64        `serialize:"true" json:"new_balance"`
-	AssetTotalSupply uint64        `serialize:"true" json:"asset_total_supply"`
+	OldBalance uint64 `serialize:"true" json:"old_balance"`
+	NewBalance uint64 `serialize:"true" json:"new_balance"`
 }
 
 func (*BurnAssetFTResult) GetTypeID() uint8 {
@@ -135,21 +106,17 @@ func (*BurnAssetFTResult) GetTypeID() uint8 {
 }
 
 func (*BurnAssetFTResult) Size() int {
-	return codec.AddressLen + consts.Uint64Len*3
+	return consts.Uint64Len * 2
 }
 
 func (r *BurnAssetFTResult) Marshal(p *codec.Packer) {
-	p.PackAddress(r.From)
 	p.PackUint64(r.OldBalance)
 	p.PackUint64(r.NewBalance)
-	p.PackUint64(r.AssetTotalSupply)
 }
 
 func UnmarshalBurnAssetFTResult(p *codec.Packer) (codec.Typed, error) {
 	var result BurnAssetFTResult
-	p.UnpackAddress(&result.From)
-	result.OldBalance = p.UnpackUint64(false)
+	result.OldBalance = p.UnpackUint64(true)
 	result.NewBalance = p.UnpackUint64(false)
-	result.AssetTotalSupply = p.UnpackUint64(false)
 	return &result, p.Err()
 }

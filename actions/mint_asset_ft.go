@@ -15,7 +15,6 @@ import (
 	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
-	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -24,17 +23,15 @@ const (
 )
 
 var (
-	ErrOutputAssetIsNative                 = errors.New("asset is native")
-	ErrOutputAssetMissing                  = errors.New("asset missing")
-	ErrOutputWrongAssetType                = errors.New("asset is not of correct type")
-	ErrOutputWrongMintAdmin                = errors.New("mint admin is not correct")
-	ErrOutputMaxSupplyReached              = errors.New("max supply reached")
-	_                         chain.Action = (*MintAssetFT)(nil)
+	ErrAssetIsNative               = errors.New("asset is native")
+	ErrAssetMissing                = errors.New("asset missing")
+	ErrWrongMintAdmin              = errors.New("mint admin is not correct")
+	_                 chain.Action = (*MintAssetFT)(nil)
 )
 
 type MintAssetFT struct {
-	// AssetID is the AssetID of the asset to mint.
-	AssetID ids.ID `serialize:"true" json:"asset_id"`
+	// AssetAddress is the AssetAddress of the asset to mint.
+	AssetAddress codec.Address `serialize:"true" json:"asset_address"`
 
 	// Number of assets to mint to [To].
 	Value uint64 `serialize:"true" json:"value"`
@@ -47,15 +44,11 @@ func (*MintAssetFT) GetTypeID() uint8 {
 	return nconsts.MintAssetFTID
 }
 
-func (m *MintAssetFT) StateKeys(codec.Address, ids.ID) state.Keys {
+func (m *MintAssetFT) StateKeys(codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.AssetKey(m.AssetID)):         state.Read | state.Write,
-		string(storage.BalanceKey(m.To, m.AssetID)): state.All,
+		string(storage.AssetInfoKey(m.AssetAddress)):                 state.Read | state.Write,
+		string(storage.AssetAccountBalanceKey(m.AssetAddress, m.To)): state.All,
 	}
-}
-
-func (*MintAssetFT) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.AssetChunks, storage.BalanceChunks}
 }
 
 func (m *MintAssetFT) Execute(
@@ -66,48 +59,34 @@ func (m *MintAssetFT) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-	if m.AssetID == ids.Empty {
-		return nil, ErrOutputAssetIsNative
+	if m.AssetAddress == storage.NAIAddress {
+		return nil, ErrAssetIsNative
 	}
 	if m.Value == 0 {
-		return nil, ErrOutputValueZero
+		return nil, ErrValueZero
 	}
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAsset(ctx, mu, m.AssetID)
+
+	assetType, _, _, _, _, _, _, _, _, mintAdmin, _, _, _, err := storage.GetAssetInfoNoController(ctx, mu, m.AssetAddress)
 	if err != nil {
 		return nil, err
 	}
-	if !exists {
-		return nil, ErrOutputAssetMissing
-	}
+	// Ensure that it's a fungible token
 	if assetType != nconsts.AssetFungibleTokenID {
-		return nil, ErrOutputWrongAssetType
+		return nil, ErrAssetTypeInvalid
 	}
 	if mintAdmin != actor {
-		return nil, ErrOutputWrongMintAdmin
+		return nil, ErrWrongMintAdmin
 	}
 
 	// Minting logic for fungible tokens
-	newSupply, err := smath.Add(totalSupply, m.Value)
-	if err != nil {
-		return nil, err
-	}
-	if maxSupply != 0 && newSupply > maxSupply {
-		return nil, ErrOutputMaxSupplyReached
-	}
-
-	if err := storage.SetAsset(ctx, mu, m.AssetID, assetType, name, symbol, decimals, metadata, uri, newSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin); err != nil {
-		return nil, err
-	}
-	newBalance, err := storage.AddBalance(ctx, mu, m.To, m.AssetID, m.Value, true)
+	newBalance, err := storage.MintAsset(ctx, mu, m.AssetAddress, m.To, m.Value)
 	if err != nil {
 		return nil, err
 	}
 
 	return &MintAssetFTResult{
-		To:               m.To,
-		OldBalance:       newBalance - m.Value,
-		NewBalance:       newBalance,
-		AssetTotalSupply: newSupply,
+		OldBalance: newBalance - m.Value,
+		NewBalance: newBalance,
 	}, nil
 }
 
@@ -120,21 +99,9 @@ func (*MintAssetFT) ValidRange(chain.Rules) (int64, int64) {
 	return -1, -1
 }
 
-var _ chain.Marshaler = (*MintAssetFT)(nil)
-
-func (*MintAssetFT) Size() int {
-	return codec.AddressLen + ids.IDLen + consts.Uint64Len
-}
-
-func (m *MintAssetFT) Marshal(p *codec.Packer) {
-	p.PackID(m.AssetID)
-	p.PackLong(m.Value)
-	p.PackAddress(m.To)
-}
-
 func UnmarshalMintAssetFT(p *codec.Packer) (chain.Action, error) {
 	var mint MintAssetFT
-	p.UnpackID(true, &mint.AssetID) // empty ID is the native asset
+	p.UnpackAddress(&mint.AssetAddress)
 	mint.Value = p.UnpackUint64(true)
 	p.UnpackAddress(&mint.To)
 	return &mint, p.Err()
@@ -146,10 +113,8 @@ var (
 )
 
 type MintAssetFTResult struct {
-	To               codec.Address `serialize:"true" json:"to"`
-	OldBalance       uint64        `serialize:"true" json:"old_balance"`
-	NewBalance       uint64        `serialize:"true" json:"new_balance"`
-	AssetTotalSupply uint64        `serialize:"true" json:"asset_total_supply"`
+	OldBalance uint64 `serialize:"true" json:"old_balance"`
+	NewBalance uint64 `serialize:"true" json:"new_balance"`
 }
 
 func (*MintAssetFTResult) GetTypeID() uint8 {
@@ -157,21 +122,17 @@ func (*MintAssetFTResult) GetTypeID() uint8 {
 }
 
 func (*MintAssetFTResult) Size() int {
-	return codec.AddressLen + consts.Uint64Len*3
+	return consts.Uint64Len * 2
 }
 
 func (r *MintAssetFTResult) Marshal(p *codec.Packer) {
-	p.PackAddress(r.To)
 	p.PackUint64(r.OldBalance)
 	p.PackUint64(r.NewBalance)
-	p.PackUint64(r.AssetTotalSupply)
 }
 
 func UnmarshalMintAssetFTResult(p *codec.Packer) (codec.Typed, error) {
 	var result MintAssetFTResult
-	p.UnpackAddress(&result.To)
 	result.OldBalance = p.UnpackUint64(false)
-	result.NewBalance = p.UnpackUint64(false)
-	result.AssetTotalSupply = p.UnpackUint64(false)
+	result.NewBalance = p.UnpackUint64(true)
 	return &result, p.Err()
 }

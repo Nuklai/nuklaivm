@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/hex"
 	"net/http"
-	"strings"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/actions"
@@ -15,6 +14,7 @@ import (
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/utils"
 
 	"github.com/ava-labs/hypersdk/api"
 	"github.com/ava-labs/hypersdk/codec"
@@ -70,16 +70,17 @@ func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *Bal
 	if err != nil {
 		return err
 	}
-	assetID, err := getAssetIDBySymbol(args.Asset)
+	assetAddr, err := utils.GetAssetAddressBySymbol(args.Asset)
 	if err != nil {
 		return err
 	}
-	balance, err := storage.GetBalanceFromState(ctx, j.vm.ReadState, addr, assetID)
+	balance, err := storage.GetAssetAccountBalanceFromState(ctx, j.vm.ReadState, assetAddr, addr)
 	if err != nil {
 		return err
 	}
 	reply.Amount = balance
-	return err
+
+	return nil
 }
 
 type AssetArgs struct {
@@ -95,35 +96,32 @@ type AssetReply struct {
 	URI                          string `json:"uri"`
 	TotalSupply                  uint64 `json:"totalSupply"`
 	MaxSupply                    uint64 `json:"maxSupply"`
-	Admin                        string `json:"admin"`
-	MintActor                    string `json:"mintActor"`
-	PauseUnpauseActor            string `json:"pauseUnpauseActor"`
-	FreezeUnfreezeActor          string `json:"freezeUnfreezeActor"`
-	EnableDisableKYCAccountActor string `json:"enableDisableKYCAccountActor"`
+	Owner                        string `json:"owner"`
+	MintAdmin                    string `json:"mintAdmin"`
+	PauseUnpauseAdmin            string `json:"pauseUnpauseAdmin"`
+	FreezeUnfreezeAdmin          string `json:"freezeUnfreezeAdmin"`
+	EnableDisableKYCAccountAdmin string `json:"enableDisableKYCAccountAdmin"`
 }
 
 func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetReply) error {
 	ctx, span := j.vm.Tracer().Start(req.Context(), "Server.Asset")
 	defer span.End()
 
-	assetID, err := getAssetIDBySymbol(args.Asset)
+	assetAddress, err := utils.GetAssetAddressBySymbol(args.Asset)
 	if err != nil {
 		return err
 	}
-	exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, admin, mintActor, pauseUnpauseActor, freezeUnfreezeActor, enableDisableKYCAccountActor, err := storage.GetAssetFromState(ctx, j.vm.ReadState, assetID)
+	assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoFromState(ctx, j.vm.ReadState, assetAddress)
 	if err != nil {
 		return err
-	}
-	if !exists {
-		return ErrAssetNotFound
 	}
 	switch assetType {
 	case consts.AssetFungibleTokenID:
 		reply.AssetType = consts.AssetFungibleTokenDesc
 	case consts.AssetNonFungibleTokenID:
 		reply.AssetType = consts.AssetNonFungibleTokenDesc
-	case consts.AssetDatasetTokenID:
-		reply.AssetType = consts.AssetDatasetTokenDesc
+	case consts.AssetFractionalTokenID:
+		reply.AssetType = consts.AssetFractionalTokenDesc
 	case consts.AssetMarketplaceTokenID:
 		reply.AssetType = consts.AssetMarketplaceTokenDesc
 	}
@@ -134,45 +132,13 @@ func (j *JSONRPCServer) Asset(req *http.Request, args *AssetArgs, reply *AssetRe
 	reply.URI = string(uri)
 	reply.TotalSupply = totalSupply
 	reply.MaxSupply = maxSupply
-	reply.Admin = admin.String()
-	reply.MintActor = mintActor.String()
-	reply.PauseUnpauseActor = pauseUnpauseActor.String()
-	reply.FreezeUnfreezeActor = freezeUnfreezeActor.String()
-	reply.EnableDisableKYCAccountActor = enableDisableKYCAccountActor.String()
-	return err
-}
-
-type AssetNFTReply struct {
-	CollectionID string `json:"collectionID"`
-	UniqueID     uint64 `json:"uniqueID"`
-	URI          string `json:"uri"`
-	Metadata     string `json:"metadata"`
-	Owner        string `json:"owner"`
-}
-
-func (j *JSONRPCServer) AssetNFT(req *http.Request, args *AssetArgs, reply *AssetNFTReply) error {
-	ctx, span := j.vm.Tracer().Start(req.Context(), "Server.AssetNFT")
-	defer span.End()
-
-	nftID, err := getAssetIDBySymbol(args.Asset)
-	if err != nil {
-		return err
-	}
-	exists, collectionID, uniqueID, uri, metadata, owner, err := storage.GetAssetNFTFromState(ctx, j.vm.ReadState, nftID)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return ErrAssetNotFound
-	}
-
-	reply.CollectionID = collectionID.String()
-	reply.UniqueID = uniqueID
-	reply.URI = string(uri)
-	reply.Metadata = string(metadata)
 	reply.Owner = owner.String()
+	reply.MintAdmin = mintAdmin.String()
+	reply.PauseUnpauseAdmin = pauseUnpauseAdmin.String()
+	reply.FreezeUnfreezeAdmin = freezeUnfreezeAdmin.String()
+	reply.EnableDisableKYCAccountAdmin = enableDisableKYCAccountAdmin.String()
 
-	return err
+	return nil
 }
 
 type DatasetArgs struct {
@@ -188,8 +154,8 @@ type DatasetReply struct {
 	LicenseURL                   string `json:"licenseURL"`
 	Metadata                     string `json:"metadata"`
 	IsCommunityDataset           bool   `json:"isCommunityDataset"`
-	SaleID                       string `json:"saleID"`
-	BaseAsset                    string `json:"baseAsset"`
+	MarketplaceAssetAddress      string `json:"marketplaceAssetAddress"`
+	BaseAssetAddress             string `json:"baseAssetAddress"`
 	BasePrice                    uint64 `json:"basePrice"`
 	RevenueModelDataShare        uint8  `json:"revenueModelDataShare"`
 	RevenueModelMetadataShare    uint8  `json:"revenueModelMetadataShare"`
@@ -202,16 +168,13 @@ func (j *JSONRPCServer) Dataset(req *http.Request, args *DatasetArgs, reply *Dat
 	ctx, span := j.vm.Tracer().Start(req.Context(), "Server.Dataset")
 	defer span.End()
 
-	datasetID, err := getAssetIDBySymbol(args.Dataset)
+	datasetAddress, err := utils.GetAssetAddressBySymbol(args.Dataset)
 	if err != nil {
 		return err
 	}
-	exists, name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, saleID, baseAsset, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadatOwnerCut, owner, err := storage.GetDatasetFromState(ctx, j.vm.ReadState, datasetID)
+	name, description, categories, licenseName, licenseSymbol, licenseURL, metadata, isCommunityDataset, marketplaceAssetAddress, baseAssetAddress, basePrice, revenueModelDataShare, revenueModelMetadataShare, revenueModelDataOwnerCut, revenueModelMetadatOwnerCut, owner, err := storage.GetDatasetInfoFromState(ctx, j.vm.ReadState, datasetAddress)
 	if err != nil {
 		return err
-	}
-	if !exists {
-		return ErrDatasetNotFound
 	}
 	reply.Name = string(name)
 	reply.Description = string(description)
@@ -221,51 +184,49 @@ func (j *JSONRPCServer) Dataset(req *http.Request, args *DatasetArgs, reply *Dat
 	reply.LicenseURL = string(licenseURL)
 	reply.Metadata = string(metadata)
 	reply.IsCommunityDataset = isCommunityDataset
-	reply.SaleID = saleID.String()
-	reply.BaseAsset = baseAsset.String()
+	reply.MarketplaceAssetAddress = marketplaceAssetAddress.String()
+	reply.BaseAssetAddress = baseAssetAddress.String()
 	reply.BasePrice = basePrice
 	reply.RevenueModelDataShare = revenueModelDataShare
 	reply.RevenueModelMetadataShare = revenueModelMetadataShare
 	reply.RevenueModelDataOwnerCut = revenueModelDataOwnerCut
 	reply.RevenueModelMetadataOwnerCut = revenueModelMetadatOwnerCut
 	reply.Owner = owner.String()
-	return err
+
+	return nil
 }
 
-type DataContribution struct {
+type DatasetContributionArgs struct {
+	ContributionID string `json:"contributionID"`
+}
+
+type DatasetContributionReply struct {
+	DatasetAddress string `json:"datasetAddress"`
 	DataLocation   string `json:"dataLocation"`
 	DataIdentifier string `json:"dataIdentifier"`
 	Contributor    string `json:"contributor"`
+	Active         bool   `json:"active"`
 }
 
-type DataContributionPendingReply struct {
-	Contributions []DataContribution `json:"contributions"`
-}
-
-func (j *JSONRPCServer) DataContributionPending(req *http.Request, args *DatasetArgs, reply *DataContributionPendingReply) (err error) {
-	_, span := j.vm.Tracer().Start(req.Context(), "Server.DataContributionPending")
+func (j *JSONRPCServer) DatasetContribution(req *http.Request, args *DatasetContributionArgs, reply *DatasetContributionReply) (err error) {
+	ctx, span := j.vm.Tracer().Start(req.Context(), "Server.DatasetContribution")
 	defer span.End()
 
-	datasetID, err := getAssetIDBySymbol(args.Dataset)
+	contributionID, err := ids.FromString(args.ContributionID)
 	if err != nil {
 		return err
 	}
 
-	// Get all contributions for the dataset
-	contributions, err := marketplaceHub.GetDataContribution(datasetID, codec.EmptyAddress)
+	datasetAddress, dataLocation, dataIdentifier, contributor, active, err := storage.GetDatasetContributionInfoFromState(ctx, j.vm.ReadState, contributionID)
 	if err != nil {
 		return err
 	}
+	reply.DatasetAddress = datasetAddress.String()
+	reply.DataLocation = string(dataLocation)
+	reply.DataIdentifier = string(dataIdentifier)
+	reply.Contributor = contributor.String()
+	reply.Active = active
 
-	// Iterate over contributions and populate reply
-	for _, contrib := range contributions {
-		convertedContribution := DataContribution{
-			DataLocation:   string(contrib.DataLocation),   // Convert []byte to string
-			DataIdentifier: string(contrib.DataIdentifier), // Convert []byte to string
-			Contributor:    contrib.Contributor.String(),   // Convert codec.Address to string
-		}
-		reply.Contributions = append(reply.Contributions, convertedContribution)
-	}
 	return nil
 }
 
@@ -341,7 +302,7 @@ func (j *JSONRPCServer) ValidatorStake(req *http.Request, args *ValidatorStakeAr
 	ctx, span := j.vm.Tracer().Start(req.Context(), "Server.ValidatorStake")
 	defer span.End()
 
-	exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, err := storage.GetRegisterValidatorStakeFromState(ctx, j.vm.ReadState, args.NodeID)
+	exists, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, err := storage.GetValidatorStakeFromState(ctx, j.vm.ReadState, args.NodeID)
 	if err != nil {
 		return err
 	}
@@ -384,12 +345,12 @@ func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply 
 		return err
 	}
 
-	exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, ownerAddress, err := storage.GetDelegateUserStakeFromState(ctx, j.vm.ReadState, ownerID, nodeID)
+	exists, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, ownerAddress, err := storage.GetDelegatorStakeFromState(ctx, j.vm.ReadState, ownerID, nodeID)
 	if err != nil {
 		return err
 	}
 	if !exists {
-		return ErrUserStakeNotFound
+		return ErrDelegatorStakeNotFound
 	}
 
 	reply.StakeStartBlock = stakeStartBlock
@@ -398,13 +359,6 @@ func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply 
 	reply.RewardAddress = rewardAddress.String()
 	reply.OwnerAddress = ownerAddress.String()
 	return nil
-}
-
-func getAssetIDBySymbol(symbol string) (ids.ID, error) {
-	if strings.TrimSpace(symbol) == "" || strings.EqualFold(symbol, consts.Symbol) {
-		return ids.Empty, nil
-	}
-	return ids.FromString(symbol)
 }
 
 type SimulateCallTxArgs struct {

@@ -6,7 +6,7 @@ description: 'Release the VM'
 
 inputs:
   vm-name:
-    description: 'NuklaiVM'
+    description: 'VM name'
     required: true
   github-token:
     description: 'GitHub Token'
@@ -48,7 +48,6 @@ runs:
         distribution: goreleaser
         version: latest
         args: release
-        workdir: ./${{ inputs.vm-name }}/
       env:
         # https://docs.github.com/en/actions/security-guides/automatic-token-authentication#about-the-github_token-secret
         GITHUB_TOKEN: ${{ inputs.github-token }}

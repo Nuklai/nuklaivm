@@ -5,10 +5,9 @@ package actions
 
 import (
 	"context"
+	"strings"
 	"testing"
 
-	"github.com/ava-labs/avalanchego/ids"
-	"github.com/nuklai/nuklaivm/chain"
 	"github.com/nuklai/nuklaivm/storage"
 	"github.com/stretchr/testify/require"
 
@@ -21,236 +20,223 @@ import (
 )
 
 func TestCreateAssetAction(t *testing.T) {
-	addr := codectest.NewRandomAddress()
-	assetID := ids.GenerateTestID()
-	nftID := chain.GenerateIDWithIndex(assetID, 0)
+	actor := codectest.NewRandomAddress()
+	assetFT := storage.AssetAddress(nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 9, []byte("metadata"), actor)
+	assetNFT := storage.AssetAddress(nconsts.AssetNonFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), actor)
+	assetFractional := storage.AssetAddress(nconsts.AssetFractionalTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), actor)
+	nftAddress := storage.AssetAddressNFT(assetFractional, []byte("metadata"), actor)
 
 	tests := []chaintest.ActionTest{
 		{
 			Name:  "InvalidAssetType",
-			Actor: addr,
+			Actor: actor,
 			Action: &CreateAsset{
 				AssetType: 255, // Invalid type
-				Name:      []byte("My Asset"),
-				Symbol:    []byte("MYA"),
+				Name:      "My Asset",
+				Symbol:    "MYA",
 				Decimals:  0,
-				Metadata:  []byte("Metadata"),
-				URI:       []byte("uri"),
+				Metadata:  "Metadata",
 				MaxSupply: 1000,
 			},
-			ExpectedErr: ErrOutputAssetTypeInvalid,
+			ExpectedErr: ErrAssetTypeInvalid,
 		},
 		{
 			Name:  "InvalidName",
-			Actor: addr,
+			Actor: actor,
 			Action: &CreateAsset{
 				AssetType: nconsts.AssetFungibleTokenID,
-				Name:      []byte("As"), // Invalid name, too short
-				Symbol:    []byte("MYA"),
+				Name:      "As", // Invalid name, too short
+				Symbol:    "MYA",
 				Decimals:  0,
-				Metadata:  []byte("Metadata"),
-				URI:       []byte("uri"),
+				Metadata:  "Metadata",
 				MaxSupply: 1000,
 			},
-			ExpectedErr: ErrOutputNameInvalid,
+			ExpectedErr: ErrNameInvalid,
 		},
 		{
 			Name:  "InvalidSymbol",
-			Actor: addr,
+			Actor: actor,
 			Action: &CreateAsset{
 				AssetType: nconsts.AssetFungibleTokenID,
-				Name:      []byte("My Asset"),
-				Symbol:    []byte("SY"), // Invalid symbol, too short
+				Name:      "My Asset",
+				Symbol:    "SY", // Invalid symbol, too short
 				Decimals:  0,
-				Metadata:  []byte("Metadata"),
-				URI:       []byte("uri"),
+				Metadata:  "Metadata",
 				MaxSupply: 1000,
 			},
-			ExpectedErr: ErrOutputSymbolInvalid,
+			ExpectedErr: ErrSymbolInvalid,
 		},
 		{
 			Name:  "InvalidDecimalsForFungible",
-			Actor: addr,
+			Actor: actor,
 			Action: &CreateAsset{
 				AssetType: nconsts.AssetFungibleTokenID,
-				Name:      []byte("My Asset"),
-				Symbol:    []byte("MYA"),
+				Name:      "My Asset",
+				Symbol:    "MYA",
 				Decimals:  19, // Invalid decimals, exceeds max
-				Metadata:  []byte("Metadata"),
-				URI:       []byte("uri"),
+				Metadata:  "Metadata",
 				MaxSupply: 1000,
 			},
-			ExpectedErr: ErrOutputDecimalsInvalid,
+			ExpectedErr: ErrDecimalsInvalid,
 		},
 		{
 			Name:  "InvalidDecimalsForNonFungible",
-			Actor: addr,
+			Actor: actor,
 			Action: &CreateAsset{
 				AssetType: nconsts.AssetNonFungibleTokenID,
-				Name:      []byte("My NFT"),
-				Symbol:    []byte("NFT"),
+				Name:      "My NFT",
+				Symbol:    "NFT",
 				Decimals:  1, // Invalid decimals for non-fungible token
-				Metadata:  []byte("Metadata"),
-				URI:       []byte("uri"),
+				Metadata:  "Metadata",
 				MaxSupply: 1,
 			},
-			ExpectedErr: ErrOutputDecimalsInvalid,
+			ExpectedErr: ErrDecimalsInvalid,
 		},
 		{
 			Name:  "InvalidMetadata",
-			Actor: addr,
+			Actor: actor,
 			Action: &CreateAsset{
 				AssetType: nconsts.AssetFungibleTokenID,
-				Name:      []byte("My Asset"),
-				Symbol:    []byte("MYA"),
+				Name:      "My Asset",
+				Symbol:    "MYA",
 				Decimals:  0,
-				Metadata:  []byte("Me"), // Invalid metadata, too short
-				URI:       []byte("uri"),
+				Metadata:  strings.Repeat("a", storage.MaxAssetMetadataSize+1), // Invalid metadata, too long
 				MaxSupply: 1000,
 			},
-			ExpectedErr: ErrOutputMetadataInvalid,
+			ExpectedErr: ErrMetadataInvalid,
 		},
 		{
-			Name:  "InvalidURI",
-			Actor: addr,
+			Name:  "ValidFungibleTokenCreation",
+			Actor: actor,
 			Action: &CreateAsset{
 				AssetType: nconsts.AssetFungibleTokenID,
-				Name:      []byte("My Asset"),
-				Symbol:    []byte("MYA"),
-				Decimals:  0,
-				Metadata:  []byte("Metadata"),
-				URI:       []byte("ur"), // Invalid URI, too short
-				MaxSupply: 1000,
-			},
-			ExpectedErr: ErrOutputURIInvalid,
-		},
-		{
-			Name:     "ValidFungibleTokenCreation",
-			Actor:    addr,
-			ActionID: assetID,
-			Action: &CreateAsset{
-				AssetType: nconsts.AssetFungibleTokenID,
-				Name:      []byte("My Token"),
-				Symbol:    []byte("MYT"),
+				Name:      "name",
+				Symbol:    "SYM",
 				Decimals:  9,
-				Metadata:  []byte("Metadata"),
-				URI:       []byte("uri"),
+				Metadata:  "metadata",
 				MaxSupply: 1000000,
 			},
 			State: chaintest.NewInMemoryStore(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if the asset was created correctly
-				exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAsset(ctx, store, assetID)
-				require.True(t, exists)
+				assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, assetFT)
 				require.NoError(t, err)
 				require.Equal(t, nconsts.AssetFungibleTokenID, assetType)
-				require.Equal(t, "My Token", string(name))
-				require.Equal(t, "MYT", string(symbol))
+				require.Equal(t, "name", string(name))
+				require.Equal(t, "SYM", string(symbol))
 				require.Equal(t, uint8(9), decimals)
-				require.Equal(t, "Metadata", string(metadata))
-				require.Equal(t, "uri", string(uri))
+				require.Equal(t, "metadata", string(metadata))
+				require.Equal(t, assetFT.String(), string(uri))
 				require.Equal(t, uint64(0), totalSupply)
 				require.Equal(t, uint64(1000000), maxSupply)
-				require.Equal(t, addr, owner)
+				require.Equal(t, actor, owner)
 				require.Equal(t, codec.EmptyAddress, mintAdmin)
 				require.Equal(t, codec.EmptyAddress, pauseUnpauseAdmin)
 				require.Equal(t, codec.EmptyAddress, freezeUnfreezeAdmin)
 				require.Equal(t, codec.EmptyAddress, enableDisableKYCAccountAdmin)
 			},
 			ExpectedOutputs: &CreateAssetResult{
-				AssetID:            assetID,
-				AssetBalance:       0,
-				DatasetParentNftID: ids.Empty,
+				AssetAddress: assetFT.String(),
+				AssetBalance: 0,
 			},
 		},
 		{
-			Name:     "ValidNonFungibleTokenCreation",
-			Actor:    addr,
-			ActionID: assetID,
+			Name:  "ValidNonFungibleTokenCreation",
+			Actor: actor,
 			Action: &CreateAsset{
 				AssetType: nconsts.AssetNonFungibleTokenID,
-				Name:      []byte("My NFT"),
-				Symbol:    []byte("NFT"),
+				Name:      "name",
+				Symbol:    "SYM",
 				Decimals:  0,
-				Metadata:  []byte("NFT Metadata"),
-				URI:       []byte("nft-uri"),
+				Metadata:  "metadata",
 				MaxSupply: 10,
 			},
 			State: chaintest.NewInMemoryStore(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if the asset was created correctly
-				exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAsset(ctx, store, assetID)
-				require.True(t, exists)
+				assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, assetNFT)
 				require.NoError(t, err)
 				require.Equal(t, nconsts.AssetNonFungibleTokenID, assetType)
-				require.Equal(t, "My NFT", string(name))
-				require.Equal(t, "NFT", string(symbol))
+				require.Equal(t, "name", string(name))
+				require.Equal(t, "SYM", string(symbol))
 				require.Equal(t, uint8(0), decimals)
-				require.Equal(t, "NFT Metadata", string(metadata))
-				require.Equal(t, "nft-uri", string(uri))
+				require.Equal(t, "metadata", string(metadata))
+				require.Equal(t, assetNFT.String(), string(uri))
 				require.Equal(t, uint64(0), totalSupply)
 				require.Equal(t, uint64(10), maxSupply)
-				require.Equal(t, addr, owner)
+				require.Equal(t, actor, owner)
 				require.Equal(t, codec.EmptyAddress, mintAdmin)
 				require.Equal(t, codec.EmptyAddress, pauseUnpauseAdmin)
 				require.Equal(t, codec.EmptyAddress, freezeUnfreezeAdmin)
 				require.Equal(t, codec.EmptyAddress, enableDisableKYCAccountAdmin)
 			},
 			ExpectedOutputs: &CreateAssetResult{
-				AssetID:            assetID,
-				AssetBalance:       0,
-				DatasetParentNftID: ids.Empty,
+				AssetAddress: assetNFT.String(),
+				AssetBalance: 0,
 			},
 		},
 		{
-			Name:     "ValidDatasetCreation",
-			Actor:    addr,
-			ActionID: assetID,
+			Name:  "ValidFractionalTokenCreation",
+			Actor: actor,
 			Action: &CreateAsset{
-				AssetType: nconsts.AssetDatasetTokenID,
-				Name:      []byte("Dataset Asset"),
-				Symbol:    []byte("DAT"),
+				AssetType: nconsts.AssetFractionalTokenID,
+				Name:      "name",
+				Symbol:    "SYM",
 				Decimals:  0,
-				Metadata:  []byte("Dataset Metadata"),
-				URI:       []byte("dataset-uri"),
+				Metadata:  "metadata",
 				MaxSupply: 100,
 			},
 			State: chaintest.NewInMemoryStore(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if the asset was created correctly
-				exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAsset(ctx, store, assetID)
-				require.True(t, exists)
+				assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, assetFractional)
 				require.NoError(t, err)
-				require.Equal(t, nconsts.AssetDatasetTokenID, assetType)
-				require.Equal(t, "Dataset Asset", string(name))
-				require.Equal(t, "DAT", string(symbol))
+				require.Equal(t, nconsts.AssetFractionalTokenID, assetType)
+				require.Equal(t, "name", string(name))
+				require.Equal(t, "SYM", string(symbol))
 				require.Equal(t, uint8(0), decimals)
-				require.Equal(t, "Dataset Metadata", string(metadata))
-				require.Equal(t, "dataset-uri", string(uri))
+				require.Equal(t, "metadata", string(metadata))
+				require.Equal(t, assetFractional.String(), string(uri))
 				require.Equal(t, uint64(1), totalSupply)
 				require.Equal(t, uint64(100), maxSupply)
-				require.Equal(t, addr, owner)
+				require.Equal(t, actor, owner)
 				require.Equal(t, codec.EmptyAddress, mintAdmin)
 				require.Equal(t, codec.EmptyAddress, pauseUnpauseAdmin)
 				require.Equal(t, codec.EmptyAddress, freezeUnfreezeAdmin)
 				require.Equal(t, codec.EmptyAddress, enableDisableKYCAccountAdmin)
-				// Check NFT balance for addr
-				balance, err := storage.GetBalance(ctx, store, addr, nftID)
+				// Check  balance for addr
+				balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, assetFractional, actor)
 				require.NoError(t, err)
 				require.Equal(t, uint64(1), balance)
-				// Check collectionID balance for addr
-				balance, err = storage.GetBalance(ctx, store, addr, assetID)
+
+				// Check if NFT was created correctly
+				assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err = storage.GetAssetInfoNoController(ctx, store, nftAddress)
+				require.NoError(t, err)
+				require.Equal(t, nconsts.AssetNonFungibleTokenID, assetType)
+				require.Equal(t, "name", string(name))
+				require.Equal(t, "SYM-0", string(symbol))
+				require.Equal(t, uint8(0), decimals)
+				require.Equal(t, "metadata", string(metadata))
+				require.Equal(t, assetFractional.String(), string(uri))
+				require.Equal(t, uint64(1), totalSupply)
+				require.Equal(t, uint64(1), maxSupply)
+				require.Equal(t, actor, owner)
+				require.Equal(t, codec.EmptyAddress, mintAdmin)
+				require.Equal(t, codec.EmptyAddress, pauseUnpauseAdmin)
+				require.Equal(t, codec.EmptyAddress, freezeUnfreezeAdmin)
+				require.Equal(t, codec.EmptyAddress, enableDisableKYCAccountAdmin)
+				// Check NFT balance
+				balance, err = storage.GetAssetAccountBalanceNoController(ctx, store, nftAddress, actor)
 				require.NoError(t, err)
 				require.Equal(t, uint64(1), balance)
-				// Check if the NFT has been transferred correctly
-				exists, _, _, _, _, owner, _ = storage.GetAssetNFT(ctx, store, nftID)
-				require.True(t, exists)
-				require.Equal(t, addr.String(), owner.String())
+
+				// Check if the NFT has been minted correctly
+				require.True(t, storage.AssetExists(ctx, store, nftAddress))
 			},
 			ExpectedOutputs: &CreateAssetResult{
-				AssetID:            assetID,
-				AssetBalance:       1,
-				DatasetParentNftID: nftID,
+				AssetAddress:            assetFractional.String(),
+				AssetBalance:            1,
+				DatasetParentNftAddress: nftAddress.String(),
 			},
 		},
 	}
@@ -263,36 +249,34 @@ func TestCreateAssetAction(t *testing.T) {
 func BenchmarkCreateAsset(b *testing.B) {
 	require := require.New(b)
 	actor := codectest.NewRandomAddress()
-	assetID := ids.GenerateTestID()
+	assetFT := storage.AssetAddress(nconsts.AssetFungibleTokenID, []byte("name"), []byte("SYM"), 0, []byte("metadata"), actor)
 
 	createAssetActionBenchmark := &chaintest.ActionBenchmark{
 		Name:  "CreateAssetBenchmark",
 		Actor: actor,
 		Action: &CreateAsset{
 			AssetType: nconsts.AssetFungibleTokenID,
-			Name:      []byte("Benchmark Asset"),
-			Symbol:    []byte("BMA"),
+			Name:      "name",
+			Symbol:    "SYM",
 			Decimals:  9,
-			Metadata:  []byte("Benchmark Metadata"),
-			URI:       []byte("benchmark-uri"),
+			Metadata:  "metadata",
 			MaxSupply: 1000000,
 		},
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
-			require.NoError(storage.SetBalance(context.Background(), store, actor, assetID, 1000))
+			require.NoError(storage.SetAssetAccountBalance(context.Background(), store, assetFT, actor, 1000))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check if the asset was created correctly
-			exists, assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAsset(ctx, store, assetID)
-			require.True(exists)
+			assetType, name, symbol, decimals, metadata, uri, totalSupply, maxSupply, owner, mintAdmin, pauseUnpauseAdmin, freezeUnfreezeAdmin, enableDisableKYCAccountAdmin, err := storage.GetAssetInfoNoController(ctx, store, assetFT)
 			require.NoError(err)
-			require.Equal(nconsts.AssetFungibleTokenID, assetType)
-			require.Equal("Benchmark Asset", string(name))
-			require.Equal("BMA", string(symbol))
+			require.Equal(nconsts.AssetNonFungibleTokenID, assetType)
+			require.Equal("name", string(name))
+			require.Equal("SYM", string(symbol))
 			require.Equal(uint8(9), decimals)
-			require.Equal("Benchmark Metadata", string(metadata))
-			require.Equal("benchmark-uri", string(uri))
+			require.Equal("metadata", string(metadata))
+			require.Equal(assetFT.String(), string(uri))
 			require.Equal(uint64(0), totalSupply)
 			require.Equal(uint64(1000000), maxSupply)
 			require.Equal(actor, owner)

@@ -17,20 +17,19 @@ import (
 )
 
 const (
-	RegisterValidatorStakeChunks uint16 = 4
-	DelegateUserStakeChunks      uint16 = 2
+	ValidatorStakeChunks uint16 = 4
+	DelegatorStakeChunks uint16 = 2
 )
 
-// [registerValidatorStakePrefix] + [nodeID]
-func RegisterValidatorStakeKey(nodeID ids.NodeID) (k []byte) {
-	k = make([]byte, 1+ids.NodeIDLen+consts.Uint16Len) // Length of prefix + nodeID + RegisterValidatorStakeChunks
-	k[0] = registerValidatorStakePrefix                // registerValidatorStakePrefix is a constant representing the registerValidatorStake category
+func ValidatorStakeKey(nodeID ids.NodeID) (k []byte) {
+	k = make([]byte, 1+ids.NodeIDLen+consts.Uint16Len) // Length of prefix + nodeID + ValidatorStakeChunks
+	k[0] = validatorStakePrefix                        // validatorStakePrefix is a constant representing the validatorStake category
 	copy(k[1:], nodeID[:])
-	binary.BigEndian.PutUint16(k[1+ids.NodeIDLen:], RegisterValidatorStakeChunks) // Adding RegisterValidatorStakeChunks
+	binary.BigEndian.PutUint16(k[1+ids.NodeIDLen:], ValidatorStakeChunks) // Adding ValidatorStakeChunks
 	return
 }
 
-func SetRegisterValidatorStake(
+func SetValidatorStake(
 	ctx context.Context,
 	mu state.Mutable,
 	nodeID ids.NodeID,
@@ -41,9 +40,12 @@ func SetRegisterValidatorStake(
 	rewardAddress codec.Address,
 	ownerAddress codec.Address,
 ) error {
-	key := RegisterValidatorStakeKey(nodeID)
-	v := make([]byte, (4*consts.Uint64Len)+(2*codec.AddressLen)) // Calculate the length of the encoded data
+	// Setup
+	key := ValidatorStakeKey(nodeID)
+	validatorStakeSize := (4 * consts.Uint64Len) + (2 * codec.AddressLen)
+	v := make([]byte, validatorStakeSize)
 
+	// Populate
 	offset := 0
 	binary.BigEndian.PutUint64(v[offset:], stakeStartBlock)
 	offset += consts.Uint64Len
@@ -62,26 +64,8 @@ func SetRegisterValidatorStake(
 	return mu.Insert(ctx, key, v)
 }
 
-func GetRegisterValidatorStake(
-	ctx context.Context,
-	im state.Immutable,
-	nodeID ids.NodeID,
-) (bool, // exists
-	uint64, // StakeStartBlock
-	uint64, // StakeEndBlock
-	uint64, // StakedAmount
-	uint64, // DelegationFeeRate
-	codec.Address, // RewardAddress
-	codec.Address, // OwnerAddress
-	error,
-) {
-	key := RegisterValidatorStakeKey(nodeID)
-	v, err := im.GetValue(ctx, key)
-	return innerGetRegisterValidatorStake(v, err)
-}
-
 // Used to serve RPC queries
-func GetRegisterValidatorStakeFromState(
+func GetValidatorStakeFromState(
 	ctx context.Context,
 	f ReadState,
 	nodeID ids.NodeID,
@@ -94,11 +78,29 @@ func GetRegisterValidatorStakeFromState(
 	codec.Address, // OwnerAddress
 	error,
 ) {
-	values, errs := f(ctx, [][]byte{RegisterValidatorStakeKey(nodeID)})
-	return innerGetRegisterValidatorStake(values[0], errs[0])
+	values, errs := f(ctx, [][]byte{ValidatorStakeKey(nodeID)})
+	return innerGetValidatorStake(values[0], errs[0])
 }
 
-func innerGetRegisterValidatorStake(v []byte, err error) (
+func GetValidatorStakeNoController(
+	ctx context.Context,
+	im state.Immutable,
+	nodeID ids.NodeID,
+) (bool, // exists
+	uint64, // StakeStartBlock
+	uint64, // StakeEndBlock
+	uint64, // StakedAmount
+	uint64, // DelegationFeeRate
+	codec.Address, // RewardAddress
+	codec.Address, // OwnerAddress
+	error,
+) {
+	key := ValidatorStakeKey(nodeID)
+	v, err := im.GetValue(ctx, key)
+	return innerGetValidatorStake(v, err)
+}
+
+func innerGetValidatorStake(v []byte, err error) (
 	bool, // exists
 	uint64, // StakeStartBlock
 	uint64, // StakeEndBlock
@@ -135,25 +137,24 @@ func innerGetRegisterValidatorStake(v []byte, err error) (
 	return true, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate, rewardAddress, ownerAddress, nil
 }
 
-func DeleteRegisterValidatorStake(
+func DeleteValidatorStake(
 	ctx context.Context,
 	mu state.Mutable,
 	nodeID ids.NodeID,
 ) error {
-	return mu.Remove(ctx, RegisterValidatorStakeKey(nodeID))
+	return mu.Remove(ctx, ValidatorStakeKey(nodeID))
 }
 
-// [delegateUserStakePrefix] + [txID]
-func DelegateUserStakeKey(owner codec.Address, nodeID ids.NodeID) (k []byte) {
-	k = make([]byte, 1+codec.AddressLen+ids.NodeIDLen+consts.Uint16Len) // Length of prefix + owner + nodeID + DelegateUserStakeChunks
-	k[0] = delegateUserStakePrefix                                      // delegateUserStakePrefix is a constant representing the staking category
+func DelegatorStakeKey(owner codec.Address, nodeID ids.NodeID) (k []byte) {
+	k = make([]byte, 1+codec.AddressLen+ids.NodeIDLen+consts.Uint16Len) // Length of prefix + owner + nodeID + DelegatorStakeChunks
+	k[0] = delegatorStakePrefix                                         // delegatorStakePrefix is a constant representing the staking category
 	copy(k[1:], owner[:])
 	copy(k[1+codec.AddressLen:], nodeID[:])
-	binary.BigEndian.PutUint16(k[1+codec.AddressLen+ids.NodeIDLen:], DelegateUserStakeChunks) // Adding DelegateUserStakeChunks
+	binary.BigEndian.PutUint16(k[1+codec.AddressLen+ids.NodeIDLen:], DelegatorStakeChunks) // Adding DelegatorStakeChunks
 	return
 }
 
-func SetDelegateUserStake(
+func SetDelegatorStake(
 	ctx context.Context,
 	mu state.Mutable,
 	owner codec.Address,
@@ -163,11 +164,13 @@ func SetDelegateUserStake(
 	stakedAmount uint64,
 	rewardAddress codec.Address,
 ) error {
-	key := DelegateUserStakeKey(owner, nodeID)
-	v := make([]byte, 3*consts.Uint64Len+2*codec.AddressLen) // Calculate the length of the encoded data
+	// Setup
+	key := DelegatorStakeKey(owner, nodeID)
+	delegatorStakeSize := (3 * consts.Uint64Len) + (2 * codec.AddressLen)
+	v := make([]byte, delegatorStakeSize)
 
+	// Populate
 	offset := 0
-
 	binary.BigEndian.PutUint64(v[offset:], stakeStartBlock)
 	offset += consts.Uint64Len
 	binary.BigEndian.PutUint64(v[offset:], stakeEndBlock)
@@ -182,26 +185,8 @@ func SetDelegateUserStake(
 	return mu.Insert(ctx, key, v)
 }
 
-func GetDelegateUserStake(
-	ctx context.Context,
-	im state.Immutable,
-	owner codec.Address,
-	nodeID ids.NodeID,
-) (bool, // exists
-	uint64, // StakeStartBlock
-	uint64, // StakeEndBlock
-	uint64, // StakedAmount
-	codec.Address, // RewardAddress
-	codec.Address, // OwnerAddress
-	error,
-) {
-	key := DelegateUserStakeKey(owner, nodeID)
-	v, err := im.GetValue(ctx, key)
-	return innerGetDelegateUserStake(v, err)
-}
-
 // Used to serve RPC queries
-func GetDelegateUserStakeFromState(
+func GetDelegatorStakeFromState(
 	ctx context.Context,
 	f ReadState,
 	owner codec.Address,
@@ -214,11 +199,29 @@ func GetDelegateUserStakeFromState(
 	codec.Address, // OwnerAddress
 	error,
 ) {
-	values, errs := f(ctx, [][]byte{DelegateUserStakeKey(owner, nodeID)})
-	return innerGetDelegateUserStake(values[0], errs[0])
+	values, errs := f(ctx, [][]byte{DelegatorStakeKey(owner, nodeID)})
+	return innerGetDelegatorStake(values[0], errs[0])
 }
 
-func innerGetDelegateUserStake(v []byte, err error) (
+func GetDelegatorStakeNoController(
+	ctx context.Context,
+	im state.Immutable,
+	owner codec.Address,
+	nodeID ids.NodeID,
+) (bool, // exists
+	uint64, // StakeStartBlock
+	uint64, // StakeEndBlock
+	uint64, // StakedAmount
+	codec.Address, // RewardAddress
+	codec.Address, // OwnerAddress
+	error,
+) {
+	key := DelegatorStakeKey(owner, nodeID)
+	v, err := im.GetValue(ctx, key)
+	return innerGetDelegatorStake(v, err)
+}
+
+func innerGetDelegatorStake(v []byte, err error) (
 	bool, // exists
 	uint64, // StakeStartBlock
 	uint64, // StakeEndBlock
@@ -252,11 +255,11 @@ func innerGetDelegateUserStake(v []byte, err error) (
 	return true, stakeStartBlock, stakeEndBlock, stakedAmount, rewardAddress, ownerAddress, nil
 }
 
-func DeleteDelegateUserStake(
+func DeleteDelegatorStake(
 	ctx context.Context,
 	mu state.Mutable,
 	owner codec.Address,
 	nodeID ids.NodeID,
 ) error {
-	return mu.Remove(ctx, DelegateUserStakeKey(owner, nodeID))
+	return mu.Remove(ctx, DelegatorStakeKey(owner, nodeID))
 }

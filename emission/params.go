@@ -7,7 +7,6 @@ import (
 	"time"
 
 	hutils "github.com/ava-labs/hypersdk/utils"
-	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
 type RewardConfig struct {
@@ -46,11 +45,11 @@ type StakingConfig struct {
 
 func GetStakingConfig() StakingConfig {
 	// TODO: Enable this in production
-	// minValidatorStake, _ := hutils.ParseBalance("1500000", nconsts.Decimals)
-	minValidatorStake, _ := hutils.ParseBalance("100", nconsts.Decimals)
-	maxValidatorStake, _ := hutils.ParseBalance("100000000", nconsts.Decimals) // 100 million NAI
-	minDelegatorStake, _ := hutils.ParseBalance("25", nconsts.Decimals)
-	supplyCap, _ := hutils.ParseBalance("10000000000", nconsts.Decimals)
+	// minValidatorStake, _ := hutils.ParseBalance("1500000")
+	minValidatorStake, _ := hutils.ParseBalance("100")
+	maxValidatorStake, _ := hutils.ParseBalance("100000000") // 100 million NAI
+	minDelegatorStake, _ := hutils.ParseBalance("25")
+	supplyCap, _ := hutils.ParseBalance("10000000000")
 	return StakingConfig{
 		MinValidatorStake:         minValidatorStake,
 		MaxValidatorStake:         maxValidatorStake,

@@ -16,21 +16,21 @@ const (
 	Namespace = "emissionBalancer"
 )
 
-var _ event.SubscriptionFactory[*chain.StatefulBlock] = (*EmissionSubscriptionFactory)(nil)
+var _ event.SubscriptionFactory[*chain.ExecutedBlock] = (*EmissionSubscriptionFactory)(nil)
 
 type EmissionSubscriptionFactory struct {
 	log      logging.Logger
 	emission Tracker
 }
 
-func (e *EmissionSubscriptionFactory) New() (event.Subscription[*chain.StatefulBlock], error) {
+func (e *EmissionSubscriptionFactory) New() (event.Subscription[*chain.ExecutedBlock], error) {
 	return e, nil
 }
 
-func (e *EmissionSubscriptionFactory) Accept(blk *chain.StatefulBlock) error {
+func (e *EmissionSubscriptionFactory) Accept(blk *chain.ExecutedBlock) error {
 	totalFee := uint64(0)
-	results := blk.Results()
-	for j := range blk.Txs {
+	results := blk.Results
+	for j := range blk.Block.Txs {
 		result := results[j]
 		totalFee += result.Fee
 	}
@@ -56,7 +56,7 @@ func (*EmissionSubscriptionFactory) Close() error {
 	return nil
 }
 
-func NewEmissionSubscriptionFactory(log logging.Logger, emission Tracker) event.SubscriptionFactory[*chain.StatefulBlock] {
+func NewEmissionSubscriptionFactory(log logging.Logger, emission Tracker) event.SubscriptionFactory[*chain.ExecutedBlock] {
 	return &EmissionSubscriptionFactory{
 		log:      log,
 		emission: emission,

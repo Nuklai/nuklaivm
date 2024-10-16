@@ -18,6 +18,7 @@ import (
 	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/state"
 
+	smath "github.com/ava-labs/avalanchego/utils/math"
 	nconsts "github.com/nuklai/nuklaivm/consts"
 )
 
@@ -49,15 +50,11 @@ func (*RegisterValidatorStake) GetTypeID() uint8 {
 	return nconsts.RegisterValidatorStakeID
 }
 
-func (r *RegisterValidatorStake) StateKeys(actor codec.Address, _ ids.ID) state.Keys {
+func (r *RegisterValidatorStake) StateKeys(actor codec.Address) state.Keys {
 	return state.Keys{
-		string(storage.BalanceKey(actor, ids.Empty)):        state.Read | state.Write,
-		string(storage.RegisterValidatorStakeKey(r.NodeID)): state.Allocate | state.Write,
+		string(storage.ValidatorStakeKey(r.NodeID)):                       state.Allocate | state.Write,
+		string(storage.AssetAccountBalanceKey(storage.NAIAddress, actor)): state.Read | state.Write,
 	}
-}
-
-func (*RegisterValidatorStake) StateKeysMaxChunks() []uint16 {
-	return []uint16{storage.BalanceChunks, storage.RegisterValidatorStakeChunks}
 }
 
 func (r *RegisterValidatorStake) Execute(
@@ -70,13 +67,9 @@ func (r *RegisterValidatorStake) Execute(
 ) (codec.Typed, error) {
 	// Unmarshal the stake info
 	packer := codec.NewReader(r.StakeInfo, len(r.StakeInfo))
-	sInfo, err := UnmarshalRegisterValidatorStakeResult(packer)
+	stakeInfo, err := UnmarshalValidatorStakeInfo(packer)
 	if err != nil {
 		return nil, err
-	}
-	stakeInfo, ok := sInfo.(*RegisterValidatorStakeResult)
-	if !ok {
-		return nil, errors.New("failed to unmarshal stake info")
 	}
 	// Check if nodeID passed is the same as the one in the stake info
 	if r.NodeID != stakeInfo.NodeID {
@@ -118,7 +111,7 @@ func (r *RegisterValidatorStake) Execute(
 	}
 
 	// Check if the validator was already registered
-	exists, _, _, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, mu, stakeInfo.NodeID)
+	exists, _, _, _, _, _, _, _ := storage.GetValidatorStakeNoController(ctx, mu, stakeInfo.NodeID)
 	if exists {
 		return nil, ErrValidatorAlreadyRegistered
 	}
@@ -159,19 +152,32 @@ func (r *RegisterValidatorStake) Execute(
 		return nil, err
 	}
 
-	if _, err := storage.SubBalance(ctx, mu, actor, ids.Empty, stakeInfo.StakedAmount); err != nil {
+	// Ensure that the balance is sufficient and subtract the staked amount
+	balance, err := storage.GetAssetAccountBalanceNoController(ctx, mu, storage.NAIAddress, actor)
+	if err != nil {
 		return nil, err
 	}
-	if err := storage.SetRegisterValidatorStake(ctx, mu, stakeInfo.NodeID, stakeInfo.StakeStartBlock, stakeInfo.StakeEndBlock, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate, stakeInfo.RewardAddress, actor); err != nil {
+	if balance < stakeInfo.StakedAmount {
+		return nil, storage.ErrInsufficientAssetBalance
+	}
+	newBalance, err := smath.Sub(balance, stakeInfo.StakedAmount)
+	if err != nil {
+		return nil, err
+	}
+	if err = storage.SetAssetAccountBalance(ctx, mu, storage.NAIAddress, actor, newBalance); err != nil {
+		return nil, err
+	}
+
+	if err := storage.SetValidatorStake(ctx, mu, stakeInfo.NodeID, stakeInfo.StakeStartBlock, stakeInfo.StakeEndBlock, stakeInfo.StakedAmount, stakeInfo.DelegationFeeRate, stakeInfo.RewardAddress, actor); err != nil {
 		return nil, err
 	}
 	return &RegisterValidatorStakeResult{
-		NodeID:            stakeInfo.NodeID,
+		NodeID:            stakeInfo.NodeID.String(),
 		StakeStartBlock:   stakeInfo.StakeStartBlock,
 		StakeEndBlock:     stakeInfo.StakeEndBlock,
 		StakedAmount:      stakeInfo.StakedAmount,
 		DelegationFeeRate: stakeInfo.DelegationFeeRate,
-		RewardAddress:     stakeInfo.RewardAddress,
+		RewardAddress:     stakeInfo.RewardAddress.String(),
 	}, nil
 }
 
@@ -219,12 +225,9 @@ func VerifyAuthSignature(content, authSignature []byte) (codec.Address, error) {
 	return sig.Actor(), sig.Verify(context.TODO(), content)
 }
 
-var (
-	_ codec.Typed     = (*RegisterValidatorStakeResult)(nil)
-	_ chain.Marshaler = (*RegisterValidatorStakeResult)(nil)
-)
+var _ chain.Marshaler = (*ValidatorStakeInfo)(nil)
 
-type RegisterValidatorStakeResult struct {
+type ValidatorStakeInfo struct {
 	NodeID            ids.NodeID    `serialize:"true" json:"node_id"`
 	StakeStartBlock   uint64        `serialize:"true" json:"stake_start_block"`
 	StakeEndBlock     uint64        `serialize:"true" json:"stake_end_block"`
@@ -233,15 +236,11 @@ type RegisterValidatorStakeResult struct {
 	RewardAddress     codec.Address `serialize:"true" json:"reward_address"`
 }
 
-func (*RegisterValidatorStakeResult) GetTypeID() uint8 {
-	return nconsts.RegisterValidatorStakeID
-}
-
-func (*RegisterValidatorStakeResult) Size() int {
+func (*ValidatorStakeInfo) Size() int {
 	return StakeInfoSize
 }
 
-func (r *RegisterValidatorStakeResult) Marshal(p *codec.Packer) {
+func (r *ValidatorStakeInfo) Marshal(p *codec.Packer) {
 	p.PackFixedBytes(r.NodeID.Bytes())
 	p.PackUint64(r.StakeStartBlock)
 	p.PackUint64(r.StakeEndBlock)
@@ -250,13 +249,13 @@ func (r *RegisterValidatorStakeResult) Marshal(p *codec.Packer) {
 	p.PackAddress(r.RewardAddress)
 }
 
-func UnmarshalRegisterValidatorStakeResult(p *codec.Packer) (codec.Typed, error) {
-	var result RegisterValidatorStakeResult
+func UnmarshalValidatorStakeInfo(p *codec.Packer) (*ValidatorStakeInfo, error) {
+	var result ValidatorStakeInfo
 	nodeIDBytes := make([]byte, ids.NodeIDLen)
 	p.UnpackFixedBytes(ids.NodeIDLen, &nodeIDBytes)
 	nodeID, err := ids.ToNodeID(nodeIDBytes)
 	if err != nil {
-		return nil, err
+		return &result, err
 	}
 	result.NodeID = nodeID
 	result.StakeStartBlock = p.UnpackUint64(true)
@@ -264,5 +263,47 @@ func UnmarshalRegisterValidatorStakeResult(p *codec.Packer) (codec.Typed, error)
 	result.StakedAmount = p.UnpackUint64(true)
 	result.DelegationFeeRate = p.UnpackUint64(false)
 	p.UnpackAddress(&result.RewardAddress)
+	return &result, p.Err()
+}
+
+var (
+	_ codec.Typed     = (*RegisterValidatorStakeResult)(nil)
+	_ chain.Marshaler = (*RegisterValidatorStakeResult)(nil)
+)
+
+type RegisterValidatorStakeResult struct {
+	NodeID            string `serialize:"true" json:"node_id"`
+	StakeStartBlock   uint64 `serialize:"true" json:"stake_start_block"`
+	StakeEndBlock     uint64 `serialize:"true" json:"stake_end_block"`
+	StakedAmount      uint64 `serialize:"true" json:"staked_amount"`
+	DelegationFeeRate uint64 `serialize:"true" json:"delegation_fee_rate"`
+	RewardAddress     string `serialize:"true" json:"reward_address"`
+}
+
+func (*RegisterValidatorStakeResult) GetTypeID() uint8 {
+	return nconsts.RegisterValidatorStakeID
+}
+
+func (r *RegisterValidatorStakeResult) Size() int {
+	return codec.StringLen(r.NodeID) + consts.Uint64Len*4 + codec.StringLen(r.RewardAddress)
+}
+
+func (r *RegisterValidatorStakeResult) Marshal(p *codec.Packer) {
+	p.PackString(r.NodeID)
+	p.PackUint64(r.StakeStartBlock)
+	p.PackUint64(r.StakeEndBlock)
+	p.PackUint64(r.StakedAmount)
+	p.PackUint64(r.DelegationFeeRate)
+	p.PackString(r.RewardAddress)
+}
+
+func UnmarshalRegisterValidatorStakeResult(p *codec.Packer) (codec.Typed, error) {
+	var result RegisterValidatorStakeResult
+	result.NodeID = p.UnpackString(true)
+	result.StakeStartBlock = p.UnpackUint64(true)
+	result.StakeEndBlock = p.UnpackUint64(true)
+	result.StakedAmount = p.UnpackUint64(true)
+	result.DelegationFeeRate = p.UnpackUint64(false)
+	result.RewardAddress = p.UnpackString(false)
 	return &result, p.Err()
 }

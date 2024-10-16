@@ -23,13 +23,13 @@ func TestWithdrawValidatorStakeAction(t *testing.T) {
 		StakeRewards:            100, // Mock reward amount
 	})
 
-	addr := codectest.NewRandomAddress()
+	actor := codectest.NewRandomAddress()
 	nodeID := ids.GenerateTestNodeID()
 
 	tests := []chaintest.ActionTest{
 		{
 			Name:  "ValidatorNotYetRegistered",
-			Actor: addr,
+			Actor: actor,
 			Action: &WithdrawValidatorStake{
 				NodeID: nodeID, // Non-existent validator
 			},
@@ -38,14 +38,14 @@ func TestWithdrawValidatorStakeAction(t *testing.T) {
 		},
 		{
 			Name:  "StakeNotStarted",
-			Actor: addr,
+			Actor: actor,
 			Action: &WithdrawValidatorStake{
 				NodeID: nodeID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set the validator with stake end block greater than the current block height
-				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 150, 300, 10000, 10, addr, addr))
+				require.NoError(t, storage.SetValidatorStake(context.Background(), store, nodeID, 150, 300, 10000, 10, actor, actor))
 				return store
 			}(),
 			ExpectedErr: ErrStakeNotStarted,
@@ -53,26 +53,26 @@ func TestWithdrawValidatorStakeAction(t *testing.T) {
 		{
 			Name:     "ValidWithdrawal",
 			ActionID: ids.GenerateTestID(),
-			Actor:    addr,
+			Actor:    actor,
 			Action: &WithdrawValidatorStake{
 				NodeID: nodeID,
 			},
 			State: func() state.Mutable {
 				store := chaintest.NewInMemoryStore()
 				// Set validator stake with end block less than the current block height
-				require.NoError(t, storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 50, 150, 10000, 10, addr, addr))
+				require.NoError(t, storage.SetValidatorStake(context.Background(), store, nodeID, 50, 150, 10000, 10, actor, actor))
 				// Set the balance for the validator
-				require.NoError(t, storage.SetBalance(context.Background(), store, addr, ids.Empty, 0))
+				require.NoError(t, storage.SetAssetAccountBalance(context.Background(), store, storage.NAIAddress, actor, 0))
 				return store
 			}(),
 			Assertion: func(ctx context.Context, t *testing.T, store state.Mutable) {
 				// Check if balance is correctly updated
-				balance, err := storage.GetBalance(ctx, store, addr, ids.Empty)
+				balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, storage.NAIAddress, actor)
 				require.NoError(t, err)
 				require.Equal(t, uint64(10100), balance) // Reward amount + staked amount
 
 				// Check if the stake was successfully withdrawn
-				exists, _, _, _, _, _, _, _ := storage.GetRegisterValidatorStake(ctx, store, nodeID)
+				exists, _, _, _, _, _, _, _ := storage.GetValidatorStakeNoController(ctx, store, nodeID)
 				require.False(t, exists) // Stake should no longer exist
 			},
 			ExpectedOutputs: &WithdrawValidatorStakeResult{
@@ -83,7 +83,7 @@ func TestWithdrawValidatorStakeAction(t *testing.T) {
 				RewardAmount:         100,
 				BalanceBeforeUnstake: 0,
 				BalanceAfterUnstake:  10100, // Reward + Stake amount
-				DistributedTo:        addr,
+				DistributedTo:        actor.String(),
 			},
 		},
 	}
@@ -112,14 +112,14 @@ func BenchmarkWithdrawValidatorStake(b *testing.B) {
 		CreateState: func() state.Mutable {
 			store := chaintest.NewInMemoryStore()
 			// Set validator stake with end block less than the current block height
-			require.NoError(storage.SetRegisterValidatorStake(context.Background(), store, nodeID, 50, 150, 10000, 10, actor, actor))
+			require.NoError(storage.SetValidatorStake(context.Background(), store, nodeID, 50, 150, 10000, 10, actor, actor))
 			// Set the balance for the validator
-			require.NoError(storage.SetBalance(context.Background(), store, actor, ids.Empty, 0))
+			require.NoError(storage.SetAssetAccountBalance(context.Background(), store, storage.NAIAddress, actor, 0))
 			return store
 		},
 		Assertion: func(ctx context.Context, b *testing.B, store state.Mutable) {
 			// Check if balance is correctly updated
-			balance, err := storage.GetBalance(ctx, store, actor, ids.Empty)
+			balance, err := storage.GetAssetAccountBalanceNoController(ctx, store, storage.NAIAddress, actor)
 			require.NoError(err)
 			require.Equal(b, uint64(10100), balance) // Reward amount + staked amount
 		},
