@@ -4,12 +4,9 @@
 package vm
 
 import (
-	"context"
-	"encoding/hex"
 	"net/http"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
@@ -18,8 +15,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/api"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/state"
-	"github.com/ava-labs/hypersdk/x/contracts/runtime"
 )
 
 const JSONRPCEndpoint = "/nuklaiapi"
@@ -359,51 +354,4 @@ func (j *JSONRPCServer) UserStake(req *http.Request, args *UserStakeArgs, reply 
 	reply.RewardAddress = rewardAddress.String()
 	reply.OwnerAddress = ownerAddress.String()
 	return nil
-}
-
-type SimulateCallTxArgs struct {
-	CallTx actions.ContractCall `json:"callTx"`
-	Actor  codec.Address        `json:"actor"`
-}
-
-type SimulateStateKey struct {
-	HexKey      string `json:"hex"`
-	Permissions byte   `json:"perm"`
-}
-type SimulateCallTxReply struct {
-	StateKeys    []SimulateStateKey `json:"stateKeys"`
-	FuelConsumed uint64             `json:"fuel"`
-}
-
-func (j *JSONRPCServer) SimulateCallContractTx(req *http.Request, args *SimulateCallTxArgs, reply *SimulateCallTxReply) (err error) {
-	stateKeys, fuelConsumed, err := j.simulate(req.Context(), args.CallTx, args.Actor)
-	if err != nil {
-		return err
-	}
-	reply.StateKeys = make([]SimulateStateKey, 0, len(stateKeys))
-	for key, permission := range stateKeys {
-		reply.StateKeys = append(reply.StateKeys, SimulateStateKey{HexKey: hex.EncodeToString([]byte(key)), Permissions: byte(permission)})
-	}
-	reply.FuelConsumed = fuelConsumed
-	return nil
-}
-
-func (j *JSONRPCServer) simulate(ctx context.Context, t actions.ContractCall, actor codec.Address) (state.Keys, uint64, error) {
-	currentState, err := j.vm.ImmutableState(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
-	recorder := storage.NewRecorder(currentState)
-	startFuel := uint64(1000000000)
-	callInfo := &runtime.CallInfo{
-		Contract:     t.ContractAddress,
-		Actor:        actor,
-		State:        &storage.ContractStateManager{Mutable: recorder},
-		FunctionName: t.Function,
-		Params:       t.CallData,
-		Fuel:         startFuel,
-		Value:        t.Value,
-	}
-	_, err = wasmRuntime.CallContract(ctx, callInfo)
-	return recorder.GetStateKeys(), startFuel - callInfo.RemainingFuel(), err
 }

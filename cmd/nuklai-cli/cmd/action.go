@@ -17,6 +17,7 @@ import (
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/vm"
 	"github.com/spf13/cobra"
 	"github.com/status-im/keycard-go/hexutils"
 
@@ -31,6 +32,8 @@ import (
 	hconsts "github.com/ava-labs/hypersdk/consts"
 	nutils "github.com/nuklai/nuklaivm/utils"
 )
+
+var errUnexpectedSimulateActionsOutput = errors.New("returned output from SimulateActions was not actions.Result")
 
 var actionCmd = &cobra.Command{
 	Use: "action",
@@ -168,18 +171,34 @@ var callCmd = &cobra.Command{
 			ContractAddress: contractAddress,
 			Value:           amount,
 			Function:        function,
+			Fuel:            uint64(1000000000),
 		}
 
-		specifiedStateKeysSet, fuel, err := bcli.Simulate(ctx, *action, priv.Address)
+		actionSimulationResults, err := cli.SimulateActions(ctx, chain.Actions{action}, priv.Address)
 		if err != nil {
 			return err
 		}
+		if len(actionSimulationResults) != 1 {
+			return fmt.Errorf("unexpected number of returned actions. One action expected, %d returned", len(actionSimulationResults))
+		}
+		actionSimulationResult := actionSimulationResults[0]
 
-		action.SpecifiedStateKeys = make([]actions.StateKeyPermission, 0, len(specifiedStateKeysSet))
-		for key, value := range specifiedStateKeysSet {
+		rtx := codec.NewReader(actionSimulationResult.Output, len(actionSimulationResult.Output))
+
+		simulationResultOutput, err := (*vm.OutputParser).Unmarshal(rtx)
+		if err != nil {
+			return err
+		}
+		simulationResult, ok := simulationResultOutput.(*actions.ContractCallResult)
+		if !ok {
+			return errUnexpectedSimulateActionsOutput
+		}
+
+		action.SpecifiedStateKeys = make([]actions.StateKeyPermission, 0, len(actionSimulationResult.StateKeys))
+		for key, value := range actionSimulationResult.StateKeys {
 			action.SpecifiedStateKeys = append(action.SpecifiedStateKeys, actions.StateKeyPermission{Key: key, Permission: value})
 		}
-		action.Fuel = fuel
+		action.Fuel = simulationResult.ConsumedFuel
 
 		// Confirm action
 		cont, err := prompt.Continue()
@@ -189,9 +208,8 @@ var callCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{action}, cli, bcli, ws, factory)
-		if result != nil && result.Success {
-			utils.Outf("{{green}}fee consumed:{{/}} %s\n", nutils.FormatBalance(result.Fee, consts.Decimals))
 
+		if result != nil && result.Success {
 			utils.Outf(hexutils.BytesToHex(result.Outputs[0]) + "\n")
 			switch function {
 			case "balance":
@@ -201,7 +219,7 @@ var callCmd = &cobra.Command{
 					if err != nil {
 						return err
 					}
-					utils.Outf("%s\n", nutils.FormatBalance(intValue, consts.Decimals))
+					utils.Outf("%s\n", utils.FormatBalance(intValue))
 				}
 			case "get_value":
 				{

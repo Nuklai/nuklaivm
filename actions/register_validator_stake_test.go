@@ -15,7 +15,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/auth"
 	"github.com/ava-labs/hypersdk/chain/chaintest"
-	"github.com/ava-labs/hypersdk/cli"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/crypto/bls"
 	"github.com/ava-labs/hypersdk/state"
@@ -183,7 +182,7 @@ func BenchmarkRegisterValidatorStake(b *testing.B) {
 	registerValidatorStakeBenchmark.Run(ctx, b)
 }
 
-func generateStakeInfoAndSignature(nodeID ids.NodeID, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate uint64) ([]byte, []byte, *cli.PrivateKey, []byte) {
+func generateStakeInfoAndSignature(nodeID ids.NodeID, stakeStartBlock, stakeEndBlock, stakedAmount, delegationFeeRate uint64) ([]byte, []byte, *auth.PrivateKey, []byte) {
 	blsBase64Key, err := base64.StdEncoding.DecodeString("MdWjv5OOW/p/JKt673vYxwROsfTCO7iZ2jwWCnY18hw=")
 	if err != nil {
 		panic(err)
@@ -192,7 +191,7 @@ func generateStakeInfoAndSignature(nodeID ids.NodeID, stakeStartBlock, stakeEndB
 	if err != nil {
 		panic(err)
 	}
-	blsPrivateKey := &cli.PrivateKey{
+	blsPrivateKey := &auth.PrivateKey{
 		Address: auth.NewBLSAddress(bls.PublicFromPrivateKey(secretKey)),
 		Bytes:   bls.PrivateKeyToBytes(secretKey),
 	}

@@ -3,8 +3,8 @@ module github.com/nuklai/nuklaivm
 go 1.22.5
 
 require (
-	github.com/ava-labs/avalanchego v1.11.12-rc.2
-	github.com/ava-labs/hypersdk v0.0.18-0.20241002025558-abf0ce962501
+	github.com/ava-labs/avalanchego v1.11.12-rc.2.0.20241001202925-f03745d187d0
+	github.com/ava-labs/hypersdk v0.0.18-0.20241018181853-22241f53b9ff
 	github.com/fatih/color v1.13.0
 	github.com/gorilla/mux v1.8.0
 	github.com/manifoldco/promptui v0.9.0

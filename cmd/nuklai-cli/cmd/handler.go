@@ -154,7 +154,7 @@ func (h *Handler) BalanceAsset(checkAllChains bool, isNFT bool, printBalance fun
 }
 
 func (h *Handler) DefaultActor() (
-	ids.ID, *cli.PrivateKey, chain.AuthFactory,
+	ids.ID, *auth.PrivateKey, chain.AuthFactory,
 	*jsonrpc.JSONRPCClient, *vm.JSONRPCClient, *ws.WebSocketClient, error,
 ) {
 	addr, priv, err := h.h.GetDefaultKey(true)
@@ -189,7 +189,7 @@ func (h *Handler) DefaultActor() (
 		return ids.Empty, nil, nil, nil, nil, nil, err
 	}
 	// For [defaultActor], we always send requests to the first returned URI.
-	return chainID, &cli.PrivateKey{
+	return chainID, &auth.PrivateKey{
 			Address: addr,
 			Bytes:   priv,
 		}, factory, jcli,

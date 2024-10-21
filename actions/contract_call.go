@@ -21,7 +21,10 @@ import (
 
 var _ chain.Action = (*ContractCall)(nil)
 
-const MaxCallDataSize = units.MiB
+const (
+	MaxCallDataSize    = units.MiB
+	MaxResultSizeLimit = units.MiB
+)
 
 type StateKeyPermission struct {
 	Key        string
@@ -30,20 +33,20 @@ type StateKeyPermission struct {
 
 type ContractCall struct {
 	// contract is the address of the contract to be called
-	ContractAddress codec.Address `serialize:"true" json:"contractAddress"`
+	ContractAddress codec.Address `json:"contractAddress"`
 
 	// Amount are transferred to [To].
-	Value uint64 `serialize:"true" json:"value"`
+	Value uint64 `json:"value"`
 
 	// Function is the name of the function to call on the contract.
-	Function string `serialize:"true" json:"function"`
+	Function string `json:"function"`
 
 	// CallData are the serialized parameters to be passed to the contract.
-	CallData []byte `serialize:"true" json:"calldata"`
+	CallData []byte `json:"calldata"`
 
-	SpecifiedStateKeys []StateKeyPermission `serialize:"true" json:"statekeys"`
+	SpecifiedStateKeys []StateKeyPermission `json:"statekeys"`
 
-	Fuel uint64 `serialize:"true" json:"fuel"`
+	Fuel uint64 `json:"fuel"`
 
 	r *runtime.WasmRuntime
 }
@@ -68,7 +71,7 @@ func (t *ContractCall) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-	resutBytes, err := t.r.CallContract(ctx, &runtime.CallInfo{
+	callInfo := &runtime.CallInfo{
 		Contract:     t.ContractAddress,
 		Actor:        actor,
 		State:        &storage.ContractStateManager{Mutable: mu},
@@ -77,11 +80,13 @@ func (t *ContractCall) Execute(
 		Timestamp:    uint64(timestamp),
 		Fuel:         t.Fuel,
 		Value:        t.Value,
-	})
+	}
+	resultBytes, err := t.r.CallContract(ctx, callInfo)
 	if err != nil {
 		return nil, err
 	}
-	return &ContractCallResult{Value: resutBytes}, nil
+	consumedFuel := t.Fuel - callInfo.RemainingFuel()
+	return &ContractCallResult{Value: resultBytes, ConsumedFuel: consumedFuel}, nil
 }
 
 func (t *ContractCall) ComputeUnits(chain.Rules) uint64 {
@@ -138,7 +143,8 @@ func UnmarshalCallContract(r *runtime.WasmRuntime) func(p *codec.Packer) (chain.
 var _ codec.Typed = (*ContractCallResult)(nil)
 
 type ContractCallResult struct {
-	Value []byte `serialize:"true" json:"value"`
+	Value        []byte `serialize:"true" json:"value"`
+	ConsumedFuel uint64 `serialize:"true" json:"consumedfuel"`
 }
 
 func (*ContractCallResult) GetTypeID() uint8 {

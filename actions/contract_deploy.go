@@ -24,8 +24,8 @@ var _ chain.Action = (*ContractDeploy)(nil)
 const MAXCREATIONSIZE = units.MiB
 
 type ContractDeploy struct {
-	ContractID   runtime.ContractID `serialize:"true" json:"contractID"`
-	CreationInfo []byte             `serialize:"true" json:"creationInfo"`
+	ContractID   runtime.ContractID `json:"contractID"`
+	CreationInfo []byte             `json:"creationInfo"`
 	address      codec.Address
 }
 
