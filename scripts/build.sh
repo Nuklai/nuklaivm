@@ -24,4 +24,13 @@ NUKLAIVM_PATH=$(
   cd .. && pwd
 )
 
+# Check if vmpath argument is provided
+VMPATH=${1:-""}
+
 build_project "$NUKLAIVM_PATH" "nuklaivm" "qeX5BUxbiwUhSePncmz1C7RdH6njYYv6dNZhJrdeXRKMnTpKt"
+
+# If vmpath is provided, copy the binary to the specified vmpath
+if [[ -n "$VMPATH" ]]; then
+  echo "Copying binary to $VMPATH"
+  cp "$NUKLAIVM_PATH/build/qeX5BUxbiwUhSePncmz1C7RdH6njYYv6dNZhJrdeXRKMnTpKt" "$VMPATH"
+fi
