@@ -13,6 +13,7 @@ import (
 
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/fees"
+
 	hgenesis "github.com/ava-labs/hypersdk/genesis"
 )
 
