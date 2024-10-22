@@ -43,7 +43,7 @@ fi
 AVALANCHEGO_VERSION=v1.11.12-rc.2
 
 # Create temporary directory for the deployment
-TMPDIR=/tmp/nuklaivm-deploy
+TMPDIR=/tmp/nuklaivm-deploy-test
 rm -rf $TMPDIR && mkdir -p $TMPDIR
 echo -e "${YELLOW}set working directory:${NC} $TMPDIR"
 
@@ -58,7 +58,7 @@ mv ./bin/avalanche "${TMPDIR}/avalanche"
 cd $pw
 
 # Install nuklai-cli
-NUKLAI_VM_COMMIT=main
+NUKLAI_VM_COMMIT=update-deploy-devnet-script
 echo -e "${YELLOW}building nuklai-cli${NC}"
 echo "set working directory: $TMPDIR"
 cd $TMPDIR

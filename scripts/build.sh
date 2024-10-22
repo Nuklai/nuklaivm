@@ -24,4 +24,4 @@ NUKLAIVM_PATH=$(
   cd .. && pwd
 )
 
-build_project "$NUKLAIVM_PATH" "nuklai" "qeX5BUxbiwUhSePncmz1C7RdH6njYYv6dNZhJrdeXRKMnTpKt"
+build_project "$NUKLAIVM_PATH" "nuklaivm" "qeX5BUxbiwUhSePncmz1C7RdH6njYYv6dNZhJrdeXRKMnTpKt"

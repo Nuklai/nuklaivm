@@ -30,12 +30,13 @@ build_project() {
 
     cd "$project_path"
 
-    echo "Building "${project_name}vm" in $binary_path"
+    echo "Building "${project_name}" in $binary_path"
     mkdir -p "$(dirname "$binary_path")"
-    go build -o "$binary_path" ./cmd/"${project_name}vm"
+    go build -o "$binary_path" ./cmd/"${project_name}"
 
-    cli_path=$project_path/build/nuklai-cli
-    echo "Building "${project_name}-cli" in $cli_path"
+    cli_name="${project_name%vm}-cli"
+    cli_path=$project_path/build/$cli_name
+    echo "Building "${cli_name}" in $cli_path"
     mkdir -p "$(dirname "$cli_path")"
-    go build -o "$cli_path" ./cmd/nuklai-cli
+    go build -o "$cli_path" ./cmd/${cli_name}
 }
