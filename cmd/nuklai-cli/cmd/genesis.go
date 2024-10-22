@@ -11,8 +11,8 @@ import (
 	"github.com/nuklai/nuklaivm/genesis"
 	"github.com/spf13/cobra"
 
+	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/fees"
-
 	hgenesis "github.com/ava-labs/hypersdk/genesis"
 )
 
@@ -23,11 +23,16 @@ var genesisCmd = &cobra.Command{
 	},
 }
 
+type GenesisCustomAllocation struct {
+	Address string `json:"address"`
+	Balance uint64 `json:"balance"`
+}
+
 var genGenesisCmd = &cobra.Command{
-	Use:   "generate [custom allocates file] [options]",
+	Use:   "generate [custom allocations file] [emission balancer file] [options]",
 	Short: "Creates a new genesis in the default location",
 	PreRunE: func(_ *cobra.Command, args []string) error {
-		if len(args) != 1 {
+		if len(args) != 2 {
 			return ErrInvalidArgs
 		}
 		return nil
@@ -38,9 +43,21 @@ var genGenesisCmd = &cobra.Command{
 			return err
 		}
 		// Read custom allocations file
-		var allocs []*hgenesis.CustomAllocation
+		var allocs []*GenesisCustomAllocation
 		if err := json.Unmarshal(a, &allocs); err != nil {
 			return err
+		}
+		// Convert []*GenesisCustomAllocation to []*hgenesis.CustomAllocation
+		convertedAllocs := make([]*hgenesis.CustomAllocation, len(allocs))
+		for i, alloc := range allocs {
+			convertedAddress, err := codec.StringToAddress(alloc.Address)
+			if err != nil {
+				return err
+			}
+			convertedAllocs[i] = &hgenesis.CustomAllocation{
+				Address: convertedAddress,
+				Balance: alloc.Balance,
+			}
 		}
 
 		// Read emission balancer file
@@ -53,7 +70,7 @@ var genGenesisCmd = &cobra.Command{
 			return err
 		}
 
-		genesis := genesis.NewGenesis(allocs, emissionBalancer)
+		genesis := genesis.NewGenesis(convertedAllocs, emissionBalancer)
 		if len(minUnitPrice) > 0 {
 			d, err := fees.ParseDimensions(minUnitPrice)
 			if err != nil {

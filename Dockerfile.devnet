@@ -25,15 +25,15 @@ RUN go install github.com/onsi/ginkgo/v2/ginkgo@v2.13.1
 COPY ./go.mod ./go.sum ./
 
 COPY ./actions ./actions
-COPY ./chain ./chain
 COPY ./cmd/nuklaivm ./cmd/nuklaivm
 COPY ./consts ./consts
+COPY ./dataset ./dataset
 COPY ./emission ./emission
 COPY ./genesis ./genesis
-COPY ./marketplace ./marketplace
 COPY ./scripts ./scripts
 COPY ./storage ./storage
 COPY ./tests ./tests
+COPY ./utils ./utils
 COPY ./vm ./vm
 
 WORKDIR /app

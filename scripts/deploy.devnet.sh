@@ -40,7 +40,7 @@ if ! aws sts get-caller-identity >/dev/null 2>&1 ; then
 fi
 
 # Set AvalancheGo Build (should have canPop disabled)
-AVALANCHEGO_VERSION=v1.11.6
+AVALANCHEGO_VERSION=v1.11.12-rc.2
 
 # Create temporary directory for the deployment
 TMPDIR=/tmp/nuklaivm-deploy
@@ -48,12 +48,11 @@ rm -rf $TMPDIR && mkdir -p $TMPDIR
 echo -e "${YELLOW}set working directory:${NC} $TMPDIR"
 
 # Install avalanche-cli
-LOCAL_CLI_COMMIT=bd174d7620be44dc91dee9415c71142f59fa9df2
-REMOTE_CLI_COMMIT=v1.6.3
+REMOTE_CLI_COMMIT=b7143224ae3887a39faaac2faff0774295810a80 # v1.8.0-rc0
 cd $TMPDIR
 git clone https://github.com/ava-labs/avalanche-cli
 cd avalanche-cli
-git checkout $LOCAL_CLI_COMMIT
+git checkout $REMOTE_CLI_COMMIT
 ./scripts/build.sh
 mv ./bin/avalanche "${TMPDIR}/avalanche"
 cd $pw
@@ -77,14 +76,14 @@ mv ./build/nuklai-cli "${TMPDIR}/nuklai-cli"
 cd $pw
 
 # Generate genesis file and configs
-MIN_BLOCK_GAP=3500
+MIN_BLOCK_GAP=250
 MIN_UNIT_PRICE="1,1,1,1,1"
 WINDOW_TARGET_UNITS="40000000,450000,450000,450000,450000"
 MAX_UINT64=18446744073709551615
 MAX_BLOCK_UNITS="1800000,${MAX_UINT64},${MAX_UINT64},${MAX_UINT64},${MAX_UINT64}"
 
-INITIAL_OWNER_ADDRESS=${INITIAL_OWNER_ADDRESS:-nuklai1qpg4ecapjymddcde8sfq06dshzpxltqnl47tvfz0hnkesjz7t0p35d5fnr3}
-EMISSION_ADDRESS=${EMISSION_ADDRESS:-nuklai1qr4hhj8vfrnmzghgfnqjss0ns9tv7pjhhhggfm2zeagltnlmu4a6sgh6dqn}
+INITIAL_OWNER_ADDRESS=${INITIAL_OWNER_ADDRESS:-002b5d019495996310f81c6a26a4dd9eeb9a3f3be1bac0a9294436713aecc84496}
+EMISSION_ADDRESS=${EMISSION_ADDRESS:-00f3b89e583e3944dee8d45ca40ce30829eff47481bc45669d401c2f9cc2bc110d}
 # Sum of allocations must be less than uint64 max
 cat <<EOF > "${TMPDIR}"/allocations.json
 [
@@ -110,32 +109,15 @@ EOF
 # TODO: we limit root generation cores because it can cause network handling to stop (exhausts all CPU for a few seconds)
 cat <<EOF > "${TMPDIR}"/nuklaivm.config
 {
-  "chunkBuildFrequency": 250,
-  "targetChunkBuildDuration": 250,
-  "blockBuildFrequency": 100,
-  "mempoolSize": 2147483648,
+  "mempoolSize": 10000000,
   "mempoolSponsorSize": 10000000,
-  "authExecutionCores": 2,
-  "precheckCores": 2,
-  "actionExecutionCores": 2,
-  "missingChunkFetchers": 2,
-  "verifyAuth": true,
-  "authRPCCores": 2,
-  "authRPCBacklog": 10000000,
-  "authGossipCores": 2,
-  "authGossipBacklog": 10000000,
-  "chunkStorageCores": 2,
-  "chunkStorageBacklog": 10000000,
-  "streamingBacklogSize": 10000000,
-  "continuousProfilerDir":"/home/ubuntu/nuklaivm-profiles",
-  "logLevel": "INFO",
-  "mempoolExemptSponsors": [
-    "nuklai1qpg4ecapjymddcde8sfq06dshzpxltqnl47tvfz0hnkesjz7t0p35d5fnr3",
-    "nuklai1qr4hhj8vfrnmzghgfnqjss0ns9tv7pjhhhggfm2zeagltnlmu4a6sgh6dqn"
-  ],
   "authVerificationCores": 2,
   "rootGenerationCores": 2,
   "transactionExecutionCores": 2,
+  "verifyAuth": true,
+  "streamingBacklogSize": 10000000,
+  "stateSyncServerDelay": 100000000,
+  "stateSyncMinBlocks": 512,
   "storeTransactions": true
 }
 EOF
@@ -143,7 +125,7 @@ EOF
 
 cat <<EOF > "${TMPDIR}"/nuklaivm.subnet
 {
-  "proposerMinBlockDelay": 1000,
+  "proposerMinBlockDelay": 0,
   "proposerNumHistoricalBlocks": 100000000
 }
 EOF
@@ -152,40 +134,45 @@ cat <<EOF > "${TMPDIR}"/node.config
 {
   "log-level":"INFO",
   "log-display-level":"INFO",
-  "proposervm-use-current-height":true,
-  "throttler-inbound-validator-alloc-size":"10737418240",
-  "throttler-inbound-at-large-alloc-size":"10737418240",
-  "throttler-inbound-node-max-processing-msgs":"1000000",
-  "throttler-inbound-node-max-at-large-bytes":"10737418240",
-  "throttler-inbound-bandwidth-refill-rate":"1073741824",
-  "throttler-inbound-bandwidth-max-burst-size":"1073741824",
-  "throttler-inbound-cpu-validator-alloc":"100000",
-  "throttler-inbound-cpu-max-non-validator-usage":"100000",
-  "throttler-inbound-cpu-max-non-validator-node-usage":"100000",
-  "throttler-inbound-disk-validator-alloc":"10737418240000",
-  "throttler-outbound-validator-alloc-size":"10737418240",
-  "throttler-outbound-at-large-alloc-size":"10737418240",
-  "throttler-outbound-node-max-at-large-bytes":"10737418240",
-  "consensus-on-accept-gossip-validator-size":"10",
-  "consensus-on-accept-gossip-peer-size":"10",
-  "network-compression-type":"zstd",
-  "consensus-app-concurrency":"128",
-  "profile-continuous-enabled":true,
-  "profile-continuous-freq":"1m",
-  "http-host":"",
-  "http-allowed-origins": "*",
-  "http-allowed-hosts": "*"
+  "consensus-app-concurrency": 512,
+  "health-check-frequency": "2s",
+  "http-allowed-hosts": "*",
+  "http-host": "",
+  "index-enabled": true,
+  "log-display-level": "OFF",
+  "log-level": "DEBUG",
+  "min-stake-duration": "1s",
+  "network-max-reconnect-delay": "1s",
+  "network-peer-list-pull-gossip-frequency": "250ms",
+  "profile-continuous-enabled": true,
+  "profile-continuous-freq": "1m",
+  "proposervm-use-current-height": true,
+  "public-ip": "127.0.0.1",
+  "staking-host": "127.0.0.1",
+  "throttler-inbound-at-large-alloc-size": 10737418240,
+  "throttler-inbound-bandwidth-max-burst-size": 1073741824,
+  "throttler-inbound-bandwidth-refill-rate": 1073741824,
+  "throttler-inbound-cpu-validator-alloc": 100000,
+  "throttler-inbound-disk-validator-alloc": 10737418240000,
+  "throttler-inbound-node-max-at-large-bytes": 10737418240,
+  "throttler-inbound-node-max-processing-msgs": 100000,
+  "throttler-inbound-validator-alloc-size": 10737418240,
+  "throttler-outbound-at-large-alloc-size": 10737418240,
+  "throttler-outbound-node-max-at-large-bytes": 10737418240,
+  "throttler-outbound-validator-alloc-size": 10737418240,
 }
 EOF
+#   "http-allowed-origins": "*",
+#  "network-compression-type":"zstd",
 
 # Setup devnet
 CLUSTER="nuklai-$(date +%s)"
 
 interrupted=false
 function showcleanup {
-   if [ "$interrupted" = false ]; then
+  if [ "$interrupted" = false ]; then
         echo -e "\n\n${RED}run this command to destroy the devnet:${NC} ${TMPDIR}/avalanche node destroy ${CLUSTER}\n"
-   fi
+  fi
 }
 
 function cleanup {
@@ -201,8 +188,7 @@ trap cleanup SIGINT
 #
 # It is not recommended to use an instance with burstable network performance.
 echo -e "${YELLOW}creating devnet${NC}"
-$TMPDIR/avalanche node devnet wiz ${CLUSTER} ${VMID} --force-subnet-create=true --authorize-access=true --aws --node-type t4g.medium --num-apis 0 --num-validators 10 --region eu-west-1 --use-static-ip=false --enable-monitoring=false --auto-replace-keypair --default-validator-params=true --custom-avalanchego-version $AVALANCHEGO_VERSION --custom-vm-repo-url="https://www.github.com/nuklai/nuklaivm" --custom-vm-branch $VM_COMMIT --custom-vm-build-script="scripts/build.sh" --custom-subnet=true --subnet-genesis="${TMPDIR}/nuklaivm.genesis" --subnet-config="${TMPDIR}/nuklaivm.subnet" --chain-config="${TMPDIR}/nuklaivm.config" --node-config="${TMPDIR}/node.config" --config="${TMPDIR}/node.config" --remote-cli-version $REMOTE_CLI_COMMIT --add-grafana-dashboard="${TMPDIR}/nuklaivm/grafana.json"
-
+$TMPDIR/avalanche node devnet wiz ${CLUSTER} ${VMID} --force-subnet-create=true --authorize-access=true --aws --node-type t4g.medium --num-apis 0 --num-validators 2 --region eu-west-1 --use-static-ip=false --enable-monitoring=false --default-validator-params=true --custom-avalanchego-version $AVALANCHEGO_VERSION --custom-vm-repo-url="https://www.github.com/nuklai/nuklaivm" --custom-vm-branch $VM_COMMIT --custom-vm-build-script="scripts/build.sh" --custom-subnet=true --subnet-genesis="${TMPDIR}/nuklaivm.genesis" --subnet-config="${TMPDIR}/nuklaivm.subnet" --chain-config="${TMPDIR}/nuklaivm.config" --node-config="${TMPDIR}/node.config" --config="${TMPDIR}/node.config" --add-grafana-dashboard="${TMPDIR}/nuklaivm/grafana.json"
 
 # Import the cluster into nuklai-cli for local interaction
 $TMPDIR/nuklai-cli chain import-cli $HOME/.avalanche-cli/nodes/inventories/$CLUSTER/clusterInfo.yaml
