@@ -71,7 +71,6 @@ func (t *ContractCall) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-
 	callInfo := &runtime.CallInfo{
 		Contract:     t.ContractAddress,
 		Actor:        actor,
