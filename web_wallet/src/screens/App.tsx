@@ -1,5 +1,8 @@
-import { SignerIface } from 'hypersdk-client/src/client/types'
-import { addressHexFromPubKey } from 'hypersdk-client/src/lib/Marshaler.ts'
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
+
+import { addressHexFromPubKey } from 'hypersdk-client/dist/Marshaler'
+import { SignerIface } from 'hypersdk-client/dist/types'
 import { useEffect, useState } from 'react'
 import { vmClient } from '../VMClient.ts'
 import ConnectWallet from './ConnectWallet'

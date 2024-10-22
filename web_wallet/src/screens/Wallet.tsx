@@ -1,10 +1,14 @@
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 import { ArrowPathIcon, ClipboardIcon } from '@heroicons/react/24/outline'
-import { ExecutedBlock } from 'hypersdk-client/src/client/apiTransformers'
-import { VMABI } from 'hypersdk-client/src/lib/Marshaler'
+import { addressHexFromPubKey, VMABI } from 'hypersdk-client/dist/Marshaler'
 import { stringify } from 'lossless-json'
 import { useCallback, useEffect, useReducer, useState } from 'react'
 import { getBalance, vmClient } from '../VMClient'
 
+import { hexToBytes } from '@noble/curves/abstract/utils'
+import { Block } from 'hypersdk-client/dist/apiTransformers'
 import TimeAgo from 'javascript-time-ago'
 import timeAgoEn from 'javascript-time-ago/locale/en'
 TimeAgo.addDefaultLocale(timeAgoEn)
@@ -108,7 +112,7 @@ function Action({
 
       // Use the original actionInputs when making the call
       const result = isReadOnly
-        ? await vmClient.simulateAction({ actionName, data: actionInputs })
+        ? await vmClient.executeActions([{ actionName, data: actionInputs }])
         : await vmClient.sendTransaction([{ actionName, data: actionInputs }])
 
       const endTime = new Date().toLocaleTimeString([], {
@@ -131,7 +135,10 @@ function Action({
         minute: '2-digit',
         second: '2-digit'
       })
-      setActionLogs((prev) => [...prev, `${errorTime} - Error: ${e}`])
+      setActionLogs((prev) => [
+        ...prev,
+        `${errorTime} - Error: ${(e as Error)?.message ?? String(e)}`
+      ])
     }
   }
 
@@ -329,7 +336,7 @@ export default function Wallet({ myAddr }: { myAddr: string }) {
 }
 
 export function LatestBlocks() {
-  const [blocks, setBlocks] = useState([] as ExecutedBlock[])
+  const [blocks, setBlocks] = useState([] as Block[])
   const [, forceUpdate] = useReducer((x: number) => x + 1, 0)
 
   useEffect(() => {
@@ -368,49 +375,84 @@ export function LatestBlocks() {
           </p>
         ) : (
           blocks.map((block) => (
-            <div
-              key={block.height}
-              className='mb-6 last:mb-0 bg-white p-6 rounded-lg shadow-md'
-            >
-              <h3 className='text-2xl font-bold text-gray-800'>
-                Block #{block.height}
-              </h3>
-              <p className='text-sm text-gray-600 mb-3'>
-                {ago.format(block.timestamp, 'round')}
-              </p>
-              <div className='mb-4'>
-                <p className='text-xs text-gray-500 truncate'>
-                  Parent: <span className='font-mono'>{block.parent}</span>
-                </p>
-                <p className='text-xs text-gray-500 truncate'>
-                  State Root:{' '}
-                  <span className='font-mono'>{block.stateRoot}</span>
-                </p>
-              </div>
-              <p className='text-sm font-semibold mb-3 text-gray-700'>
-                {block.transactions.length} Transaction
-                {block.transactions.length === 1 ? '' : 's'}
-              </p>
-              {block.transactions.map((tx, index) => (
-                <div
-                  key={index}
-                  className='mt-4 p-4 bg-gray-100 rounded-md shadow-sm'
-                >
-                  <p className='font-semibold text-gray-800'>
-                    {tx.response.success ? '✅ Success' : '❌ Failed'}
-                  </p>
-                  <p className='text-xs mt-2 text-gray-600'>
-                    Sender: <span className='font-mono'>tx.sender</span>
-                  </p>
-                  <div className='mt-3 overflow-x-auto'>
-                    <pre className='text-xs text-gray-700'>
-                      {JSON.stringify(tx.actions, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <RenderBlock key={block.block.height} block={block} />
           ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+function RenderBlock({ block }: { block: Block }) {
+  const [showFullJson, setShowFullJson] = useState(false)
+
+  return (
+    <div
+      key={block.block.height}
+      className='mb-6 last:mb-0 bg-white p-6 rounded-lg shadow-md'
+    >
+      <h3 className='text-2xl font-bold text-gray-800'>
+        Block #{block.block.height}
+      </h3>
+      <p className='text-sm text-gray-600 mb-3'>
+        {ago.format(block.block.timestamp, 'round')}
+      </p>
+      <div className='mb-4'>
+        <p className='text-xs text-gray-500 truncate'>
+          Parent: <span className='font-mono'>{block.block.parent}</span>
+        </p>
+        <p className='text-xs text-gray-500 truncate'>
+          State Root: <span className='font-mono'>{block.block.stateRoot}</span>
+        </p>
+      </div>
+      <p className='text-sm font-semibold mb-3 text-gray-700'>
+        {block.block.txs.length} Transaction
+        {block.block.txs.length === 1 ? '' : 's'}
+      </p>
+      {block.block.txs.map((tx, index) => (
+        <div key={index}>
+          <p className='font-semibold text-gray-800'>
+            {block.results[index].success ? '✅ Success' : '❌ Failed'}
+          </p>
+          <p className='text-xs mt-2 text-gray-600'>
+            Sender:{' '}
+            <span className='font-mono'>
+              {addressHexFromPubKey(hexToBytes(tx.auth.signer))}
+            </span>
+          </p>
+
+          <div
+            key={index}
+            className='mt-4 p-4 bg-gray-100 rounded-md shadow-sm'
+          >
+            <div className='mt-3 overflow-x-auto'>
+              <pre className='text-xs text-gray-700'>
+                {stringify(
+                  {
+                    actions: tx.actions,
+                    outputs: block.results[index].outputs
+                  },
+                  null,
+                  2
+                )}
+              </pre>
+            </div>
+          </div>
+        </div>
+      ))}
+      <div className='mt-4'>
+        <button
+          onClick={() => setShowFullJson(!showFullJson)}
+          className='text-blue-600 hover:text-blue-800 transition duration-300'
+        >
+          {showFullJson ? 'Hide' : 'Show'} Full JSON
+        </button>
+        {showFullJson && (
+          <div className='mt-2 bg-gray-100 p-4 rounded-md shadow-sm overflow-x-auto'>
+            <pre className='text-xs text-gray-700'>
+              {stringify(block, null, 2)}
+            </pre>
+          </div>
         )}
       </div>
     </div>

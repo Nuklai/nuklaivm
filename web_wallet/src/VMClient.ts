@@ -1,5 +1,5 @@
-import { HyperSDKClient } from 'hypersdk-client/src/client'
-import { HyperSDKHTTPClient } from 'hypersdk-client/src/client/HyperSDKHTTPClient'
+import { HyperSDKClient } from 'hypersdk-client'
+import { HyperSDKHTTPClient } from 'hypersdk-client/dist/HyperSDKHTTPClient'
 import { API_HOST, FAUCET_HOST, VM_NAME, VM_RPC_PREFIX } from './const'
 
 export const vmClient = new HyperSDKClient(API_HOST, VM_NAME, VM_RPC_PREFIX)
