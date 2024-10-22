@@ -134,6 +134,43 @@ var publishFileCmd = &cobra.Command{
 	},
 }
 
+var deployCmd = &cobra.Command{
+	Use: "deploy",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, _, factory, cli, bcli, ws, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+
+		contractID, err := prompt.Bytes("contract id")
+		if err != nil {
+			return err
+		}
+
+		creationInfo, err := prompt.Bytes("creation info")
+		if err != nil {
+			return err
+		}
+
+		// Confirm action
+		cont, err := prompt.Continue()
+		if !cont || err != nil {
+			return err
+		}
+
+		// Generate transaction
+		result, _, err := sendAndWait(ctx, []chain.Action{&actions.ContractDeploy{
+			ContractID:   contractID,
+			CreationInfo: creationInfo,
+		}}, cli, bcli, ws, factory)
+		if err != nil {
+			return err
+		}
+		return processResult(result)
+	},
+}
+
 var callCmd = &cobra.Command{
 	Use: "call",
 	RunE: func(*cobra.Command, []string) error {
@@ -144,7 +181,7 @@ var callCmd = &cobra.Command{
 		}
 
 		// Get balance info
-		balance, err := handler.GetBalance(ctx, bcli, priv.Address, ids.Empty)
+		balance, err := handler.GetBalance(ctx, bcli, priv.Address)
 		if balance == 0 || err != nil {
 			return err
 		}
@@ -233,43 +270,6 @@ var callCmd = &cobra.Command{
 			}
 		}
 		return err
-	},
-}
-
-var deployCmd = &cobra.Command{
-	Use: "deploy",
-	RunE: func(*cobra.Command, []string) error {
-		ctx := context.Background()
-		_, _, factory, cli, bcli, ws, err := handler.DefaultActor()
-		if err != nil {
-			return err
-		}
-
-		contractID, err := prompt.Bytes("contract id")
-		if err != nil {
-			return err
-		}
-
-		creationInfo, err := prompt.Bytes("creation info")
-		if err != nil {
-			return err
-		}
-
-		// Confirm action
-		cont, err := prompt.Continue()
-		if !cont || err != nil {
-			return err
-		}
-
-		// Generate transaction
-		result, _, err := sendAndWait(ctx, []chain.Action{&actions.ContractDeploy{
-			ContractID:   contractID,
-			CreationInfo: creationInfo,
-		}}, cli, bcli, ws, factory)
-		if err != nil {
-			return err
-		}
-		return processResult(result)
 	},
 }
 

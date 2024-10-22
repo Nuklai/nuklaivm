@@ -218,9 +218,8 @@ func (*Handler) GetBalance(
 	ctx context.Context,
 	cli *vm.JSONRPCClient,
 	addr codec.Address,
-	asset ids.ID,
 ) (uint64, error) {
-	balance, err := cli.Balance(ctx, addr.String(), asset.String())
+	balance, err := cli.Balance(ctx, addr.String(), storage.NAIAddress.String())
 	if err != nil {
 		return 0, err
 	}
@@ -603,6 +602,6 @@ func (*Controller) HandleTx(tx *chain.Transaction, result *chain.Result) {
 
 func (*Controller) LookupBalance(address codec.Address, uri string) (uint64, error) {
 	cli := vm.NewJSONRPCClient(uri)
-	balance, err := cli.Balance(context.TODO(), address.String(), ids.Empty.String())
+	balance, err := cli.Balance(context.TODO(), address.String(), storage.NAIAddress.String())
 	return balance, err
 }

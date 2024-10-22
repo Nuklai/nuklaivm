@@ -33,20 +33,20 @@ type StateKeyPermission struct {
 
 type ContractCall struct {
 	// contract is the address of the contract to be called
-	ContractAddress codec.Address `json:"contractAddress"`
+	ContractAddress codec.Address `serialize:"true" json:"contractAddress"`
 
 	// Amount are transferred to [To].
-	Value uint64 `json:"value"`
+	Value uint64 `serialize:"true" json:"value"`
 
 	// Function is the name of the function to call on the contract.
-	Function string `json:"function"`
+	Function string `serialize:"true" json:"function"`
 
 	// CallData are the serialized parameters to be passed to the contract.
-	CallData []byte `json:"calldata"`
+	CallData []byte `serialize:"true" json:"calldata"`
 
-	SpecifiedStateKeys []StateKeyPermission `json:"statekeys"`
+	SpecifiedStateKeys []StateKeyPermission `serialize:"true" json:"statekeys"`
 
-	Fuel uint64 `json:"fuel"`
+	Fuel uint64 `serialize:"true" json:"fuel"`
 
 	r *runtime.WasmRuntime
 }
@@ -71,6 +71,7 @@ func (t *ContractCall) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
+
 	callInfo := &runtime.CallInfo{
 		Contract:     t.ContractAddress,
 		Actor:        actor,
@@ -101,7 +102,7 @@ func (*ContractCall) ValidRange(chain.Rules) (int64, int64) {
 var _ chain.Marshaler = (*ContractCall)(nil)
 
 func (t *ContractCall) Size() int {
-	return codec.AddressLen + 2*consts.Uint64Len + len(t.CallData) + len(t.Function) + len(t.SpecifiedStateKeys)
+	return codec.AddressLen + 2*consts.Uint64Len + codec.BytesLen(t.CallData) + codec.StringLen(t.Function) + len(t.SpecifiedStateKeys)
 }
 
 func (t *ContractCall) Marshal(p *codec.Packer) {

@@ -12,7 +12,6 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/nuklai/nuklaivm/storage"
 	"github.com/nuklai/nuklaivm/vm"
 	"github.com/spf13/cobra"
 
@@ -136,10 +135,12 @@ var setKeyCmd = &cobra.Command{
 var balanceKeyCmd = &cobra.Command{
 	Use: "balance [address]",
 	RunE: func(_ *cobra.Command, args []string) error {
-		var (
-			addr codec.Address
-			err  error
-		)
+		ctx := context.Background()
+		_, _, _, _, bcli, _, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+		var addr codec.Address
 		if len(args) != 1 {
 			addr, _, err = handler.h.GetDefaultKey(true)
 			if err != nil {
@@ -151,14 +152,9 @@ var balanceKeyCmd = &cobra.Command{
 				return err
 			}
 		}
-		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
+		_, err = handler.GetBalance(ctx, bcli, addr)
 		if err != nil {
 			return err
-		}
-		for _, ncli := range nclients {
-			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, storage.NAIAddress, true, false, -1); err != nil {
-				return err
-			}
 		}
 		return nil
 	},

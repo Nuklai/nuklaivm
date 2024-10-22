@@ -427,6 +427,10 @@ Refer to [Datasets Demo](./docs/demos/datasets.md) to learn how to create a data
 
 Refer to [Marketplace Demo](./docs/demos/marketplace.md) to learn how to create a publish your dataset up for sale on the Nuklai Marketplace and how to subscribe to a dataset.
 
+### WASM smart contracts
+
+Refer to [WASM Smart Contracts Demo](./docs/demos/wasm_smart_contracts.md) to learn how to deploy smart contracts and interact with them on NuklaiVM.
+
 ## Faucet
 
 You can run the faucet by doing:

@@ -24,8 +24,8 @@ var _ chain.Action = (*ContractDeploy)(nil)
 const MAXCREATIONSIZE = units.MiB
 
 type ContractDeploy struct {
-	ContractID   runtime.ContractID `json:"contractID"`
-	CreationInfo []byte             `json:"creationInfo"`
+	ContractID   runtime.ContractID `serialize:"true" json:"contractID"`
+	CreationInfo []byte             `serialize:"true" json:"creationInfo"`
 	address      codec.Address
 }
 
@@ -68,7 +68,7 @@ func (*ContractDeploy) ValidRange(chain.Rules) (int64, int64) {
 var _ chain.Marshaler = (*ContractDeploy)(nil)
 
 func (d *ContractDeploy) Size() int {
-	return len(d.CreationInfo) + len(d.ContractID)
+	return codec.BytesLen(d.CreationInfo) + codec.BytesLen(d.ContractID)
 }
 
 func (d *ContractDeploy) Marshal(p *codec.Packer) {
@@ -78,7 +78,7 @@ func (d *ContractDeploy) Marshal(p *codec.Packer) {
 
 func UnmarshalDeployContract(p *codec.Packer) (chain.Action, error) {
 	var deployContract ContractDeploy
-	p.UnpackBytes(36, true, (*[]byte)(&deployContract.ContractID))
+	p.UnpackBytes(40, true, (*[]byte)(&deployContract.ContractID))
 	p.UnpackBytes(MAXCREATIONSIZE, false, &deployContract.CreationInfo)
 	deployContract.address = storage.GetAddressForDeploy(0, deployContract.CreationInfo)
 	if err := p.Err(); err != nil {
