@@ -1,3 +1,6 @@
+// Copyright (C) 2024, Nuklai. All rights reserved.
+// See the file LICENSE for licensing terms.
+
 import React, { useEffect, useState } from 'react'
 import { getBalance, requestFaucetTransfer } from '../VMClient'
 

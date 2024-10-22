@@ -154,7 +154,7 @@ func (h *Handler) BalanceAsset(checkAllChains bool, isNFT bool, printBalance fun
 }
 
 func (h *Handler) DefaultActor() (
-	ids.ID, *cli.PrivateKey, chain.AuthFactory,
+	ids.ID, *auth.PrivateKey, chain.AuthFactory,
 	*jsonrpc.JSONRPCClient, *vm.JSONRPCClient, *ws.WebSocketClient, error,
 ) {
 	addr, priv, err := h.h.GetDefaultKey(true)
@@ -189,7 +189,7 @@ func (h *Handler) DefaultActor() (
 		return ids.Empty, nil, nil, nil, nil, nil, err
 	}
 	// For [defaultActor], we always send requests to the first returned URI.
-	return chainID, &cli.PrivateKey{
+	return chainID, &auth.PrivateKey{
 			Address: addr,
 			Bytes:   priv,
 		}, factory, jcli,
@@ -218,9 +218,8 @@ func (*Handler) GetBalance(
 	ctx context.Context,
 	cli *vm.JSONRPCClient,
 	addr codec.Address,
-	asset ids.ID,
 ) (uint64, error) {
-	balance, err := cli.Balance(ctx, addr.String(), asset.String())
+	balance, err := cli.Balance(ctx, addr.String(), storage.NAIAddress.String())
 	if err != nil {
 		return 0, err
 	}
@@ -603,6 +602,6 @@ func (*Controller) HandleTx(tx *chain.Transaction, result *chain.Result) {
 
 func (*Controller) LookupBalance(address codec.Address, uri string) (uint64, error) {
 	cli := vm.NewJSONRPCClient(uri)
-	balance, err := cli.Balance(context.TODO(), address.String(), ids.Empty.String())
+	balance, err := cli.Balance(context.TODO(), address.String(), storage.NAIAddress.String())
 	return balance, err
 }

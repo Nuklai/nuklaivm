@@ -5,14 +5,12 @@ package vm
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
@@ -22,7 +20,6 @@ import (
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/requester"
-	"github.com/ava-labs/hypersdk/state"
 	"github.com/ava-labs/hypersdk/utils"
 )
 
@@ -276,15 +273,15 @@ func (p *Parser) Rules(_ int64) chain.Rules {
 	return p.genesis.Rules
 }
 
-func (*Parser) ActionRegistry() chain.ActionRegistry {
+func (*Parser) ActionCodec() *codec.TypeParser[chain.Action] {
 	return ActionParser
 }
 
-func (*Parser) OutputRegistry() chain.OutputRegistry {
+func (*Parser) OutputCodec() *codec.TypeParser[codec.Typed] {
 	return OutputParser
 }
 
-func (*Parser) AuthRegistry() chain.AuthRegistry {
+func (*Parser) AuthCodec() *codec.TypeParser[chain.Auth] {
 	return AuthParser
 }
 
@@ -303,27 +300,4 @@ func CreateParser(genesisBytes []byte) (chain.Parser, error) {
 		return nil, err
 	}
 	return NewParser(&genesis), nil
-}
-
-func (cli *JSONRPCClient) Simulate(ctx context.Context, callTx actions.ContractCall, actor codec.Address) (state.Keys, uint64, error) {
-	resp := new(SimulateCallTxReply)
-	err := cli.requester.SendRequest(
-		ctx,
-		"simulateCallContractTx",
-		&SimulateCallTxArgs{CallTx: callTx, Actor: actor},
-		resp,
-	)
-	if err != nil {
-		return nil, 0, err
-	}
-	result := state.Keys{}
-	for _, entry := range resp.StateKeys {
-		hexBytes, err := hex.DecodeString(entry.HexKey)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		result.Add(string(hexBytes), state.Permissions(entry.Permissions))
-	}
-	return result, resp.FuelConsumed, nil
 }

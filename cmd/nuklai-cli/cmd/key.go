@@ -12,12 +12,10 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/nuklai/nuklaivm/storage"
 	"github.com/nuklai/nuklaivm/vm"
 	"github.com/spf13/cobra"
 
 	"github.com/ava-labs/hypersdk/auth"
-	"github.com/ava-labs/hypersdk/cli"
 	"github.com/ava-labs/hypersdk/cli/prompt"
 	"github.com/ava-labs/hypersdk/codec"
 	"github.com/ava-labs/hypersdk/crypto/bls"
@@ -97,7 +95,7 @@ var importKeyCmd = &cobra.Command{
 		keyType := args[0]
 		keyInput := args[1]
 
-		var priv *cli.PrivateKey
+		var priv *auth.PrivateKey
 
 		// Check if the provided argument is a file path or an encoded string
 		if _, err := os.Stat(keyInput); err == nil {
@@ -137,10 +135,12 @@ var setKeyCmd = &cobra.Command{
 var balanceKeyCmd = &cobra.Command{
 	Use: "balance [address]",
 	RunE: func(_ *cobra.Command, args []string) error {
-		var (
-			addr codec.Address
-			err  error
-		)
+		ctx := context.Background()
+		_, _, _, _, bcli, _, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+		var addr codec.Address
 		if len(args) != 1 {
 			addr, _, err = handler.h.GetDefaultKey(true)
 			if err != nil {
@@ -152,14 +152,9 @@ var balanceKeyCmd = &cobra.Command{
 				return err
 			}
 		}
-		nclients, err := handler.DefaultNuklaiVMJSONRPCClient(checkAllChains)
+		_, err = handler.GetBalance(ctx, bcli, addr)
 		if err != nil {
 			return err
-		}
-		for _, ncli := range nclients {
-			if _, _, _, _, _, _, _, _, _, _, _, _, _, err := handler.GetAssetInfo(context.TODO(), ncli, addr, storage.NAIAddress, true, false, -1); err != nil {
-				return err
-			}
 		}
 		return nil
 	},
@@ -274,14 +269,14 @@ func getKeyType(addr codec.Address) (string, error) {
 	}
 }
 
-func generatePrivateKey(k string) (*cli.PrivateKey, error) {
+func generatePrivateKey(k string) (*auth.PrivateKey, error) {
 	switch k {
 	case ed25519Key:
 		p, err := ed25519.GeneratePrivateKey()
 		if err != nil {
 			return nil, err
 		}
-		return &cli.PrivateKey{
+		return &auth.PrivateKey{
 			Address: auth.NewED25519Address(p.PublicKey()),
 			Bytes:   p[:],
 		}, nil
@@ -290,7 +285,7 @@ func generatePrivateKey(k string) (*cli.PrivateKey, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &cli.PrivateKey{
+		return &auth.PrivateKey{
 			Address: auth.NewSECP256R1Address(p.PublicKey()),
 			Bytes:   p[:],
 		}, nil
@@ -299,7 +294,7 @@ func generatePrivateKey(k string) (*cli.PrivateKey, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &cli.PrivateKey{
+		return &auth.PrivateKey{
 			Address: auth.NewBLSAddress(bls.PublicFromPrivateKey(p)),
 			Bytes:   bls.PrivateKeyToBytes(p),
 		}, nil
@@ -308,7 +303,7 @@ func generatePrivateKey(k string) (*cli.PrivateKey, error) {
 	}
 }
 
-func loadPrivateKeyFromPath(k string, path string) (*cli.PrivateKey, error) {
+func loadPrivateKeyFromPath(k string, path string) (*auth.PrivateKey, error) {
 	switch k {
 	case ed25519Key:
 		p, err := utils.LoadBytes(path, ed25519.PrivateKeyLen)
@@ -316,7 +311,7 @@ func loadPrivateKeyFromPath(k string, path string) (*cli.PrivateKey, error) {
 			return nil, err
 		}
 		pk := ed25519.PrivateKey(p)
-		return &cli.PrivateKey{
+		return &auth.PrivateKey{
 			Address: auth.NewED25519Address(pk.PublicKey()),
 			Bytes:   p,
 		}, nil
@@ -326,7 +321,7 @@ func loadPrivateKeyFromPath(k string, path string) (*cli.PrivateKey, error) {
 			return nil, err
 		}
 		pk := secp256r1.PrivateKey(p)
-		return &cli.PrivateKey{
+		return &auth.PrivateKey{
 			Address: auth.NewSECP256R1Address(pk.PublicKey()),
 			Bytes:   p,
 		}, nil
@@ -340,7 +335,7 @@ func loadPrivateKeyFromPath(k string, path string) (*cli.PrivateKey, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &cli.PrivateKey{
+		return &auth.PrivateKey{
 			Address: auth.NewBLSAddress(bls.PublicFromPrivateKey(privKey)),
 			Bytes:   p,
 		}, nil
@@ -350,7 +345,7 @@ func loadPrivateKeyFromPath(k string, path string) (*cli.PrivateKey, error) {
 }
 
 // loadPrivateKeyFromString loads a private key from a base64 string.
-func loadPrivateKeyFromString(k, keyStr string) (*cli.PrivateKey, error) {
+func loadPrivateKeyFromString(k, keyStr string) (*auth.PrivateKey, error) {
 	var decodedKey []byte
 	var err error
 
@@ -364,13 +359,13 @@ func loadPrivateKeyFromString(k, keyStr string) (*cli.PrivateKey, error) {
 	switch k {
 	case ed25519Key:
 		pk := ed25519.PrivateKey(decodedKey)
-		return &cli.PrivateKey{
+		return &auth.PrivateKey{
 			Address: auth.NewED25519Address(pk.PublicKey()),
 			Bytes:   decodedKey,
 		}, nil
 	case secp256r1Key:
 		pk := secp256r1.PrivateKey(decodedKey)
-		return &cli.PrivateKey{
+		return &auth.PrivateKey{
 			Address: auth.NewSECP256R1Address(pk.PublicKey()),
 			Bytes:   decodedKey,
 		}, nil
@@ -379,7 +374,7 @@ func loadPrivateKeyFromString(k, keyStr string) (*cli.PrivateKey, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to load BLS private key: %w", err)
 		}
-		return &cli.PrivateKey{
+		return &auth.PrivateKey{
 			Address: auth.NewBLSAddress(bls.PublicFromPrivateKey(pk)),
 			Bytes:   bls.PrivateKeyToBytes(pk),
 		}, nil

@@ -21,7 +21,10 @@ import (
 
 var _ chain.Action = (*ContractCall)(nil)
 
-const MaxCallDataSize = units.MiB
+const (
+	MaxCallDataSize    = units.MiB
+	MaxResultSizeLimit = units.MiB
+)
 
 type StateKeyPermission struct {
 	Key        string
@@ -68,7 +71,7 @@ func (t *ContractCall) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
-	resutBytes, err := t.r.CallContract(ctx, &runtime.CallInfo{
+	callInfo := &runtime.CallInfo{
 		Contract:     t.ContractAddress,
 		Actor:        actor,
 		State:        &storage.ContractStateManager{Mutable: mu},
@@ -77,11 +80,13 @@ func (t *ContractCall) Execute(
 		Timestamp:    uint64(timestamp),
 		Fuel:         t.Fuel,
 		Value:        t.Value,
-	})
+	}
+	resultBytes, err := t.r.CallContract(ctx, callInfo)
 	if err != nil {
 		return nil, err
 	}
-	return &ContractCallResult{Value: resutBytes}, nil
+	consumedFuel := t.Fuel - callInfo.RemainingFuel()
+	return &ContractCallResult{Value: resultBytes, ConsumedFuel: consumedFuel}, nil
 }
 
 func (t *ContractCall) ComputeUnits(chain.Rules) uint64 {
@@ -96,7 +101,7 @@ func (*ContractCall) ValidRange(chain.Rules) (int64, int64) {
 var _ chain.Marshaler = (*ContractCall)(nil)
 
 func (t *ContractCall) Size() int {
-	return codec.AddressLen + 2*consts.Uint64Len + len(t.CallData) + len(t.Function) + len(t.SpecifiedStateKeys)
+	return codec.AddressLen + 2*consts.Uint64Len + codec.BytesLen(t.CallData) + codec.StringLen(t.Function) + len(t.SpecifiedStateKeys)
 }
 
 func (t *ContractCall) Marshal(p *codec.Packer) {
@@ -138,7 +143,8 @@ func UnmarshalCallContract(r *runtime.WasmRuntime) func(p *codec.Packer) (chain.
 var _ codec.Typed = (*ContractCallResult)(nil)
 
 type ContractCallResult struct {
-	Value []byte `serialize:"true" json:"value"`
+	Value        []byte `serialize:"true" json:"value"`
+	ConsumedFuel uint64 `serialize:"true" json:"consumedfuel"`
 }
 
 func (*ContractCallResult) GetTypeID() uint8 {

@@ -70,7 +70,7 @@ func (*ContractPublish) ValidRange(chain.Rules) (int64, int64) {
 var _ chain.Marshaler = (*ContractPublish)(nil)
 
 func (t *ContractPublish) Size() int {
-	return 4 + len(t.ContractBytes)
+	return codec.BytesLen(t.ContractBytes)
 }
 
 func (t *ContractPublish) Marshal(p *codec.Packer) {

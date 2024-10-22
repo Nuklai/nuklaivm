@@ -17,6 +17,7 @@ import (
 	"github.com/nuklai/nuklaivm/actions"
 	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/storage"
+	"github.com/nuklai/nuklaivm/vm"
 	"github.com/spf13/cobra"
 	"github.com/status-im/keycard-go/hexutils"
 
@@ -31,6 +32,8 @@ import (
 	hconsts "github.com/ava-labs/hypersdk/consts"
 	nutils "github.com/nuklai/nuklaivm/utils"
 )
+
+var errUnexpectedSimulateActionsOutput = errors.New("returned output from SimulateActions was not actions.Result")
 
 var actionCmd = &cobra.Command{
 	Use: "action",
@@ -131,93 +134,6 @@ var publishFileCmd = &cobra.Command{
 	},
 }
 
-var callCmd = &cobra.Command{
-	Use: "call",
-	RunE: func(*cobra.Command, []string) error {
-		ctx := context.Background()
-		_, priv, factory, cli, bcli, ws, err := handler.DefaultActor()
-		if err != nil {
-			return err
-		}
-
-		// Get balance info
-		balance, err := handler.GetBalance(ctx, bcli, priv.Address, ids.Empty)
-		if balance == 0 || err != nil {
-			return err
-		}
-
-		// Select contract
-		contractAddress, err := prompt.Address("contract address")
-		if err != nil {
-			return err
-		}
-
-		// Select amount
-		amount, err := parseAmount("amount", consts.Decimals, balance)
-		if err != nil {
-			return err
-		}
-
-		// Select function
-		function, err := prompt.String("function", 0, 100)
-		if err != nil {
-			return err
-		}
-
-		action := &actions.ContractCall{
-			ContractAddress: contractAddress,
-			Value:           amount,
-			Function:        function,
-		}
-
-		specifiedStateKeysSet, fuel, err := bcli.Simulate(ctx, *action, priv.Address)
-		if err != nil {
-			return err
-		}
-
-		action.SpecifiedStateKeys = make([]actions.StateKeyPermission, 0, len(specifiedStateKeysSet))
-		for key, value := range specifiedStateKeysSet {
-			action.SpecifiedStateKeys = append(action.SpecifiedStateKeys, actions.StateKeyPermission{Key: key, Permission: value})
-		}
-		action.Fuel = fuel
-
-		// Confirm action
-		cont, err := prompt.Continue()
-		if !cont || err != nil {
-			return err
-		}
-
-		// Generate transaction
-		result, _, err := sendAndWait(ctx, []chain.Action{action}, cli, bcli, ws, factory)
-		if result != nil && result.Success {
-			utils.Outf("{{green}}fee consumed:{{/}} %s\n", nutils.FormatBalance(result.Fee, consts.Decimals))
-
-			utils.Outf(hexutils.BytesToHex(result.Outputs[0]) + "\n")
-			switch function {
-			case "balance":
-				{
-					var intValue uint64
-					err := borsh.Deserialize(&intValue, result.Outputs[0])
-					if err != nil {
-						return err
-					}
-					utils.Outf("%s\n", nutils.FormatBalance(intValue, consts.Decimals))
-				}
-			case "get_value":
-				{
-					var intValue int64
-					err := borsh.Deserialize(&intValue, result.Outputs[0])
-					if err != nil {
-						return err
-					}
-					utils.Outf("%d\n", intValue)
-				}
-			}
-		}
-		return err
-	},
-}
-
 var deployCmd = &cobra.Command{
 	Use: "deploy",
 	RunE: func(*cobra.Command, []string) error {
@@ -252,6 +168,108 @@ var deployCmd = &cobra.Command{
 			return err
 		}
 		return processResult(result)
+	},
+}
+
+var callCmd = &cobra.Command{
+	Use: "call",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, priv, factory, cli, bcli, ws, err := handler.DefaultActor()
+		if err != nil {
+			return err
+		}
+
+		// Get balance info
+		balance, err := handler.GetBalance(ctx, bcli, priv.Address)
+		if balance == 0 || err != nil {
+			return err
+		}
+
+		// Select contract
+		contractAddress, err := prompt.Address("contract address")
+		if err != nil {
+			return err
+		}
+
+		// Select amount
+		amount, err := parseAmount("amount", consts.Decimals, balance)
+		if err != nil {
+			return err
+		}
+
+		// Select function
+		function, err := prompt.String("function", 0, 100)
+		if err != nil {
+			return err
+		}
+
+		action := &actions.ContractCall{
+			ContractAddress: contractAddress,
+			Value:           amount,
+			Function:        function,
+			Fuel:            uint64(1000000000),
+		}
+
+		actionSimulationResults, err := cli.SimulateActions(ctx, chain.Actions{action}, priv.Address)
+		if err != nil {
+			return err
+		}
+		if len(actionSimulationResults) != 1 {
+			return fmt.Errorf("unexpected number of returned actions. One action expected, %d returned", len(actionSimulationResults))
+		}
+		actionSimulationResult := actionSimulationResults[0]
+
+		rtx := codec.NewReader(actionSimulationResult.Output, len(actionSimulationResult.Output))
+
+		simulationResultOutput, err := (*vm.OutputParser).Unmarshal(rtx)
+		if err != nil {
+			return err
+		}
+		simulationResult, ok := simulationResultOutput.(*actions.ContractCallResult)
+		if !ok {
+			return errUnexpectedSimulateActionsOutput
+		}
+
+		action.SpecifiedStateKeys = make([]actions.StateKeyPermission, 0, len(actionSimulationResult.StateKeys))
+		for key, value := range actionSimulationResult.StateKeys {
+			action.SpecifiedStateKeys = append(action.SpecifiedStateKeys, actions.StateKeyPermission{Key: key, Permission: value})
+		}
+		action.Fuel = simulationResult.ConsumedFuel
+
+		// Confirm action
+		cont, err := prompt.Continue()
+		if !cont || err != nil {
+			return err
+		}
+
+		// Generate transaction
+		result, _, err := sendAndWait(ctx, []chain.Action{action}, cli, bcli, ws, factory)
+
+		if result != nil && result.Success {
+			utils.Outf(hexutils.BytesToHex(result.Outputs[0]) + "\n")
+			switch function {
+			case "balance":
+				{
+					var intValue uint64
+					err := borsh.Deserialize(&intValue, result.Outputs[0])
+					if err != nil {
+						return err
+					}
+					utils.Outf("%s\n", utils.FormatBalance(intValue))
+				}
+			case "get_value":
+				{
+					var intValue int64
+					err := borsh.Deserialize(&intValue, result.Outputs[0])
+					if err != nil {
+						return err
+					}
+					utils.Outf("%d\n", intValue)
+				}
+			}
+		}
+		return err
 	},
 }
 
