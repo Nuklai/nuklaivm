@@ -1,4 +1,7 @@
 #!/bin/bash
+# Copyright (C) 2024, Nuklai. All rights reserved.
+# See the file LICENSE for licensing terms.
+
 
 if [[ $(basename "$PWD") != "nuklaivm" ]]; then
   echo "Error: This script must be executed from the repository root (nuklaivm/)."
@@ -58,11 +61,6 @@ scp -o "StrictHostKeyChecking=no" -i $KEY_NAME $TARBALL ec2-user@$PUBLIC_IP:/hom
 
 echo "Connecting to the EC2 instance and deploying devnet..."
 ssh -o "StrictHostKeyChecking=no" -i $KEY_NAME ec2-user@$PUBLIC_IP << 'EOF'
-  sudo yum update -y
-  sudo yum install -y docker git
-  sudo service docker start
-  sudo usermod -aG docker ec2-user
-
   docker stop nuklai-devnet || true
   docker rm nuklai-devnet || true
 
