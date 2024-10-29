@@ -48,7 +48,7 @@ rm -rf $TMPDIR && mkdir -p $TMPDIR
 echo -e "${YELLOW}set working directory:${NC} $TMPDIR"
 
 # Install avalanche-cli
-REMOTE_CLI_COMMIT=899b97d731d630554f69931d3cb130490616df5f # v1.7.0
+REMOTE_CLI_COMMIT=b0668aad98f12bc8a6f590a7fb6836a83b179101 # v1.6.3
 cd $TMPDIR
 git clone https://github.com/ava-labs/avalanche-cli
 cd avalanche-cli
