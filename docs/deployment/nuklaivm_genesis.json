@@ -1,30 +1,60 @@
 {
   "stateBranchFactor": 16,
-  "minBlockGap": 250,
-  "minEmptyBlockGap": 2500,
-  "minUnitPrice": [100, 100, 100, 100, 100],
-  "unitPriceChangeDenominator": [48, 48, 48, 48, 48],
-  "windowTargetUnits": [40000000, 450000, 450000, 450000, 450000],
-  "maxBlockUnits": [1800000, 1800000, 1800000, 1800000, 1800000],
-  "validityWindow": 60000,
-  "baseUnits": 1,
-  "baseWarpUnits": 1024,
-  "warpUnitsPerSigner": 128,
-  "outgoingWarpComputeUnits": 1024,
-  "storageKeyReadUnits": 5,
-  "storageValueReadUnits": 2,
-  "storageKeyAllocateUnits": 20,
-  "storageValueAllocateUnits": 5,
-  "storageKeyWriteUnits": 10,
-  "storageValueWriteUnits": 3,
   "customAllocation": [
     {
-      "address": "nuklai1qpg4ecapjymddcde8sfq06dshzpxltqnl47tvfz0hnkesjz7t0p35d5fnr3",
+      "address": "0x002b5d019495996310f81c6a26a4dd9eeb9a3f3be1bac0a9294436713aecc84496",
       "balance": 853000000000000000
     }
   ],
+  "initialRules": {
+    "networkID": 0,
+    "chainID": "11111111111111111111111111111111LpoYY",
+    "minBlockGap": 250,
+    "minEmptyBlockGap": 750,
+    "minUnitPrice": {
+      "bandwidth": 1,
+      "compute": 1,
+      "storageRead": 1,
+      "storageAllocate": 1,
+      "storageWrite": 1
+    },
+    "unitPriceChangeDenominator": {
+      "bandwidth": 48,
+      "compute": 48,
+      "storageRead": 48,
+      "storageAllocate": 48,
+      "storageWrite": 48
+    },
+    "windowTargetUnits": {
+      "bandwidth": 40000000,
+      "compute": 450000,
+      "storageRead": 450000,
+      "storageAllocate": 450000,
+      "storageWrite": 450000
+    },
+    "maxBlockUnits": {
+      "bandwidth": 1800000,
+      "compute": 18446744073709552000,
+      "storageRead": 18446744073709552000,
+      "storageAllocate": 18446744073709552000,
+      "storageWrite": 18446744073709552000
+    },
+    "validityWindow": 60000,
+    "maxActionsPerTx": 16,
+    "maxOutputsPerAction": 1,
+    "baseUnits": 1,
+    "storageKeyReadUnits": 5,
+    "storageValueReadUnits": 2,
+    "storageKeyAllocateUnits": 20,
+    "storageValueAllocateUnits": 5,
+    "storageKeyWriteUnits": 10,
+    "storageValueWriteUnits": 3,
+    "sponsorStateKeysMaxChunks": [
+      1
+    ]
+  },
   "emissionBalancer": {
-    "maxSupply": 1e19,
-    "emissionAddress": "nuklai1qr4hhj8vfrnmzghgfnqjss0ns9tv7pjhhhggfm2zeagltnlmu4a6sgh6dqn"
+    "maxSupply": 1e+19,
+    "emissionAddress": "00f3b89e583e3944dee8d45ca40ce30829eff47481bc45669d401c2f9cc2bc110d"
   }
 }

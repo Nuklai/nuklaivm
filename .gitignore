@@ -73,3 +73,5 @@ compose-dev.yaml
 
 # Custom
 test_accounts/
+*.pem
+*.pub

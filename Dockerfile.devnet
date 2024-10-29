@@ -1,42 +1,44 @@
-#####
-# Source of precompiled avalanchego
-#####
+# Stage 1: Download precompiled avalanchego
 ARG INSTALL_AVALANCHEGO_VERSION_SHORT=d366a137
 FROM avaplatform/avalanchego:${INSTALL_AVALANCHEGO_VERSION_SHORT} AS avalanchego
 
-#####
-# Base layer with hypersdk
-#####
+# Stage 2: Prepare a Go environment with hypersdk
 FROM golang:1.22-bookworm AS hypersdk-downloader
 
-RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y curl && apt clean && rm -rf /var/lib/apt/lists/*
+# Install dependencies and tools
+RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
+    curl git && apt clean && rm -rf /var/lib/apt/lists/*
 
-
-ARG INSTALL_AVALANCHEGO_VERSION=v1.11.12-rc.2
-COPY --from=avalanchego /avalanchego/build/avalanchego /root/.hypersdk/avalanchego-${INSTALL_AVALANCHEGO_VERSION}/avalanchego
-
-
-ENV GOMODCACHE /go/pkg/mod
-
+# Set working directory and Go mod cache path
 WORKDIR /app
+ENV GOMODCACHE=/go/pkg/mod
 
+# Copy the avalanchego binary from the first stage
+COPY --from=avalanchego /avalanchego/build/avalanchego /root/.hypersdk/avalanchego-v1.11.12-rc.2/avalanchego
+
+# Install Ginkgo for testing
 RUN go install github.com/onsi/ginkgo/v2/ginkgo@v2.13.1
 
-COPY ./go.mod ./go.sum ./
-
+# Copy project files to the build context
+COPY go.mod go.sum ./
 COPY ./actions ./actions
-COPY ./chain ./chain
-COPY ./cmd/nuklaivm ./cmd/nuklaivm
+COPY ./cmd ./cmd
 COPY ./consts ./consts
+COPY ./dataset ./dataset
 COPY ./emission ./emission
 COPY ./genesis ./genesis
-COPY ./marketplace ./marketplace
 COPY ./scripts ./scripts
 COPY ./storage ./storage
 COPY ./tests ./tests
+COPY ./utils ./utils
 COPY ./vm ./vm
 
-WORKDIR /app
+# Build the application binary (if needed for your project)
+RUN go mod download && go mod verify
 
+# Optional: If your project builds a Go binary, compile it
+# Uncomment this if you have a main package to build.
+# RUN go build -o /app/nuklaivm ./cmd/nuklaivm
 
-ENTRYPOINT ["/bin/bash", "-c", "./scripts/stop.sh; ./scripts/run.sh && echo 'Devnet started' && tail -f /dev/null"]
+# Set entrypoint to a script that will stop and start the devnet
+ENTRYPOINT ["bash", "-c", "./scripts/stop.sh; ./scripts/run.sh && echo 'Devnet started' && tail -f /dev/null"]

@@ -182,6 +182,29 @@ This should return the following JSON:
 }
 ```
 
+You can also check the balance by doing:
+
+```bash
+curl -X POST --data '{
+    "jsonrpc":"2.0",
+    "id"     :1,
+    "method" :"nuklaivm.balance",
+    "params" : {"address":"00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9","asset":"NAI"}
+}' -H 'content-type:application/json;' 127.0.0.1:9650/ext/bc/nuklaivm/nuklaiapi
+```
+
+This should return the following JSON:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "amount": 853000000000000000
+  },
+  "id": 1
+}
+```
+
 Note: if you run into any issues starting your network, try running the following commands to troubleshoot and create a GitHub issue to report:
 
 ```bash

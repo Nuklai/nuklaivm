@@ -19,8 +19,8 @@
   "continuousProfilerDir": "/home/ubuntu/nuklaivm-profiles",
   "logLevel": "INFO",
   "mempoolExemptSponsors": [
-    "nuklai1qpg4ecapjymddcde8sfq06dshzpxltqnl47tvfz0hnkesjz7t0p35d5fnr3",
-    "nuklai1qr4hhj8vfrnmzghgfnqjss0ns9tv7pjhhhggfm2zeagltnlmu4a6sgh6dqn"
+    "002b5d019495996310f81c6a26a4dd9eeb9a3f3be1bac0a9294436713aecc84496",
+    "00f3b89e583e3944dee8d45ca40ce30829eff47481bc45669d401c2f9cc2bc110d"
   ],
   "authVerificationCores": 2,
   "rootGenerationCores": 2,
