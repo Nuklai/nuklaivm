@@ -30,6 +30,7 @@ import (
 const owner = "nuklaivm-e2e-tests"
 
 var (
+	mode                string
 	initialOwnerAddress string
 	emissionAddress     string
 	flagVars            *e2e.FlagVars
@@ -63,6 +64,7 @@ func init() {
 	flagVars = e2e.RegisterFlags()
 
 	// Register new flags for custom strings
+	flag.StringVar(&mode, "mode", "test", "Execution mode: 'run' or 'test'")
 	flag.StringVar(&initialOwnerAddress, "initial-owner-address", "", "Initial Owner Address")
 	flag.StringVar(&emissionAddress, "emission-address", "", "Emission Address")
 }
@@ -71,7 +73,7 @@ func init() {
 var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	require := require.New(ginkgo.GinkgoT())
 
-	gen, workloadFactory, err := workload.New(250, initialOwnerAddress, emissionAddress)
+	gen, workloadFactory, err := workload.New(250, initialOwnerAddress, emissionAddress, mode == "test")
 	require.NoError(err)
 
 	genesisBytes, err := json.Marshal(gen)

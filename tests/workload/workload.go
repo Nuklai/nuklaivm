@@ -67,18 +67,32 @@ type workloadFactory struct {
 	addrs     []codec.Address
 }
 
-func New(minBlockGap int64, initialAddress, emissionAddress string) (*ngenesis.Genesis, workload.TxWorkloadFactory, error) {
-	var initialOwnerAddress codec.Address
-	if initialAddress == "" {
-		initialOwnerAddress = ed25519Addrs[0]
-	} else {
-		address, err := codec.StringToAddress(initialAddress)
-		if err != nil {
-			return nil, nil, err
+func New(minBlockGap int64, initialAddress, emissionAddress string, testMode bool) (*ngenesis.Genesis, workload.TxWorkloadFactory, error) {
+	var customAllocs []*genesis.CustomAllocation
+
+	if testMode {
+		// Prefund all addresses for "test" mode
+		customAllocs = make([]*genesis.CustomAllocation, 0, len(ed25519Addrs))
+		for _, addr := range ed25519Addrs {
+			customAllocs = append(customAllocs, &genesis.CustomAllocation{
+				Address: addr,
+				Balance: initialOwnerBalance,
+			})
 		}
-		initialOwnerAddress = address
+	} else {
+		// Prefund only the initial address for "run" mode
+		var initialOwnerAddress codec.Address
+		if initialAddress == "" {
+			initialOwnerAddress = ed25519Addrs[0]
+		} else {
+			address, err := codec.StringToAddress(initialAddress)
+			if err != nil {
+				return nil, nil, err
+			}
+			initialOwnerAddress = address
+		}
+		customAllocs = []*genesis.CustomAllocation{{Address: initialOwnerAddress, Balance: initialOwnerBalance}}
 	}
-	customAllocs := []*genesis.CustomAllocation{{Address: initialOwnerAddress, Balance: initialOwnerBalance}}
 
 	emissionBalancerAddress := ed25519Addrs[0].String()
 	if emissionAddress != "" {

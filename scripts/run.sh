@@ -90,7 +90,7 @@ ACK_GINKGO_RC=true ginkgo build ./tests/e2e || echo "ginkgo build failed"
 additional_args=("$@")
 
 if [[ ${MODE} == "run" ]]; then
-  echo "applying --ginkgo.focus=Ping and --reuse-network to setup local network"
+  echo "Applying --ginkgo.focus=Ping and --reuse-network to setup local network"
   additional_args+=("--ginkgo.focus=Ping")
   additional_args+=("--reuse-network")
 fi
@@ -102,4 +102,5 @@ echo "running e2e tests"
 --emission-address="$EMISSION_ADDRESS" \
 --avalanchego-path="${AVALANCHEGO_PATH}" \
 --plugin-dir="${AVALANCHEGO_PLUGIN_DIR}" \
+--mode="${MODE}" \
 "${additional_args[@]}"
