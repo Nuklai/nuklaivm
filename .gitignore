@@ -75,3 +75,4 @@ compose-dev.yaml
 test_accounts/
 *.pem
 *.pub
+*.key

@@ -31,9 +31,9 @@ import (
 )
 
 const (
-	initialBalance  uint64 = 426_500_000_000_000_000
-	maxSupply       uint64 = 10_000_000_000_000_000_000
-	txCheckInterval        = 100 * time.Millisecond
+	initialOwnerBalance uint64 = 853_000_000_000_000_000
+	maxSupply           uint64 = 10_000_000_000_000_000_000
+	txCheckInterval            = 100 * time.Millisecond
 )
 
 var (
@@ -67,18 +67,26 @@ type workloadFactory struct {
 	addrs     []codec.Address
 }
 
-func New(minBlockGap int64) (*ngenesis.Genesis, workload.TxWorkloadFactory, error) {
-	customAllocs := make([]*genesis.CustomAllocation, 0, len(ed25519Addrs))
-	for _, prefundedAddrStr := range ed25519Addrs {
-		customAllocs = append(customAllocs, &genesis.CustomAllocation{
-			Address: prefundedAddrStr,
-			Balance: initialBalance,
-		})
+func New(minBlockGap int64, initialAddress, emissionAddress string) (*ngenesis.Genesis, workload.TxWorkloadFactory, error) {
+	var initialOwnerAddress codec.Address
+	if initialAddress == "" {
+		initialOwnerAddress = ed25519Addrs[0]
+	} else {
+		address, err := codec.StringToAddress(initialAddress)
+		if err != nil {
+			return nil, nil, err
+		}
+		initialOwnerAddress = address
 	}
+	customAllocs := []*genesis.CustomAllocation{{Address: initialOwnerAddress, Balance: initialOwnerBalance}}
 
+	emissionBalancerAddress := ed25519Addrs[0].String()
+	if emissionAddress != "" {
+		emissionBalancerAddress = emissionAddress
+	}
 	emissionBalancer := ngenesis.EmissionBalancer{
 		MaxSupply:       maxSupply,
-		EmissionAddress: ed25519Addrs[0].String(),
+		EmissionAddress: emissionBalancerAddress,
 	}
 
 	genesis := ngenesis.NewGenesis(customAllocs, emissionBalancer)
@@ -187,7 +195,7 @@ func (f *workloadFactory) NewWorkloads(uri string) ([]workload.TxWorkloadIterato
 			{address: blsAddr, authFactory: blsFactory},
 			{address: secpAddr, authFactory: secpFactory},
 		},
-		balance:   initialBalance,
+		balance:   initialOwnerBalance,
 		cli:       cli,
 		lcli:      lcli,
 		networkID: networkID,

@@ -25,7 +25,7 @@ func TestIntegration(t *testing.T) {
 
 var _ = ginkgo.BeforeSuite(func() {
 	require := require.New(ginkgo.GinkgoT())
-	genesis, workloadFactory, err := nuklaivmWorkload.New(0 /* minBlockGap: 0ms */)
+	genesis, workloadFactory, err := nuklaivmWorkload.New(0, "00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9", "00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9")
 	require.NoError(err)
 
 	genesisBytes, err := json.Marshal(genesis)

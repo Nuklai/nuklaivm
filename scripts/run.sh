@@ -4,11 +4,17 @@
 
 set -e
 
-# Set the CGO flags to use the portable version of BLST
-#
-# We use "export" here instead of just setting a bash variable because we need
-# to pass this flag to all child processes spawned by the shell.
-export CGO_CFLAGS="-O -D__BLST_PORTABLE__" CGO_ENABLED=1
+# Default values
+DEFAULT_INITIAL_OWNER_ADDRESS="00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9"
+DEFAULT_EMISSION_ADDRESS="00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9"
+
+# Read arguments from the command line, or use default values
+INITIAL_OWNER_ADDRESS=${1:-$DEFAULT_INITIAL_OWNER_ADDRESS}
+EMISSION_ADDRESS=${2:-$DEFAULT_EMISSION_ADDRESS}
+# Shift arguments only if they are provided
+[[ $# -ge 1 ]] && shift
+[[ $# -ge 1 ]] && shift
+# Remove these arguments from "$@" so they don’t go into additional_args
 
 # to run E2E tests (terminates cluster afterwards)
 # MODE=test ./scripts/run.sh
@@ -22,6 +28,8 @@ source ./scripts/hypersdk/common/utils.sh
 source ./scripts/hypersdk/constants.sh
 
 VERSION=v1.11.12-rc.2
+
+echo "Running script with MODE=${MODE}"
 
 ############################
 # build avalanchego
@@ -75,16 +83,14 @@ go build \
 
 ############################
 echo "building e2e.test"
-
+rm -f ./tests/e2e/e2e.test
 prepare_ginkgo
-
-ACK_GINKGO_RC=true ginkgo build ./tests/e2e
-./tests/e2e/e2e.test --help
+ACK_GINKGO_RC=true ginkgo build ./tests/e2e || echo "ginkgo build failed"
 
 additional_args=("$@")
 
 if [[ ${MODE} == "run" ]]; then
-  echo "applying ginkgo.focus=Ping and --reuse-network to setup local network"
+  echo "applying --ginkgo.focus=Ping and --reuse-network to setup local network"
   additional_args+=("--ginkgo.focus=Ping")
   additional_args+=("--reuse-network")
 fi
@@ -92,6 +98,8 @@ fi
 echo "running e2e tests"
 ./tests/e2e/e2e.test \
 --ginkgo.v \
+--initial-owner-address="$INITIAL_OWNER_ADDRESS" \
+--emission-address="$EMISSION_ADDRESS" \
 --avalanchego-path="${AVALANCHEGO_PATH}" \
 --plugin-dir="${AVALANCHEGO_PLUGIN_DIR}" \
 "${additional_args[@]}"

@@ -149,10 +149,28 @@ This also allocates all funds on the network to `created address: 00c4cb545f748a
 key for this address is `323b1d8f4eed5f0da9da93071b034f2dce9d2d22692c172f3cb252a64ddfafd01b057de320297c29ad0c1f589ea216869cf1938d88c9fbd70d6748323dbf2fa7`.
 For convenience, this key has is also stored at `demo.pk`.\_
 
+Alternatively, you can also run the network via docker:
+
+```bash
+./scripts/run_docker.sh start
+```
+
+And you can check out the logs at:
+
+```bash
+./scripts/run_docker.sh logs
+```
+
 To stop the network, run:
 
-```sh
+```bash
 ./scripts/stop.sh
+```
+
+Alternatively, with docker:
+
+```bash
+./scripts/run_docker.sh stop
 ```
 
 The run script uses AvalancheGo's [tmpnet](https://github.com/ava-labs/avalanchego/tree/master/tests/fixture/tmpnet) to launch a 2 node network with one node's server running at the hardcoded URI: `http://127.0.0.1:9650/ext/bc/nuklaivm`.

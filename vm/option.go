@@ -6,6 +6,7 @@ package vm
 import (
 	"github.com/nuklai/nuklaivm/emission"
 
+	"github.com/ava-labs/hypersdk/api/indexer"
 	"github.com/ava-labs/hypersdk/vm"
 	"github.com/ava-labs/hypersdk/x/contracts/runtime"
 )
@@ -30,6 +31,13 @@ func With() vm.Option {
 		vm.WithVMAPIs(jsonRPCServerFactory{})(v)
 		return nil
 	})
+}
+
+func WithIndexer() vm.Option {
+	return vm.NewOption(indexer.Namespace, indexer.Config{
+		Enabled:     true,
+		BlockWindow: 10000,
+	}, indexer.OptionFunc)
 }
 
 func WithRuntime() vm.Option {

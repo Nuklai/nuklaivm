@@ -11,6 +11,7 @@ RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
 
 # Set working directory and Go mod cache path
 WORKDIR /app
+
 ENV GOMODCACHE=/go/pkg/mod
 
 # Copy the avalanchego binary from the first stage
@@ -40,5 +41,4 @@ RUN go mod download && go mod verify
 # Uncomment this if you have a main package to build.
 # RUN go build -o /app/nuklaivm ./cmd/nuklaivm
 
-# Set entrypoint to a script that will stop and start the devnet
-ENTRYPOINT ["bash", "-c", "./scripts/stop.sh; ./scripts/run.sh && echo 'Devnet started' && tail -f /dev/null"]
+CMD ["bash", "-c", "./scripts/run.sh \"$INITIAL_OWNER_ADDRESS\" \"$EMISSION_ADDRESS\" && tail -f /dev/null"]

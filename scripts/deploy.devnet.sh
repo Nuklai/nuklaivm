@@ -4,11 +4,8 @@
 
 set -e
 
-# Set the CGO flags to use the portable version of BLST
-#
-# We use "export" here instead of just setting a bash variable because we need
-# to pass this flag to all child processes spawned by the shell.
-export CGO_CFLAGS="-O -D__BLST_PORTABLE__" CGO_ENABLED=1
+source ./scripts/hypersdk/common/utils.sh
+source ./scripts/hypersdk/constants.sh
 
 # Set console colors
 RED='\033[1;31m'

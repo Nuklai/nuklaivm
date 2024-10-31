@@ -4,9 +4,9 @@
 
 set -e
 
-VMWITHCONTRACTS_PATH=$(
+NUKLAIVM_PATH=$(
   cd "$(dirname "${BASH_SOURCE[0]}")"
   cd .. && pwd
 )
 
-ginkgo -v "$VMWITHCONTRACTS_PATH"/tests/e2e/e2e.test -- --stop-network
+ginkgo -v "$NUKLAIVM_PATH"/tests/e2e/e2e.test -- --stop-network

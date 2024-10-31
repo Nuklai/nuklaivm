@@ -6,6 +6,7 @@ package e2e_test
 import (
 	"encoding/base64"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -28,21 +29,49 @@ import (
 
 const owner = "nuklaivm-e2e-tests"
 
-var flagVars *e2e.FlagVars
+var (
+	initialOwnerAddress string
+	emissionAddress     string
+	flagVars            *e2e.FlagVars
+)
 
 func TestE2e(t *testing.T) {
+	// Parse all flags
+	flag.Parse()
+
+	// Check if we're only stopping the network
+	stopNetwork := flag.Lookup("stop-network").Value.String() == "true"
+	if stopNetwork {
+		fmt.Println("Stopping the network...")
+		ginkgo.RunSpecs(t, "nuklaivm e2e test suites")
+		return
+	}
+
+	// Validate that the required flags are provided if not stopping the network
+	if initialOwnerAddress == "" || emissionAddress == "" {
+		t.Fatalf("Missing required flags: --initial-owner-address or --emission-address")
+	}
+
+	fmt.Printf("Initial Owner Address: %s\nEmission Address: %s\n", initialOwnerAddress, emissionAddress)
+
+	// Run the full test suite
 	ginkgo.RunSpecs(t, "nuklaivm e2e test suites")
 }
 
 func init() {
+	// Register existing e2e flags
 	flagVars = e2e.RegisterFlags()
+
+	// Register new flags for custom strings
+	flag.StringVar(&initialOwnerAddress, "initial-owner-address", "", "Initial Owner Address")
+	flag.StringVar(&emissionAddress, "emission-address", "", "Emission Address")
 }
 
 // Construct tmpnet network with a single VMWithContracts Subnet
 var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	require := require.New(ginkgo.GinkgoT())
 
-	gen, workloadFactory, err := workload.New(250 /* minBlockGap: 250ms */)
+	gen, workloadFactory, err := workload.New(250, initialOwnerAddress, emissionAddress)
 	require.NoError(err)
 
 	genesisBytes, err := json.Marshal(gen)
