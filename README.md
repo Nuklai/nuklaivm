@@ -212,6 +212,8 @@ Also on default settings, the external subscriber is not run. If you want to con
 ./scripts/run.sh --external-subscriber-server-address 127.0.0.1:50051
 ```
 
+For an example external subscriber, you can refer to [https://github.com/Nuklai/nuklaivm-external-subscriber](https://github.com/Nuklai/nuklaivm-external-subscriber).
+
 Note that these flags also work with `./scripts/run_docker.sh`.
 
 #### How the run.sh script runs under the hood
