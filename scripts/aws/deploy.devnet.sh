@@ -16,9 +16,20 @@ USER_DATA_FILE="./scripts/aws/install_docker.sh"
 TARBALL="nuklaivm.tar.gz"
 AMI_ID="ami-008d05461f83df5b1"
 
-# Accept arguments or use default values
-INITIAL_OWNER_ADDRESS=${1:-"002b5d019495996310f81c6a26a4dd9eeb9a3f3be1bac0a9294436713aecc84496"}
-EMISSION_ADDRESS=${2:-"00f3b89e583e3944dee8d45ca40ce30829eff47481bc45669d401c2f9cc2bc110d"}
+# Default values for addresses
+INITIAL_OWNER_ADDRESS="00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9"
+EMISSION_ADDRESS="00f3b89e583e3944dee8d45ca40ce30829eff47481bc45669d401c2f9cc2bc110d"
+EXTERNAL_SUBSCRIBER_SERVER_ADDRESS=""
+
+# Parse command-line arguments
+while [[ "$#" -gt 0 ]]; do
+  case $1 in
+    --initial-owner-address) INITIAL_OWNER_ADDRESS="$2"; shift ;;
+    --emission-address) EMISSION_ADDRESS="$2"; shift ;;
+    --external-subscriber-server-address) EXTERNAL_SUBSCRIBER_SERVER_ADDRESS="$2"; shift ;;
+  esac
+  shift
+done
 
 echo "Using AMI ID: $AMI_ID"
 
@@ -75,10 +86,11 @@ ssh -o "StrictHostKeyChecking=no" -i $KEY_NAME ec2-user@$PUBLIC_IP << EOF
   # Build the Docker image
   docker build -t nuklai-devnet -f Dockerfile.devnet .
 
-  # Run the Docker container with the passed arguments as environment variables
+  # Run the Docker container with the provided arguments
   docker run -d --name nuklai-devnet -p 9650:9650 \
     -e INITIAL_OWNER_ADDRESS="$INITIAL_OWNER_ADDRESS" \
     -e EMISSION_ADDRESS="$EMISSION_ADDRESS" \
+    -e EXTERNAL_SUBSCRIBER_SERVER_ADDRESS="$EXTERNAL_SUBSCRIBER_SERVER_ADDRESS" \
     nuklai-devnet
 
   echo "Devnet is running on the instance."

@@ -46,6 +46,7 @@ func runFunc(*cobra.Command, []string) error {
 		return fmt.Errorf("%w: failed to set fd limit correctly", err)
 	}
 
+	// Initialize the VM with external subscriber and indexer options
 	controller, err := vm.New()
 	if err != nil {
 		return err

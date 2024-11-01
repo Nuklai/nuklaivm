@@ -6,6 +6,7 @@ package vm
 import (
 	"github.com/ava-labs/avalanchego/utils/wrappers"
 	"github.com/nuklai/nuklaivm/actions"
+	"github.com/nuklai/nuklaivm/config"
 	"github.com/nuklai/nuklaivm/consts"
 	"github.com/nuklai/nuklaivm/emission"
 	"github.com/nuklai/nuklaivm/genesis"
@@ -16,7 +17,6 @@ import (
 	"github.com/ava-labs/hypersdk/auth"
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/extension/externalsubscriber"
 	"github.com/ava-labs/hypersdk/vm"
 	"github.com/ava-labs/hypersdk/x/contracts/runtime"
 
@@ -102,11 +102,9 @@ func init() {
 // New returns a VM with the indexer, websocket, rpc, and external subscriber apis enabled.
 func New(options ...vm.Option) (*vm.VM, error) {
 	opts := append([]vm.Option{
-		WithIndexer(),
+		With(), // Add Controller API
 		ws.With(),
 		jsonrpc.With(),
-		With(), // Add Controller API
-		externalsubscriber.With(),
 		staterpc.With(),
 	}, options...)
 
@@ -115,8 +113,12 @@ func New(options ...vm.Option) (*vm.VM, error) {
 
 // NewWithOptions returns a VM with the specified options
 func NewWithOptions(options ...vm.Option) (*vm.VM, error) {
+	// Load config once
+	cfg := config.LoadConfig()
 	opts := append([]vm.Option{
 		WithRuntime(),
+		WithIndexer(cfg),
+		WithExternalSubscriber(cfg),
 		WithEmissionBalancer(),
 	}, options...)
 	return vm.New(

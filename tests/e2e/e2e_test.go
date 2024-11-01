@@ -69,7 +69,7 @@ func init() {
 	flag.StringVar(&emissionAddress, "emission-address", "", "Emission Address")
 }
 
-// Construct tmpnet network with a single VMWithContracts Subnet
+// Construct tmpnet network with a single NuklaiVM Subnet
 var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	require := require.New(ginkgo.GinkgoT())
 
@@ -85,7 +85,7 @@ var _ = ginkgo.SynchronizedBeforeSuite(func() []byte {
 	parser, err := vm.CreateParser(genesisBytes)
 	require.NoError(err)
 
-	// Import HyperSDK e2e test coverage and inject VMWithContracts name
+	// Import HyperSDK e2e test coverage and inject NuklaiVM name
 	// and workload factory to orchestrate the test.
 	he2e.SetWorkload(consts.Name, workloadFactory, expectedABI, parser, nil, nil)
 

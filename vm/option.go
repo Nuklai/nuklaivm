@@ -4,14 +4,19 @@
 package vm
 
 import (
+	"github.com/nuklai/nuklaivm/config"
 	"github.com/nuklai/nuklaivm/emission"
 
 	"github.com/ava-labs/hypersdk/api/indexer"
+	"github.com/ava-labs/hypersdk/extension/externalsubscriber"
 	"github.com/ava-labs/hypersdk/vm"
 	"github.com/ava-labs/hypersdk/x/contracts/runtime"
 )
 
-const Namespace = "controller"
+const (
+	Namespace      = "controller"
+	configFilePath = "config.json" // Path to JSON config file
+)
 
 type Config struct {
 	Enabled bool `json:"enabled"`
@@ -33,11 +38,21 @@ func With() vm.Option {
 	})
 }
 
-func WithIndexer() vm.Option {
+func WithIndexer(cfg config.Config) vm.Option {
 	return vm.NewOption(indexer.Namespace, indexer.Config{
 		Enabled:     true,
-		BlockWindow: 10000,
+		BlockWindow: uint64(cfg.IndexerBlockWindow),
 	}, indexer.OptionFunc)
+}
+
+func WithExternalSubscriber(cfg config.Config) vm.Option {
+	if cfg.ExternalSubscriberAddr != "" {
+		return vm.NewOption(externalsubscriber.Namespace, externalsubscriber.Config{
+			Enabled:       true,
+			ServerAddress: cfg.ExternalSubscriberAddr,
+		}, externalsubscriber.OptionFunc)
+	}
+	return vm.NewOption(externalsubscriber.Namespace, externalsubscriber.Config{}, externalsubscriber.OptionFunc)
 }
 
 func WithRuntime() vm.Option {

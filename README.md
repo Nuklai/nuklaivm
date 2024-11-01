@@ -111,6 +111,28 @@ Build NuklaiVM by running the build script:
 
 The `nuklaivm` binary is now in the `build/./` directory.
 
+### Run Unit Tests
+
+To run the unit tests for NuklaiVM, run the following command:
+
+```sh
+./scripts/tests.unit.sh
+```
+
+You should see the following output:
+
+```bash
+        github.com/nuklai/nuklaivm/utils                coverage: 0.0% of statements
+        github.com/nuklai/nuklaivm/config               coverage: 0.0% of statements
+        github.com/nuklai/nuklaivm/genesis              coverage: 0.0% of statements
+        github.com/nuklai/nuklaivm/consts               coverage: 0.0% of statements
+        github.com/nuklai/nuklaivm/vm           coverage: 0.0% of statements
+        github.com/nuklai/nuklaivm/dataset              coverage: 0.0% of statements
+        github.com/nuklai/nuklaivm/storage              coverage: 0.0% of statements
+ok      github.com/nuklai/nuklaivm/actions      1.308s  coverage: 50.5% of statements
+ok      github.com/nuklai/nuklaivm/emission     1.306s  coverage: 2.1% of statements [no tests to run]
+```
+
 ### Run Integration Tests
 
 To run the integration tests for NuklaiVM, run the following command:
@@ -138,6 +160,8 @@ Test Suite Passed
 ```
 
 ### Running a Local Network
+
+#### Run the chain with default settings
 
 ```bash
 ./scripts/run.sh;
@@ -172,6 +196,25 @@ Alternatively, with docker:
 ```bash
 ./scripts/run_docker.sh stop
 ```
+
+#### Run the chain with custom settings
+
+On default settings, the address `00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9` will get the entirety of 853 million NAI allocated.
+You can run the chain with a different allocation as well:
+
+```bash
+./scripts/run.sh --initial-owner-address 002b5d019495996310f81c6a26a4dd9eeb9a3f3be1bac0a9294436713aecc84496
+```
+
+Also on default settings, the external subscriber is not run. If you want to connect nuklaivm to an external subscriber, you can do:
+
+```bash
+./scripts/run.sh --external-subscriber-server-address 127.0.0.1:50051
+```
+
+Note that these flags also work with `./scripts/run_docker.sh`.
+
+#### How the run.sh script runs under the hood
 
 The run script uses AvalancheGo's [tmpnet](https://github.com/ava-labs/avalanchego/tree/master/tests/fixture/tmpnet) to launch a 2 node network with one node's server running at the hardcoded URI: `http://127.0.0.1:9650/ext/bc/nuklaivm`.
 
@@ -245,17 +288,6 @@ The following command will clean up to ensure that you can start the network:
 ```bash
 killlall avalanchego
 ```
-
-### Build `nuklai-cli`
-
-To make it easy to interact with the `nuklaivm`, we implemented the `nuklai-cli`.
-Next, you'll need to build this tool. You can use the following command:
-
-```bash
-./scripts/build.sh
-```
-
-_This command will put the compiled CLI in `./build/nuklai-cli`._
 
 ### Configure `nuklai-cli`
 

@@ -24,6 +24,7 @@ RUN go install github.com/onsi/ginkgo/v2/ginkgo@v2.13.1
 COPY go.mod go.sum ./
 COPY ./actions ./actions
 COPY ./cmd ./cmd
+COPY ./config ./config
 COPY ./consts ./consts
 COPY ./dataset ./dataset
 COPY ./emission ./emission
@@ -41,4 +42,4 @@ RUN go mod download && go mod verify
 # Uncomment this if you have a main package to build.
 # RUN go build -o /app/nuklaivm ./cmd/nuklaivm
 
-CMD ["bash", "-c", "./scripts/run.sh \"$INITIAL_OWNER_ADDRESS\" \"$EMISSION_ADDRESS\" && tail -f /dev/null"]
+CMD ["bash", "-c", "./scripts/run.sh --initial-owner-address \"$INITIAL_OWNER_ADDRESS\" --emission-address \"$EMISSION_ADDRESS\" --external-subscriber-server-address \"$EXTERNAL_SUBSCRIBER_SERVER_ADDRESS\" && tail -f /dev/null"]

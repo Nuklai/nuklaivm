@@ -5,6 +5,8 @@ package integration_test
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/nuklai/nuklaivm/vm"
@@ -18,6 +20,14 @@ import (
 	nuklaivmWorkload "github.com/nuklai/nuklaivm/tests/workload"
 	ginkgo "github.com/onsi/ginkgo/v2"
 )
+
+func TestMain(m *testing.M) {
+	// Set the working directory to the project root
+	if err := os.Chdir(filepath.Join("..", "..")); err != nil {
+		panic("Failed to set working directory to project root")
+	}
+	os.Exit(m.Run())
+}
 
 func TestIntegration(t *testing.T) {
 	ginkgo.RunSpecs(t, "nuklaivm integration test suites")

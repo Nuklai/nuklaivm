@@ -7,14 +7,59 @@ set -e
 # Default values
 DEFAULT_INITIAL_OWNER_ADDRESS="00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9"
 DEFAULT_EMISSION_ADDRESS="00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9"
+CONFIG_FILE="config/config.json"
 
-# Read arguments from the command line, or use default values
-INITIAL_OWNER_ADDRESS=${1:-$DEFAULT_INITIAL_OWNER_ADDRESS}
-EMISSION_ADDRESS=${2:-$DEFAULT_EMISSION_ADDRESS}
-# Shift arguments only if they are provided
-[[ $# -ge 1 ]] && shift
-[[ $# -ge 1 ]] && shift
-# Remove these arguments from "$@" so they don’t go into additional_args
+# Parse optional arguments
+EXTERNAL_SUBSCRIBER_SERVER_ADDRESS=""
+
+# Parse the command line arguments for initial and emission addresses, and custom flags
+additional_args=()
+while [[ "$#" -gt 0 ]]; do
+  case $1 in
+    --initial-owner-address) INITIAL_OWNER_ADDRESS="$2"; shift ;;
+    --emission-address) EMISSION_ADDRESS="$2"; shift ;;
+    --external-subscriber-server-address) EXTERNAL_SUBSCRIBER_SERVER_ADDRESS="$2"; shift ;;
+    *) additional_args+=("$1") ;;  # Collect any other arguments for Ginkgo
+  esac
+  shift
+done
+
+# Use default addresses if not provided via command line
+INITIAL_OWNER_ADDRESS=${INITIAL_OWNER_ADDRESS:-$DEFAULT_INITIAL_OWNER_ADDRESS}
+EMISSION_ADDRESS=${EMISSION_ADDRESS:-$DEFAULT_EMISSION_ADDRESS}
+
+# Function to modify config.json temporarily
+modify_config() {
+  if [[ -n "$EXTERNAL_SUBSCRIBER_SERVER_ADDRESS" ]]; then
+    echo "Modifying config.json with external_subscriber_addr: $EXTERNAL_SUBSCRIBER_SERVER_ADDRESS"
+
+    # Create a backup of the original config.json
+    cp "$CONFIG_FILE" "${CONFIG_FILE}.bak"
+
+    # Check if external_subscriber_addr exists in the file
+    if grep -q '"external_subscriber_addr"' "$CONFIG_FILE"; then
+      # Update the existing external_subscriber_addr field
+      sed -i.bak "s/\"external_subscriber_addr\": \".*\"/\"external_subscriber_addr\": \"$EXTERNAL_SUBSCRIBER_SERVER_ADDRESS\"/" "$CONFIG_FILE"
+    else
+      # Insert the external_subscriber_addr field before the last closing brace
+      sed -i.bak "s/}/,\"external_subscriber_addr\": \"$EXTERNAL_SUBSCRIBER_SERVER_ADDRESS\"}/" "$CONFIG_FILE"
+    fi
+  fi
+}
+
+# Function to revert config.json to its original state
+revert_config() {
+  if [[ -f "${CONFIG_FILE}.bak" ]]; then
+    echo "Reverting config.json to its original state"
+    mv "${CONFIG_FILE}.bak" "$CONFIG_FILE"
+  fi
+}
+
+# Ensure the config file is reverted even if the script exits prematurely
+trap revert_config EXIT
+
+# Modify config.json if needed
+modify_config
 
 # to run E2E tests (terminates cluster afterwards)
 # MODE=test ./scripts/run.sh
@@ -98,8 +143,8 @@ fi
 echo "running e2e tests"
 ./tests/e2e/e2e.test \
 --ginkgo.v \
---initial-owner-address="$INITIAL_OWNER_ADDRESS" \
---emission-address="$EMISSION_ADDRESS" \
+--initial-owner-address="${INITIAL_OWNER_ADDRESS}" \
+--emission-address="${EMISSION_ADDRESS}" \
 --avalanchego-path="${AVALANCHEGO_PATH}" \
 --plugin-dir="${AVALANCHEGO_PLUGIN_DIR}" \
 --mode="${MODE}" \
