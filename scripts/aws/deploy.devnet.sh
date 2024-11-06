@@ -1,4 +1,7 @@
 #!/bin/bash
+# Copyright (C) 2024, Nuklai. All rights reserved.
+# See the file LICENSE for licensing terms.
+
 # deploy.devnet.sh
 
 if [[ $(basename "$PWD") != "nuklaivm" ]]; then
