@@ -1,6 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2024, Nuklai. All rights reserved.
-# See the file LICENSE for licensing terms.
+# deploy.devnet.sh
 
 if [[ $(basename "$PWD") != "nuklaivm" ]]; then
   echo "Error: This script must be executed from the repository root (nuklaivm/)."
@@ -49,14 +48,24 @@ fi
 # Check if an Elastic IP has already been allocated
 if [ -f "$EIP_FILE" ]; then
   ALLOCATION_ID=$(cat $EIP_FILE)
+  if [ -z "$ALLOCATION_ID" ]; then
+    echo "Error: Allocation ID file exists but is empty. Allocating a new Elastic IP..."
+    ALLOCATION_ID=$(aws ec2 allocate-address --region $REGION --query "AllocationId" --output text)
+    echo $ALLOCATION_ID > $EIP_FILE
+  fi
   ELASTIC_IP=$(aws ec2 describe-addresses --allocation-ids $ALLOCATION_ID --region $REGION --query "Addresses[0].PublicIp" --output text)
   echo "Reusing existing Elastic IP: $ELASTIC_IP"
 else
   echo "Allocating a new Elastic IP..."
   ALLOCATION_ID=$(aws ec2 allocate-address --region $REGION --query "AllocationId" --output text)
-  ELASTIC_IP=$(aws ec2 describe-addresses --allocation-ids $ALLOCATION_ID --region $REGION --query "Addresses[0].PublicIp" --output text)
-  echo $ALLOCATION_ID > $EIP_FILE
-  echo "Allocated new Elastic IP: $ELASTIC_IP"
+  if [ -n "$ALLOCATION_ID" ]; then
+    echo $ALLOCATION_ID > $EIP_FILE
+    ELASTIC_IP=$(aws ec2 describe-addresses --allocation-ids $ALLOCATION_ID --region $REGION --query "Addresses[0].PublicIp" --output text)
+    echo "Allocated new Elastic IP: $ELASTIC_IP"
+  else
+    echo "Error: Failed to allocate a new Elastic IP."
+    exit 1
+  fi
 fi
 
 # Launch a new EC2 instance
@@ -83,11 +92,31 @@ EXCLUDES=$(cat .gitignore .dockerignore 2>/dev/null | grep -v '^#' | sed '/^$/d'
 EXCLUDES+=" --exclude='./web_wallet' --exclude=$TARBALL"
 eval "tar -czf $TARBALL $EXCLUDES -C . ."
 
+# Use $HOME instead of ~ to avoid any potential path resolution issues
+if [ -f "$HOME/.ssh/known_hosts" ]; then
+  ssh-keygen -f "$HOME/.ssh/known_hosts" -R $ELASTIC_IP
+fi
+
 echo "Transferring tarball and private key to the EC2 instance..."
-scp -o "StrictHostKeyChecking=no" -i $KEY_NAME $TARBALL ec2-user@$ELASTIC_IP:/home/ec2-user/
+scp -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i $KEY_NAME $TARBALL ec2-user@$ELASTIC_IP:/home/ec2-user/
 
 echo "Connecting to the EC2 instance and deploying devnet..."
-ssh -o "StrictHostKeyChecking=no" -i $KEY_NAME ec2-user@$ELASTIC_IP << EOF
+ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i $KEY_NAME ec2-user@$ELASTIC_IP << EOF
+  echo "Waiting for Docker installation to complete..."
+  TIMEOUT=180  # Set a timeout in seconds to wait for Docker installation completion
+  SECONDS=0
+  while [[ ! -f /home/ec2-user/docker_installed && SECONDS -lt TIMEOUT ]]; do
+    echo "Docker installation not complete, waiting..."
+    sleep 5
+  done
+
+  if [[ ! -f /home/ec2-user/docker_installed ]]; then
+    echo "Docker installation did not complete within the timeout period. Exiting."
+    exit 1
+  fi
+
+  echo "Docker installation complete. Proceeding with deployment..."
+
   docker stop nuklai-devnet || true
   docker rm nuklai-devnet || true
 
@@ -99,12 +128,43 @@ ssh -o "StrictHostKeyChecking=no" -i $KEY_NAME ec2-user@$ELASTIC_IP << EOF
 
   # Run the Docker container with the provided arguments
   docker run -d --name nuklai-devnet -p 9650:9650 \
+    --restart unless-stopped \
     -e INITIAL_OWNER_ADDRESS="$INITIAL_OWNER_ADDRESS" \
     -e EMISSION_ADDRESS="$EMISSION_ADDRESS" \
     -e EXTERNAL_SUBSCRIBER_SERVER_ADDRESS="$EXTERNAL_SUBSCRIBER_SERVER_ADDRESS" \
     nuklai-devnet
 
-  echo "Devnet is running on the instance."
+  echo "Checking if the blockchain is fully started..."
+  TIMEOUT=180  # Timeout for blockchain readiness check
+  SECONDS=0
+  SUCCESS=false
+  until [[ "\$SUCCESS" == true || SECONDS -ge TIMEOUT ]]; do
+    RESPONSE=\$(curl -s -X POST --data '{
+        "jsonrpc":"2.0",
+        "id"     :1,
+        "method" :"hypersdk.network",
+        "params" : {}
+      }' -H 'content-type:application/json;' 127.0.0.1:9650/ext/bc/nuklaivm/coreapi)
+
+    # Check if the response contains a successful result
+    if echo "\$RESPONSE" | grep -q '"result"'; then
+      SUCCESS=true
+      echo "Blockchain is fully started."
+    else
+      echo "Blockchain not yet started, retrying..."
+      sleep 5
+    fi
+  done
+
+  if [[ "\$SUCCESS" == true ]]; then
+    echo "Devnet is ready and running on the instance."
+  else
+    echo "Blockchain did not start within the timeout period. Exiting."
+    exit 1
+  fi
 EOF
+
+echo "Deployment completed. Access the devnet at: http://$ELASTIC_IP:9650"
+
 
 echo "Deployment completed. Access the devnet at: http://$ELASTIC_IP:9650"
