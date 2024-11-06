@@ -168,6 +168,3 @@ ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i $KEY_NAME
 EOF
 
 echo "Deployment completed. Access the devnet at: http://$ELASTIC_IP:9650"
-
-
-echo "Deployment completed. Access the devnet at: http://$ELASTIC_IP:9650"
