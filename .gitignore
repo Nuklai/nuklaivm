@@ -76,3 +76,4 @@ test_accounts/
 *.pem
 *.pub
 *.key
+scripts/aws/elastic_ip_allocation.txt

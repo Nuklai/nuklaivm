@@ -15,6 +15,7 @@ SECURITY_GROUP="sg-07b07fac5e31bc731"
 USER_DATA_FILE="./scripts/aws/install_docker.sh"
 TARBALL="nuklaivm.tar.gz"
 AMI_ID="ami-008d05461f83df5b1"
+EIP_FILE="./scripts/aws/elastic_ip_allocation.txt"
 
 # Default values for addresses
 INITIAL_OWNER_ADDRESS="00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9"
@@ -45,6 +46,19 @@ if [ "$INSTANCE_ID" != "None" ]; then
   echo "Instance terminated."
 fi
 
+# Check if an Elastic IP has already been allocated
+if [ -f "$EIP_FILE" ]; then
+  ALLOCATION_ID=$(cat $EIP_FILE)
+  ELASTIC_IP=$(aws ec2 describe-addresses --allocation-ids $ALLOCATION_ID --region $REGION --query "Addresses[0].PublicIp" --output text)
+  echo "Reusing existing Elastic IP: $ELASTIC_IP"
+else
+  echo "Allocating a new Elastic IP..."
+  ALLOCATION_ID=$(aws ec2 allocate-address --region $REGION --query "AllocationId" --output text)
+  ELASTIC_IP=$(aws ec2 describe-addresses --allocation-ids $ALLOCATION_ID --region $REGION --query "Addresses[0].PublicIp" --output text)
+  echo $ALLOCATION_ID > $EIP_FILE
+  echo "Allocated new Elastic IP: $ELASTIC_IP"
+fi
+
 # Launch a new EC2 instance
 echo "Launching a new EC2 instance..."
 INSTANCE_ID=$(aws ec2 run-instances --region $REGION \
@@ -60,23 +74,20 @@ echo "Waiting for the instance to start..."
 aws ec2 wait instance-running --instance-ids $INSTANCE_ID --region $REGION
 echo "Instance started. ID: $INSTANCE_ID"
 
-PUBLIC_IP=$(aws ec2 describe-instances --instance-ids $INSTANCE_ID --region $REGION \
-  --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
+# Associate the allocated Elastic IP with the new instance
+echo "Associating Elastic IP $ELASTIC_IP with instance $INSTANCE_ID."
+aws ec2 associate-address --instance-id $INSTANCE_ID --allocation-id $ALLOCATION_ID --region $REGION
 
-echo "EC2 instance public IP: $PUBLIC_IP"
-sleep 60
-
-# Create a tarball of the project root, excluding web_wallet and ignored files
 echo "Creating tarball of the project, excluding web_wallet and ignored files..."
 EXCLUDES=$(cat .gitignore .dockerignore 2>/dev/null | grep -v '^#' | sed '/^$/d' | sed 's/^/--exclude=/' | tr '\n' ' ')
 EXCLUDES+=" --exclude='./web_wallet' --exclude=$TARBALL"
 eval "tar -czf $TARBALL $EXCLUDES -C . ."
 
 echo "Transferring tarball and private key to the EC2 instance..."
-scp -o "StrictHostKeyChecking=no" -i $KEY_NAME $TARBALL ec2-user@$PUBLIC_IP:/home/ec2-user/
+scp -o "StrictHostKeyChecking=no" -i $KEY_NAME $TARBALL ec2-user@$ELASTIC_IP:/home/ec2-user/
 
 echo "Connecting to the EC2 instance and deploying devnet..."
-ssh -o "StrictHostKeyChecking=no" -i $KEY_NAME ec2-user@$PUBLIC_IP << EOF
+ssh -o "StrictHostKeyChecking=no" -i $KEY_NAME ec2-user@$ELASTIC_IP << EOF
   docker stop nuklai-devnet || true
   docker rm nuklai-devnet || true
 
@@ -96,4 +107,4 @@ ssh -o "StrictHostKeyChecking=no" -i $KEY_NAME ec2-user@$PUBLIC_IP << EOF
   echo "Devnet is running on the instance."
 EOF
 
-echo "Deployment completed. Access the devnet at: http://$PUBLIC_IP:9650"
+echo "Deployment completed. Access the devnet at: http://$ELASTIC_IP:9650"
