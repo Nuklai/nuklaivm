@@ -272,7 +272,7 @@ var completeContributeDatasetCmd = &cobra.Command{
 
 		// Generate transaction
 		result, _, err := sendAndWait(ctx, []chain.Action{&actions.CompleteContributeDataset{
-			DatasetContributionID: contributionID,
+			DatasetContributionID: contributionID.String(),
 			DatasetAddress:        datasetAddress,
 			DatasetContributor:    contributor,
 		}}, cli, ncli, ws, factory)

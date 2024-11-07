@@ -37,7 +37,7 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			Name:  "WrongOwner",
 			Actor: codectest.NewRandomAddress(), // Not the owner of the dataset
 			Action: &CompleteContributeDataset{
-				DatasetContributionID: datasetContributionID,
+				DatasetContributionID: datasetContributionID.String(),
 				DatasetAddress:        datasetAddress,
 				DatasetContributor:    actor,
 			},
@@ -53,7 +53,7 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			Name:  "DatasetAlreadyOnSale",
 			Actor: actor,
 			Action: &CompleteContributeDataset{
-				DatasetContributionID: datasetContributionID,
+				DatasetContributionID: datasetContributionID.String(),
 				DatasetAddress:        datasetAddress,
 				DatasetContributor:    actor,
 			},
@@ -69,7 +69,7 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			Name:  "ContributionAlreadyCompleted",
 			Actor: actor,
 			Action: &CompleteContributeDataset{
-				DatasetContributionID: datasetContributionID,
+				DatasetContributionID: datasetContributionID.String(),
 				DatasetAddress:        datasetAddress,
 				DatasetContributor:    actor,
 			},
@@ -87,7 +87,7 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			Name:  "DatasetAddressMismatch",
 			Actor: actor,
 			Action: &CompleteContributeDataset{
-				DatasetContributionID: datasetContributionID,
+				DatasetContributionID: datasetContributionID.String(),
 				DatasetAddress:        datasetAddress,
 				DatasetContributor:    actor,
 			},
@@ -105,7 +105,7 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			Name:  "DatasetContributorMismatch",
 			Actor: actor,
 			Action: &CompleteContributeDataset{
-				DatasetContributionID: datasetContributionID,
+				DatasetContributionID: datasetContributionID.String(),
 				DatasetAddress:        datasetAddress,
 				DatasetContributor:    codectest.NewRandomAddress(),
 			},
@@ -125,7 +125,7 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 			ActionID: ids.GenerateTestID(),
 			Actor:    actor,
 			Action: &CompleteContributeDataset{
-				DatasetContributionID: datasetContributionID,
+				DatasetContributionID: datasetContributionID.String(),
 				DatasetAddress:        datasetAddress,
 				DatasetContributor:    actor,
 			},
@@ -212,7 +212,7 @@ func BenchmarkCompleteContributeDataset(b *testing.B) {
 		Name:  "CompleteContributeDatasetBenchmark",
 		Actor: actor,
 		Action: &CompleteContributeDataset{
-			DatasetContributionID: datasetContributionID,
+			DatasetContributionID: datasetContributionID.String(),
 			DatasetAddress:        datasetAddress,
 			DatasetContributor:    actor,
 		},

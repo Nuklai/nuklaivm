@@ -34,7 +34,7 @@ var (
 
 type CompleteContributeDataset struct {
 	// Contribution ID
-	DatasetContributionID ids.ID `serialize:"true" json:"dataset_contribution_id"`
+	DatasetContributionID string `serialize:"true" json:"dataset_contribution_id"`
 
 	// DatasetAddress
 	DatasetAddress codec.Address `serialize:"true" json:"dataset_address"`
@@ -48,13 +48,14 @@ func (*CompleteContributeDataset) GetTypeID() uint8 {
 }
 
 func (d *CompleteContributeDataset) StateKeys(_ codec.Address) state.Keys {
-	nftAddress := codec.CreateAddress(nconsts.AssetFractionalTokenID, d.DatasetContributionID)
+	datasetContributionID, _ := ids.FromString(d.DatasetContributionID)
+	nftAddress := codec.CreateAddress(nconsts.AssetFractionalTokenID, datasetContributionID)
 	return state.Keys{
 		string(storage.AssetInfoKey(d.DatasetAddress)): state.Read | state.Write,
 		string(storage.AssetInfoKey(nftAddress)):       state.All,
 
 		string(storage.DatasetInfoKey(d.DatasetAddress)):                                                                                   state.Read,
-		string(storage.DatasetContributionInfoKey(d.DatasetContributionID)):                                                                state.Read | state.Write,
+		string(storage.DatasetContributionInfoKey(datasetContributionID)):                                                                  state.Read | state.Write,
 		string(storage.AssetAccountBalanceKey(dataset.GetDatasetConfig().CollateralAssetAddressForDataContribution, d.DatasetContributor)): state.Read | state.Write,
 		string(storage.AssetAccountBalanceKey(d.DatasetAddress, d.DatasetContributor)):                                                     state.Allocate | state.Write,
 		string(storage.AssetAccountBalanceKey(nftAddress, d.DatasetContributor)):                                                           state.All,
@@ -69,6 +70,11 @@ func (d *CompleteContributeDataset) Execute(
 	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
+	datasetContributionID, err := ids.FromString(d.DatasetContributionID)
+	if err != nil {
+		return nil, err
+	}
+
 	// Check if the dataset exists
 	_, _, _, _, _, _, _, _, marketplaceAssetAddress, _, _, _, _, _, _, owner, err := storage.GetDatasetInfoNoController(ctx, mu, d.DatasetAddress)
 	if err != nil {
@@ -83,7 +89,7 @@ func (d *CompleteContributeDataset) Execute(
 	}
 
 	// Check if the dataset contribution exists
-	datasetAddress, dataLocation, dataIdentifier, contributor, active, err := storage.GetDatasetContributionInfoNoController(ctx, mu, d.DatasetContributionID)
+	datasetAddress, dataLocation, dataIdentifier, contributor, active, err := storage.GetDatasetContributionInfoNoController(ctx, mu, datasetContributionID)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +121,7 @@ func (d *CompleteContributeDataset) Execute(
 	if err != nil {
 		return nil, err
 	}
-	nftAddress := codec.CreateAddress(nconsts.AssetFractionalTokenID, d.DatasetContributionID)
+	nftAddress := codec.CreateAddress(nconsts.AssetFractionalTokenID, datasetContributionID)
 	symbol = utils.CombineWithSuffix(symbol, totalSupply, storage.MaxSymbolSize)
 	if err := storage.SetAssetInfo(ctx, mu, nftAddress, nconsts.AssetNonFungibleTokenID, name, symbol, 0, metadataNFT, []byte(d.DatasetAddress.String()), 0, 1, d.DatasetContributor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 		return nil, err
@@ -125,7 +131,7 @@ func (d *CompleteContributeDataset) Execute(
 	}
 
 	// Update the dataset contribution
-	if err := storage.SetDatasetContributionInfo(ctx, mu, d.DatasetContributionID, datasetAddress, dataLocation, dataIdentifier, contributor, true); err != nil {
+	if err := storage.SetDatasetContributionInfo(ctx, mu, datasetContributionID, datasetAddress, dataLocation, dataIdentifier, contributor, true); err != nil {
 		return nil, err
 	}
 
@@ -164,7 +170,7 @@ func (*CompleteContributeDataset) ValidRange(chain.Rules) (int64, int64) {
 
 func UnmarshalCompleteContributeDataset(p *codec.Packer) (chain.Action, error) {
 	var complete CompleteContributeDataset
-	p.UnpackID(true, &complete.DatasetContributionID)
+	complete.DatasetContributionID = p.UnpackString(true)
 	p.UnpackAddress(&complete.DatasetAddress)
 	p.UnpackAddress(&complete.DatasetContributor)
 	return &complete, p.Err()

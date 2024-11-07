@@ -126,7 +126,8 @@ func handleTx(tx *chain.Transaction, result *chain.Result) {
 		case *actions.InitiateContributeDataset:
 			summaryStr = fmt.Sprintf("datasetAddress: %s dataLocation: %s dataIdentifier: %s\n", act.DatasetAddress, act.DataLocation, act.DataIdentifier)
 		case *actions.CompleteContributeDataset:
-			nftAddress := codec.CreateAddress(consts.AssetFractionalTokenID, act.DatasetContributionID)
+			datasetContributionID, _ := ids.ToID([]byte(act.DatasetContributionID))
+			nftAddress := codec.CreateAddress(consts.AssetFractionalTokenID, datasetContributionID)
 			summaryStr = fmt.Sprintf("datasetContributionID: %s datasetAddress: %s contributor: %s nftAddress: %s\n", act.DatasetContributionID, act.DatasetAddress, act.DatasetContributor, nftAddress)
 		case *actions.PublishDatasetMarketplace:
 			summaryStr = fmt.Sprintf("datasetAddress: %s paymentAssetAddress: %s datasetPricePerBlock: %d\n", act.DatasetAddress, act.PaymentAssetAddress, act.DatasetPricePerBlock)
