@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 
 	"github.com/nuklai/nuklaivm/vm"
@@ -62,23 +63,6 @@ var genKeyCmd = &cobra.Command{
 			"{{green}}created address:{{/}} %s\n",
 			priv.Address,
 		)
-
-		// Convert the private key bytes to a base64 encoded string
-		privKeyString := base64.StdEncoding.EncodeToString(priv.Bytes)
-		utils.Outf("{{yellow}}Private Key String(Base64):{{/}} %s\n", privKeyString)
-
-		// Create the directory with permissions (if it doesn't exist)
-		err = os.MkdirAll("./test_accounts", 0o755)
-		if err != nil {
-			panic(err)
-		}
-		// Construct the filename with Address
-		filename := fmt.Sprintf("./test_accounts/%s-%s.pk", priv.Address, args[0])
-		// Write the byte slice to the file
-		err = os.WriteFile(filename, priv.Bytes, 0o600)
-		if err != nil {
-			panic(err)
-		}
 		return nil
 	},
 }
@@ -269,34 +253,121 @@ func getKeyType(addr codec.Address) (string, error) {
 	}
 }
 
+// generatePrivateKey generates a private key and displays it in base64 and hex.
 func generatePrivateKey(k string) (*auth.PrivateKey, error) {
+	var priv *auth.PrivateKey
+	var keyBytes []byte
+
 	switch k {
 	case ed25519Key:
 		p, err := ed25519.GeneratePrivateKey()
 		if err != nil {
 			return nil, err
 		}
-		return &auth.PrivateKey{
+
+		// Use the full 64 bytes for Ed25519
+		keyBytes = p[:ed25519.PrivateKeyLen] // 64 bytes
+		priv = &auth.PrivateKey{
 			Address: auth.NewED25519Address(p.PublicKey()),
-			Bytes:   p[:],
-		}, nil
+			Bytes:   keyBytes,
+		}
 	case secp256r1Key:
 		p, err := secp256r1.GeneratePrivateKey()
 		if err != nil {
 			return nil, err
 		}
-		return &auth.PrivateKey{
+		// Use only 32 bytes for secp256r1
+		keyBytes = p[:secp256r1.PrivateKeyLen] // 32 bytes
+		priv = &auth.PrivateKey{
 			Address: auth.NewSECP256R1Address(p.PublicKey()),
-			Bytes:   p[:],
-		}, nil
+			Bytes:   keyBytes,
+		}
 	case blsKey:
 		p, err := bls.GeneratePrivateKey()
 		if err != nil {
 			return nil, err
 		}
-		return &auth.PrivateKey{
+		// Ensure exactly 32 bytes for BLS
+		keyBytes = bls.PrivateKeyToBytes(p)[:bls.PrivateKeyLen] // 32 bytes
+		priv = &auth.PrivateKey{
 			Address: auth.NewBLSAddress(bls.PublicFromPrivateKey(p)),
-			Bytes:   bls.PrivateKeyToBytes(p),
+			Bytes:   keyBytes,
+		}
+	default:
+		return nil, ErrInvalidKeyType
+	}
+
+	// Display private key in base64 and hex formats
+	privKeyBase64 := base64.StdEncoding.EncodeToString(priv.Bytes)
+	utils.Outf("{{yellow}}Private Key (Base64):{{/}} %s\n", privKeyBase64)
+
+	privKeyHex := codec.ToHex(priv.Bytes)
+	utils.Outf("{{yellow}}Private Key (Hex):{{/}} %s\n", privKeyHex)
+
+	// Optionally save private key to a file if needed
+	filename := fmt.Sprintf("./test_accounts/%s-%s.pk", priv.Address, k)
+	err := os.WriteFile(filename, priv.Bytes, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write private key to file: %w", err)
+	}
+
+	return priv, nil
+}
+
+// loadPrivateKeyFromString loads a private key from a base64 or hex string,
+// verifying it matches the expected length for the specified key type.
+func loadPrivateKeyFromString(k, keyStr string) (*auth.PrivateKey, error) {
+	var decodedKey []byte
+	var err error
+	var privKeyLength int
+
+	switch k {
+	case ed25519Key:
+		privKeyLength = ed25519.PrivateKeyLen
+	case secp256r1Key:
+		privKeyLength = secp256r1.PrivateKeyLen
+	case blsKey:
+		privKeyLength = bls.PrivateKeyLen
+	default:
+		return nil, ErrInvalidKeyType
+	}
+
+	// Attempt to decode as base64 first
+	decodedKey, err = base64.StdEncoding.DecodeString(keyStr)
+	if err == nil && len(decodedKey) == privKeyLength {
+		// Successfully decoded as base64 and the length is correct
+		fmt.Println("Decoded key as base64 successfully.")
+	} else {
+		// If base64 decoding fails, try hex decoding
+		decodedKey, err = codec.LoadHex(strings.TrimSpace(keyStr), privKeyLength)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode private key string: input is not valid hex or length mismatch")
+		}
+		fmt.Println("Decoded key as hex successfully.")
+	}
+
+	// Ensure key length matches expected length for each type
+	switch k {
+	case ed25519Key:
+		pk := ed25519.PrivateKey(decodedKey)
+		return &auth.PrivateKey{
+			Address: auth.NewED25519Address(pk.PublicKey()),
+			Bytes:   decodedKey,
+		}, nil
+	case secp256r1Key:
+		pk := secp256r1.PrivateKey(decodedKey)
+		return &auth.PrivateKey{
+			Address: auth.NewSECP256R1Address(pk.PublicKey()),
+			Bytes:   decodedKey,
+		}, nil
+	case blsKey:
+		pk, err := bls.PrivateKeyFromBytes(decodedKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load BLS private key: %w", err)
+		}
+		return &auth.PrivateKey{
+			Address: auth.NewBLSAddress(bls.PublicFromPrivateKey(pk)),
+			Bytes:   bls.PrivateKeyToBytes(pk),
 		}, nil
 	default:
 		return nil, ErrInvalidKeyType
@@ -338,45 +409,6 @@ func loadPrivateKeyFromPath(k string, path string) (*auth.PrivateKey, error) {
 		return &auth.PrivateKey{
 			Address: auth.NewBLSAddress(bls.PublicFromPrivateKey(privKey)),
 			Bytes:   p,
-		}, nil
-	default:
-		return nil, ErrInvalidKeyType
-	}
-}
-
-// loadPrivateKeyFromString loads a private key from a base64 string.
-func loadPrivateKeyFromString(k, keyStr string) (*auth.PrivateKey, error) {
-	var decodedKey []byte
-	var err error
-
-	// Try to decode as base64 first
-	decodedKey, err = base64.StdEncoding.DecodeString(keyStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode private key string: %w", err)
-	}
-
-	// Create a private key object based on the decoded bytes and key type
-	switch k {
-	case ed25519Key:
-		pk := ed25519.PrivateKey(decodedKey)
-		return &auth.PrivateKey{
-			Address: auth.NewED25519Address(pk.PublicKey()),
-			Bytes:   decodedKey,
-		}, nil
-	case secp256r1Key:
-		pk := secp256r1.PrivateKey(decodedKey)
-		return &auth.PrivateKey{
-			Address: auth.NewSECP256R1Address(pk.PublicKey()),
-			Bytes:   decodedKey,
-		}, nil
-	case blsKey:
-		pk, err := bls.PrivateKeyFromBytes(decodedKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load BLS private key: %w", err)
-		}
-		return &auth.PrivateKey{
-			Address: auth.NewBLSAddress(bls.PublicFromPrivateKey(pk)),
-			Bytes:   bls.PrivateKeyToBytes(pk),
 		}, nil
 	default:
 		return nil, ErrInvalidKeyType
