@@ -268,6 +268,80 @@ This should return the following JSON:
 }
 ```
 
+You can also retrieve info about the latest block by doing:
+
+```bash
+curl -X POST --data '{
+    "jsonrpc":"2.0",
+    "id"     :1,
+    "method" :"indexer.getLatestBlock",
+    "params" : {}
+}' -H 'content-type:application/json;' 127.0.0.1:9650/ext/bc/nuklaivm/indexer
+```
+
+This should return the following JSON:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "block": {
+      "blockID": "2qhX7DnjZDZN6NLHqeAa1kt2rASkEruw6dgGiigTU2uDbhgxq5",
+      "block": {
+        "parent": "2JkaGnEor8hGWx7pYq369VLoQgcqRMqd8VwezHjBZL6GUopmS3",
+        "timestamp": 1731951735240,
+        "height": 1280,
+        "txs": [],
+        "stateRoot": "t3jEXt5QoGLmqNW7wwyKmxX56Rsk3reLVLtnRNTdo2ff5CzMF"
+      },
+      "results": [],
+      "unitPrices": {
+        "bandwidth": 100,
+        "compute": 100,
+        "storageRead": 100,
+        "storageAllocate": 100,
+        "storageWrite": 100
+      }
+    },
+    "blockBytes": "00000054ac00a57f169f84a4d65617f9c4998723156257fed54f88487ba9159e8d862a7700000193405e31c800000000000005000000000073e8964327ff6b67681646b2f009b05ce5881c64b8923ba99f13e7885039be28000000040000000000000000000000640000000000000064000000000000006400000000000000640000000000000064"
+  },
+  "id": 1
+}
+```
+
+Or, if you want to retrieve info about a particular transaction:
+
+```bash
+curl -X POST --data '{
+    "jsonrpc":"2.0",
+    "id"     :1,
+    "method" :"indexer.getTx",
+    "params" : {"txId": "dCFJa56Nd9SAU33yyjZpQQ4XKjuQNaM5x2WzJSTy2WUK9pTAA"}
+}' -H 'content-type:application/json;' 127.0.0.1:9650/ext/bc/nuklaivm/indexer
+```
+
+This should return:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "timestamp": 1731951141188,
+    "success": true,
+    "units": {
+      "bandwidth": 223,
+      "compute": 7,
+      "storageRead": 45,
+      "storageAllocate": 135,
+      "storageWrite": 75
+    },
+    "fee": 48500,
+    "result": ["000bd676fa923171180000000077359400"]
+  },
+  "id": 1
+}
+```
+
 Note: if you run into any issues starting your network, try running the following commands to troubleshoot and create a GitHub issue to report:
 
 ```bash
