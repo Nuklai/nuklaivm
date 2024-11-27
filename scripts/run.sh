@@ -39,10 +39,10 @@ modify_config() {
     # Check if external_subscriber_addr exists in the file
     if grep -q '"external_subscriber_addr"' "$CONFIG_FILE"; then
       # Update the existing external_subscriber_addr field
-      sed -i.bak "s/\"external_subscriber_addr\": \".*\"/\"external_subscriber_addr\": \"$EXTERNAL_SUBSCRIBER_SERVER_ADDRESS\"/" "$CONFIG_FILE"
+      sed -i.bak "s|\"external_subscriber_addr\": \".*\"|\"external_subscriber_addr\": \"$EXTERNAL_SUBSCRIBER_SERVER_ADDRESS\"|" "$CONFIG_FILE"
     else
       # Insert the external_subscriber_addr field before the last closing brace
-      sed -i.bak "s/}/,\"external_subscriber_addr\": \"$EXTERNAL_SUBSCRIBER_SERVER_ADDRESS\"}/" "$CONFIG_FILE"
+      sed -i.bak "s|}|,\"external_subscriber_addr\": \"$EXTERNAL_SUBSCRIBER_SERVER_ADDRESS\"}|" "$CONFIG_FILE"
     fi
   fi
 }
