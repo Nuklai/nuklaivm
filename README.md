@@ -206,10 +206,25 @@ You can run the chain with a different allocation as well:
 ./scripts/run.sh --initial-owner-address 002b5d019495996310f81c6a26a4dd9eeb9a3f3be1bac0a9294436713aecc84496
 ```
 
+or with docker script:
+
+```bash
+./scripts/run_docker.sh start -initial-owner-address 002b5d019495996310f81c6a26a4dd9eeb9a3f3be1bac0a9294436713aecc84496
+```
+
 Also on default settings, the external subscriber is not run. If you want to connect nuklaivm to an external subscriber, you can do:
 
 ```bash
 ./scripts/run.sh --external-subscriber-server-address 127.0.0.1:50051
+```
+
+or with docker script(assuming you're also running external subscriber in docker):
+
+```bash
+./scripts/run_docker.sh start --external-subscriber-server-address "nuklaivm-subscriber:50051"
+# Note that if you are running the subscriber natively(not in docker), you must pass in your docker IP like:
+# ./scripts/run_docker.sh start --external-subscriber-server-address 172.0.0.1:50051
+# or whatever your docker ip is
 ```
 
 For an example external subscriber, you can refer to [https://github.com/Nuklai/nuklaivm-external-subscriber](https://github.com/Nuklai/nuklaivm-external-subscriber).

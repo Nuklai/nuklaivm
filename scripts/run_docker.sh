@@ -13,6 +13,13 @@ INITIAL_OWNER_ADDRESS="00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518e
 EMISSION_ADDRESS="00c4cb545f748a28770042f893784ce85b107389004d6a0e0d6d7518eeae1292d9"
 EXTERNAL_SUBSCRIBER_SERVER_ADDRESS=""
 
+ensure_network() {
+  if ! docker network inspect nuklaivm-network >/dev/null 2>&1; then
+    echo "Creating network nuklaivm-network..."
+    docker network create nuklaivm-network
+  fi
+}
+
 # Function to stop and remove any existing container
 cleanup_docker() {
   echo "Stopping and removing any existing Docker container..."
@@ -30,8 +37,11 @@ build_docker_image() {
 start_container() {
   echo "Starting the Docker container with provided arguments..."
 
+  ensure_network
+
   docker run -d --name "$CONTAINER_NAME" \
     -p 9650:9650 \
+    --network nuklaivm-network \
     -e INITIAL_OWNER_ADDRESS="$INITIAL_OWNER_ADDRESS" \
     -e EMISSION_ADDRESS="$EMISSION_ADDRESS" \
     -e EXTERNAL_SUBSCRIBER_SERVER_ADDRESS="$EXTERNAL_SUBSCRIBER_SERVER_ADDRESS" \
