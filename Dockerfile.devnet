@@ -28,6 +28,7 @@ COPY ./config ./config
 COPY ./consts ./consts
 COPY ./dataset ./dataset
 COPY ./emission ./emission
+COPY ./extension ./extension
 COPY ./genesis ./genesis
 COPY ./scripts ./scripts
 COPY ./storage ./storage
