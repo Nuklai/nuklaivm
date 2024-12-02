@@ -11,6 +11,8 @@ import (
 	"github.com/ava-labs/hypersdk/extension/externalsubscriber"
 	"github.com/ava-labs/hypersdk/vm"
 	"github.com/ava-labs/hypersdk/x/contracts/runtime"
+
+	nuklaivmES "github.com/nuklai/nuklaivm/extension/externalsubscriber"
 )
 
 const (
@@ -50,7 +52,7 @@ func WithExternalSubscriber(cfg config.Config) vm.Option {
 		return vm.NewOption(externalsubscriber.Namespace, externalsubscriber.Config{
 			Enabled:       true,
 			ServerAddress: cfg.ExternalSubscriberAddr,
-		}, externalsubscriber.OptionFunc)
+		}, nuklaivmES.OptionFunc)
 	}
 	return vm.NewOption(externalsubscriber.Namespace, externalsubscriber.Config{}, externalsubscriber.OptionFunc)
 }
