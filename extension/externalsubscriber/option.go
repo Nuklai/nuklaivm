@@ -8,8 +8,9 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/event"
-	es "github.com/ava-labs/hypersdk/extension/externalsubscriber"
 	"github.com/ava-labs/hypersdk/vm"
+
+	es "github.com/ava-labs/hypersdk/extension/externalsubscriber"
 )
 
 func OptionFunc(v *vm.VM, config es.Config) error {
