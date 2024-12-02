@@ -77,7 +77,7 @@ INSTANCE_ID=$(aws ec2 run-instances --region $REGION \
   --image-id $AMI_ID --count 1 --instance-type $INSTANCE_TYPE \
   --key-name nuklaivm-aws-key --security-group-ids $SECURITY_GROUP \
   --associate-public-ip-address \
-  --block-device-mappings 'DeviceName=/dev/xvda,Ebs={VolumeSize=1000,VolumeType=gp3,DeleteOnTermination=true}' \
+  --block-device-mappings 'DeviceName=/dev/xvda,Ebs={VolumeSize=100,VolumeType=gp3,DeleteOnTermination=true}' \
   --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]" \
   --user-data file://$USER_DATA_FILE \
   --query "Instances[0].InstanceId" --output text)
