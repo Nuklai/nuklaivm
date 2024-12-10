@@ -198,9 +198,9 @@ var (
 )
 
 type CreateAssetResult struct {
-	AssetAddress            string `serialize:"true" json:"asset_id"`
+	AssetAddress            string `serialize:"true" json:"asset_address"`
 	AssetBalance            uint64 `serialize:"true" json:"asset_balance"`
-	DatasetParentNftAddress string `serialize:"true" json:"nft_id"`
+	DatasetParentNftAddress string `serialize:"true" json:"dataset_parent_nft_address"`
 }
 
 func (*CreateAssetResult) GetTypeID() uint8 {
