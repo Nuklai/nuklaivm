@@ -125,6 +125,7 @@ func (d *InitiateContributeDataset) Execute(
 	}
 
 	return &InitiateContributeDatasetResult{
+		CommonResult:           FillCommonResult(actor.String(), ""),
 		DatasetContributionID:  datasetContributionID.String(),
 		CollateralAssetAddress: dataConfig.CollateralAssetAddressForDataContribution.String(),
 		CollateralAmountTaken:  dataConfig.CollateralAmountForDataContribution,
@@ -154,6 +155,7 @@ var (
 )
 
 type InitiateContributeDatasetResult struct {
+	CommonResult
 	DatasetContributionID  string `serialize:"true" json:"dataset_contribution_id"`
 	CollateralAssetAddress string `serialize:"true" json:"collateral_asset_address"`
 	CollateralAmountTaken  uint64 `serialize:"true" json:"collateral_amount_taken"`

@@ -85,8 +85,9 @@ func (m *MintAssetFT) Execute(
 	}
 
 	return &MintAssetFTResult{
-		OldBalance: newBalance - m.Value,
-		NewBalance: newBalance,
+		CommonResult: FillCommonResult(actor.String(), m.To.String()),
+		OldBalance:   newBalance - m.Value,
+		NewBalance:   newBalance,
 	}, nil
 }
 
@@ -113,6 +114,7 @@ var (
 )
 
 type MintAssetFTResult struct {
+	CommonResult
 	OldBalance uint64 `serialize:"true" json:"old_balance"`
 	NewBalance uint64 `serialize:"true" json:"new_balance"`
 }

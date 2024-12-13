@@ -100,6 +100,7 @@ func (t *Transfer) Execute(
 	}
 
 	return &TransferResult{
+		CommonResult:    FillCommonResult(actor.String(), t.To.String()),
 		SenderBalance:   senderBalance,
 		ReceiverBalance: receiverBalance,
 	}, nil
@@ -129,6 +130,7 @@ var (
 )
 
 type TransferResult struct {
+	CommonResult
 	SenderBalance   uint64 `serialize:"true" json:"sender_balance"`
 	ReceiverBalance uint64 `serialize:"true" json:"receiver_balance"`
 }

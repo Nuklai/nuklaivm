@@ -89,6 +89,7 @@ func (c *ClaimDelegationStakeRewards) Execute(
 	}
 
 	return &ClaimDelegationStakeRewardsResult{
+		CommonResult:       FillCommonResult(actor.String(), actor.String()),
 		StakeStartBlock:    stakeStartBlock,
 		StakeEndBlock:      stakeEndBlock,
 		StakedAmount:       stakedAmount,
@@ -135,6 +136,7 @@ var (
 )
 
 type ClaimDelegationStakeRewardsResult struct {
+	CommonResult
 	StakeStartBlock    uint64 `serialize:"true" json:"stake_start_block"`
 	StakeEndBlock      uint64 `serialize:"true" json:"stake_end_block"`
 	StakedAmount       uint64 `serialize:"true" json:"staked_amount"`

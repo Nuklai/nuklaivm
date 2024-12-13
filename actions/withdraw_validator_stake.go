@@ -97,6 +97,7 @@ func (u *WithdrawValidatorStake) Execute(
 	}
 
 	return &WithdrawValidatorStakeResult{
+		CommonResult:         FillCommonResult(actor.String(), actor.String()),
 		StakeStartBlock:      stakeStartBlock,
 		StakeEndBlock:        stakeEndBlock,
 		UnstakedAmount:       stakedAmount,
@@ -145,6 +146,7 @@ var (
 )
 
 type WithdrawValidatorStakeResult struct {
+	CommonResult
 	StakeStartBlock      uint64 `serialize:"true" json:"stake_start_block"`
 	StakeEndBlock        uint64 `serialize:"true" json:"stake_end_block"`
 	UnstakedAmount       uint64 `serialize:"true" json:"unstaked_amount"`

@@ -191,6 +191,7 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	}
 
 	return &SubscribeDatasetMarketplaceResult{
+		CommonResult:                     FillCommonResult(actor.String(), actor.String()),
 		MarketplaceAssetAddress:          d.MarketplaceAssetAddress.String(),
 		MarketplaceAssetNumSubscriptions: prevSubscriptions + 1,
 		SubscriptionNftAddress:           nftAddress.String(),
@@ -226,6 +227,7 @@ var (
 )
 
 type SubscribeDatasetMarketplaceResult struct {
+	CommonResult
 	MarketplaceAssetAddress          string `serialize:"true" json:"marketplace_asset_address"`
 	MarketplaceAssetNumSubscriptions uint64 `serialize:"true" json:"marketplace_asset_num_subscriptions"`
 	SubscriptionNftAddress           string `serialize:"true" json:"subscription_nft_address"`

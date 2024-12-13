@@ -102,6 +102,7 @@ func (m *MintAssetNFT) Execute(
 	}
 
 	return &MintAssetNFTResult{
+		CommonResult:    FillCommonResult(actor.String(), m.To.String()),
 		AssetNftAddress: nftAddress.String(),
 		OldBalance:      newBalance - 1,
 		NewBalance:      newBalance,
@@ -131,6 +132,7 @@ var (
 )
 
 type MintAssetNFTResult struct {
+	CommonResult
 	AssetNftAddress string `serialize:"true" json:"asset_nft_address"`
 	OldBalance      uint64 `serialize:"true" json:"old_balance"`
 	NewBalance      uint64 `serialize:"true" json:"new_balance"`

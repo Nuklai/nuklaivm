@@ -84,6 +84,7 @@ func (u *UpdateDataset) Execute(
 	}
 
 	var updateDatasetResult UpdateDatasetResult
+	updateDatasetResult.CommonResult = FillCommonResult(actor.String(), "")
 
 	// if u.Name is passed, update the dataset name
 	// otherwise, keep the existing name
@@ -176,6 +177,7 @@ var (
 )
 
 type UpdateDatasetResult struct {
+	CommonResult
 	Name               string `serialize:"true" json:"name"`
 	Description        string `serialize:"true" json:"description"`
 	Categories         string `serialize:"true" json:"categories"`

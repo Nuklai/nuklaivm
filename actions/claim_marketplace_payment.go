@@ -166,6 +166,7 @@ func (c *ClaimMarketplacePayment) Execute(
 	}
 
 	return &ClaimMarketplacePaymentResult{
+		CommonResult:      FillCommonResult(actor.String(), actor.String()),
 		LastClaimedBlock:  lastClaimedBlock,
 		PaymentClaimed:    paymentClaimed,
 		PaymentRemaining:  paymentRemaining,
@@ -196,6 +197,7 @@ var (
 )
 
 type ClaimMarketplacePaymentResult struct {
+	CommonResult
 	LastClaimedBlock  uint64 `serialize:"true" json:"last_claimed_block"`
 	PaymentClaimed    uint64 `serialize:"true" json:"payment_claimed"`
 	PaymentRemaining  uint64 `serialize:"true" json:"payment_remaining"`

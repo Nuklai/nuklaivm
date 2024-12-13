@@ -126,6 +126,7 @@ func (s *DelegateUserStake) Execute(
 		return nil, err
 	}
 	return &DelegateUserStakeResult{
+		CommonResult:       FillCommonResult(actor.String(), s.NodeID.String()),
 		StakedAmount:       s.StakedAmount,
 		BalanceBeforeStake: balance,
 		BalanceAfterStake:  newBalance,
@@ -175,6 +176,7 @@ var (
 )
 
 type DelegateUserStakeResult struct {
+	CommonResult
 	StakedAmount       uint64 `serialize:"true" json:"staked_amount"`
 	BalanceBeforeStake uint64 `serialize:"true" json:"balance_before_stake"`
 	BalanceAfterStake  uint64 `serialize:"true" json:"balance_after_stake"`

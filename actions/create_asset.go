@@ -136,6 +136,7 @@ func (c *CreateAsset) Execute(
 	}
 
 	output := CreateAssetResult{
+		CommonResult: FillCommonResult(actor.String(), ""),
 		AssetAddress: assetAddress.String(),
 		AssetBalance: uint64(0),
 	}
@@ -154,6 +155,7 @@ func (c *CreateAsset) Execute(
 		// Mint the parent NFT for the dataset(fractionalized asset)
 		nftAddress := storage.AssetAddressNFT(assetAddress, []byte(c.Metadata), actor)
 		output.DatasetParentNftAddress = nftAddress.String()
+		output.CommonResult.Receiver = actor.String()
 		symbol := utils.CombineWithSuffix([]byte(c.Symbol), 0, storage.MaxSymbolSize)
 		if err := storage.SetAssetInfo(ctx, mu, nftAddress, nconsts.AssetNonFungibleTokenID, []byte(c.Name), symbol, 0, []byte(c.Metadata), []byte(assetAddress.String()), 0, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 			return nil, err
@@ -198,6 +200,7 @@ var (
 )
 
 type CreateAssetResult struct {
+	CommonResult
 	AssetAddress            string `serialize:"true" json:"asset_address"`
 	AssetBalance            uint64 `serialize:"true" json:"asset_balance"`
 	DatasetParentNftAddress string `serialize:"true" json:"dataset_parent_nft_address"`

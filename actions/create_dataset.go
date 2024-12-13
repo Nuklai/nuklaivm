@@ -133,6 +133,7 @@ func (c *CreateDataset) Execute(
 	}
 
 	return &CreateDatasetResult{
+		CommonResult:            FillCommonResult(actor.String(), actor.String()),
 		DatasetAddress:          c.AssetAddress.String(),
 		DatasetParentNftAddress: storage.AssetAddressNFT(c.AssetAddress, metadata, owner).String(),
 	}, nil
@@ -167,6 +168,7 @@ var (
 )
 
 type CreateDatasetResult struct {
+	CommonResult
 	DatasetAddress          string `serialize:"true" json:"dataset_address"`
 	DatasetParentNftAddress string `serialize:"true" json:"dataset_parent_nft_address"`
 }

@@ -113,6 +113,7 @@ func (u *UpdateAsset) Execute(
 	}
 
 	var updateAssetResult UpdateAssetResult
+	updateAssetResult.CommonResult = FillCommonResult(actor.String(), "")
 
 	// if u.Name is passed, update the dataset name
 	// otherwise, keep the existing name
@@ -214,6 +215,7 @@ var (
 )
 
 type UpdateAssetResult struct {
+	CommonResult
 	Name                         string `serialize:"true" json:"name"`
 	Symbol                       string `serialize:"true" json:"symbol"`
 	Metadata                     string `serialize:"true" json:"metadata"`

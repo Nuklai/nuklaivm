@@ -48,12 +48,12 @@ func (d *ContractDeploy) Execute(
 	_ chain.Rules,
 	mu state.Mutable,
 	_ int64,
-	_ codec.Address,
+	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
 	result, err := (&storage.ContractStateManager{Mutable: mu}).
 		NewAccountWithContract(ctx, d.ContractID, d.CreationInfo)
-	return &ContractDeployResult{Address: result}, err
+	return &ContractDeployResult{CommonResult: FillCommonResult(actor.String(), ""), Address: result}, err
 }
 
 func (*ContractDeploy) ComputeUnits(chain.Rules) uint64 {
@@ -94,6 +94,7 @@ var (
 )
 
 type ContractDeployResult struct {
+	CommonResult
 	Address codec.Address `serialize:"true" json:"address"`
 }
 

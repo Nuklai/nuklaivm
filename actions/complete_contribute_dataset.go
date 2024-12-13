@@ -150,6 +150,7 @@ func (d *CompleteContributeDataset) Execute(
 	}
 
 	return &CompleteContributeDatasetResult{
+		CommonResult:             FillCommonResult(actor.String(), d.DatasetContributor.String()),
 		CollateralAssetAddress:   dataConfig.CollateralAssetAddressForDataContribution.String(),
 		CollateralAmountRefunded: dataConfig.CollateralAmountForDataContribution,
 		DatasetChildNftAddress:   nftAddress.String(),
@@ -182,6 +183,7 @@ var (
 )
 
 type CompleteContributeDatasetResult struct {
+	CommonResult
 	CollateralAssetAddress   string `serialize:"true" json:"collateral_asset_address"`
 	CollateralAmountRefunded uint64 `serialize:"true" json:"collateral_amount_refunded"`
 	DatasetChildNftAddress   string `serialize:"true" json:"dataset_child_nft_address"`

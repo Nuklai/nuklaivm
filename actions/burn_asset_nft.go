@@ -86,8 +86,9 @@ func (b *BurnAssetNFT) Execute(
 	}
 
 	return &BurnAssetNFTResult{
-		OldBalance: newBalance + 1,
-		NewBalance: newBalance,
+		CommonResult: FillCommonResult(actor.String(), ""),
+		OldBalance:   newBalance + 1,
+		NewBalance:   newBalance,
 	}, nil
 }
 
@@ -113,6 +114,7 @@ var (
 )
 
 type BurnAssetNFTResult struct {
+	CommonResult
 	OldBalance uint64 `serialize:"true" json:"old_balance"`
 	NewBalance uint64 `serialize:"true" json:"new_balance"`
 }

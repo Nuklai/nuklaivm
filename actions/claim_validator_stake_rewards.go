@@ -85,6 +85,7 @@ func (c *ClaimValidatorStakeRewards) Execute(
 	}
 
 	return &ClaimValidatorStakeRewardsResult{
+		CommonResult:       FillCommonResult(actor.String(), actor.String()),
 		StakeStartBlock:    stakeStartBlock,
 		StakeEndBlock:      stakeEndBlock,
 		StakedAmount:       stakeAmount,
@@ -132,6 +133,7 @@ var (
 )
 
 type ClaimValidatorStakeRewardsResult struct {
+	CommonResult
 	StakeStartBlock    uint64 `serialize:"true" json:"stake_start_block"`
 	StakeEndBlock      uint64 `serialize:"true" json:"stake_end_block"`
 	StakedAmount       uint64 `serialize:"true" json:"staked_amount"`

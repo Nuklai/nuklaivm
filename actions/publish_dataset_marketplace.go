@@ -104,6 +104,7 @@ func (d *PublishDatasetMarketplace) Execute(
 	}
 
 	return &PublishDatasetMarketplaceResult{
+		CommonResult:            FillCommonResult(actor.String(), ""),
 		MarketplaceAssetAddress: marketplaceAssetAddress.String(),
 		PaymentAssetAddress:     d.PaymentAssetAddress.String(),
 		DatasetPricePerBlock:    d.DatasetPricePerBlock,
@@ -134,6 +135,7 @@ var (
 )
 
 type PublishDatasetMarketplaceResult struct {
+	CommonResult
 	MarketplaceAssetAddress string `serialize:"true" json:"marketplace_asset_address"`
 	PaymentAssetAddress     string `serialize:"true" json:"payment_asset_address"`
 	Publisher               string `serialize:"true" json:"publisher"`

@@ -172,6 +172,7 @@ func (r *RegisterValidatorStake) Execute(
 		return nil, err
 	}
 	return &RegisterValidatorStakeResult{
+		CommonResult:      FillCommonResult(actor.String(), ""),
 		NodeID:            stakeInfo.NodeID.String(),
 		StakeStartBlock:   stakeInfo.StakeStartBlock,
 		StakeEndBlock:     stakeInfo.StakeEndBlock,
@@ -272,6 +273,7 @@ var (
 )
 
 type RegisterValidatorStakeResult struct {
+	CommonResult
 	NodeID            string `serialize:"true" json:"node_id"`
 	StakeStartBlock   uint64 `serialize:"true" json:"stake_start_block"`
 	StakeEndBlock     uint64 `serialize:"true" json:"stake_end_block"`

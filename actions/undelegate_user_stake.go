@@ -87,6 +87,7 @@ func (u *UndelegateUserStake) Execute(
 	}
 
 	return &UndelegateUserStakeResult{
+		CommonResult:         FillCommonResult(actor.String(), actor.String()),
 		StakeStartBlock:      stakeStartBlock,
 		StakeEndBlock:        stakeEndBlock,
 		UnstakedAmount:       stakedAmount,
@@ -134,6 +135,7 @@ var (
 )
 
 type UndelegateUserStakeResult struct {
+	CommonResult
 	StakeStartBlock      uint64 `serialize:"true" json:"stake_start_block"`
 	StakeEndBlock        uint64 `serialize:"true" json:"stake_end_block"`
 	UnstakedAmount       uint64 `serialize:"true" json:"unstaked_amount"`

@@ -70,8 +70,9 @@ func (b *BurnAssetFT) Execute(
 	}
 
 	return &BurnAssetFTResult{
-		OldBalance: newBalance + b.Value,
-		NewBalance: newBalance,
+		CommonResult: FillCommonResult(actor.String(), ""),
+		OldBalance:   newBalance + b.Value,
+		NewBalance:   newBalance,
 	}, nil
 }
 
@@ -97,6 +98,7 @@ var (
 )
 
 type BurnAssetFTResult struct {
+	CommonResult
 	OldBalance uint64 `serialize:"true" json:"old_balance"`
 	NewBalance uint64 `serialize:"true" json:"new_balance"`
 }

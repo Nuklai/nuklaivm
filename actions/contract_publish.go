@@ -48,14 +48,14 @@ func (t *ContractPublish) Execute(
 	_ chain.Rules,
 	mu state.Mutable,
 	_ int64,
-	_ codec.Address,
+	actor codec.Address,
 	_ ids.ID,
 ) (codec.Typed, error) {
 	resultBytes, err := storage.StoreContract(ctx, mu, t.ContractBytes)
 	if err != nil {
 		return nil, err
 	}
-	return &ContractPublishResult{Value: resultBytes}, nil
+	return &ContractPublishResult{CommonResult: FillCommonResult(actor.String(), ""), Value: resultBytes}, nil
 }
 
 func (*ContractPublish) ComputeUnits(chain.Rules) uint64 {
@@ -90,6 +90,7 @@ func UnmarshalPublishContract(p *codec.Packer) (chain.Action, error) {
 var _ codec.Typed = (*ContractPublishResult)(nil)
 
 type ContractPublishResult struct {
+	CommonResult
 	Value []byte `serialize:"true" json:"value"`
 }
 
