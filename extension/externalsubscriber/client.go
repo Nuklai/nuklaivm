@@ -43,7 +43,9 @@ func NewExternalSubscriberClient(
 	var opts []grpc.DialOption
 	if useTLS {
 		// Use default TLS credentials
-		creds := credentials.NewTLS(&tls.Config{})
+		creds := credentials.NewTLS(&tls.Config{
+			MinVersion: tls.VersionTLS12, // Ensure a secure minimum TLS version
+		})
 		opts = append(opts, grpc.WithTransportCredentials(creds))
 	} else {
 		// Use insecure credentials for plaintext communication
