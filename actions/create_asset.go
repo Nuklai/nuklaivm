@@ -194,9 +194,7 @@ func UnmarshalCreateAsset(p *codec.Packer) (chain.Action, error) {
 	return &create, p.Err()
 }
 
-var (
-	_ codec.Typed = (*CreateAssetResult)(nil)
-)
+var _ codec.Typed = (*CreateAssetResult)(nil)
 
 type CreateAssetResult struct {
 	Actor                   string `serialize:"true" json:"actor"`

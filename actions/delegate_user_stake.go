@@ -171,9 +171,7 @@ func UnmarshalDelegateUserStake(p *codec.Packer) (chain.Action, error) {
 	return &stake, p.Err()
 }
 
-var (
-	_ codec.Typed = (*DelegateUserStakeResult)(nil)
-)
+var _ codec.Typed = (*DelegateUserStakeResult)(nil)
 
 type DelegateUserStakeResult struct {
 	Actor              string `serialize:"true" json:"actor"`

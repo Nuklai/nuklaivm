@@ -149,9 +149,7 @@ func UnmarshalInitiateContributeDataset(p *codec.Packer) (chain.Action, error) {
 	return &initiate, p.Err()
 }
 
-var (
-	_ codec.Typed = (*InitiateContributeDatasetResult)(nil)
-)
+var _ codec.Typed = (*InitiateContributeDatasetResult)(nil)
 
 type InitiateContributeDatasetResult struct {
 	Actor                  string `serialize:"true" json:"actor"`

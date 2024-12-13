@@ -108,9 +108,7 @@ func UnmarshalMintAssetFT(p *codec.Packer) (chain.Action, error) {
 	return &mint, p.Err()
 }
 
-var (
-	_ codec.Typed = (*MintAssetFTResult)(nil)
-)
+var _ codec.Typed = (*MintAssetFTResult)(nil)
 
 type MintAssetFTResult struct {
 	Actor      string `serialize:"true" json:"actor"`
@@ -122,6 +120,7 @@ type MintAssetFTResult struct {
 func (*MintAssetFTResult) GetTypeID() uint8 {
 	return nconsts.MintAssetFTID
 }
+
 func UnmarshalMintAssetFTResult(p *codec.Packer) (codec.Typed, error) {
 	var result MintAssetFTResult
 	result.Actor = p.UnpackString(true)

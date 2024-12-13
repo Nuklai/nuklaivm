@@ -191,9 +191,7 @@ func UnmarshalClaimMarketplacePayment(p *codec.Packer) (chain.Action, error) {
 	return &claimPaymentResult, p.Err()
 }
 
-var (
-	_ codec.Typed = (*ClaimMarketplacePaymentResult)(nil)
-)
+var _ codec.Typed = (*ClaimMarketplacePaymentResult)(nil)
 
 type ClaimMarketplacePaymentResult struct {
 	Actor             string `serialize:"true" json:"actor"`

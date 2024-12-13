@@ -79,17 +79,17 @@ func processResult(result *chain.Result) error {
 
 		// Automatically handle all types by reflecting and marshaling to JSON
 		reflectValue := reflect.ValueOf(r)
-		if reflectValue.IsValid() && !reflectValue.IsZero() {
-			// Marshal the result to JSON for a generic and readable output
-			outputJSON, err := json.MarshalIndent(r, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal result: %w", err)
-			}
-
-			utils.Outf("{{green}}output:{{/}} %s\n", string(outputJSON))
-		} else {
+		if !reflectValue.IsValid() || reflectValue.IsZero() {
 			return errors.New("result is invalid or nil")
 		}
+
+		// Marshal the result to JSON for a generic and readable output
+		outputJSON, err := json.MarshalIndent(r, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal result: %w", err)
+		}
+
+		utils.Outf("{{green}}output:{{/}} %s\n", string(outputJSON))
 	}
 	return nil
 }

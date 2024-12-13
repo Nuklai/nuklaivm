@@ -129,9 +129,7 @@ func UnmarshalUndelegateUserStake(p *codec.Packer) (chain.Action, error) {
 	return &unstake, p.Err()
 }
 
-var (
-	_ codec.Typed = (*UndelegateUserStakeResult)(nil)
-)
+var _ codec.Typed = (*UndelegateUserStakeResult)(nil)
 
 type UndelegateUserStakeResult struct {
 	Actor                string `serialize:"true" json:"actor"`

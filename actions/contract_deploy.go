@@ -88,9 +88,7 @@ func UnmarshalDeployContract(p *codec.Packer) (chain.Action, error) {
 	return &deployContract, nil
 }
 
-var (
-	_ codec.Typed = (*ContractDeployResult)(nil)
-)
+var _ codec.Typed = (*ContractDeployResult)(nil)
 
 type ContractDeployResult struct {
 	Actor    string        `serialize:"true" json:"actor"`

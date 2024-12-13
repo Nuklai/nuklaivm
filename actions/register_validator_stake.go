@@ -268,9 +268,7 @@ func UnmarshalValidatorStakeInfo(p *codec.Packer) (*ValidatorStakeInfo, error) {
 	return &result, p.Err()
 }
 
-var (
-	_ codec.Typed = (*RegisterValidatorStakeResult)(nil)
-)
+var _ codec.Typed = (*RegisterValidatorStakeResult)(nil)
 
 type RegisterValidatorStakeResult struct {
 	Actor             string `serialize:"true" json:"actor"`

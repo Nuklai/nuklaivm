@@ -86,8 +86,8 @@ func TestUndelegateUserStakeActionSuccess(t *testing.T) {
 				require.False(t, exists)
 			},
 			ExpectedOutputs: &UndelegateUserStakeResult{
-					Actor:    actor.String(),
-					Receiver: actor.String(),
+				Actor:                actor.String(),
+				Receiver:             actor.String(),
 				StakeStartBlock:      25,
 				StakeEndBlock:        50,
 				UnstakedAmount:       1000,

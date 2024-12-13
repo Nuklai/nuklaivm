@@ -163,9 +163,7 @@ func UnmarshalCreateDataset(p *codec.Packer) (chain.Action, error) {
 	return &create, p.Err()
 }
 
-var (
-	_ codec.Typed = (*CreateDatasetResult)(nil)
-)
+var _ codec.Typed = (*CreateDatasetResult)(nil)
 
 type CreateDatasetResult struct {
 	Actor                   string `serialize:"true" json:"actor"`

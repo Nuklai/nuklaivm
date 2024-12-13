@@ -124,9 +124,7 @@ func UnmarshalTransfer(p *codec.Packer) (chain.Action, error) {
 	return &transfer, p.Err()
 }
 
-var (
-	_ codec.Typed = (*TransferResult)(nil)
-)
+var _ codec.Typed = (*TransferResult)(nil)
 
 type TransferResult struct {
 	Actor           string `serialize:"true" json:"actor"`

@@ -127,9 +127,7 @@ func UnmarshalClaimValidatorStakeRewards(p *codec.Packer) (chain.Action, error) 
 	return &claimRewards, p.Err()
 }
 
-var (
-	_ codec.Typed = (*ClaimValidatorStakeRewardsResult)(nil)
-)
+var _ codec.Typed = (*ClaimValidatorStakeRewardsResult)(nil)
 
 type ClaimValidatorStakeRewardsResult struct {
 	Actor              string `serialize:"true" json:"actor"`

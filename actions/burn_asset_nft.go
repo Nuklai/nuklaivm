@@ -108,9 +108,7 @@ func UnmarshalBurnAssetNFT(p *codec.Packer) (chain.Action, error) {
 	return &burn, p.Err()
 }
 
-var (
-	_ codec.Typed = (*BurnAssetNFTResult)(nil)
-)
+var _ codec.Typed = (*BurnAssetNFTResult)(nil)
 
 type BurnAssetNFTResult struct {
 	Actor      string `serialize:"true" json:"actor"`

@@ -177,9 +177,7 @@ func UnmarshalCompleteContributeDataset(p *codec.Packer) (chain.Action, error) {
 	return &complete, p.Err()
 }
 
-var (
-	_ codec.Typed = (*CompleteContributeDatasetResult)(nil)
-)
+var _ codec.Typed = (*CompleteContributeDatasetResult)(nil)
 
 type CompleteContributeDatasetResult struct {
 	Actor                    string `serialize:"true" json:"actor"`

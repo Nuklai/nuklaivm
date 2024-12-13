@@ -129,9 +129,7 @@ func UnmarshalPublishDatasetMarketplace(p *codec.Packer) (chain.Action, error) {
 	return &publish, p.Err()
 }
 
-var (
-	_ codec.Typed = (*PublishDatasetMarketplaceResult)(nil)
-)
+var _ codec.Typed = (*PublishDatasetMarketplaceResult)(nil)
 
 type PublishDatasetMarketplaceResult struct {
 	Actor                   string `serialize:"true" json:"actor"`

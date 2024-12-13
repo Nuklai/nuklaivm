@@ -92,9 +92,7 @@ func UnmarshalBurnAssetFT(p *codec.Packer) (chain.Action, error) {
 	return &burn, p.Err()
 }
 
-var (
-	_ codec.Typed = (*BurnAssetFTResult)(nil)
-)
+var _ codec.Typed = (*BurnAssetFTResult)(nil)
 
 type BurnAssetFTResult struct {
 	Actor      string `serialize:"true" json:"actor"`

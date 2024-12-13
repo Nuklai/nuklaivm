@@ -126,9 +126,7 @@ func UnmarshalMintAssetNFT(p *codec.Packer) (chain.Action, error) {
 	return &mint, p.Err()
 }
 
-var (
-	_ codec.Typed = (*MintAssetNFTResult)(nil)
-)
+var _ codec.Typed = (*MintAssetNFTResult)(nil)
 
 type MintAssetNFTResult struct {
 	Actor           string `serialize:"true" json:"actor"`

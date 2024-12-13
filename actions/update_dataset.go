@@ -171,9 +171,7 @@ func UnmarshalUpdateDataset(p *codec.Packer) (chain.Action, error) {
 	return &update, p.Err()
 }
 
-var (
-	_ codec.Typed = (*UpdateDatasetResult)(nil)
-)
+var _ codec.Typed = (*UpdateDatasetResult)(nil)
 
 type UpdateDatasetResult struct {
 	Actor              string `serialize:"true" json:"actor"`

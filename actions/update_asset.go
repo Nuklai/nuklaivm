@@ -209,9 +209,7 @@ func UnmarshalUpdateAsset(p *codec.Packer) (chain.Action, error) {
 	return &create, p.Err()
 }
 
-var (
-	_ codec.Typed = (*UpdateAssetResult)(nil)
-)
+var _ codec.Typed = (*UpdateAssetResult)(nil)
 
 type UpdateAssetResult struct {
 	Actor                        string `serialize:"true" json:"actor"`

@@ -221,9 +221,7 @@ func UnmarshalSubscribeDatasetMarketplace(p *codec.Packer) (chain.Action, error)
 	return &subscribe, p.Err()
 }
 
-var (
-	_ codec.Typed = (*SubscribeDatasetMarketplaceResult)(nil)
-)
+var _ codec.Typed = (*SubscribeDatasetMarketplaceResult)(nil)
 
 type SubscribeDatasetMarketplaceResult struct {
 	Actor                            string `serialize:"true" json:"actor"`
