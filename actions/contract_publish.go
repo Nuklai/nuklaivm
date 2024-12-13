@@ -55,7 +55,7 @@ func (t *ContractPublish) Execute(
 	if err != nil {
 		return nil, err
 	}
-	return &ContractPublishResult{CommonResult: FillCommonResult(actor.String(), ""), Value: resultBytes}, nil
+	return &ContractPublishResult{Actor: actor.String(), Receiver: "", Value: resultBytes}, nil
 }
 
 func (*ContractPublish) ComputeUnits(chain.Rules) uint64 {
@@ -90,8 +90,9 @@ func UnmarshalPublishContract(p *codec.Packer) (chain.Action, error) {
 var _ codec.Typed = (*ContractPublishResult)(nil)
 
 type ContractPublishResult struct {
-	CommonResult
-	Value []byte `serialize:"true" json:"value"`
+	Actor    string `serialize:"true" json:"actor"`
+	Receiver string `serialize:"true" json:"receiver"`
+	Value    []byte `serialize:"true" json:"value"`
 }
 
 func (*ContractPublishResult) GetTypeID() uint8 {

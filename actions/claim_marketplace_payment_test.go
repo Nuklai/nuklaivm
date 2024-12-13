@@ -152,6 +152,8 @@ func TestClaimMarketplacePaymentAction(t *testing.T) {
 				require.Equal(t, "100", metadataMap["lastClaimedBlock"])
 			},
 			ExpectedOutputs: &ClaimMarketplacePaymentResult{
+				Actor:             actor.String(),
+				Receiver:          actor.String(),
 				LastClaimedBlock:  100,
 				PaymentClaimed:    100,
 				PaymentRemaining:  0,

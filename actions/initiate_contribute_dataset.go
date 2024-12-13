@@ -13,7 +13,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	smath "github.com/ava-labs/avalanchego/utils/math"
@@ -125,7 +124,8 @@ func (d *InitiateContributeDataset) Execute(
 	}
 
 	return &InitiateContributeDatasetResult{
-		CommonResult:           FillCommonResult(actor.String(), ""),
+		Actor:                  actor.String(),
+		Receiver:               "",
 		DatasetContributionID:  datasetContributionID.String(),
 		CollateralAssetAddress: dataConfig.CollateralAssetAddressForDataContribution.String(),
 		CollateralAmountTaken:  dataConfig.CollateralAmountForDataContribution,
@@ -150,12 +150,12 @@ func UnmarshalInitiateContributeDataset(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*InitiateContributeDatasetResult)(nil)
-	_ chain.Marshaler = (*InitiateContributeDatasetResult)(nil)
+	_ codec.Typed = (*InitiateContributeDatasetResult)(nil)
 )
 
 type InitiateContributeDatasetResult struct {
-	CommonResult
+	Actor                  string `serialize:"true" json:"actor"`
+	Receiver               string `serialize:"true" json:"receiver"`
 	DatasetContributionID  string `serialize:"true" json:"dataset_contribution_id"`
 	CollateralAssetAddress string `serialize:"true" json:"collateral_asset_address"`
 	CollateralAmountTaken  uint64 `serialize:"true" json:"collateral_amount_taken"`
@@ -165,18 +165,10 @@ func (*InitiateContributeDatasetResult) GetTypeID() uint8 {
 	return nconsts.InitiateContributeDatasetID
 }
 
-func (r *InitiateContributeDatasetResult) Size() int {
-	return codec.StringLen(r.DatasetContributionID) + codec.StringLen(r.CollateralAssetAddress) + consts.Uint64Len
-}
-
-func (r *InitiateContributeDatasetResult) Marshal(p *codec.Packer) {
-	p.PackString(r.DatasetContributionID)
-	p.PackString(r.CollateralAssetAddress)
-	p.PackUint64(r.CollateralAmountTaken)
-}
-
 func UnmarshalInitiateContributeDatasetResult(p *codec.Packer) (codec.Typed, error) {
 	var result InitiateContributeDatasetResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.DatasetContributionID = p.UnpackString(true)
 	result.CollateralAssetAddress = p.UnpackString(true)
 	result.CollateralAmountTaken = p.UnpackUint64(true)

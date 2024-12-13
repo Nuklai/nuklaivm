@@ -12,7 +12,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
@@ -100,7 +99,8 @@ func (t *Transfer) Execute(
 	}
 
 	return &TransferResult{
-		CommonResult:    FillCommonResult(actor.String(), t.To.String()),
+		Actor:           actor.String(),
+		Receiver:        t.To.String(),
 		SenderBalance:   senderBalance,
 		ReceiverBalance: receiverBalance,
 	}, nil
@@ -125,12 +125,12 @@ func UnmarshalTransfer(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*TransferResult)(nil)
-	_ chain.Marshaler = (*TransferResult)(nil)
+	_ codec.Typed = (*TransferResult)(nil)
 )
 
 type TransferResult struct {
-	CommonResult
+	Actor           string `serialize:"true" json:"actor"`
+	Receiver        string `serialize:"true" json:"receiver"`
 	SenderBalance   uint64 `serialize:"true" json:"sender_balance"`
 	ReceiverBalance uint64 `serialize:"true" json:"receiver_balance"`
 }
@@ -139,17 +139,10 @@ func (*TransferResult) GetTypeID() uint8 {
 	return nconsts.TransferID
 }
 
-func (*TransferResult) Size() int {
-	return consts.Uint64Len * 2
-}
-
-func (r *TransferResult) Marshal(p *codec.Packer) {
-	p.PackLong(r.SenderBalance)
-	p.PackLong(r.ReceiverBalance)
-}
-
 func UnmarshalTransferResult(p *codec.Packer) (codec.Typed, error) {
 	var result TransferResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.SenderBalance = p.UnpackUint64(false)
 	result.ReceiverBalance = p.UnpackUint64(false)
 	return &result, p.Err()

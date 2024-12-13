@@ -4,9 +4,11 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/nuklai/nuklaivm/vm"
@@ -75,14 +77,19 @@ func processResult(result *chain.Result) error {
 			return err
 		}
 
-		// Assert the output to the expected type
-		output, ok := r.(interface{})
-		if !ok {
-			return errors.New("failed to assert typed output to expected result type")
-		}
+		// Automatically handle all types by reflecting and marshaling to JSON
+		reflectValue := reflect.ValueOf(r)
+		if reflectValue.IsValid() && !reflectValue.IsZero() {
+			// Marshal the result to JSON for a generic and readable output
+			outputJSON, err := json.MarshalIndent(r, "", "  ")
+			if err != nil {
+				return fmt.Errorf("failed to marshal result: %w", err)
+			}
 
-		// Output the results
-		utils.Outf("{{green}}output: {{/}} %+v\n", output)
+			utils.Outf("{{green}}output:{{/}} %s\n", string(outputJSON))
+		} else {
+			return errors.New("result is invalid or nil")
+		}
 	}
 	return nil
 }

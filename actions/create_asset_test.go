@@ -136,6 +136,8 @@ func TestCreateAssetAction(t *testing.T) {
 				require.Equal(t, codec.EmptyAddress, enableDisableKYCAccountAdmin)
 			},
 			ExpectedOutputs: &CreateAssetResult{
+				Actor:        actor.String(),
+				Receiver:     "",
 				AssetAddress: assetFT.String(),
 				AssetBalance: 0,
 			},
@@ -171,6 +173,8 @@ func TestCreateAssetAction(t *testing.T) {
 				require.Equal(t, codec.EmptyAddress, enableDisableKYCAccountAdmin)
 			},
 			ExpectedOutputs: &CreateAssetResult{
+				Actor:        actor.String(),
+				Receiver:     "",
 				AssetAddress: assetNFT.String(),
 				AssetBalance: 0,
 			},
@@ -234,6 +238,8 @@ func TestCreateAssetAction(t *testing.T) {
 				require.True(t, storage.AssetExists(ctx, store, nftAddress))
 			},
 			ExpectedOutputs: &CreateAssetResult{
+				Actor:                   actor.String(),
+				Receiver:                actor.String(),
 				AssetAddress:            assetFractional.String(),
 				AssetBalance:            1,
 				DatasetParentNftAddress: nftAddress.String(),

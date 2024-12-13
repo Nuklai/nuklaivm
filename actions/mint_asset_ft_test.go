@@ -118,6 +118,8 @@ func TestMintAssetFTAction(t *testing.T) {
 				require.Equal(t, uint64(1000), balance)
 			},
 			ExpectedOutputs: &MintAssetFTResult{
+				Actor:      actor.String(),
+				Receiver:   actor.String(),
 				OldBalance: 0,
 				NewBalance: 1000,
 			},

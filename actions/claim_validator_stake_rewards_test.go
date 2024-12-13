@@ -88,6 +88,8 @@ func TestClaimValidatorStakeRewardsActionSuccess(t *testing.T) {
 				require.Equal(t, actor, rewardAddress)
 			},
 			ExpectedOutputs: &ClaimValidatorStakeRewardsResult{
+				Actor:              actor.String(),
+				Receiver:           actor.String(),
 				StakeStartBlock:    25,
 				StakeEndBlock:      50,
 				StakedAmount:       emission.GetStakingConfig().MinValidatorStake,

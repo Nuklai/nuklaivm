@@ -13,7 +13,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
@@ -84,7 +83,8 @@ func (u *UpdateDataset) Execute(
 	}
 
 	var updateDatasetResult UpdateDatasetResult
-	updateDatasetResult.CommonResult = FillCommonResult(actor.String(), "")
+	updateDatasetResult.Actor = actor.String()
+	updateDatasetResult.Receiver = ""
 
 	// if u.Name is passed, update the dataset name
 	// otherwise, keep the existing name
@@ -172,12 +172,12 @@ func UnmarshalUpdateDataset(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*UpdateDatasetResult)(nil)
-	_ chain.Marshaler = (*UpdateDatasetResult)(nil)
+	_ codec.Typed = (*UpdateDatasetResult)(nil)
 )
 
 type UpdateDatasetResult struct {
-	CommonResult
+	Actor              string `serialize:"true" json:"actor"`
+	Receiver           string `serialize:"true" json:"receiver"`
 	Name               string `serialize:"true" json:"name"`
 	Description        string `serialize:"true" json:"description"`
 	Categories         string `serialize:"true" json:"categories"`
@@ -191,22 +191,10 @@ func (*UpdateDatasetResult) GetTypeID() uint8 {
 	return nconsts.UpdateDatasetID
 }
 
-func (r *UpdateDatasetResult) Size() int {
-	return codec.StringLen(r.Name) + codec.StringLen(r.Description) + codec.StringLen(r.Categories) + codec.StringLen(r.LicenseName) + codec.StringLen(r.LicenseSymbol) + codec.StringLen(r.LicenseURL) + consts.BoolLen
-}
-
-func (r *UpdateDatasetResult) Marshal(p *codec.Packer) {
-	p.PackString(r.Name)
-	p.PackString(r.Description)
-	p.PackString(r.Categories)
-	p.PackString(r.LicenseName)
-	p.PackString(r.LicenseSymbol)
-	p.PackString(r.LicenseURL)
-	p.PackBool(r.IsCommunityDataset)
-}
-
 func UnmarshalUpdateDatasetResult(p *codec.Packer) (codec.Typed, error) {
 	var result UpdateDatasetResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.Name = p.UnpackString(false)
 	result.Description = p.UnpackString(false)
 	result.Categories = p.UnpackString(false)

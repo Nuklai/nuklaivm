@@ -86,7 +86,7 @@ func (t *ContractCall) Execute(
 		return nil, err
 	}
 	consumedFuel := t.Fuel - callInfo.RemainingFuel()
-	return &ContractCallResult{CommonResult: FillCommonResult(actor.String(), ""), Value: resultBytes, ConsumedFuel: consumedFuel}, nil
+	return &ContractCallResult{Actor: actor.String(), Receiver: "", Value: resultBytes, ConsumedFuel: consumedFuel}, nil
 }
 
 func (t *ContractCall) ComputeUnits(chain.Rules) uint64 {
@@ -143,7 +143,8 @@ func UnmarshalCallContract(r *runtime.WasmRuntime) func(p *codec.Packer) (chain.
 var _ codec.Typed = (*ContractCallResult)(nil)
 
 type ContractCallResult struct {
-	CommonResult
+	Actor        string `serialize:"true" json:"actor"`
+	Receiver     string `serialize:"true" json:"receiver"`
 	Value        []byte `serialize:"true" json:"value"`
 	ConsumedFuel uint64 `serialize:"true" json:"consumedfuel"`
 }

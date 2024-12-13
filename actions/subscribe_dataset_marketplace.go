@@ -17,7 +17,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	smath "github.com/ava-labs/avalanchego/utils/math"
@@ -191,7 +190,8 @@ func (d *SubscribeDatasetMarketplace) Execute(
 	}
 
 	return &SubscribeDatasetMarketplaceResult{
-		CommonResult:                     FillCommonResult(actor.String(), actor.String()),
+		Actor:                            actor.String(),
+		Receiver:                         actor.String(),
 		MarketplaceAssetAddress:          d.MarketplaceAssetAddress.String(),
 		MarketplaceAssetNumSubscriptions: prevSubscriptions + 1,
 		SubscriptionNftAddress:           nftAddress.String(),
@@ -222,12 +222,12 @@ func UnmarshalSubscribeDatasetMarketplace(p *codec.Packer) (chain.Action, error)
 }
 
 var (
-	_ codec.Typed     = (*SubscribeDatasetMarketplaceResult)(nil)
-	_ chain.Marshaler = (*SubscribeDatasetMarketplaceResult)(nil)
+	_ codec.Typed = (*SubscribeDatasetMarketplaceResult)(nil)
 )
 
 type SubscribeDatasetMarketplaceResult struct {
-	CommonResult
+	Actor                            string `serialize:"true" json:"actor"`
+	Receiver                         string `serialize:"true" json:"receiver"`
 	MarketplaceAssetAddress          string `serialize:"true" json:"marketplace_asset_address"`
 	MarketplaceAssetNumSubscriptions uint64 `serialize:"true" json:"marketplace_asset_num_subscriptions"`
 	SubscriptionNftAddress           string `serialize:"true" json:"subscription_nft_address"`
@@ -243,24 +243,10 @@ func (*SubscribeDatasetMarketplaceResult) GetTypeID() uint8 {
 	return nconsts.SubscribeDatasetMarketplaceID
 }
 
-func (r *SubscribeDatasetMarketplaceResult) Size() int {
-	return codec.StringLen(r.MarketplaceAssetAddress) + consts.Uint64Len*6 + codec.StringLen(r.SubscriptionNftAddress) + codec.StringLen(r.PaymentAssetAddress)
-}
-
-func (r *SubscribeDatasetMarketplaceResult) Marshal(p *codec.Packer) {
-	p.PackString(r.MarketplaceAssetAddress)
-	p.PackLong(r.MarketplaceAssetNumSubscriptions)
-	p.PackString(r.SubscriptionNftAddress)
-	p.PackString(r.PaymentAssetAddress)
-	p.PackUint64(r.DatasetPricePerBlock)
-	p.PackUint64(r.TotalCost)
-	p.PackUint64(r.NumBlocksToSubscribe)
-	p.PackUint64(r.IssuanceBlock)
-	p.PackUint64(r.ExpirationBlock)
-}
-
 func UnmarshalSubscribeDatasetMarketplaceResult(p *codec.Packer) (codec.Typed, error) {
 	var result SubscribeDatasetMarketplaceResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.MarketplaceAssetAddress = p.UnpackString(true)
 	result.MarketplaceAssetNumSubscriptions = p.UnpackUint64(false)
 	result.SubscriptionNftAddress = p.UnpackString(true)

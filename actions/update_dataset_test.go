@@ -73,6 +73,8 @@ func TestUpdateDatasetAction(t *testing.T) {
 				require.Equal(t, actor, owner)
 			},
 			ExpectedOutputs: &UpdateDatasetResult{
+				Actor:       actor.String(),
+				Receiver:    "",
 				Name:        "Updated Name",
 				Description: "Updated Description",
 			},

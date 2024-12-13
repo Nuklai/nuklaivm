@@ -13,7 +13,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
@@ -136,7 +135,8 @@ func (c *CreateAsset) Execute(
 	}
 
 	output := CreateAssetResult{
-		CommonResult: FillCommonResult(actor.String(), ""),
+		Actor:        actor.String(),
+		Receiver:     "",
 		AssetAddress: assetAddress.String(),
 		AssetBalance: uint64(0),
 	}
@@ -155,7 +155,7 @@ func (c *CreateAsset) Execute(
 		// Mint the parent NFT for the dataset(fractionalized asset)
 		nftAddress := storage.AssetAddressNFT(assetAddress, []byte(c.Metadata), actor)
 		output.DatasetParentNftAddress = nftAddress.String()
-		output.CommonResult.Receiver = actor.String()
+		output.Receiver = actor.String()
 		symbol := utils.CombineWithSuffix([]byte(c.Symbol), 0, storage.MaxSymbolSize)
 		if err := storage.SetAssetInfo(ctx, mu, nftAddress, nconsts.AssetNonFungibleTokenID, []byte(c.Name), symbol, 0, []byte(c.Metadata), []byte(assetAddress.String()), 0, 1, actor, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress, codec.EmptyAddress); err != nil {
 			return nil, err
@@ -195,12 +195,12 @@ func UnmarshalCreateAsset(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*CreateAssetResult)(nil)
-	_ chain.Marshaler = (*CreateAssetResult)(nil)
+	_ codec.Typed = (*CreateAssetResult)(nil)
 )
 
 type CreateAssetResult struct {
-	CommonResult
+	Actor                   string `serialize:"true" json:"actor"`
+	Receiver                string `serialize:"true" json:"receiver"`
 	AssetAddress            string `serialize:"true" json:"asset_address"`
 	AssetBalance            uint64 `serialize:"true" json:"asset_balance"`
 	DatasetParentNftAddress string `serialize:"true" json:"dataset_parent_nft_address"`
@@ -210,18 +210,10 @@ func (*CreateAssetResult) GetTypeID() uint8 {
 	return nconsts.CreateAssetID
 }
 
-func (r *CreateAssetResult) Size() int {
-	return codec.StringLen(r.AssetAddress) + consts.Uint64Len + codec.StringLen(r.DatasetParentNftAddress)
-}
-
-func (r *CreateAssetResult) Marshal(p *codec.Packer) {
-	p.PackString(r.AssetAddress)
-	p.PackUint64(r.AssetBalance)
-	p.PackString(r.DatasetParentNftAddress)
-}
-
 func UnmarshalCreateAssetResult(p *codec.Packer) (codec.Typed, error) {
 	var result CreateAssetResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.AssetAddress = p.UnpackString(true)
 	result.AssetBalance = p.UnpackUint64(false)
 	result.DatasetParentNftAddress = p.UnpackString(false)

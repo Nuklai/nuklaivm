@@ -13,7 +13,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	smath "github.com/ava-labs/avalanchego/utils/math"
@@ -97,7 +96,8 @@ func (u *WithdrawValidatorStake) Execute(
 	}
 
 	return &WithdrawValidatorStakeResult{
-		CommonResult:         FillCommonResult(actor.String(), actor.String()),
+		Actor:                actor.String(),
+		Receiver:             actor.String(),
 		StakeStartBlock:      stakeStartBlock,
 		StakeEndBlock:        stakeEndBlock,
 		UnstakedAmount:       stakedAmount,
@@ -141,12 +141,12 @@ func UnmarshalWithdrawValidatorStake(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*WithdrawValidatorStakeResult)(nil)
-	_ chain.Marshaler = (*WithdrawValidatorStakeResult)(nil)
+	_ codec.Typed = (*WithdrawValidatorStakeResult)(nil)
 )
 
 type WithdrawValidatorStakeResult struct {
-	CommonResult
+	Actor                string `serialize:"true" json:"actor"`
+	Receiver             string `serialize:"true" json:"receiver"`
 	StakeStartBlock      uint64 `serialize:"true" json:"stake_start_block"`
 	StakeEndBlock        uint64 `serialize:"true" json:"stake_end_block"`
 	UnstakedAmount       uint64 `serialize:"true" json:"unstaked_amount"`
@@ -161,23 +161,10 @@ func (*WithdrawValidatorStakeResult) GetTypeID() uint8 {
 	return nconsts.WithdrawValidatorStakeID
 }
 
-func (r *WithdrawValidatorStakeResult) Size() int {
-	return 7*consts.Uint64Len + codec.StringLen(r.DistributedTo)
-}
-
-func (r *WithdrawValidatorStakeResult) Marshal(p *codec.Packer) {
-	p.PackUint64(r.StakeStartBlock)
-	p.PackUint64(r.StakeEndBlock)
-	p.PackUint64(r.UnstakedAmount)
-	p.PackUint64(r.DelegationFeeRate)
-	p.PackUint64(r.RewardAmount)
-	p.PackUint64(r.BalanceBeforeUnstake)
-	p.PackUint64(r.BalanceAfterUnstake)
-	p.PackString(r.DistributedTo)
-}
-
 func UnmarshalWithdrawValidatorStakeResult(p *codec.Packer) (codec.Typed, error) {
 	var result WithdrawValidatorStakeResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.StakeStartBlock = p.UnpackUint64(true)
 	result.StakeEndBlock = p.UnpackUint64(true)
 	result.UnstakedAmount = p.UnpackUint64(false)

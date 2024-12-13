@@ -17,7 +17,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	smath "github.com/ava-labs/avalanchego/utils/math"
@@ -166,7 +165,8 @@ func (c *ClaimMarketplacePayment) Execute(
 	}
 
 	return &ClaimMarketplacePaymentResult{
-		CommonResult:      FillCommonResult(actor.String(), actor.String()),
+		Actor:             actor.String(),
+		Receiver:          actor.String(),
 		LastClaimedBlock:  lastClaimedBlock,
 		PaymentClaimed:    paymentClaimed,
 		PaymentRemaining:  paymentRemaining,
@@ -192,12 +192,12 @@ func UnmarshalClaimMarketplacePayment(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*ClaimMarketplacePaymentResult)(nil)
-	_ chain.Marshaler = (*ClaimMarketplacePaymentResult)(nil)
+	_ codec.Typed = (*ClaimMarketplacePaymentResult)(nil)
 )
 
 type ClaimMarketplacePaymentResult struct {
-	CommonResult
+	Actor             string `serialize:"true" json:"actor"`
+	Receiver          string `serialize:"true" json:"receiver"`
 	LastClaimedBlock  uint64 `serialize:"true" json:"last_claimed_block"`
 	PaymentClaimed    uint64 `serialize:"true" json:"payment_claimed"`
 	PaymentRemaining  uint64 `serialize:"true" json:"payment_remaining"`
@@ -209,20 +209,10 @@ func (*ClaimMarketplacePaymentResult) GetTypeID() uint8 {
 	return nconsts.ClaimMarketplacePaymentID
 }
 
-func (r *ClaimMarketplacePaymentResult) Size() int {
-	return consts.Uint64Len*4 + codec.StringLen(r.DistributedTo)
-}
-
-func (r *ClaimMarketplacePaymentResult) Marshal(p *codec.Packer) {
-	p.PackUint64(r.LastClaimedBlock)
-	p.PackUint64(r.PaymentClaimed)
-	p.PackUint64(r.PaymentRemaining)
-	p.PackUint64(r.DistributedReward)
-	p.PackString(r.DistributedTo)
-}
-
 func UnmarshalClaimMarketplacePaymentResult(p *codec.Packer) (codec.Typed, error) {
 	var result ClaimMarketplacePaymentResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.LastClaimedBlock = p.UnpackUint64(false)
 	result.PaymentClaimed = p.UnpackUint64(false)
 	result.PaymentRemaining = p.UnpackUint64(false)

@@ -12,7 +12,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
@@ -85,9 +84,10 @@ func (m *MintAssetFT) Execute(
 	}
 
 	return &MintAssetFTResult{
-		CommonResult: FillCommonResult(actor.String(), m.To.String()),
-		OldBalance:   newBalance - m.Value,
-		NewBalance:   newBalance,
+		Actor:      actor.String(),
+		Receiver:   m.To.String(),
+		OldBalance: newBalance - m.Value,
+		NewBalance: newBalance,
 	}, nil
 }
 
@@ -109,12 +109,12 @@ func UnmarshalMintAssetFT(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*MintAssetFTResult)(nil)
-	_ chain.Marshaler = (*MintAssetFTResult)(nil)
+	_ codec.Typed = (*MintAssetFTResult)(nil)
 )
 
 type MintAssetFTResult struct {
-	CommonResult
+	Actor      string `serialize:"true" json:"actor"`
+	Receiver   string `serialize:"true" json:"receiver"`
 	OldBalance uint64 `serialize:"true" json:"old_balance"`
 	NewBalance uint64 `serialize:"true" json:"new_balance"`
 }
@@ -122,18 +122,10 @@ type MintAssetFTResult struct {
 func (*MintAssetFTResult) GetTypeID() uint8 {
 	return nconsts.MintAssetFTID
 }
-
-func (*MintAssetFTResult) Size() int {
-	return consts.Uint64Len * 2
-}
-
-func (r *MintAssetFTResult) Marshal(p *codec.Packer) {
-	p.PackUint64(r.OldBalance)
-	p.PackUint64(r.NewBalance)
-}
-
 func UnmarshalMintAssetFTResult(p *codec.Packer) (codec.Typed, error) {
 	var result MintAssetFTResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.OldBalance = p.UnpackUint64(false)
 	result.NewBalance = p.UnpackUint64(true)
 	return &result, p.Err()

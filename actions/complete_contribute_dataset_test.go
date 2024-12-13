@@ -181,6 +181,8 @@ func TestCompleteContributeDatasetAction(t *testing.T) {
 				require.Equal(t, uint64(1), balance)
 			},
 			ExpectedOutputs: &CompleteContributeDatasetResult{
+				Actor:                    actor.String(),
+				Receiver:                 actor.String(),
 				CollateralAssetAddress:   dataset.GetDatasetConfig().CollateralAssetAddressForDataContribution.String(),
 				CollateralAmountRefunded: dataset.GetDatasetConfig().CollateralAmountForDataContribution,
 				DatasetChildNftAddress:   nftAddress.String(),

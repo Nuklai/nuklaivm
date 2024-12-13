@@ -13,7 +13,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	smath "github.com/ava-labs/avalanchego/utils/math"
@@ -89,7 +88,8 @@ func (c *ClaimDelegationStakeRewards) Execute(
 	}
 
 	return &ClaimDelegationStakeRewardsResult{
-		CommonResult:       FillCommonResult(actor.String(), actor.String()),
+		Actor:              actor.String(),
+		Receiver:           actor.String(),
 		StakeStartBlock:    stakeStartBlock,
 		StakeEndBlock:      stakeEndBlock,
 		StakedAmount:       stakedAmount,
@@ -131,12 +131,12 @@ func UnmarshalClaimDelegationStakeRewards(p *codec.Packer) (chain.Action, error)
 }
 
 var (
-	_ codec.Typed     = (*ClaimDelegationStakeRewardsResult)(nil)
-	_ chain.Marshaler = (*ClaimDelegationStakeRewardsResult)(nil)
+	_ codec.Typed = (*ClaimDelegationStakeRewardsResult)(nil)
 )
 
 type ClaimDelegationStakeRewardsResult struct {
-	CommonResult
+	Actor              string `serialize:"true" json:"actor"`
+	Receiver           string `serialize:"true" json:"receiver"`
 	StakeStartBlock    uint64 `serialize:"true" json:"stake_start_block"`
 	StakeEndBlock      uint64 `serialize:"true" json:"stake_end_block"`
 	StakedAmount       uint64 `serialize:"true" json:"staked_amount"`
@@ -149,21 +149,10 @@ func (*ClaimDelegationStakeRewardsResult) GetTypeID() uint8 {
 	return nconsts.ClaimDelegationStakeRewardsID
 }
 
-func (r *ClaimDelegationStakeRewardsResult) Size() int {
-	return 5*consts.Uint64Len + codec.StringLen(r.DistributedTo)
-}
-
-func (r *ClaimDelegationStakeRewardsResult) Marshal(p *codec.Packer) {
-	p.PackUint64(r.StakeStartBlock)
-	p.PackUint64(r.StakeEndBlock)
-	p.PackUint64(r.StakedAmount)
-	p.PackUint64(r.BalanceBeforeClaim)
-	p.PackUint64(r.BalanceAfterClaim)
-	p.PackString(r.DistributedTo)
-}
-
 func UnmarshalClaimDelegationStakeRewardsResult(p *codec.Packer) (codec.Typed, error) {
 	var result ClaimDelegationStakeRewardsResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.StakeStartBlock = p.UnpackUint64(true)
 	result.StakeEndBlock = p.UnpackUint64(true)
 	result.StakedAmount = p.UnpackUint64(true)

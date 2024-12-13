@@ -159,6 +159,8 @@ func TestTransferAction(t *testing.T) {
 				require.Equal(t, senderBalance, uint64(0))
 			},
 			ExpectedOutputs: &TransferResult{
+				Actor:           actor1.String(),
+				Receiver:        actor2.String(),
 				SenderBalance:   0,
 				ReceiverBalance: 1,
 			},
@@ -181,6 +183,8 @@ func TestTransferAction(t *testing.T) {
 				require.Equal(t, senderBalance, uint64(0))
 			},
 			ExpectedOutputs: &TransferResult{
+				Actor:           actor1.String(),
+				Receiver:        actor2.String(),
 				SenderBalance:   0,
 				ReceiverBalance: 1,
 			},
@@ -211,6 +215,8 @@ func TestTransferAction(t *testing.T) {
 				require.Equal(t, senderBalance, uint64(0))
 			},
 			ExpectedOutputs: &TransferResult{
+				Actor:           actor1.String(),
+				Receiver:        actor2.String(),
 				SenderBalance:   0,
 				ReceiverBalance: 1,
 			},

@@ -12,7 +12,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
@@ -86,9 +85,10 @@ func (b *BurnAssetNFT) Execute(
 	}
 
 	return &BurnAssetNFTResult{
-		CommonResult: FillCommonResult(actor.String(), ""),
-		OldBalance:   newBalance + 1,
-		NewBalance:   newBalance,
+		Actor:      actor.String(),
+		Receiver:   "",
+		OldBalance: newBalance + 1,
+		NewBalance: newBalance,
 	}, nil
 }
 
@@ -109,12 +109,12 @@ func UnmarshalBurnAssetNFT(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*BurnAssetNFTResult)(nil)
-	_ chain.Marshaler = (*BurnAssetNFTResult)(nil)
+	_ codec.Typed = (*BurnAssetNFTResult)(nil)
 )
 
 type BurnAssetNFTResult struct {
-	CommonResult
+	Actor      string `serialize:"true" json:"actor"`
+	Receiver   string `serialize:"true" json:"receiver"`
 	OldBalance uint64 `serialize:"true" json:"old_balance"`
 	NewBalance uint64 `serialize:"true" json:"new_balance"`
 }
@@ -123,17 +123,10 @@ func (*BurnAssetNFTResult) GetTypeID() uint8 {
 	return nconsts.BurnAssetNFTID
 }
 
-func (*BurnAssetNFTResult) Size() int {
-	return consts.Uint64Len * 2
-}
-
-func (r *BurnAssetNFTResult) Marshal(p *codec.Packer) {
-	p.PackUint64(r.OldBalance)
-	p.PackUint64(r.NewBalance)
-}
-
 func UnmarshalBurnAssetNFTResult(p *codec.Packer) (codec.Typed, error) {
 	var result BurnAssetNFTResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.OldBalance = p.UnpackUint64(true)
 	result.NewBalance = p.UnpackUint64(false)
 	return &result, p.Err()

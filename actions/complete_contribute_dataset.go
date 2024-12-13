@@ -14,7 +14,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	smath "github.com/ava-labs/avalanchego/utils/math"
@@ -150,7 +149,8 @@ func (d *CompleteContributeDataset) Execute(
 	}
 
 	return &CompleteContributeDatasetResult{
-		CommonResult:             FillCommonResult(actor.String(), d.DatasetContributor.String()),
+		Actor:                    actor.String(),
+		Receiver:                 d.DatasetContributor.String(),
 		CollateralAssetAddress:   dataConfig.CollateralAssetAddressForDataContribution.String(),
 		CollateralAmountRefunded: dataConfig.CollateralAmountForDataContribution,
 		DatasetChildNftAddress:   nftAddress.String(),
@@ -178,12 +178,12 @@ func UnmarshalCompleteContributeDataset(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*CompleteContributeDatasetResult)(nil)
-	_ chain.Marshaler = (*CompleteContributeDatasetResult)(nil)
+	_ codec.Typed = (*CompleteContributeDatasetResult)(nil)
 )
 
 type CompleteContributeDatasetResult struct {
-	CommonResult
+	Actor                    string `serialize:"true" json:"actor"`
+	Receiver                 string `serialize:"true" json:"receiver"`
 	CollateralAssetAddress   string `serialize:"true" json:"collateral_asset_address"`
 	CollateralAmountRefunded uint64 `serialize:"true" json:"collateral_amount_refunded"`
 	DatasetChildNftAddress   string `serialize:"true" json:"dataset_child_nft_address"`
@@ -196,21 +196,10 @@ func (*CompleteContributeDatasetResult) GetTypeID() uint8 {
 	return nconsts.CompleteContributeDatasetID
 }
 
-func (r *CompleteContributeDatasetResult) Size() int {
-	return codec.StringLen(r.CollateralAssetAddress) + consts.Uint64Len + codec.StringLen(r.DatasetChildNftAddress) + codec.StringLen(r.To) + codec.StringLen(r.DataLocation) + codec.StringLen(r.DataIdentifier)
-}
-
-func (r *CompleteContributeDatasetResult) Marshal(p *codec.Packer) {
-	p.PackString(r.CollateralAssetAddress)
-	p.PackUint64(r.CollateralAmountRefunded)
-	p.PackString(r.DatasetChildNftAddress)
-	p.PackString(r.To)
-	p.PackString(r.DataLocation)
-	p.PackString(r.DataIdentifier)
-}
-
 func UnmarshalCompleteContributeDatasetResult(p *codec.Packer) (codec.Typed, error) {
 	var result CompleteContributeDatasetResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.CollateralAssetAddress = p.UnpackString(true)
 	result.CollateralAmountRefunded = p.UnpackUint64(false)
 	result.DatasetChildNftAddress = p.UnpackString(true)

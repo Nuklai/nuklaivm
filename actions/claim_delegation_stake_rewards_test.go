@@ -86,6 +86,8 @@ func TestClaimDelegationStakeRewardsActionSuccess(t *testing.T) {
 				require.Equal(t, actor, rewardAddress)
 			},
 			ExpectedOutputs: &ClaimDelegationStakeRewardsResult{
+				Actor:              actor.String(),
+				Receiver:           actor.String(),
 				StakeStartBlock:    25,
 				StakeEndBlock:      50,
 				StakedAmount:       1000,

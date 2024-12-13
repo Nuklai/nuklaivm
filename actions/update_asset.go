@@ -13,7 +13,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
@@ -113,7 +112,8 @@ func (u *UpdateAsset) Execute(
 	}
 
 	var updateAssetResult UpdateAssetResult
-	updateAssetResult.CommonResult = FillCommonResult(actor.String(), "")
+	updateAssetResult.Actor = actor.String()
+	updateAssetResult.Receiver = ""
 
 	// if u.Name is passed, update the dataset name
 	// otherwise, keep the existing name
@@ -210,12 +210,12 @@ func UnmarshalUpdateAsset(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*UpdateAssetResult)(nil)
-	_ chain.Marshaler = (*UpdateAssetResult)(nil)
+	_ codec.Typed = (*UpdateAssetResult)(nil)
 )
 
 type UpdateAssetResult struct {
-	CommonResult
+	Actor                        string `serialize:"true" json:"actor"`
+	Receiver                     string `serialize:"true" json:"receiver"`
 	Name                         string `serialize:"true" json:"name"`
 	Symbol                       string `serialize:"true" json:"symbol"`
 	Metadata                     string `serialize:"true" json:"metadata"`
@@ -231,24 +231,10 @@ func (*UpdateAssetResult) GetTypeID() uint8 {
 	return nconsts.UpdateAssetID
 }
 
-func (r *UpdateAssetResult) Size() int {
-	return codec.StringLen(r.Name) + codec.StringLen(r.Symbol) + codec.StringLen(r.Metadata) + consts.Uint64Len + codec.StringLen(r.Owner) + codec.StringLen(r.MintAdmin) + codec.StringLen(r.PauseUnpauseAdmin) + codec.StringLen(r.FreezeUnfreezeAdmin) + codec.StringLen(r.EnableDisableKYCAccountAdmin)
-}
-
-func (r *UpdateAssetResult) Marshal(p *codec.Packer) {
-	p.PackString(r.Name)
-	p.PackString(r.Symbol)
-	p.PackString(r.Metadata)
-	p.PackUint64(r.MaxSupply)
-	p.PackString(r.Owner)
-	p.PackString(r.MintAdmin)
-	p.PackString(r.PauseUnpauseAdmin)
-	p.PackString(r.FreezeUnfreezeAdmin)
-	p.PackString(r.EnableDisableKYCAccountAdmin)
-}
-
 func UnmarshalUpdateAssetResult(p *codec.Packer) (codec.Typed, error) {
 	var result UpdateAssetResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.Name = p.UnpackString(false)
 	result.Symbol = p.UnpackString(false)
 	result.Metadata = p.UnpackString(false)

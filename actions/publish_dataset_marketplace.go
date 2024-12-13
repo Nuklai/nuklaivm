@@ -13,7 +13,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
@@ -104,7 +103,8 @@ func (d *PublishDatasetMarketplace) Execute(
 	}
 
 	return &PublishDatasetMarketplaceResult{
-		CommonResult:            FillCommonResult(actor.String(), ""),
+		Actor:                   actor.String(),
+		Receiver:                "",
 		MarketplaceAssetAddress: marketplaceAssetAddress.String(),
 		PaymentAssetAddress:     d.PaymentAssetAddress.String(),
 		DatasetPricePerBlock:    d.DatasetPricePerBlock,
@@ -130,12 +130,12 @@ func UnmarshalPublishDatasetMarketplace(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*PublishDatasetMarketplaceResult)(nil)
-	_ chain.Marshaler = (*PublishDatasetMarketplaceResult)(nil)
+	_ codec.Typed = (*PublishDatasetMarketplaceResult)(nil)
 )
 
 type PublishDatasetMarketplaceResult struct {
-	CommonResult
+	Actor                   string `serialize:"true" json:"actor"`
+	Receiver                string `serialize:"true" json:"receiver"`
 	MarketplaceAssetAddress string `serialize:"true" json:"marketplace_asset_address"`
 	PaymentAssetAddress     string `serialize:"true" json:"payment_asset_address"`
 	Publisher               string `serialize:"true" json:"publisher"`
@@ -146,19 +146,10 @@ func (*PublishDatasetMarketplaceResult) GetTypeID() uint8 {
 	return nconsts.PublishDatasetMarketplaceID
 }
 
-func (r *PublishDatasetMarketplaceResult) Size() int {
-	return codec.StringLen(r.MarketplaceAssetAddress) + codec.StringLen(r.PaymentAssetAddress) + codec.StringLen(r.Publisher) + consts.Uint64Len
-}
-
-func (r *PublishDatasetMarketplaceResult) Marshal(p *codec.Packer) {
-	p.PackString(r.MarketplaceAssetAddress)
-	p.PackString(r.PaymentAssetAddress)
-	p.PackString(r.Publisher)
-	p.PackUint64(r.DatasetPricePerBlock)
-}
-
 func UnmarshalPublishDatasetMarketplaceResult(p *codec.Packer) (codec.Typed, error) {
 	var result PublishDatasetMarketplaceResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.MarketplaceAssetAddress = p.UnpackString(true)
 	result.PaymentAssetAddress = p.UnpackString(true)
 	result.Publisher = p.UnpackString(true)

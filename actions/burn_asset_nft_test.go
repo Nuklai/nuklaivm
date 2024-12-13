@@ -94,6 +94,8 @@ func TestBurnAssetNFTAction(t *testing.T) {
 				require.Equal(t, uint64(0), totalSupply)
 			},
 			ExpectedOutputs: &BurnAssetNFTResult{
+				Actor:      actor.String(),
+				Receiver:   "",
 				OldBalance: 1,
 				NewBalance: 0,
 			},

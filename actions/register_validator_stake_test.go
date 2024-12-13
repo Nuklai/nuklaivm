@@ -111,6 +111,8 @@ func TestRegisterValidatorStakeAction(t *testing.T) {
 				require.Equal(t, actor, ownerAddress)
 			},
 			ExpectedOutputs: &RegisterValidatorStakeResult{
+				Actor:             actor.String(),
+				Receiver:          "",
 				NodeID:            nodeID.String(),
 				StakeStartBlock:   60,
 				StakeEndBlock:     200,

@@ -92,6 +92,8 @@ func TestCreateDatasetAction(t *testing.T) {
 				require.Equal(t, actor, owner)
 			},
 			ExpectedOutputs: &CreateDatasetResult{
+				Actor:                   actor.String(),
+				Receiver:                actor.String(),
 				DatasetAddress:          datasetAddress.String(),
 				DatasetParentNftAddress: nftAddress.String(),
 			},

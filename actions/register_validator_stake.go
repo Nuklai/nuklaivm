@@ -172,7 +172,8 @@ func (r *RegisterValidatorStake) Execute(
 		return nil, err
 	}
 	return &RegisterValidatorStakeResult{
-		CommonResult:      FillCommonResult(actor.String(), ""),
+		Actor:             actor.String(),
+		Receiver:          "",
 		NodeID:            stakeInfo.NodeID.String(),
 		StakeStartBlock:   stakeInfo.StakeStartBlock,
 		StakeEndBlock:     stakeInfo.StakeEndBlock,
@@ -268,12 +269,12 @@ func UnmarshalValidatorStakeInfo(p *codec.Packer) (*ValidatorStakeInfo, error) {
 }
 
 var (
-	_ codec.Typed     = (*RegisterValidatorStakeResult)(nil)
-	_ chain.Marshaler = (*RegisterValidatorStakeResult)(nil)
+	_ codec.Typed = (*RegisterValidatorStakeResult)(nil)
 )
 
 type RegisterValidatorStakeResult struct {
-	CommonResult
+	Actor             string `serialize:"true" json:"actor"`
+	Receiver          string `serialize:"true" json:"receiver"`
 	NodeID            string `serialize:"true" json:"node_id"`
 	StakeStartBlock   uint64 `serialize:"true" json:"stake_start_block"`
 	StakeEndBlock     uint64 `serialize:"true" json:"stake_end_block"`
@@ -286,21 +287,10 @@ func (*RegisterValidatorStakeResult) GetTypeID() uint8 {
 	return nconsts.RegisterValidatorStakeID
 }
 
-func (r *RegisterValidatorStakeResult) Size() int {
-	return codec.StringLen(r.NodeID) + consts.Uint64Len*4 + codec.StringLen(r.RewardAddress)
-}
-
-func (r *RegisterValidatorStakeResult) Marshal(p *codec.Packer) {
-	p.PackString(r.NodeID)
-	p.PackUint64(r.StakeStartBlock)
-	p.PackUint64(r.StakeEndBlock)
-	p.PackUint64(r.StakedAmount)
-	p.PackUint64(r.DelegationFeeRate)
-	p.PackString(r.RewardAddress)
-}
-
 func UnmarshalRegisterValidatorStakeResult(p *codec.Packer) (codec.Typed, error) {
 	var result RegisterValidatorStakeResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.NodeID = p.UnpackString(true)
 	result.StakeStartBlock = p.UnpackUint64(true)
 	result.StakeEndBlock = p.UnpackUint64(true)

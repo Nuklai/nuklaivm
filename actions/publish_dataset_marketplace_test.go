@@ -109,6 +109,8 @@ func TestPublishDatasetMarketplaceAction(t *testing.T) {
 				require.Equal(t, uint64(100), basePrice)
 			},
 			ExpectedOutputs: &PublishDatasetMarketplaceResult{
+				Actor:                   actor.String(),
+				Receiver:                "",
 				MarketplaceAssetAddress: marketplaceAssetAddress.String(),
 				PaymentAssetAddress:     baseAssetAddress.String(),
 				DatasetPricePerBlock:    100,

@@ -104,6 +104,8 @@ func TestDelegateUserStakeAction(t *testing.T) {
 				require.Equal(t, actor, rewardAddress)
 			},
 			ExpectedOutputs: &DelegateUserStakeResult{
+				Actor:              actor.String(),
+				Receiver:           nodeID.String(),
 				StakedAmount:       emission.GetStakingConfig().MinDelegatorStake,
 				BalanceBeforeStake: emission.GetStakingConfig().MinDelegatorStake * 2,
 				BalanceAfterStake:  emission.GetStakingConfig().MinDelegatorStake,

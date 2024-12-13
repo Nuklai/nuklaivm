@@ -102,6 +102,8 @@ func TestUpdateAssetAction(t *testing.T) {
 				require.Equal(t, codec.EmptyAddress, enableDisableKYCAccountAdmin)
 			},
 			ExpectedOutputs: &UpdateAssetResult{
+				Actor:     actor.String(),
+				Receiver:  "",
 				Name:      "Updated Name",
 				Symbol:    "UPD",
 				MaxSupply: 1000,

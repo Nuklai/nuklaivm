@@ -126,7 +126,8 @@ func (s *DelegateUserStake) Execute(
 		return nil, err
 	}
 	return &DelegateUserStakeResult{
-		CommonResult:       FillCommonResult(actor.String(), s.NodeID.String()),
+		Actor:              actor.String(),
+		Receiver:           s.NodeID.String(),
 		StakedAmount:       s.StakedAmount,
 		BalanceBeforeStake: balance,
 		BalanceAfterStake:  newBalance,
@@ -171,12 +172,12 @@ func UnmarshalDelegateUserStake(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*DelegateUserStakeResult)(nil)
-	_ chain.Marshaler = (*DelegateUserStakeResult)(nil)
+	_ codec.Typed = (*DelegateUserStakeResult)(nil)
 )
 
 type DelegateUserStakeResult struct {
-	CommonResult
+	Actor              string `serialize:"true" json:"actor"`
+	Receiver           string `serialize:"true" json:"receiver"`
 	StakedAmount       uint64 `serialize:"true" json:"staked_amount"`
 	BalanceBeforeStake uint64 `serialize:"true" json:"balance_before_stake"`
 	BalanceAfterStake  uint64 `serialize:"true" json:"balance_after_stake"`
@@ -186,18 +187,10 @@ func (*DelegateUserStakeResult) GetTypeID() uint8 {
 	return nconsts.DelegateUserStakeID
 }
 
-func (*DelegateUserStakeResult) Size() int {
-	return 3 * consts.Uint64Len
-}
-
-func (r *DelegateUserStakeResult) Marshal(p *codec.Packer) {
-	p.PackUint64(r.StakedAmount)
-	p.PackUint64(r.BalanceBeforeStake)
-	p.PackUint64(r.BalanceAfterStake)
-}
-
 func UnmarshalDelegateUserStakeResult(p *codec.Packer) (codec.Typed, error) {
 	var result DelegateUserStakeResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.StakedAmount = p.UnpackUint64(true)
 	result.BalanceBeforeStake = p.UnpackUint64(true)
 	result.BalanceAfterStake = p.UnpackUint64(false)

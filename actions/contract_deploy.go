@@ -53,7 +53,7 @@ func (d *ContractDeploy) Execute(
 ) (codec.Typed, error) {
 	result, err := (&storage.ContractStateManager{Mutable: mu}).
 		NewAccountWithContract(ctx, d.ContractID, d.CreationInfo)
-	return &ContractDeployResult{CommonResult: FillCommonResult(actor.String(), ""), Address: result}, err
+	return &ContractDeployResult{Actor: actor.String(), Receiver: "", Address: result}, err
 }
 
 func (*ContractDeploy) ComputeUnits(chain.Rules) uint64 {
@@ -89,29 +89,23 @@ func UnmarshalDeployContract(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*ContractDeployResult)(nil)
-	_ chain.Marshaler = (*ContractDeployResult)(nil)
+	_ codec.Typed = (*ContractDeployResult)(nil)
 )
 
 type ContractDeployResult struct {
-	CommonResult
-	Address codec.Address `serialize:"true" json:"address"`
+	Actor    string        `serialize:"true" json:"actor"`
+	Receiver string        `serialize:"true" json:"receiver"`
+	Address  codec.Address `serialize:"true" json:"address"`
 }
 
 func (*ContractDeployResult) GetTypeID() uint8 {
 	return mconsts.ContractDeployID
 }
 
-func (*ContractDeployResult) Size() int {
-	return codec.AddressLen
-}
-
-func (r *ContractDeployResult) Marshal(p *codec.Packer) {
-	p.PackAddress(r.Address)
-}
-
 func UnmarshalContractDeployResult(p *codec.Packer) (codec.Typed, error) {
 	var result ContractDeployResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	p.UnpackAddress(&result.Address)
 	return &result, p.Err()
 }

@@ -13,7 +13,6 @@ import (
 
 	"github.com/ava-labs/hypersdk/chain"
 	"github.com/ava-labs/hypersdk/codec"
-	"github.com/ava-labs/hypersdk/consts"
 	"github.com/ava-labs/hypersdk/state"
 
 	nconsts "github.com/nuklai/nuklaivm/consts"
@@ -102,7 +101,8 @@ func (m *MintAssetNFT) Execute(
 	}
 
 	return &MintAssetNFTResult{
-		CommonResult:    FillCommonResult(actor.String(), m.To.String()),
+		Actor:           actor.String(),
+		Receiver:        m.To.String(),
 		AssetNftAddress: nftAddress.String(),
 		OldBalance:      newBalance - 1,
 		NewBalance:      newBalance,
@@ -127,12 +127,12 @@ func UnmarshalMintAssetNFT(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*MintAssetNFTResult)(nil)
-	_ chain.Marshaler = (*MintAssetNFTResult)(nil)
+	_ codec.Typed = (*MintAssetNFTResult)(nil)
 )
 
 type MintAssetNFTResult struct {
-	CommonResult
+	Actor           string `serialize:"true" json:"actor"`
+	Receiver        string `serialize:"true" json:"receiver"`
 	AssetNftAddress string `serialize:"true" json:"asset_nft_address"`
 	OldBalance      uint64 `serialize:"true" json:"old_balance"`
 	NewBalance      uint64 `serialize:"true" json:"new_balance"`
@@ -142,18 +142,10 @@ func (*MintAssetNFTResult) GetTypeID() uint8 {
 	return nconsts.MintAssetNFTID
 }
 
-func (r *MintAssetNFTResult) Size() int {
-	return codec.StringLen(r.AssetNftAddress) + consts.Uint64Len*2
-}
-
-func (r *MintAssetNFTResult) Marshal(p *codec.Packer) {
-	p.PackString(r.AssetNftAddress)
-	p.PackUint64(r.OldBalance)
-	p.PackUint64(r.NewBalance)
-}
-
 func UnmarshalMintAssetNFTResult(p *codec.Packer) (codec.Typed, error) {
 	var result MintAssetNFTResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.AssetNftAddress = p.UnpackString(true)
 	result.OldBalance = p.UnpackUint64(false)
 	result.NewBalance = p.UnpackUint64(true)

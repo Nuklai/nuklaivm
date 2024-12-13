@@ -76,6 +76,8 @@ func TestWithdrawValidatorStakeAction(t *testing.T) {
 				require.False(t, exists) // Stake should no longer exist
 			},
 			ExpectedOutputs: &WithdrawValidatorStakeResult{
+				Actor:                actor.String(),
+				Receiver:             actor.String(),
 				StakeStartBlock:      50,
 				StakeEndBlock:        150,
 				UnstakedAmount:       10000,

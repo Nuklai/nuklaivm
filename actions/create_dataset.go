@@ -133,7 +133,8 @@ func (c *CreateDataset) Execute(
 	}
 
 	return &CreateDatasetResult{
-		CommonResult:            FillCommonResult(actor.String(), actor.String()),
+		Actor:                   actor.String(),
+		Receiver:                actor.String(),
 		DatasetAddress:          c.AssetAddress.String(),
 		DatasetParentNftAddress: storage.AssetAddressNFT(c.AssetAddress, metadata, owner).String(),
 	}, nil
@@ -163,12 +164,12 @@ func UnmarshalCreateDataset(p *codec.Packer) (chain.Action, error) {
 }
 
 var (
-	_ codec.Typed     = (*CreateDatasetResult)(nil)
-	_ chain.Marshaler = (*CreateDatasetResult)(nil)
+	_ codec.Typed = (*CreateDatasetResult)(nil)
 )
 
 type CreateDatasetResult struct {
-	CommonResult
+	Actor                   string `serialize:"true" json:"actor"`
+	Receiver                string `serialize:"true" json:"receiver"`
 	DatasetAddress          string `serialize:"true" json:"dataset_address"`
 	DatasetParentNftAddress string `serialize:"true" json:"dataset_parent_nft_address"`
 }
@@ -177,17 +178,10 @@ func (*CreateDatasetResult) GetTypeID() uint8 {
 	return nconsts.CreateDatasetID
 }
 
-func (r *CreateDatasetResult) Size() int {
-	return codec.StringLen(r.DatasetAddress) + codec.StringLen(r.DatasetParentNftAddress)
-}
-
-func (r *CreateDatasetResult) Marshal(p *codec.Packer) {
-	p.PackString(r.DatasetAddress)
-	p.PackString(r.DatasetParentNftAddress)
-}
-
 func UnmarshalCreateDatasetResult(p *codec.Packer) (codec.Typed, error) {
 	var result CreateDatasetResult
+	result.Actor = p.UnpackString(true)
+	result.Receiver = p.UnpackString(false)
 	result.DatasetAddress = p.UnpackString(true)
 	result.DatasetParentNftAddress = p.UnpackString(true)
 	return &result, p.Err()

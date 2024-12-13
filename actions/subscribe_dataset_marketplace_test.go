@@ -145,6 +145,8 @@ func TestSubscribeDatasetMarketplaceAction(t *testing.T) {
 				require.Equal(t, fmt.Sprint(mockEmission.GetLastAcceptedBlockHeight()), metadataMap["lastClaimedBlock"])
 			},
 			ExpectedOutputs: &SubscribeDatasetMarketplaceResult{
+				Actor:                            actor.String(),
+				Receiver:                         actor.String(),
 				MarketplaceAssetAddress:          marketplaceAssetAddress.String(),
 				MarketplaceAssetNumSubscriptions: 1,
 				SubscriptionNftAddress:           nftAddress.String(),
