@@ -10,13 +10,15 @@ if [[ $(basename "$PWD") != "nuklaivm" ]]; then
 fi
 
 KEY_NAME="./scripts/aws/nuklaivm-aws-key.pem"
-INSTANCE_NAME="nuklai-devnet-instance"
+INSTANCE_NAME="nuklaivm-nodes-devnet"
 REGION="eu-west-1"
-INSTANCE_TYPE="t2.medium"
-SECURITY_GROUP="sg-07b07fac5e31bc731"
+INSTANCE_TYPE="t3a.medium"
+SECURITY_GROUP="sg-0c06bc676cb309bbc"
+SUBNET_ID="subnet-08322a251c30c1367"
 USER_DATA_FILE="./scripts/aws/install_docker.sh"
 TARBALL="nuklaivm.tar.gz"
-AMI_ID="ami-008d05461f83df5b1"
+#AMI_ID="ami-008d05461f83df5b1"
+AMI_ID="ami-0a094c309b87cc107"
 EIP_FILE="./scripts/aws/elastic_ip_allocation.txt"
 
 # Default values for addresses
@@ -76,11 +78,13 @@ echo "Launching a new EC2 instance..."
 INSTANCE_ID=$(aws ec2 run-instances --region $REGION \
   --image-id $AMI_ID --count 1 --instance-type $INSTANCE_TYPE \
   --key-name nuklaivm-aws-key --security-group-ids $SECURITY_GROUP \
+  --subnet-id $SUBNET_ID \
   --associate-public-ip-address \
   --block-device-mappings 'DeviceName=/dev/xvda,Ebs={VolumeSize=100,VolumeType=gp3,DeleteOnTermination=true}' \
   --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]" \
   --user-data file://$USER_DATA_FILE \
   --query "Instances[0].InstanceId" --output text)
+
 
 echo "Waiting for the instance to start..."
 aws ec2 wait instance-running --instance-ids $INSTANCE_ID --region $REGION
