@@ -9,10 +9,10 @@ if [[ $(basename "$PWD") != "nuklaivm" ]]; then
   exit 1
 fi
 
-KEY_FILE="~/Documents/nuklai/ssh-keys/nuklaivm-nodes-devnet.pem"
-KEY_NAME="nuklaivm-nodes-devnet"
+KEY_NAME="../ssh-keys/nuklaivm-nodes-devnet.pem"
 INSTANCE_NAME="nuklaivm-nodes-devnet"
 REGION="eu-west-1"
+INSTANCE_PROFILE_NAME=""
 INSTANCE_TYPE="t3a.medium"
 SECURITY_GROUP="sg-0c06bc676cb309bbc"
 SUBNET_ID="subnet-08322a251c30c1367"
@@ -76,14 +76,10 @@ fi
 
 # Launch a new EC2 instance
 echo "Launching a new EC2 instance..."
-INSTANCE_ID=$(aws ec2 run-instances --region $REGION \
-  --image-id $AMI_ID --count 1 --instance-type $INSTANCE_TYPE \
-  --key-name $KEY_NAME --security-group-ids $SECURITY_GROUP \
+INSTANCE_ID=$(aws ec2 run-instances \
+  --region $REGION \
   --subnet-id $SUBNET_ID \
-  --associate-public-ip-address \
-  --block-device-mappings 'DeviceName=/dev/xvda,Ebs={VolumeSize=100,VolumeType=gp3,DeleteOnTermination=true}' \
-  --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]" \
-  --user-data file://$USER_DATA_FILE \
+  --launch-template 'LaunchTemplateName=nuklaivm-nodes-devnet,Version=$Latest' \
   --query "Instances[0].InstanceId" --output text)
 
 
@@ -106,10 +102,10 @@ if [ -f "$HOME/.ssh/known_hosts" ]; then
 fi
 
 echo "Transferring tarball and private key to the EC2 instance..."
-scp -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i $KEY_FILE $TARBALL ec2-user@$ELASTIC_IP:/home/ec2-user/
+scp -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i $KEY_NAME $TARBALL ec2-user@$ELASTIC_IP:/home/ec2-user/
 
 echo "Connecting to the EC2 instance and deploying devnet..."
-ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i $KEY_FILE ec2-user@$ELASTIC_IP << EOF
+ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i $KEY_NAME ec2-user@$ELASTIC_IP << EOF
   echo "Waiting for Docker installation to complete..."
   TIMEOUT=180  # Set a timeout in seconds to wait for Docker installation completion
   SECONDS=0
