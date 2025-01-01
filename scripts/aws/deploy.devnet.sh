@@ -9,7 +9,7 @@ if [[ $(basename "$PWD") != "nuklaivm" ]]; then
   exit 1
 fi
 
-KEY_FILE="~/Documents/nuklai/ssh-keys/nuklaivm-nodes-devnet.pem"
+KEY_FILE="./scripts/aws/nuklaivm-nodes-devnet.pem"
 KEY_NAME="nuklaivm-nodes-devnet"
 INSTANCE_NAME="nuklaivm-nodes-devnet"
 REGION="eu-west-1"
@@ -40,16 +40,23 @@ done
 echo "Using AMI ID: $AMI_ID"
 
 # Check if an instance is already running
-INSTANCE_ID=$(aws ec2 describe-instances --region $REGION \
-  --filters "Name=tag:Name,Values=$INSTANCE_NAME" "Name=instance-state-name,Values=running" \
-  --query "Reservations[0].Instances[0].InstanceId" --output text)
-
-if [ "$INSTANCE_ID" != "None" ]; then
-  echo "Existing instance found. Terminating it..."
-  aws ec2 terminate-instances --instance-ids $INSTANCE_ID --region $REGION
-  aws ec2 wait instance-terminated --instance-ids $INSTANCE_ID --region $REGION
-  echo "Instance terminated."
-fi
+RETRIES=3
+for ((i=1; i<=RETRIES; i++)); do
+  INSTANCE_ID=$(aws ec2 describe-instances --region $REGION \
+    --filters "Name=tag:Name,Values=$INSTANCE_NAME" "Name=instance-state-name,Values=running" \
+    --query "Reservations[0].Instances[0].InstanceId" --output text)
+  if [[ "$INSTANCE_ID" != "None" ]]; then
+    echo "Existing instance found. Terminating it..."
+    aws ec2 terminate-instances --instance-ids $INSTANCE_ID --region $REGION
+    aws ec2 wait instance-terminated --instance-ids $INSTANCE_ID --region $REGION
+    echo "Instance terminated."
+    break
+  elif [[ $i -eq $RETRIES ]]; then
+    echo "Failed to describe instances after $RETRIES attempts."
+    exit 1
+  fi
+  sleep $((2**i))
+done
 
 # Check if an Elastic IP has already been allocated
 if [ -f "$EIP_FILE" ]; then
