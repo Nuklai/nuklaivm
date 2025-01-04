@@ -9,17 +9,11 @@ if [[ $(basename "$PWD") != "nuklaivm" ]]; then
   exit 1
 fi
 
-KEY_FILE="./scripts/aws/nuklaivm-nodes-devnet.pem"
-KEY_NAME="nuklaivm-nodes-devnet"
-INSTANCE_NAME="nuklaivm-nodes-devnet"
+KEY_NAME="../ssh-keys/nuklaivm-nodes-devnet.pem"
 REGION="eu-west-1"
-INSTANCE_TYPE="t3a.medium"
-SECURITY_GROUP="sg-0c06bc676cb309bbc"
-SUBNET_ID="subnet-08322a251c30c1367"
-USER_DATA_FILE="./scripts/aws/install_docker.sh"
+INSTANCE_NAME="nuklaivm-nodes-devnet"
+INSTANCE_PROFILE_NAME="nuklaivm-nodes-devnet"
 TARBALL="nuklaivm.tar.gz"
-#AMI_ID="ami-008d05461f83df5b1"
-AMI_ID="ami-0a094c309b87cc107"
 EIP_FILE="./scripts/aws/elastic_ip_allocation.txt"
 
 # Default values for addresses
@@ -50,6 +44,9 @@ for ((i=1; i<=RETRIES; i++)); do
     aws ec2 terminate-instances --instance-ids $INSTANCE_ID --region $REGION
     aws ec2 wait instance-terminated --instance-ids $INSTANCE_ID --region $REGION
     echo "Instance terminated."
+    break
+  elif [[ "$INSTANCE_ID" = "None" ]]; then
+    echo "No instance running"
     break
   elif [[ $i -eq $RETRIES ]]; then
     echo "Failed to describe instances after $RETRIES attempts."
@@ -83,14 +80,9 @@ fi
 
 # Launch a new EC2 instance
 echo "Launching a new EC2 instance..."
-INSTANCE_ID=$(aws ec2 run-instances --region $REGION \
-  --image-id $AMI_ID --count 1 --instance-type $INSTANCE_TYPE \
-  --key-name $KEY_NAME --security-group-ids $SECURITY_GROUP \
-  --subnet-id $SUBNET_ID \
-  --associate-public-ip-address \
-  --block-device-mappings 'DeviceName=/dev/xvda,Ebs={VolumeSize=100,VolumeType=gp3,DeleteOnTermination=true}' \
-  --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]" \
-  --user-data file://$USER_DATA_FILE \
+INSTANCE_ID=$(aws ec2 run-instances \
+  --region $REGION \
+  --launch-template "LaunchTemplateName=$INSTANCE_PROFILE_NAME,Version=$Latest" \
   --query "Instances[0].InstanceId" --output text)
 
 
@@ -113,10 +105,10 @@ if [ -f "$HOME/.ssh/known_hosts" ]; then
 fi
 
 echo "Transferring tarball and private key to the EC2 instance..."
-scp -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i $KEY_FILE $TARBALL ec2-user@$ELASTIC_IP:/home/ec2-user/
+scp -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i $KEY_NAME $TARBALL ec2-user@$ELASTIC_IP:/home/ec2-user/
 
 echo "Connecting to the EC2 instance and deploying devnet..."
-ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i $KEY_FILE ec2-user@$ELASTIC_IP << EOF
+ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i $KEY_NAME ec2-user@$ELASTIC_IP << EOF
   echo "Waiting for Docker installation to complete..."
   TIMEOUT=180  # Set a timeout in seconds to wait for Docker installation completion
   SECONDS=0
@@ -150,7 +142,7 @@ ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i $KEY_FILE
     nuklai-devnet
 
   echo "Checking if the blockchain is fully started..."
-  TIMEOUT=180  # Timeout for blockchain readiness check
+  TIMEOUT=300  # Timeout for blockchain readiness check
   SECONDS=0
   SUCCESS=false
   until [[ "\$SUCCESS" == true || SECONDS -ge TIMEOUT ]]; do
