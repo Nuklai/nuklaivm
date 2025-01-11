@@ -1,28 +1,48 @@
 # Copyright (C) 2024, Nuklai. All rights reserved.
 # See the file LICENSE for licensing terms.
 
-name: VM Release
+name: VM Release deployment
 
 on:
   push:
-    tags:
-      - '*'
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ENVIRONMENT: ${{ vars.ENVIRONMENT }}
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+  AWS_S3_BUCKET: ${{ vars.AWS_S3_BUCKET }}
+  PRODUCT: nuklaivm
+  APPLICATION: nodes
+
 jobs:
-  nuklaivm-release:
-    # We build with 20.04 to maintain max compatibility: https://github.com/golang/go/issues/57328
-    # runs-on: ubuntu-20.04-32
+  build_and_deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    environment: ${{ github.ref == 'refs/heads/prod' && 'prod' || github.ref == 'refs/heads/dev' && 'dev' }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: ./.github/actions/vm-release
-        with:
-          vm-name: nuklaivm
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      # - uses: ./.github/actions/vm-release
+      #   with:
+      #     vm-name: nuklaivm
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build tar ball
+        run: |
+          EXCLUDES=$(cat .gitignore .dockerignore 2>/dev/null | grep -v '^#' | sed '/^$/d' | sed 's/^/--exclude=/' | tr '\n' ' ')
+          EXCLUDES+=" --exclude='./web_wallet' --exclude=$TARBALL"
+          eval "tar -czf $TARBALL $EXCLUDES -C . ."
+
+      # - name: Push to S3
+      #   run: |
+      #     aws s3 sync s3://${{ env.AWS_S3_BUCKET }} --follow-symlinks --delete --no-progress
