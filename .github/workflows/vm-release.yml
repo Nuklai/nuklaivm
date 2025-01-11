@@ -23,6 +23,7 @@ env:
   AWS_S3_BUCKET: ${{ vars.AWS_S3_BUCKET }}
   PRODUCT: nuklaivm
   APPLICATION: nodes
+  TARBALL_NAME: nuklaivm-${{ github.sha }}.tar.gz
 
 jobs:
   build_and_deploy:
@@ -39,12 +40,11 @@ jobs:
 
       - name: Build tar ball
         run: |
-          TARBALL=nuklaivm-${{ github.sha }}.tar.gz
           EXCLUDES=$(cat .gitignore .dockerignore 2>/dev/null | grep -v '^#' | sed '/^$/d' | sed 's/^/--exclude=/' | tr '\n' ' ')
           EXCLUDES+=" --exclude='./web_wallet'"
-          touch $TARBALL
-          eval "tar -czf $TARBALL --exclude=$TARBALL $EXCLUDES -C . ."
+          touch ${{ env.TARBALL_NAME }}
+          eval "tar -czf ${{ env.TARBALL_NAME }} --exclude=${{ env.TARBALL_NAME }} $EXCLUDES -C . ."
 
-      # - name: Push to S3
-      #   run: |
-      #     aws s3 sync s3://${{ env.AWS_S3_BUCKET }} --follow-symlinks --delete --no-progress
+      - name: Push to S3
+        run: |
+          aws s3 sync ${{ env.TARBALL_NAME }} s3://${{ env.AWS_S3_BUCKET }} --follow-symlinks --delete --no-progress
