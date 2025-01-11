@@ -6,7 +6,8 @@ name: VM Release deployment
 on:
   push:
     branches:
-      - main
+      - dev
+      - prod
   workflow_dispatch:
 
 permissions:
