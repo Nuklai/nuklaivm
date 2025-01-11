@@ -28,7 +28,7 @@ env:
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.ref == 'refs/heads/prod' && 'prod' || github.ref == 'refs/heads/dev' && 'dev' }}
+    environment: ${{ github.ref == 'refs/heads/prod' && 'prod' || github.ref == 'refs/heads/dev' && 'dev' || 'dev' }}
 
     steps:
       - name: Checkout
@@ -44,6 +44,12 @@ jobs:
           EXCLUDES+=" --exclude='./web_wallet'"
           touch ${{ env.TARBALL_NAME }}
           eval "tar -czf ${{ env.TARBALL_NAME }} --exclude=${{ env.TARBALL_NAME }} $EXCLUDES -C . ."
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.PRODUCT }}-${{ env.APPLICATION }}-deployer-${{ env.AWS_REGION }}-${{ env.ENVIRONMENT }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Push to S3
         run: |
