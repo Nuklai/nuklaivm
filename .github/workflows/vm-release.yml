@@ -41,7 +41,7 @@ jobs:
         run: |
           EXCLUDES=$(cat .gitignore .dockerignore 2>/dev/null | grep -v '^#' | sed '/^$/d' | sed 's/^/--exclude=/' | tr '\n' ' ')
           EXCLUDES+=" --exclude='./web_wallet' --exclude=$TARBALL"
-          eval "tar -czf $TARBALL $EXCLUDES -C . ."
+          tar -czf $TARBALL $EXCLUDES -C . .
 
       # - name: Push to S3
       #   run: |
