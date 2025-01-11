@@ -55,4 +55,6 @@ jobs:
 
       - name: Push to S3
         run: |
-          aws s3 sync ${{ env.TARBALL_NAME }} s3://${{ env.AWS_S3_BUCKET }} --follow-symlinks --delete --no-progress
+          pwd
+          ls -la
+          aws s3 cp ${{ env.TARBALL_NAME }} s3://${{ env.AWS_S3_BUCKET }} --follow-symlinks --delete --no-progress
