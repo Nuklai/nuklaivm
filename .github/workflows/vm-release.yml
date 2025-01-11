@@ -42,7 +42,8 @@ jobs:
           TARBALL=nuklaivm-${{ github.sha }}.tar.gz
           EXCLUDES=$(cat .gitignore .dockerignore 2>/dev/null | grep -v '^#' | sed '/^$/d' | sed 's/^/--exclude=/' | tr '\n' ' ')
           EXCLUDES+=" --exclude='./web_wallet'"
-          eval "tar -czf $TARBALL --exclude=$TARBALL --warning=no-file-changed $EXCLUDES -C . ."
+          touch $TARBALL
+          eval "tar -czf $TARBALL --exclude=$TARBALL $EXCLUDES -C . ."
 
       # - name: Push to S3
       #   run: |
